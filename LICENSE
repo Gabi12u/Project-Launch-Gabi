@@ -1,0 +1,67 @@
+Copyright © 2026 Gabi. Alle Rechte vorbehalten.
+Copyright © 2026 Gabi. All rights reserved.
+
+---
+
+DEUTSCH
+
+Dieser Quellcode und die daraus erstellten Programme („Launch Gabi") sind
+urheberrechtlich geschützt. Der Code wird öffentlich einsehbar bereitgestellt,
+damit er gelesen und geprüft werden kann — er ist ausdrücklich KEINE freie oder
+quelloffene Software im Sinne einer Open-Source-Lizenz.
+
+Ohne vorherige schriftliche Erlaubnis des Urhebers ist es untersagt:
+
+  - den Code oder Teile davon zu kopieren, zu vervielfältigen oder zu verbreiten
+  - den Code zu verändern oder abgeleitete Werke daraus zu erstellen
+  - den Code oder daraus erstellte Programme zu verkaufen, zu vermieten oder
+    anderweitig kommerziell zu verwerten
+  - den Code in eigene Projekte zu übernehmen, auch nicht auszugsweise
+
+Erlaubt ist:
+
+  - das Ansehen und Lesen des Quellcodes
+  - das Herunterladen und private Verwenden der offiziell veröffentlichten
+    Installationsdateien
+
+Diese Bedingungen gelten ausschließlich für den in diesem Projekt enthaltenen
+eigenen Code. Verwendete Fremdbibliotheken (siehe package.json) unterliegen
+weiterhin ihren jeweils eigenen Lizenzen.
+
+Launch Gabi ist kein offizielles Produkt von Mojang oder Microsoft. Minecraft
+ist eine Marke von Mojang AB.
+
+KEINE GEWÄHRLEISTUNG: Die Software wird ohne jede Gewährleistung
+bereitgestellt. Der Urheber haftet nicht für Schäden, die aus ihrer Verwendung
+entstehen, soweit gesetzlich zulässig.
+
+---
+
+ENGLISH
+
+This source code and the programs built from it ("Launch Gabi") are protected by
+copyright. The code is published so that it can be read and reviewed. It is
+expressly NOT free or open-source software.
+
+Without prior written permission from the author you may NOT:
+
+  - copy, reproduce or distribute the code or any part of it
+  - modify the code or create derivative works from it
+  - sell, rent or otherwise commercially exploit the code or programs built
+    from it
+  - incorporate the code into your own projects, in whole or in part
+
+You MAY:
+
+  - view and read the source code
+  - download and privately use the officially released installers
+
+These terms apply only to the original code in this project. Third-party
+libraries (see package.json) remain under their own respective licenses.
+
+Launch Gabi is not an official Mojang or Microsoft product. Minecraft is a
+trademark of Mojang AB.
+
+NO WARRANTY: The software is provided without warranty of any kind. To the
+extent permitted by law, the author is not liable for any damages arising from
+its use.

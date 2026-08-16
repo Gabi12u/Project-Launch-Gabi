@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+
+# Lokale Werkzeug- und Editor-Einstellungen, gehören niemandem sonst
+.claude/
+.vscode/
+
+# Nie einchecken: Zugangsdaten und Schlüssel
+*.pem
+*.key
+secrets.json

@@ -1,0 +1,281 @@
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { ensureInstanceLayout, paths } from '../paths'
+import { getSettings } from '../store'
+import { log } from '../logger'
+import { withTask } from '../tasks'
+import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } from './net'
+import { clientJarPath, installVersion, loadVersionJson, resolveLibraries } from './mojang'
+import { requiredJavaMajor, resolveJava } from './java'
+import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
+import { contentFilePath } from './content'
+import { bestVersionFor } from '../providers'
+import { installLoader } from '../loaders'
+import { isRunning } from './running'
+
+const logger = log('repair')
+
+export interface RepairReport {
+  instanceId: string
+  checkedFiles: number
+  repairedFiles: number
+  steps: { label: string; status: 'ok' | 'repaired' | 'failed'; detail: string }[]
+}
+
+/**
+ * Verifies and restores everything an instance needs: folder layout, the
+ * version manifest, libraries, assets, the mod loader, managed content files
+ * and the Java runtime.
+ */
+export async function repairInstance(instanceId: string): Promise<RepairReport> {
+  if (isRunning(instanceId)) {
+    throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie reparierst.')
+  }
+
+  const instance = getInstance(instanceId)
+
+  return withTask(`${instance.name} wird repariert`, 'Prüfung startet…', instanceId, async (task) => {
+    const report: RepairReport = {
+      instanceId,
+      checkedFiles: 0,
+      repairedFiles: 0,
+      steps: []
+    }
+
+    const step = (label: string, status: 'ok' | 'repaired' | 'failed', detail: string): void => {
+      report.steps.push({ label, status, detail })
+      logger.info(`[${status}] ${label}: ${detail}`)
+    }
+
+    // 1. Folder layout ------------------------------------------------
+    task.update('Ordnerstruktur wird geprüft…', 0.02)
+    const missingFolders = [paths.gameDir(instanceId), paths.mods(instanceId), paths.saves(instanceId)].filter(
+      (dir) => !existsSync(dir)
+    )
+    ensureInstanceLayout(instanceId)
+    step(
+      'Ordnerstruktur',
+      missingFolders.length > 0 ? 'repaired' : 'ok',
+      missingFolders.length > 0 ? `${missingFolders.length} Ordner neu angelegt` : 'Vollständig'
+    )
+
+    // 2. Mod loader ---------------------------------------------------
+    task.update('Mod Loader wird geprüft…', 0.08)
+    let versionId: string
+    try {
+      versionId = await resolveVersionId(instance)
+      const versionFile = join(paths.version(versionId), `${versionId}.json`)
+
+      if (!existsSync(versionFile) && instance.loader !== 'vanilla') {
+        task.update('Mod Loader wird neu installiert…', 0.1)
+        versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+        step('Mod Loader', 'repaired', `${instance.loader} neu installiert`)
+      } else {
+        step('Mod Loader', 'ok', instance.loader === 'vanilla' ? 'Vanilla' : `${instance.loader} vorhanden`)
+      }
+    } catch (err) {
+      step('Mod Loader', 'failed', err instanceof Error ? err.message : String(err))
+      throw err
+    }
+
+    // 3. Minecraft files ----------------------------------------------
+    task.update('Minecraft-Dateien werden geprüft…', 0.15)
+    const versionJson = await loadVersionJson(versionId)
+
+    const items: DownloadItem[] = []
+    const client = versionJson.downloads?.client
+    if (client) {
+      items.push({
+        url: client.url,
+        path: clientJarPath(instance.mcVersion),
+        sha1: client.sha1,
+        size: client.size
+      })
+    }
+    for (const library of resolveLibraries(versionJson)) {
+      if (library.download) items.push(library.download)
+    }
+
+    let broken = 0
+    for (const item of items) {
+      report.checkedFiles++
+      if (!(await isSatisfied(item))) {
+        broken++
+        // A corrupt file must go, otherwise the downloader trusts its size.
+        rmSync(item.path, { force: true })
+      }
+    }
+
+    task.span(0.15, 0.55)
+    await downloadAll(items, { task, label: 'Beschädigte Dateien' })
+    task.span(0, 1)
+    report.repairedFiles += broken
+
+    step(
+      'Minecraft & Bibliotheken',
+      broken > 0 ? 'repaired' : 'ok',
+      broken > 0 ? `${broken} von ${items.length} Dateien erneuert` : `${items.length} Dateien in Ordnung`
+    )
+
+    // 4. Assets --------------------------------------------------------
+    task.update('Assets werden geprüft…', 0.6)
+    task.span(0.6, 0.8)
+    try {
+      await installVersion(versionJson, instance.mcVersion, task)
+      step('Spiel-Assets', 'ok', 'Vollständig')
+    } catch (err) {
+      step('Spiel-Assets', 'failed', err instanceof Error ? err.message : String(err))
+    }
+    task.span(0, 1)
+
+    // 5. Natives -------------------------------------------------------
+    task.update('Natives werden erneuert…', 0.82)
+    rmSync(paths.natives(versionId), { recursive: true, force: true })
+    mkdirSync(paths.natives(versionId), { recursive: true })
+    step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+
+    // 6. Content files -------------------------------------------------
+    task.update('Mods werden geprüft…', 0.86)
+    await syncContentWithDisk(instanceId)
+    const current = getInstance(instanceId)
+
+    let restored = 0
+    let removed = 0
+    const survivors = [...current.content]
+
+    for (const item of current.content) {
+      const file = contentFilePath(instanceId, item)
+      report.checkedFiles++
+
+      const missing = !existsSync(file)
+      let corrupt = false
+      if (!missing && item.sha1) {
+        try {
+          corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
+        } catch {
+          corrupt = true
+        }
+      }
+
+      if (!missing && !corrupt) continue
+
+      if (item.provider === 'local' || !item.projectId) {
+        if (missing) {
+          survivors.splice(survivors.indexOf(item), 1)
+          removed++
+        }
+        continue
+      }
+
+      try {
+        const version = await bestVersionFor(
+          item.provider as 'modrinth' | 'curseforge',
+          item.projectId,
+          current.mcVersion,
+          current.loader
+        )
+        if (!version) continue
+
+        rmSync(file, { force: true })
+        await downloadFile({
+          url: version.downloadUrl,
+          path: contentFilePath(instanceId, { ...item, fileName: version.fileName }),
+          sha1: version.sha1,
+          size: version.size
+        })
+
+        const index = survivors.indexOf(item)
+        survivors[index] = { ...item, fileName: version.fileName, sha1: version.sha1, size: version.size }
+        restored++
+      } catch (err) {
+        logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
+      }
+    }
+
+    persist({ ...getInstance(instanceId), content: survivors })
+    report.repairedFiles += restored
+
+    step(
+      'Mods & Inhalte',
+      restored > 0 || removed > 0 ? 'repaired' : 'ok',
+      restored > 0 || removed > 0
+        ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt`
+        : `${current.content.length} Dateien in Ordnung`
+    )
+
+    // 7. Java ----------------------------------------------------------
+    task.update('Java wird geprüft…', 0.95)
+    try {
+      const major = instance.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, instance.mcVersion)
+      const java = await resolveJava({
+        explicitPath: instance.settings.javaPath || undefined,
+        major,
+        autoManage: getSettings().javaAutoManage,
+        task
+      })
+      step('Java', 'ok', `Java ${java.major} (${java.version})`)
+    } catch (err) {
+      step('Java', 'failed', err instanceof Error ? err.message : String(err))
+    }
+
+    // 8. Corrupt logs / crash leftovers --------------------------------
+    task.update('Aufräumen…', 0.99)
+    cleanTempFiles(instanceId)
+    persist({ ...getInstance(instanceId), installed: true })
+
+    task.update('Reparatur abgeschlossen', 1)
+    return report
+  })
+}
+
+/** Removes leftovers from interrupted downloads and crashed sessions. */
+function cleanTempFiles(instanceId: string): void {
+  const gameDir = paths.gameDir(instanceId)
+  if (!existsSync(gameDir)) return
+
+  const stack = [gameDir]
+  while (stack.length > 0) {
+    const dir = stack.pop()
+    if (!dir || !existsSync(dir)) continue
+
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        stack.push(full)
+        continue
+      }
+      if (entry.name.endsWith('.part') || entry.name.endsWith('.tmp')) {
+        rmSync(full, { force: true })
+      }
+    }
+  }
+}
+
+/** Disk usage of the whole launcher data folder, for the settings screen. */
+export function totalDiskUsage(): number {
+  let total = 0
+  const stack = [paths.root()]
+
+  while (stack.length > 0) {
+    const dir = stack.pop()
+    if (!dir || !existsSync(dir)) continue
+
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          stack.push(full)
+        } else {
+          try {
+            total += statSync(full).size
+          } catch {
+            // file vanished mid-walk
+          }
+        }
+      }
+    } catch {
+      // unreadable directory
+    }
+  }
+  return total
+}

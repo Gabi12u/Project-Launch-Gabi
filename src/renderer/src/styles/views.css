@@ -1,0 +1,1132 @@
+/* ------------------------------------------------------------------ *
+ * View specific layouts
+ * ------------------------------------------------------------------ */
+
+/* --- Home hero ------------------------------------------------------ */
+
+.greeting {
+  font-size: 34px;
+  font-weight: 760;
+  letter-spacing: -0.038em;
+}
+
+/*
+ * Static gradient. Animating `background-position` on clipped text repaints
+ * the glyphs every frame — one of the few effects that cannot be handed to the
+ * compositor, and it showed up clearly in a CPU profile.
+ */
+.greeting span {
+  background: linear-gradient(115deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero {
+  position: relative;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+  min-height: 320px;
+  display: flex;
+  align-items: flex-end;
+  padding: 32px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg), var(--edge);
+  isolation: isolate;
+  animation: hero-in var(--t-slower) var(--ease) both;
+}
+
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.992); }
+  to { opacity: 1; transform: none; }
+}
+
+/*
+ * Instance accent bleeds in from the top right. The blob is oversized and
+ * offset by the parallax vars so it slides against the cursor.
+ */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: -2;
+  background:
+    radial-gradient(58ch 40ch at 76% 4%, color-mix(in srgb, var(--hero-accent, var(--accent)) 52%, transparent), transparent 62%),
+    radial-gradient(46ch 34ch at 12% 96%, color-mix(in srgb, var(--accent-2) 26%, transparent), transparent 66%),
+    linear-gradient(120deg, rgba(0, 0, 0, 0.6), transparent 58%);
+  transform: translate3d(calc(var(--px, 0px) * 1.6), calc(var(--py, 0px) * 1.6), 0);
+  transition: transform 420ms var(--ease);
+}
+
+/*
+ * A sheen crosses the panel on hover. It used to loop forever, which kept the
+ * compositor awake around the clock for an effect nobody was watching.
+ */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(104deg, transparent 38%, rgba(255, 255, 255, 0.06) 50%, transparent 62%);
+  transform: translateX(-100%);
+  transition: transform 1100ms var(--ease);
+}
+
+.hero:hover::after {
+  transform: translateX(100%);
+}
+
+.hero-bg {
+  position: absolute;
+  inset: -4%;
+  z-index: -3;
+  object-fit: cover;
+  width: 108%;
+  height: 108%;
+  opacity: 0.52;
+  filter: saturate(1.1) contrast(1.04);
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0) scale(1.04);
+  transition: transform 420ms var(--ease);
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(5, 6, 11, 0.95) 4%, rgba(5, 6, 11, 0.5) 48%, transparent 80%);
+}
+
+.hero-content {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.hero-title {
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.7);
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.hero-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: var(--r-md);
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--edge-strong), 0 10px 30px -12px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  transition: transform var(--t) var(--ease-spring);
+}
+
+.hero:hover .hero-icon {
+  transform: translateY(-3px) rotate(-3deg);
+}
+
+.hero-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Progress ring drawn around the play button while an install runs. */
+.hero-launch {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/*
+ * Glow behind the play button. It breathes on hover only — as a permanent
+ * animation it was the last thing keeping the compositor awake, and a window
+ * with no running animation at all can drop to zero CPU between interactions.
+ */
+.hero-launch-aura {
+  position: absolute;
+  inset: -22px;
+  border-radius: var(--r-xl);
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  opacity: 0.42;
+  pointer-events: none;
+  transition: opacity var(--t), transform var(--t) var(--ease);
+}
+
+.hero-launch:hover .hero-launch-aura {
+  animation: breathe 3.4s var(--ease-in-out) infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.32; transform: scale(0.96); }
+  50% { opacity: 0.62; transform: scale(1.04); }
+}
+
+/* --- Quick play row -------------------------------------------------- */
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 14px;
+}
+
+.quick-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--grad-surface), var(--surface);
+  box-shadow: var(--edge);
+  transition:
+    transform var(--t) var(--ease),
+    border-color var(--t),
+    box-shadow var(--t);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Accent wash on the left, revealed on hover. */
+.quick-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    30ch 20ch at 0% 50%,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 22%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity var(--t);
+}
+
+/* Cursor spotlight, positioned by useSpotlight(). */
+.quick-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    16ch 16ch at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.09),
+    transparent 70%
+  );
+  opacity: var(--spot, 0);
+  transition: opacity var(--t);
+}
+
+.quick-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 42%, var(--line));
+  box-shadow:
+    0 18px 40px -18px rgba(0, 0, 0, 0.8),
+    0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 20%, transparent),
+    var(--edge);
+}
+
+.quick-card:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+.quick-card:hover::before {
+  opacity: 1;
+}
+
+.quick-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: color-mix(in srgb, var(--card-accent, var(--accent)) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--card-accent, var(--accent)) 32%, transparent);
+  box-shadow: 0 0 22px -8px color-mix(in srgb, var(--card-accent, var(--accent)) 70%, transparent);
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+  transition: transform var(--t) var(--ease-spring);
+}
+
+.quick-card:hover .quick-icon {
+  transform: scale(1.07) rotate(-4deg);
+}
+
+.quick-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.quick-play-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  flex-shrink: 0;
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+  position: relative;
+  z-index: 1;
+}
+
+.quick-card:hover .quick-play-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* --- Stat tiles ------------------------------------------------------ */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 16px 17px;
+  border-radius: var(--r-md);
+  background: var(--grad-surface), var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--edge);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--t), transform var(--t) var(--ease);
+}
+
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+.stat:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+}
+
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-4);
+}
+
+.stat-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-4);
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, var(--text), color-mix(in srgb, var(--text) 62%, transparent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-value small {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-left: 3px;
+}
+
+/* --- Instance grid --------------------------------------------------- */
+
+.instance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(262px, 1fr));
+  gap: 16px;
+}
+
+.instance-card {
+  position: relative;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--grad-surface), var(--surface);
+  box-shadow: var(--edge);
+  overflow: hidden;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition:
+    transform var(--t) var(--ease),
+    border-color var(--t),
+    box-shadow var(--t);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cursor spotlight over the whole card. */
+.instance-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(
+    22ch 22ch at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.08),
+    transparent 68%
+  );
+  opacity: var(--spot, 0);
+  transition: opacity var(--t);
+}
+
+.instance-card:hover {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+    translateY(-5px);
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 48%, var(--line));
+  box-shadow:
+    0 26px 56px -20px rgba(0, 0, 0, 0.82),
+    0 0 0 1px color-mix(in srgb, var(--card-accent, var(--accent)) 26%, transparent),
+    0 0 46px -22px color-mix(in srgb, var(--card-accent, var(--accent)) 90%, transparent),
+    var(--edge);
+}
+
+.instance-cover {
+  height: 104px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--card-accent, var(--accent)) 46%, transparent),
+    color-mix(in srgb, var(--card-accent, var(--accent)) 6%, transparent)
+  );
+  overflow: hidden;
+}
+
+/* Faint voxel lattice inside the cover — the Minecraft nod, kept quiet. */
+.instance-cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(115deg, #000, transparent 62%);
+}
+
+.instance-cover img.cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.62;
+}
+
+.instance-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(10, 11, 18, 0.9), transparent 70%);
+}
+
+.instance-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  font-size: 27px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.instance-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.instance-body {
+  padding: 13px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+}
+
+.instance-name {
+  font-size: 15.5px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.instance-tags {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.instance-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.instance-corner {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+
+.icon-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-2);
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-fast);
+}
+
+.icon-pill:hover {
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.icon-pill.on {
+  color: var(--warn);
+}
+
+/* --- Content rows (mods, resource packs, …) -------------------------- */
+
+.content-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+
+.content-row:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.content-row.disabled {
+  opacity: 0.5;
+}
+
+.content-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--text-4);
+  overflow: hidden;
+}
+
+.content-name {
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.content-meta {
+  font-size: 12px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.content-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+/* --- Discover grid --------------------------------------------------- */
+
+.discover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(292px, 1fr));
+  gap: 14px;
+}
+
+.project-card {
+  display: flex;
+  gap: 13px;
+  padding: 15px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform var(--t) var(--ease), border-color var(--t), box-shadow var(--t);
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.project-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.provider-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.provider-tag.modrinth {
+  background: rgba(27, 217, 106, 0.15);
+  color: #35d97a;
+}
+
+.provider-tag.curseforge {
+  background: rgba(241, 100, 54, 0.15);
+  color: #f57c48;
+}
+
+.provider-tag.local {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+/* --- Compatibility panel --------------------------------------------- */
+
+.issue {
+  display: flex;
+  gap: 13px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.issue.error {
+  border-color: rgba(255, 95, 120, 0.3);
+  background: linear-gradient(90deg, rgba(255, 95, 120, 0.09), var(--surface) 42%);
+}
+
+.issue.warning {
+  border-color: rgba(255, 200, 96, 0.26);
+  background: linear-gradient(90deg, rgba(255, 200, 96, 0.08), var(--surface) 42%);
+}
+
+.issue-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-xs);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.issue.error .issue-icon { background: var(--danger-soft); color: var(--danger); }
+.issue.warning .issue-icon { background: var(--warn-soft); color: var(--warn); }
+.issue.info .issue-icon { background: var(--info-soft); color: var(--info); }
+
+.issue-title {
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.issue-detail {
+  font-size: 12.5px;
+  color: var(--text-3);
+  margin-top: 4px;
+  line-height: 1.55;
+}
+
+/* --- Preflight panel -------------------------------------------------- */
+
+.preflight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.preflight-cell {
+  background: var(--surface-solid);
+  padding: 13px 15px;
+}
+
+.preflight-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-4);
+}
+
+.preflight-value {
+  font-size: 15px;
+  font-weight: 650;
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+/* --- Log viewer ------------------------------------------------------- */
+
+.log-view {
+  height: 460px;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.42);
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
+.log-line {
+  display: flex;
+  gap: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 1px 0;
+}
+
+.log-time {
+  color: var(--text-4);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.log-line.warn { color: var(--warn); }
+.log-line.error { color: var(--danger); }
+.log-line.debug { color: var(--text-4); }
+.log-line.launcher { color: var(--accent); }
+
+/* --- Wizard ----------------------------------------------------------- */
+
+.wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-4);
+  transition: color var(--t);
+}
+
+.wizard-step.active {
+  color: var(--text);
+}
+
+.wizard-step.done {
+  color: var(--ok);
+}
+
+.wizard-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+
+.wizard-step.active .wizard-dot {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 0 16px -3px var(--accent-glow);
+}
+
+.wizard-step.done .wizard-dot {
+  background: var(--ok-soft);
+  border-color: transparent;
+  color: var(--ok);
+}
+
+.wizard-line {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 10px;
+}
+
+.option {
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+  position: relative;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.option:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.option.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent-line);
+}
+
+.option-name {
+  font-size: 14px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-desc {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+/* Version list inside the wizard */
+.version-list {
+  max-height: 268px;
+  overflow-y: auto;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.version-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background var(--t-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.version-item:last-child {
+  border-bottom: none;
+}
+
+.version-item:hover {
+  background: var(--surface);
+}
+
+.version-item.selected {
+  background: var(--accent-soft);
+  color: #fff;
+}
+
+/* --- Icon picker ------------------------------------------------------ */
+
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 7px;
+}
+
+.icon-choice {
+  aspect-ratio: 1;
+  border-radius: var(--r-xs);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: transform var(--t-fast), border-color var(--t-fast), background var(--t-fast);
+}
+
+.icon-choice:hover {
+  transform: scale(1.09);
+  border-color: var(--line-strong);
+}
+
+.icon-choice.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform var(--t-fast), border-color var(--t-fast);
+  position: relative;
+}
+
+.swatch:hover {
+  transform: scale(1.14);
+}
+
+.swatch.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 16px -2px currentColor;
+}
+
+/* --- Backups ---------------------------------------------------------- */
+
+.backup-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color var(--t-fast);
+}
+
+.backup-row:hover {
+  border-color: var(--line-strong);
+}
+
+.backup-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* --- Settings --------------------------------------------------------- */
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 208px 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav button {
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  text-align: left;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--text-3);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+
+.settings-nav button:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.settings-nav button.active {
+  background: var(--accent-soft);
+  color: #fff;
+}
+
+.setting-group {
+  margin-bottom: 30px;
+}
+
+.setting-group h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.setting-group > .hint {
+  margin-bottom: 14px;
+}
+
+/* --- Onboarding -------------------------------------------------------- */
+
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background:
+    radial-gradient(70ch 50ch at 20% 0%, color-mix(in srgb, var(--field-1) 32%, transparent), transparent 60%),
+    radial-gradient(70ch 50ch at 85% 100%, color-mix(in srgb, var(--field-2) 26%, transparent), transparent 60%),
+    var(--bg);
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 620px;
+  padding: 40px;
+  border-radius: var(--r-xl);
+  background: var(--surface-solid);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in var(--t-slow) var(--ease);
+}
+
+/* --- Device code ------------------------------------------------------- */
+
+.device-code {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-align: center;
+  padding: 18px;
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px dashed var(--accent-line);
+  color: var(--accent);
+  user-select: all;
+}
+
+/* --- Screenshots -------------------------------------------------------- */
+
+.shot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 12px;
+}
+
+.shot {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  aspect-ratio: 16 / 9;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: transform var(--t) var(--ease), border-color var(--t);
+}
+
+.shot:hover {
+  transform: scale(1.02);
+  border-color: var(--line-strong);
+}
+
+.shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

@@ -1,0 +1,55 @@
+appId: gg.launchgabi.app
+productName: Launch Gabi
+copyright: Copyright © 2026 Launch Gabi
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+
+asarUnpack:
+  - resources/**
+
+win:
+  executableName: LaunchGabi
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: Launch Gabi
+  createDesktopShortcut: always
+  deleteAppDataOnUninstall: false
+
+protocols:
+  - name: Launch Gabi
+    schemes: [launchgabi]
+
+# Where the installed app looks for updates. electron-builder bakes this into
+# app-update.yml inside the package, so it has to be right BEFORE `npm run dist`.
+# GitHub Releases needs no server of your own: publish the installer plus the
+# generated latest.yml as release assets and the updater finds them.
+publish:
+  - provider: github
+    owner: Gabi12u
+    repo: Project-Launch-Gabi
+    releaseType: release
+
+mac:
+  category: public.app-category.games
+  target: [dmg]
+
+linux:
+  target: [AppImage]
+  category: Game

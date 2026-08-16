@@ -1,0 +1,661 @@
+import { randomUUID } from 'node:crypto'
+import { copyFileSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { extname, join, resolve, sep } from 'node:path'
+import { DEFAULT_INSTANCE_SETTINGS } from '@shared/defaults'
+import { EVENTS } from '@shared/ipc'
+import type {
+  ContentItem,
+  CreateInstanceOptions,
+  Instance,
+  InstanceSummary,
+  LoaderId
+} from '@shared/types'
+import { ensureInstanceLayout, paths } from '../paths'
+import { getSettings, readJson, writeJsonAtomic } from '../store'
+import { emit } from '../events'
+import { log } from '../logger'
+import { withTask } from '../tasks'
+import { installLoader, resolveLatestLoaderVersion } from '../loaders'
+import { installVersion, loadVersionJson } from './mojang'
+import { readEntryJson } from './archive'
+import { isRunning } from './running'
+
+const logger = log('instances')
+
+/** In-memory cache; the JSON files on disk stay the source of truth. */
+const cache = new Map<string, Instance>()
+let loaded = false
+
+/* ------------------------------------------------------------------ *
+ * Loading & persistence
+ * ------------------------------------------------------------------ */
+
+function normalise(raw: Partial<Instance>, id: string): Instance {
+  return {
+    id,
+    name: raw.name ?? 'Unbenannt',
+    description: raw.description ?? '',
+    group: raw.group ?? '',
+    mcVersion: raw.mcVersion ?? '1.21.11',
+    loader: (raw.loader ?? 'vanilla') as LoaderId,
+    loaderVersion: raw.loaderVersion ?? '',
+    appearance: {
+      icon: raw.appearance?.icon ?? '🟩',
+      accent: raw.appearance?.accent ?? '#7c5cff',
+      background: raw.appearance?.background ?? null
+    },
+    settings: { ...DEFAULT_INSTANCE_SETTINGS, ...raw.settings },
+    content: raw.content ?? [],
+    source: raw.source ?? { type: 'manual' },
+    createdAt: raw.createdAt ?? Date.now(),
+    lastPlayed: raw.lastPlayed ?? null,
+    totalPlayMs: raw.totalPlayMs ?? 0,
+    sessions: raw.sessions ?? [],
+    favorite: raw.favorite ?? false,
+    installing: false, // never restore a stale "installing" flag
+    installed: raw.installed ?? false
+  }
+}
+
+export function loadInstances(force = false): Instance[] {
+  if (loaded && !force) return [...cache.values()]
+
+  cache.clear()
+  const dir = paths.instances()
+  if (existsSync(dir)) {
+    for (const entry of readdirSync(dir)) {
+      const file = paths.instanceFile(entry)
+      if (!existsSync(file)) continue
+      try {
+        const raw = readJson<Partial<Instance>>(file, {})
+        cache.set(entry, normalise(raw, entry))
+      } catch (err) {
+        logger.error(`Instanz ${entry} konnte nicht geladen werden:`, err)
+      }
+    }
+  }
+
+  loaded = true
+  logger.info(`${cache.size} Instanzen geladen`)
+  return [...cache.values()]
+}
+
+export function getInstance(id: string): Instance {
+  if (!loaded) loadInstances()
+  const instance = cache.get(id)
+  if (!instance) throw new Error(`Instanz ${id} existiert nicht`)
+  return instance
+}
+
+export function tryGetInstance(id: string): Instance | null {
+  if (!loaded) loadInstances()
+  return cache.get(id) ?? null
+}
+
+export function persist(instance: Instance): Instance {
+  cache.set(instance.id, instance)
+  writeJsonAtomic(paths.instanceFile(instance.id), instance)
+  emit(EVENTS.instanceChanged, toSummary(instance))
+  return instance
+}
+
+export function toSummary(instance: Instance): InstanceSummary {
+  return {
+    id: instance.id,
+    name: instance.name,
+    description: instance.description,
+    group: instance.group,
+    mcVersion: instance.mcVersion,
+    loader: instance.loader,
+    loaderVersion: instance.loaderVersion,
+    appearance: instance.appearance,
+    modCount: instance.content.filter((c) => c.type === 'mod').length,
+    memoryMb: instance.settings.memoryMb,
+    lastPlayed: instance.lastPlayed,
+    totalPlayMs: instance.totalPlayMs,
+    favorite: instance.favorite,
+    installing: instance.installing,
+    installed: instance.installed,
+    running: isRunning(instance.id),
+    updateCount: instance.content.filter((c) => c.update).length
+  }
+}
+
+export function listSummaries(): InstanceSummary[] {
+  return loadInstances()
+    .map(toSummary)
+    .sort((a, b) => {
+      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
+      return (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0)
+    })
+}
+
+/* ------------------------------------------------------------------ *
+ * Creation
+ * ------------------------------------------------------------------ */
+
+/**
+ * Names Windows refuses to create as a file or a directory, in any casing and
+ * regardless of extension. An instance called "Con" would otherwise fail at
+ * `mkdirSync` with a raw fs error before it was ever persisted.
+ */
+const RESERVED_NAMES = new Set([
+  'con', 'prn', 'aux', 'nul',
+  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
+])
+
+function slugify(name: string): string {
+  const base = name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+  if (!base) return 'instanz'
+  return RESERVED_NAMES.has(base) ? `${base}-instanz` : base
+}
+
+function uniqueId(name: string): string {
+  const base = slugify(name)
+  if (!existsSync(paths.instance(base))) return base
+  for (let i = 2; i < 100; i++) {
+    const candidate = `${base}-${i}`
+    if (!existsSync(paths.instance(candidate))) return candidate
+  }
+  return `${base}-${randomUUID().slice(0, 6)}`
+}
+
+/**
+ * Creates the instance record immediately and installs the game files in the
+ * background, so the UI can show the new card right away.
+ */
+export async function createInstance(options: CreateInstanceOptions): Promise<Instance> {
+  const settings = getSettings()
+  const id = uniqueId(options.name)
+
+  ensureInstanceLayout(id)
+
+  const instance: Instance = normalise(
+    {
+      name: options.name.trim() || 'Neue Instanz',
+      description: options.description ?? '',
+      group: options.group ?? '',
+      mcVersion: options.mcVersion,
+      loader: options.loader,
+      loaderVersion: options.loaderVersion ?? '',
+      appearance: {
+        icon: options.icon ?? '🟩',
+        accent: options.accent ?? settings.accentColor,
+        background: null
+      },
+      settings: {
+        ...DEFAULT_INSTANCE_SETTINGS,
+        memoryMb: options.memoryMb ?? settings.defaultMemoryMb,
+        jvmArgs: settings.defaultJvmArgs,
+        launchBehaviour: settings.launchBehaviour
+      },
+      createdAt: Date.now(),
+      installing: true,
+      installed: false
+    },
+    id
+  )
+
+  persist(instance)
+  logger.info(`Instanz ${id} (${instance.name}) angelegt`)
+
+  // Fire and forget: progress is reported through the task system.
+  void installInstance(id).catch((err) => {
+    logger.error(`Installation von ${id} fehlgeschlagen:`, err)
+  })
+
+  return instance
+}
+
+/** Downloads everything the instance needs to launch. */
+export async function installInstance(id: string, force = false): Promise<void> {
+  const instance = getInstance(id)
+  if (instance.installed && !force) return
+
+  persist({ ...instance, installing: true })
+
+  try {
+    await withTask(
+      `${instance.name} wird eingerichtet`,
+      'Version wird ermittelt…',
+      id,
+      async (task) => {
+        const current = getInstance(id)
+
+        let loaderVersion = current.loaderVersion
+        if (current.loader !== 'vanilla' && !loaderVersion) {
+          task.update('Loader-Version wird ermittelt…', null)
+          loaderVersion = await resolveLatestLoaderVersion(current.loader, current.mcVersion)
+          persist({ ...getInstance(id), loaderVersion })
+        }
+
+        task.span(0, 0.25)
+        const versionId = await installLoader(
+          current.loader,
+          current.mcVersion,
+          loaderVersion,
+          task
+        )
+
+        task.span(0.25, 1)
+        const versionJson = await loadVersionJson(versionId)
+        await installVersion(versionJson, current.mcVersion, task)
+        task.span(0, 1)
+
+        persist({ ...getInstance(id), installing: false, installed: true })
+      }
+    )
+  } catch (err) {
+    persist({ ...getInstance(id), installing: false })
+    throw err
+  }
+}
+
+/** The version id the launcher should start (loader id, or the MC version). */
+export async function resolveVersionId(instance: Instance): Promise<string> {
+  if (instance.loader === 'vanilla') return instance.mcVersion
+
+  const loaderVersion =
+    instance.loaderVersion || (await resolveLatestLoaderVersion(instance.loader, instance.mcVersion))
+
+  switch (instance.loader) {
+    case 'fabric':
+      return `fabric-loader-${loaderVersion}-${instance.mcVersion}`
+    case 'quilt':
+      return `quilt-loader-${loaderVersion}-${instance.mcVersion}`
+    default: {
+      // Forge/NeoForge ids vary between generations, so read what the
+      // installer wrote instead of guessing.
+      const found = findInstalledLoaderVersionId(instance)
+      if (found) return found
+      return installLoader(instance.loader, instance.mcVersion, loaderVersion)
+    }
+  }
+}
+
+function findInstalledLoaderVersionId(instance: Instance): string | null {
+  const dir = paths.versions()
+  if (!existsSync(dir)) return null
+
+  const needle = instance.loaderVersion
+  const candidates = readdirSync(dir).filter((name) => {
+    const lower = name.toLowerCase()
+    if (!lower.includes(instance.loader)) return false
+    if (needle && !lower.includes(needle.toLowerCase())) return false
+    return lower.includes(instance.mcVersion.toLowerCase()) || Boolean(needle)
+  })
+
+  return candidates.sort((a, b) => b.length - a.length)[0] ?? null
+}
+
+/* ------------------------------------------------------------------ *
+ * Mutation
+ * ------------------------------------------------------------------ */
+
+export function updateInstance(id: string, patch: Partial<Instance>): Instance {
+  const current = getInstance(id)
+
+  const next: Instance = {
+    ...current,
+    ...patch,
+    id: current.id,
+    appearance: { ...current.appearance, ...patch.appearance },
+    settings: { ...current.settings, ...patch.settings },
+    // Content and sessions have dedicated code paths; a partial update must
+    // never silently drop them.
+    content: patch.content ?? current.content,
+    sessions: patch.sessions ?? current.sessions
+  }
+
+  return persist(next)
+}
+
+/**
+ * Guards a recursive delete. `paths.instance()` is a plain `join`, so an id
+ * containing `..` resolves outside the data directory — and the id arrives
+ * straight from IPC. Nothing recursive may run on an unverified path.
+ */
+function assertInside(root: string, candidate: string, label: string): string {
+  const resolvedRoot = resolve(root)
+  const resolved = resolve(candidate)
+  if (resolved !== resolvedRoot && !resolved.startsWith(resolvedRoot + sep)) {
+    throw new Error(`Ungültiger Pfad für ${label}: ${candidate}`)
+  }
+  return resolved
+}
+
+export function deleteInstance(id: string): void {
+  if (isRunning(id)) throw new Error('Die Instanz läuft gerade und kann nicht gelöscht werden.')
+
+  // Must be a known instance, not just any id the caller made up.
+  if (!cache.has(id)) {
+    if (!loaded) loadInstances()
+    if (!cache.has(id)) throw new Error(`Instanz ${id} existiert nicht`)
+  }
+
+  const dir = assertInside(paths.instances(), paths.instance(id), 'Instanz')
+  const backupDir = assertInside(paths.backups(), paths.instanceBackups(id), 'Sicherungen')
+
+  rmSync(dir, { recursive: true, force: true })
+  rmSync(backupDir, { recursive: true, force: true })
+  cache.delete(id)
+  logger.info(`Instanz ${id} gelöscht`)
+  emit(EVENTS.instanceChanged, { id, deleted: true })
+}
+
+export async function duplicateInstance(id: string, newName?: string): Promise<Instance> {
+  const source = getInstance(id)
+  const name = newName?.trim() || `${source.name} (Kopie)`
+  const newId = uniqueId(name)
+
+  ensureInstanceLayout(newId)
+
+  const { cp } = await import('node:fs/promises')
+  await cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true })
+
+  const clone: Instance = {
+    ...structuredClone(source),
+    id: newId,
+    name,
+    createdAt: Date.now(),
+    lastPlayed: null,
+    totalPlayMs: 0,
+    sessions: [],
+    favorite: false
+  }
+
+  persist(clone)
+  logger.info(`Instanz ${id} nach ${newId} dupliziert`)
+  return clone
+}
+
+/* ------------------------------------------------------------------ *
+ * Media
+ * ------------------------------------------------------------------ */
+
+/** Copies a picture into the instance and returns the `img:` reference. */
+export function setInstanceImage(id: string, sourceFile: string, kind: 'icon' | 'background'): string {
+  const instance = getInstance(id)
+  const ext = extname(sourceFile).toLowerCase() || '.png'
+  const fileName = `${kind}-${Date.now()}${ext}`
+  const target = join(paths.icons(id), fileName)
+
+  copyFileSync(sourceFile, target)
+
+  const reference = `img:${fileName}`
+  const appearance = { ...instance.appearance }
+  if (kind === 'icon') appearance.icon = reference
+  else appearance.background = reference
+
+  persist({ ...instance, appearance })
+  return reference
+}
+
+/** Resolves an `img:` reference to an absolute path for the renderer. */
+export function resolveInstanceImage(id: string, reference: string | null): string | null {
+  if (!reference || !reference.startsWith('img:')) return null
+  const file = join(paths.icons(id), reference.slice(4))
+  return existsSync(file) ? file : null
+}
+
+/* ------------------------------------------------------------------ *
+ * Worlds & screenshots
+ * ------------------------------------------------------------------ */
+
+export interface WorldInfo {
+  name: string
+  folder: string
+  sizeBytes: number
+  lastPlayed: number
+}
+
+function folderSize(dir: string): number {
+  let total = 0
+  const stack = [dir]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current || !existsSync(current)) continue
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name)
+      if (entry.isDirectory()) stack.push(full)
+      else {
+        try {
+          total += statSync(full).size
+        } catch {
+          // file disappeared mid-walk
+        }
+      }
+    }
+  }
+  return total
+}
+
+export function listWorlds(id: string): WorldInfo[] {
+  const dir = paths.saves(id)
+  if (!existsSync(dir)) return []
+
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((entry) => {
+      const folder = join(dir, entry.name)
+      let lastPlayed = 0
+      try {
+        lastPlayed = statSync(join(folder, 'level.dat')).mtimeMs
+      } catch {
+        lastPlayed = statSync(folder).mtimeMs
+      }
+      return {
+        name: entry.name,
+        folder,
+        sizeBytes: folderSize(folder),
+        lastPlayed
+      }
+    })
+    .sort((a, b) => b.lastPlayed - a.lastPlayed)
+}
+
+export function listScreenshots(id: string, limit = 40): { file: string; takenAt: number }[] {
+  const dir = paths.screenshots(id)
+  if (!existsSync(dir)) return []
+
+  return readdirSync(dir)
+    .filter((f) => /\.(png|jpg|jpeg)$/i.test(f))
+    .map((f) => {
+      const full = join(dir, f)
+      return { file: full, takenAt: statSync(full).mtimeMs }
+    })
+    .sort((a, b) => b.takenAt - a.takenAt)
+    .slice(0, limit)
+}
+
+/* ------------------------------------------------------------------ *
+ * Content bookkeeping
+ * ------------------------------------------------------------------ */
+
+export function setContent(id: string, content: ContentItem[]): Instance {
+  return persist({ ...getInstance(id), content })
+}
+
+export function addContent(id: string, item: ContentItem): Instance {
+  const instance = getInstance(id)
+  const content = instance.content.filter((c) => c.fileName !== item.fileName && c.id !== item.id)
+  content.push(item)
+  return persist({ ...instance, content })
+}
+
+export function removeContentRecord(id: string, contentId: string): Instance {
+  const instance = getInstance(id)
+  return persist({ ...instance, content: instance.content.filter((c) => c.id !== contentId) })
+}
+
+/** True when two content lists describe the same files in the same state. */
+function sameContent(a: ContentItem[], b: ContentItem[]): boolean {
+  if (a.length !== b.length) return false
+
+  const key = (item: ContentItem): string =>
+    `${item.id}|${item.fileName}|${item.enabled ? 1 : 0}|${item.type}`
+
+  const left = a.map(key).sort()
+  const right = b.map(key).sort()
+  return left.every((value, index) => value === right[index])
+}
+
+/**
+ * Reconciles the recorded content with what is actually on disk. Files the
+ * user dropped in manually get picked up, deleted files disappear from the
+ * list, and enable/disable state follows the `.disabled` suffix.
+ *
+ * Writing only on a real change matters: this runs on every read of an
+ * instance, and an unconditional write would emit a change event, which the
+ * renderer answers with another read.
+ */
+export async function syncContentWithDisk(id: string): Promise<Instance> {
+  const instance = getInstance(id)
+  const known = new Map(instance.content.map((c) => [c.fileName.toLowerCase(), c]))
+  const result: ContentItem[] = []
+
+  const folders: { dir: string; type: ContentItem['type']; extensions: string[] }[] = [
+    { dir: paths.mods(id), type: 'mod', extensions: ['.jar'] },
+    { dir: paths.resourcePacks(id), type: 'resourcepack', extensions: ['.zip'] },
+    { dir: paths.shaderPacks(id), type: 'shaderpack', extensions: ['.zip'] },
+    { dir: join(paths.gameDir(id), 'datapacks'), type: 'datapack', extensions: ['.zip'] }
+  ]
+
+  for (const folder of folders) {
+    if (!existsSync(folder.dir)) continue
+
+    for (const fileName of readdirSync(folder.dir)) {
+      const enabled = !fileName.endsWith('.disabled')
+      const bare = enabled ? fileName : fileName.slice(0, -'.disabled'.length)
+      if (!folder.extensions.includes(extname(bare).toLowerCase())) continue
+
+      const existing = known.get(bare.toLowerCase()) ?? known.get(fileName.toLowerCase())
+      if (existing) {
+        result.push({ ...existing, fileName, enabled })
+        continue
+      }
+
+      // Unknown file: register it as local content so it still shows up.
+      const stats = statSync(join(folder.dir, fileName))
+      result.push({
+        id: randomUUID(),
+        type: folder.type,
+        provider: 'local',
+        fileName,
+        name: bare.replace(/\.(jar|zip)$/i, '').replace(/[-_]/g, ' '),
+        version: '',
+        enabled,
+        gameVersions: [],
+        loaders: [],
+        dependencies: [],
+        size: stats.size,
+        installedAt: stats.mtimeMs
+      })
+    }
+  }
+
+  if (sameContent(instance.content, result)) return instance
+  return persist({ ...instance, content: result })
+}
+
+/** Renames a content file to toggle Minecraft's `.disabled` convention. */
+export function toggleContent(id: string, contentId: string, enabled: boolean): Instance {
+  const instance = getInstance(id)
+  const item = instance.content.find((c) => c.id === contentId)
+  if (!item) throw new Error('Inhalt nicht gefunden')
+
+  const dirMap: Record<ContentItem['type'], string> = {
+    mod: paths.mods(id),
+    resourcepack: paths.resourcePacks(id),
+    shaderpack: paths.shaderPacks(id),
+    datapack: join(paths.gameDir(id), 'datapacks')
+  }
+
+  const dir = dirMap[item.type]
+  const currentPath = join(dir, item.fileName)
+  const bare = item.fileName.endsWith('.disabled')
+    ? item.fileName.slice(0, -'.disabled'.length)
+    : item.fileName
+  const nextName = enabled ? bare : `${bare}.disabled`
+
+  if (existsSync(currentPath) && nextName !== item.fileName) {
+    renameSync(currentPath, join(dir, nextName))
+  }
+
+  const content = instance.content.map((c) =>
+    c.id === contentId ? { ...c, fileName: nextName, enabled } : c
+  )
+  return persist({ ...instance, content })
+}
+
+/* ------------------------------------------------------------------ *
+ * Play sessions
+ * ------------------------------------------------------------------ */
+
+export function recordSession(
+  id: string,
+  session: { startedAt: number; endedAt: number; crashed: boolean; exitCode: number | null }
+): void {
+  const instance = tryGetInstance(id)
+  if (!instance) return
+
+  const durationMs = Math.max(0, session.endedAt - session.startedAt)
+  const sessions = [{ ...session, durationMs }, ...instance.sessions].slice(0, 50)
+
+  persist({
+    ...instance,
+    sessions,
+    lastPlayed: session.startedAt,
+    totalPlayMs: instance.totalPlayMs + durationMs
+  })
+}
+
+export function markPlayed(id: string): void {
+  const instance = tryGetInstance(id)
+  if (!instance) return
+  persist({ ...instance, lastPlayed: Date.now() })
+}
+
+/* ------------------------------------------------------------------ *
+ * Misc helpers
+ * ------------------------------------------------------------------ */
+
+export function instanceDiskUsage(id: string): number {
+  return folderSize(paths.instance(id))
+}
+
+export async function readModMetadata(jarFile: string): Promise<{ name?: string; version?: string } | null> {
+  try {
+    const fabric = await readEntryJson<{ name?: string; version?: string; id?: string }>(
+      jarFile,
+      'fabric.mod.json'
+    )
+    if (fabric) return { name: fabric.name ?? fabric.id, version: fabric.version }
+
+    const quilt = await readEntryJson<{ quilt_loader?: { metadata?: { name?: string }; version?: string } }>(
+      jarFile,
+      'quilt.mod.json'
+    )
+    if (quilt?.quilt_loader) {
+      return { name: quilt.quilt_loader.metadata?.name, version: quilt.quilt_loader.version }
+    }
+  } catch {
+    // not a mod we can read
+  }
+  return null
+}
+
+export async function readInstanceLog(id: string, lines = 400): Promise<string[]> {
+  const file = join(paths.gameDir(id), 'logs', 'latest.log')
+  if (!existsSync(file)) return []
+  const content = await readFile(file, 'utf8')
+  return content.split(/\r?\n/).slice(-lines)
+}
