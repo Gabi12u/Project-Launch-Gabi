@@ -11,9 +11,11 @@ Loader und Abhängigkeiten laufen im Hintergrund, ohne dass sich jemand damit be
 
 ## ⬇️ Download
 
-### **[» Launch Gabi herunterladen «](https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest)**
+### **[» Launch Gabi herunterladen «](https://gabi12u.github.io/Project-Launch-Gabi/)**
 
-Dort unter **„Assets"** die Datei für dein System auswählen:
+Die Seite erkennt dein System und bietet direkt die passende Datei an. Wer lieber selbst wählt,
+findet [alle Dateien im Release](https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest)
+unter **„Assets"**:
 
 | Dein System | Datei | Danach |
 |---|---|---|
