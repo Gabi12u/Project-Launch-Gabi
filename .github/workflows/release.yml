@@ -1,0 +1,51 @@
+name: Release
+
+# Builds Launch Gabi for all three platforms and attaches the installers to the
+# GitHub release for the current version. macOS and Linux artifacts cannot be
+# produced on a Windows machine, so they are built on GitHub's runners instead.
+on:
+  push:
+    tags:
+      - 'v*'
+  # Lets you rebuild the current version's assets by hand from the Actions tab.
+  workflow_dispatch:
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      # One at a time: all three jobs publish into the same release, and running
+      # them in parallel makes them race to create it.
+      max-parallel: 1
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: macos-latest
+            platform: mac
+          - os: ubuntu-latest
+            platform: linux
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - name: Build and publish ${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Without an Apple certificate, auto-discovery would pick up a random
+          # keychain identity and fail the macOS build.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run publish:${{ matrix.platform }}

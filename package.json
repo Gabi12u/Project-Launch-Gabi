@@ -14,7 +14,10 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "dist": "electron-vite build && electron-builder --win",
-    "dist:dir": "electron-vite build && electron-builder --win --dir"
+    "dist:dir": "electron-vite build && electron-builder --win --dir",
+    "publish:win": "electron-vite build && electron-builder --win --publish always",
+    "publish:mac": "electron-vite build && electron-builder --mac --publish always",
+    "publish:linux": "electron-vite build && electron-builder --linux --publish always"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",

@@ -46,10 +46,25 @@ publish:
     repo: Project-Launch-Gabi
     releaseType: release
 
+# macOS and Linux are built on GitHub Actions runners -- neither target can be
+# produced on Windows. See .github/workflows/release.yml.
 mac:
   category: public.app-category.games
-  target: [dmg]
+  icon: build/icon.png
+  artifactName: ${name}-${version}-mac-${arch}.${ext}
+  # No Apple Developer certificate, so skip signing instead of failing the build.
+  # Consequence: Gatekeeper warns on first launch and auto-update does not work
+  # on macOS -- unsigned apps are not allowed to replace themselves.
+  identity: null
+  target:
+    - target: dmg
+      arch: [x64, arm64]
 
 linux:
-  target: [AppImage]
   category: Game
+  icon: build/icon.png
+  maintainer: Gabi
+  artifactName: ${name}-${version}-linux-${arch}.${ext}
+  target:
+    - target: AppImage
+      arch: [x64]
