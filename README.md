@@ -20,7 +20,7 @@ Dort unter **„Assets"** die Datei für dein System auswählen:
 | **Windows** | `launch-gabi-…-setup.exe` | Doppelklick, Installer folgen |
 | **Mac** mit Apple-Chip (M1–M4) | `launch-gabi-…-mac-arm64.dmg` | Öffnen, App in „Programme" ziehen |
 | **Mac** mit Intel-Chip | `launch-gabi-…-mac-x64.dmg` | Öffnen, App in „Programme" ziehen |
-| **Linux** | `launch-gabi-…-linux-x64.AppImage` | Ausführbar machen, dann starten |
+| **Linux** | `launch-gabi-…-linux-x86_64.AppImage` | Ausführbar machen, dann starten |
 
 Der Launcher aktualisiert sich danach selbst — herunterladen musst du also nur einmal.
 
@@ -37,8 +37,8 @@ Steht dort **Intel**, nimm `x64`.
 AppImage ausführbar machen und starten:
 
 ```bash
-chmod +x launch-gabi-*-linux-x64.AppImage
-./launch-gabi-*-linux-x64.AppImage
+chmod +x launch-gabi-*-linux-x86_64.AppImage
+./launch-gabi-*-linux-x86_64.AppImage
 ```
 
 Passiert nichts oder kommt ein Fehler zu *FUSE*, fehlt eine Systembibliothek. Ab Ubuntu 22.04 ist
