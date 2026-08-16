@@ -5,223 +5,305 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Launch Gabi herunterladen</title>
 <meta name="description" content="Launch Gabi - ein moderner Minecraft-Launcher, Mod-Manager und Instance-Manager fuer Windows, macOS und Linux.">
-<meta name="theme-color" content="#08060f">
+<meta name="theme-color" content="#0a0512">
+<link rel="preload" as="image" href="assets/end-bg.jpg">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127918;</text></svg>">
 <style>
   :root {
-    /* The End: void black, obsidian, purpur, end stone, ender magenta. */
-    --void:        #08060f;
-    --void-deep:   #05040a;
-    --obsidian:    #17102a;
-    --panel:       #16112b;
-    --panel-lit:   #1e1739;
-    --edge-light:  rgba(190, 150, 255, 0.22);
-    --edge-dark:   rgba(0, 0, 0, 0.55);
-    --text:        #e8e2f5;
-    --muted:       #9d92b8;
-    --endstone:    #e3e6ba;
-    --purpur:      #b07ec4;
-    --ender:       #c04bff;
-    --ender-soft:  #9b3ee0;
-    --ender-ink:   #14031f;
-    --portal:      #4ddbc0;
+    /* Sampled from the background so the UI and the image share one palette. */
+    --void:       #0a0512;
+    --ink:        #f4ecff;
+    --muted:      #b9a9d4;
+    --muted-dim:  #8e7fa8;
+
+    --accent:     #c74dff;
+    --accent-warm:#ff5cc8;
+    --accent-deep:#7c2ae8;
+
+    --glass:      rgba(255, 255, 255, 0.065);
+    --glass-hi:   rgba(255, 255, 255, 0.11);
+    --glass-line: rgba(255, 255, 255, 0.15);
+    --glass-lit:  rgba(255, 255, 255, 0.28);
+
+    --r:          16px;
+    --ease:       cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   * { box-sizing: border-box; }
 
-  html, body { min-height: 100%; }
+  html { scroll-behavior: smooth; }
 
   body {
     margin: 0;
+    min-height: 100vh;
     background: var(--void);
-    color: var(--text);
-    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
 
-  /* Starfield and pillars sit behind everything and never take clicks. */
-  #stars, #horizon {
+  /* ------------------------------------------------------------------ *
+   * Background: the sharpened End vista, held behind a legibility scrim
+   * ------------------------------------------------------------------ */
+  .bg {
     position: fixed;
-    inset: 0;
+    inset: -2%;              /* slack so the slow drift never exposes an edge */
     z-index: 0;
-    pointer-events: none;
+    background: var(--void) url("assets/end-bg.jpg") center 42% / cover no-repeat;
+    /* Fades in once decoded, so the page never flashes a half-drawn image. */
+    opacity: 0;
+    transition: opacity 1.1s var(--ease);
+    animation: drift 46s ease-in-out infinite alternate;
   }
-  #horizon {
-    top: auto;
-    bottom: 0;
-    height: min(42vh, 340px);
-    width: 100%;
+  .bg.ready { opacity: 1; }
+
+  /* If the image never arrives, this still reads as The End rather than a void. */
+  .bg.failed {
+    opacity: 1;
+    background:
+      radial-gradient(80% 60% at 50% 12%, #6b2a86 0%, #2a1040 45%, transparent 78%),
+      radial-gradient(60% 50% at 20% 80%, #3b1550 0%, transparent 70%),
+      var(--void);
+    animation: none;
   }
-  /* Void haze so the pillars fade out of the dark rather than being pasted on. */
-  #horizon::after {
+
+  @keyframes drift {
+    from { transform: scale(1)     translate3d(0, 0, 0); }
+    to   { transform: scale(1.055) translate3d(0, -1%, 0); }
+  }
+
+  /* Scrim: dark at the rim and along the bottom, open in the middle so the
+     portal glow still shows through behind the title. */
+  .bg::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, var(--void) 0%, transparent 45%);
+    background:
+      radial-gradient(115% 85% at 50% 18%,
+        rgba(10, 5, 18, 0.15) 0%,
+        rgba(10, 5, 18, 0.55) 52%,
+        rgba(7, 3, 13, 0.88) 100%),
+      linear-gradient(180deg,
+        rgba(9, 4, 17, 0.62) 0%,
+        rgba(9, 4, 17, 0.38) 26%,
+        rgba(9, 4, 17, 0.55) 62%,
+        rgba(6, 2, 12, 0.93) 100%);
   }
 
   .wrap {
     position: relative;
     z-index: 1;
-    max-width: 780px;
+    max-width: 700px;
     margin: 0 auto;
-    padding: 84px 20px 120px;
+    padding: clamp(64px, 12vh, 116px) 20px 110px;
   }
 
-  /* ---------- Minecraft text: hard offset shadow, never blurred ---------- */
-  .mc { font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; }
-
-  header { text-align: center; margin-bottom: 52px; }
+  /* ------------------------------------------------------------------ *
+   * Hero
+   * ------------------------------------------------------------------ */
+  header { text-align: center; margin-bottom: clamp(36px, 6vh, 56px); }
 
   h1 {
-    font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
-    font-size: clamp(2rem, 8vw, 3.4rem);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    margin: 0 0 16px;
-    color: var(--endstone);
-    text-shadow: 4px 4px 0 #2a0d3d;
+    font-size: clamp(2.4rem, 9vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin: 0 0 18px;
+    background: linear-gradient(180deg, #ffffff 30%, #e9c6ff 75%, var(--accent-warm) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Glow sits under the glyphs, not on them, so the text stays crisp. */
+    filter: drop-shadow(0 4px 26px rgba(199, 77, 255, 0.45));
   }
-  h1 .g { color: var(--ender); text-shadow: 4px 4px 0 #30093f; }
 
   .tagline {
     color: var(--muted);
-    font-size: 1.05rem;
+    font-size: clamp(.98rem, 2.6vw, 1.1rem);
     margin: 0;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, .6);
+    text-shadow: 0 2px 14px rgba(0, 0, 0, .7);
   }
 
-  /* ---------- the download button: an end crystal you can click ---------- */
-  .crystal-wrap { position: relative; }
-
-  /* Slow magenta breathing behind the button, like a charging crystal. */
-  .crystal-wrap::before {
-    content: "";
-    position: absolute;
-    inset: -30px;
-    background: radial-gradient(closest-side, rgba(192, 75, 255, .34), transparent 72%);
-    filter: blur(14px);
-    animation: pulse 4.5s ease-in-out infinite;
-    pointer-events: none;
+  /* ------------------------------------------------------------------ *
+   * Glass surfaces
+   * ------------------------------------------------------------------ */
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    border-radius: var(--r);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-lit),
+      0 10px 34px rgba(0, 0, 0, 0.42);
   }
 
-  @keyframes pulse {
-    0%, 100% { opacity: .55; transform: scale(.94); }
-    50%      { opacity: 1;   transform: scale(1.04); }
+  /* Frosted glass needs a real backdrop; without support it becomes a tinted
+     panel instead of a transparent smear. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass { background: rgba(23, 11, 38, 0.86); }
   }
 
+  /* ------------------------------------------------------------------ *
+   * Primary download button
+   * ------------------------------------------------------------------ */
   .primary {
     position: relative;
     display: block;
+    overflow: hidden;
     text-align: center;
     text-decoration: none;
-    padding: 22px 28px;
+    padding: 22px 30px;
+    border-radius: var(--r);
     color: #fff;
-    background: linear-gradient(180deg, var(--ender) 0%, var(--ender-soft) 100%);
-    /* Minecraft GUI bevel: lit from the top-left, sunk on the bottom-right. */
-    border-top: 3px solid rgba(255, 255, 255, .42);
-    border-left: 3px solid rgba(255, 255, 255, .42);
-    border-right: 3px solid rgba(0, 0, 0, .45);
-    border-bottom: 3px solid rgba(0, 0, 0, .45);
-    font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
-    font-size: clamp(1.05rem, 3.4vw, 1.35rem);
+    background:
+      linear-gradient(135deg, rgba(199, 77, 255, 0.92) 0%, rgba(124, 42, 232, 0.92) 55%, rgba(255, 92, 200, 0.86) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -14px 26px rgba(80, 12, 130, 0.34),
+      0 12px 34px rgba(0, 0, 0, 0.44),
+      0 0 34px rgba(199, 77, 255, 0.32);
+    font-size: clamp(1.02rem, 3.2vw, 1.2rem);
     font-weight: 700;
-    letter-spacing: .04em;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, .5);
-    transition: filter .12s steps(2), transform .12s steps(2);
+    letter-spacing: -0.01em;
+    transition: transform .38s var(--ease), box-shadow .38s var(--ease);
+    will-change: transform;
   }
-  .primary:hover { filter: brightness(1.18); transform: translateY(-2px); }
-  /* Pressed state flips the bevel, exactly like a Minecraft button. */
-  .primary:active {
-    transform: translateY(1px);
-    border-top-color: rgba(0, 0, 0, .45);
-    border-left-color: rgba(0, 0, 0, .45);
-    border-right-color: rgba(255, 255, 255, .42);
-    border-bottom-color: rgba(255, 255, 255, .42);
-  }
+
+  .primary > span { position: relative; z-index: 2; display: block; }
+
   .primary small {
     display: block;
-    font-weight: 400;
-    font-size: .8rem;
-    opacity: .88;
+    font-weight: 500;
+    font-size: .82rem;
+    opacity: .9;
     margin-top: 6px;
-    letter-spacing: .02em;
+    letter-spacing: 0;
   }
+
+  /* Light sweeping across the surface on hover. */
+  .primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(105deg,
+      transparent 32%,
+      rgba(255, 255, 255, 0.30) 48%,
+      transparent 64%);
+    transform: translateX(-130%);
+    transition: transform .9s var(--ease);
+  }
+
+  .primary:hover {
+    transform: translateY(-4px) scale(1.018);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -14px 26px rgba(80, 12, 130, 0.3),
+      0 20px 46px rgba(0, 0, 0, 0.5),
+      0 0 58px rgba(199, 77, 255, 0.5);
+  }
+  .primary:hover::after { transform: translateX(130%); }
+  .primary:active { transform: translateY(-1px) scale(1.004); }
 
   .meta {
     text-align: center;
     color: var(--muted);
     font-size: .88rem;
     margin: 18px 0 0;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
   }
-  .meta a { color: var(--purpur); }
+  .meta a { color: #e0bcff; text-decoration: none; border-bottom: 1px solid rgba(224, 188, 255, .35); }
+  .meta a:hover { color: #fff; border-bottom-color: rgba(255, 255, 255, .7); }
 
-  /* ---------- section headings ---------- */
-  section { margin-top: 56px; }
+  /* ------------------------------------------------------------------ *
+   * Sections
+   * ------------------------------------------------------------------ */
+  section { margin-top: clamp(40px, 7vh, 60px); }
 
   h2 {
-    font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
-    font-size: .82rem;
+    font-size: .74rem;
     text-transform: uppercase;
-    letter-spacing: .18em;
-    color: var(--purpur);
-    margin: 0 0 16px;
-    text-shadow: 2px 2px 0 rgba(0, 0, 0, .6);
+    letter-spacing: .2em;
+    font-weight: 700;
+    color: var(--muted-dim);
+    margin: 0 0 16px 4px;
   }
 
-  /* ---------- other platforms: obsidian slabs ---------- */
+  /* ---- platform rows ---- */
   .row {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 15px 18px;
-    margin-bottom: 10px;
-    background: var(--panel);
-    border-top: 2px solid var(--edge-light);
-    border-left: 2px solid var(--edge-light);
-    border-right: 2px solid var(--edge-dark);
-    border-bottom: 2px solid var(--edge-dark);
+    gap: 16px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
     text-decoration: none;
-    color: var(--text);
-    transition: background .12s steps(2), box-shadow .12s steps(2);
+    color: var(--ink);
+    transition: transform .32s var(--ease), box-shadow .32s var(--ease),
+                background .32s var(--ease), border-color .32s var(--ease);
+    will-change: transform;
   }
   .row:hover {
-    background: var(--panel-lit);
-    box-shadow: 0 0 0 1px var(--ender), 0 0 22px rgba(192, 75, 255, .3);
+    transform: translateY(-3px) scale(1.012);
+    background: var(--glass-hi);
+    border-color: rgba(199, 77, 255, 0.55);
+    box-shadow:
+      inset 0 1px 0 var(--glass-lit),
+      0 16px 40px rgba(0, 0, 0, 0.48),
+      0 0 34px rgba(199, 77, 255, 0.24);
   }
-  .row .os { font-weight: 600; }
+  .row .os { font-weight: 650; letter-spacing: -0.01em; }
   .row .note { display: block; color: var(--muted); font-size: .84rem; font-weight: 400; }
   .row .size {
     margin-left: auto;
-    color: var(--purpur);
-    font-size: .84rem;
+    color: #e0bcff;
+    font-size: .82rem;
+    font-weight: 600;
     white-space: nowrap;
-    font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: rgba(199, 77, 255, 0.14);
+    border: 1px solid rgba(199, 77, 255, 0.26);
   }
 
-  /* ---------- help ---------- */
+  /* ---- help ---- */
   details {
-    background: var(--obsidian);
-    border-top: 2px solid var(--edge-light);
-    border-left: 2px solid var(--edge-light);
-    border-right: 2px solid var(--edge-dark);
-    border-bottom: 2px solid var(--edge-dark);
-    padding: 15px 18px;
-    margin-bottom: 10px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    transition: background .3s var(--ease), border-color .3s var(--ease);
   }
+  details[open] { background: var(--glass-hi); border-color: rgba(199, 77, 255, 0.34); }
   details summary {
     cursor: pointer;
     font-weight: 600;
-    color: var(--endstone);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-  details summary::marker { color: var(--ender); }
-  details p { color: var(--muted); margin: 12px 0 0; }
-  details p:first-of-type { margin-top: 14px; }
+  details summary::-webkit-details-marker { display: none; }
+  /* Chevron drawn in CSS so nothing extra has to load. */
+  details summary::before {
+    content: "";
+    flex: none;
+    width: 7px; height: 7px;
+    border-right: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+    transform: rotate(-45deg);
+    transition: transform .3s var(--ease);
+  }
+  details[open] summary::before { transform: rotate(45deg); }
+  details p { color: var(--muted); margin: 14px 0 0; padding-left: 19px; }
 
   code {
-    background: var(--void-deep);
-    border: 1px solid rgba(192, 75, 255, .3);
-    color: var(--portal);
+    background: rgba(0, 0, 0, 0.42);
+    border: 1px solid rgba(199, 77, 255, 0.3);
+    border-radius: 6px;
+    color: #7df0d4;
     padding: 2px 7px;
     font-size: .86em;
     font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
@@ -229,70 +311,41 @@
   }
 
   footer {
-    margin-top: 64px;
+    margin-top: clamp(48px, 8vh, 72px);
     text-align: center;
-    color: var(--muted);
-    font-size: .85rem;
+    color: var(--muted-dim);
+    font-size: .84rem;
   }
-  footer a { color: var(--purpur); }
-  footer p { margin: 6px 0; }
+  footer p { margin: 7px 0; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: #fff; }
 
-  .status { text-align: center; color: var(--muted); padding: 26px; }
+  .status { text-align: center; color: var(--muted); padding: 28px; }
 
-  /* Stop the glow and the drifting stars for anyone who asked for less motion. */
+  /* Keyboard users get the same clear focus ring everywhere. */
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent-warm);
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .crystal-wrap::before { animation: none; opacity: .8; transform: none; }
-    .primary { transition: none; }
+    html { scroll-behavior: auto; }
+    .bg { animation: none; }
+    .primary, .row { transition: box-shadow .2s ease, background .2s ease; }
+    .primary:hover, .row:hover { transform: none; }
+    .primary::after { display: none; }
   }
 </style>
 </head>
 <body>
 
-<canvas id="stars" aria-hidden="true"></canvas>
-
-<!-- The End's skyline: obsidian pillars, each capped with a lit end crystal. -->
-<svg id="horizon" aria-hidden="true" viewBox="0 0 1200 340" preserveAspectRatio="xMidYMax slice">
-  <defs>
-    <linearGradient id="pillar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#241640"/>
-      <stop offset="100%" stop-color="#0c0818"/>
-    </linearGradient>
-    <radialGradient id="crystalGlow">
-      <stop offset="0%"   stop-color="#e79bff" stop-opacity=".95"/>
-      <stop offset="45%"  stop-color="#c04bff" stop-opacity=".45"/>
-      <stop offset="100%" stop-color="#c04bff" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <g opacity=".72">
-    <rect x="90"   y="140" width="54" height="200" fill="url(#pillar)"/>
-    <rect x="300"  y="80"  width="66" height="260" fill="url(#pillar)"/>
-    <rect x="560"  y="180" width="46" height="160" fill="url(#pillar)"/>
-    <rect x="800"  y="106" width="60" height="234" fill="url(#pillar)"/>
-    <rect x="1040" y="164" width="50" height="176" fill="url(#pillar)"/>
-  </g>
-
-  <g>
-    <circle cx="117"  cy="140" r="46" fill="url(#crystalGlow)"/>
-    <circle cx="333"  cy="80"  r="52" fill="url(#crystalGlow)"/>
-    <circle cx="583"  cy="180" r="40" fill="url(#crystalGlow)"/>
-    <circle cx="830"  cy="106" r="48" fill="url(#crystalGlow)"/>
-    <circle cx="1065" cy="164" r="42" fill="url(#crystalGlow)"/>
-  </g>
-
-  <g fill="#f0c4ff">
-    <rect x="110"  y="133" width="14" height="14" transform="rotate(45 117 140)"/>
-    <rect x="326"  y="73"  width="14" height="14" transform="rotate(45 333 80)"/>
-    <rect x="576"  y="173" width="14" height="14" transform="rotate(45 583 180)"/>
-    <rect x="823"  y="99"  width="14" height="14" transform="rotate(45 830 106)"/>
-    <rect x="1058" y="157" width="14" height="14" transform="rotate(45 1065 164)"/>
-  </g>
-</svg>
+<div class="bg" id="bg" aria-hidden="true"></div>
 
 <div class="wrap">
 
   <header>
-    <h1>LAUNCH <span class="g">GABI</span></h1>
+    <h1>Launch Gabi</h1>
     <p class="tagline">Minecraft-Launcher, Mod-Manager und Instance-Manager</p>
   </header>
 
@@ -306,13 +359,13 @@
   <section>
     <h2>Hilfe</h2>
 
-    <details>
+    <details class="glass">
       <summary>Welchen Chip hat mein Mac?</summary>
       <p>Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
       nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.</p>
     </details>
 
-    <details>
+    <details class="glass">
       <summary>Linux: AppImage startet nicht</summary>
       <p>Erst ausführbar machen: <code>chmod +x launch-gabi-*.AppImage</code>, dann per Doppelklick
       oder <code>./launch-gabi-*.AppImage</code> starten.</p>
@@ -320,7 +373,7 @@
       ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert: <code>sudo apt install libfuse2</code></p>
     </details>
 
-    <details>
+    <details class="glass">
       <summary>Warnung „unbekannter Entwickler" beim ersten Start</summary>
       <p>Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim ersten
       Mal. Das betrifft nur den ersten Start.</p>
@@ -328,7 +381,7 @@
       <strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em></p>
     </details>
 
-    <details>
+    <details class="glass">
       <summary>Muss ich später neu herunterladen?</summary>
       <p>Auf Windows und Linux nicht — der Launcher aktualisiert sich selbst. Auf macOS schon:
       dort verhindert die fehlende Signatur die automatische Aktualisierung.</p>
@@ -345,76 +398,14 @@
 
 <script>
 /* ------------------------------------------------------------------ *
- * End portal starfield
+ * Background: reveal only once decoded, and survive a missing file
  * ------------------------------------------------------------------ */
 (function () {
-  var canvas = document.getElementById('stars');
-  var ctx = canvas.getContext('2d');
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  var stars = [];
-  var w = 0, h = 0, dpr = 1;
-
-  // End portal stars are cold white through to ender magenta.
-  var TINTS = ['232,226,245', '192,75,255', '176,126,196', '255,255,255', '77,219,192'];
-
-  function seed() {
-    // Density scales with area so a phone is not as busy as a desktop.
-    var count = Math.min(260, Math.round((w * h) / 9000));
-    stars = [];
-    for (var i = 0; i < count; i++) {
-      stars.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        size: Math.random() < 0.86 ? 1 : 2,
-        tint: TINTS[(Math.random() * TINTS.length) | 0],
-        base: 0.18 + Math.random() * 0.5,
-        // Individual phase and speed, so nothing twinkles in unison.
-        phase: Math.random() * Math.PI * 2,
-        speed: 0.4 + Math.random() * 1.1,
-        drift: 0.02 + Math.random() * 0.06
-      });
-    }
-  }
-
-  function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    w = window.innerWidth;
-    h = window.innerHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    seed();
-  }
-
-  function draw(t) {
-    ctx.clearRect(0, 0, w, h);
-    for (var i = 0; i < stars.length; i++) {
-      var s = stars[i];
-      var alpha = reduce
-        ? s.base
-        : s.base * (0.55 + 0.45 * Math.sin(t * 0.001 * s.speed + s.phase));
-      ctx.fillStyle = 'rgba(' + s.tint + ',' + alpha.toFixed(3) + ')';
-      // Square pixels, not circles -- this is Minecraft.
-      ctx.fillRect(s.x | 0, s.y | 0, s.size, s.size);
-
-      if (!reduce) {
-        s.y -= s.drift;
-        if (s.y < -2) { s.y = h + 2; s.x = Math.random() * w; }
-      }
-    }
-    if (!reduce) requestAnimationFrame(draw);
-  }
-
-  window.addEventListener('resize', function () {
-    resize();
-    if (reduce) draw(0);
-  });
-
-  resize();
-  if (reduce) draw(0); else requestAnimationFrame(draw);
+  var bg = document.getElementById('bg');
+  var img = new Image();
+  img.onload  = function () { bg.classList.add('ready'); };
+  img.onerror = function () { bg.classList.add('failed'); };
+  img.src = 'assets/end-bg.jpg';
 })();
 
 /* ------------------------------------------------------------------ *
@@ -454,10 +445,12 @@
   function mb(bytes) { return Math.round(bytes / 1048576) + ' MB'; }
 
   function fallback(message) {
-    document.getElementById('main').className = '';
-    document.getElementById('main').innerHTML =
-      '<div class="crystal-wrap"><a class="primary" href="' + RELEASES + '">Zu den Downloads' +
-      '<small>' + message + '</small></a></div>';
+    var main = document.getElementById('main');
+    main.className = '';
+    main.innerHTML =
+      '<a class="primary" href="' + RELEASES + '">' +
+        '<span>Zu den Downloads<small>' + message + '</small></span>' +
+      '</a>';
   }
 
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
@@ -492,16 +485,15 @@
 
       if (primary) {
         main.innerHTML =
-          '<div class="crystal-wrap">' +
-            '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
-              'Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
+          '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
+            '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
               '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
-            '</a>' +
-          '</div>' +
+            '</span>' +
+          '</a>' +
           '<p class="meta">Version ' + version + ' · ' +
             '<a href="' + RELEASES + '">Änderungen ansehen</a></p>';
       } else {
-        main.innerHTML = '<p class="meta" style="margin:0 0 8px">Version ' + version +
+        main.innerHTML = '<p class="meta" style="margin:0 0 10px">Version ' + version +
           ' — wähle dein System:</p>';
       }
 
@@ -509,7 +501,7 @@
       if (rest.length) {
         document.getElementById('others-wrap').hidden = false;
         document.getElementById('others').innerHTML = rest.map(function (f) {
-          return '<a class="row" href="' + f.asset.browser_download_url + '">' +
+          return '<a class="row glass" href="' + f.asset.browser_download_url + '">' +
                    '<span class="os">' + f.p.label +
                      '<span class="note">' + f.p.note + '</span>' +
                    '</span>' +
