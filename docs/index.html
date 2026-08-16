@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Gabi herunterladen</title>
+<meta name="description" content="Launch Gabi - ein moderner Minecraft-Launcher, Mod-Manager und Instance-Manager fuer Windows, macOS und Linux.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127918;</text></svg>">
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #2a323d;
+    --text: #e6edf3;
+    --muted: #9198a1;
+    --accent: #4ade80;
+    --accent-strong: #22c55e;
+    --accent-ink: #052e16;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Faint glow behind the hero so the page is not a flat slab. */
+    background-image: radial-gradient(900px 500px at 50% -180px, #1b3a2a 0%, transparent 70%);
+    background-repeat: no-repeat;
+  }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 72px 20px 96px; }
+
+  header { text-align: center; margin-bottom: 44px; }
+  h1 { font-size: clamp(2.2rem, 7vw, 3.2rem); margin: 0 0 12px; letter-spacing: -0.02em; }
+  .tagline { color: var(--muted); font-size: 1.1rem; margin: 0; }
+
+  /* ---- primary download ---- */
+  .primary {
+    display: block;
+    background: var(--accent);
+    color: var(--accent-ink);
+    text-decoration: none;
+    text-align: center;
+    padding: 20px 28px;
+    border-radius: var(--radius);
+    font-size: 1.25rem;
+    font-weight: 700;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .primary:hover { background: var(--accent-strong); transform: translateY(-2px); }
+  .primary small { display: block; font-weight: 500; font-size: .85rem; opacity: .75; margin-top: 4px; }
+
+  .meta { text-align: center; color: var(--muted); font-size: .9rem; margin: 14px 0 0; }
+
+  /* ---- other platforms ---- */
+  section { margin-top: 48px; }
+  h2 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 14px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .row:hover { border-color: var(--accent); background: #1a2029; }
+  .row .os { font-weight: 600; }
+  .row .size { margin-left: auto; color: var(--muted); font-size: .875rem; white-space: nowrap; }
+  .row .note { display: block; color: var(--muted); font-size: .85rem; font-weight: 400; }
+
+  /* ---- help ---- */
+  details {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+  }
+  details summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 12px 0 0; }
+  code {
+    background: #0b0f14;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-size: .875em;
+    /* Long commands must not push the page sideways on a phone. */
+    overflow-wrap: anywhere;
+  }
+
+  footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: .875rem; }
+  footer a { color: var(--muted); }
+
+  .status { text-align: center; color: var(--muted); padding: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Launch Gabi</h1>
+    <p class="tagline">Minecraft-Launcher, Mod-Manager und Instance-Manager</p>
+  </header>
+
+  <div id="main" class="status">Version wird geladen …</div>
+
+  <section id="others-wrap" hidden>
+    <h2>Andere Systeme</h2>
+    <div id="others"></div>
+  </section>
+
+  <section>
+    <h2>Hilfe</h2>
+
+    <details>
+      <summary>Welchen Chip hat mein Mac?</summary>
+      <p>Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
+      nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.</p>
+    </details>
+
+    <details>
+      <summary>Linux: AppImage startet nicht</summary>
+      <p>Erst ausführbar machen: <code>chmod +x launch-gabi-*.AppImage</code>, dann per Doppelklick
+      oder <code>./launch-gabi-*.AppImage</code> starten.</p>
+      <p>Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek —
+      ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert: <code>sudo apt install libfuse2</code></p>
+    </details>
+
+    <details>
+      <summary>Warnung „unbekannter Entwickler" beim ersten Start</summary>
+      <p>Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim ersten
+      Mal. Das betrifft nur den ersten Start.</p>
+      <p><strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br>
+      <strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em></p>
+    </details>
+
+    <details>
+      <summary>Muss ich später neu herunterladen?</summary>
+      <p>Auf Windows und Linux nicht — der Launcher aktualisiert sich selbst. Auf macOS schon:
+      dort verhindert die fehlende Signatur die automatische Aktualisierung.</p>
+    </details>
+  </section>
+
+  <footer>
+    <p><a href="https://github.com/Gabi12u/Project-Launch-Gabi">Quellcode auf GitHub</a> ·
+       <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases">Alle Versionen</a></p>
+    <p>Kein offizielles Produkt von Mojang oder Microsoft.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var REPO = 'Gabi12u/Project-Launch-Gabi';
+  var RELEASES = 'https://github.com/' + REPO + '/releases/latest';
+
+  // Each platform knows how to recognise its own asset, so a rename in
+  // electron-builder cannot silently point a button at the wrong file.
+  var PLATFORMS = [
+    { id: 'win',   label: 'Windows',              note: 'Installer (.exe)',        match: function (n) { return /\.exe$/i.test(n); } },
+    { id: 'mac-arm', label: 'Mac · Apple-Chip',   note: 'M1 bis M4 (.dmg)',        match: function (n) { return /arm64\.dmg$/i.test(n); } },
+    { id: 'mac-x64', label: 'Mac · Intel-Chip',   note: 'Ältere Macs (.dmg)',      match: function (n) { return /x64\.dmg$/i.test(n); } },
+    { id: 'linux', label: 'Linux',                note: 'AppImage',                match: function (n) { return /\.AppImage$/i.test(n); } }
+  ];
+
+  function guessPlatform() {
+    var ua = navigator.userAgent;
+    if (/Windows/i.test(ua)) return 'win';
+    if (/Linux/i.test(ua) && !/Android/i.test(ua)) return 'linux';
+    if (/Mac OS X|Macintosh/i.test(ua)) {
+      // Safari and Chrome both report Intel on Apple Silicon, so the user agent
+      // cannot settle this. WebGL does: Apple's own GPU only exists on M-series.
+      try {
+        var gl = document.createElement('canvas').getContext('webgl');
+        var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+        var renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+        if (/Apple (M\d|GPU)/i.test(renderer)) return 'mac-arm';
+      } catch (e) { /* fall through to Intel */ }
+      return 'mac-x64';
+    }
+    return null;
+  }
+
+  function mb(bytes) { return Math.round(bytes / 1048576) + ' MB'; }
+
+  function fallback(message) {
+    document.getElementById('main').innerHTML =
+      '<a class="primary" href="' + RELEASES + '">Zu den Downloads' +
+      '<small>' + message + '</small></a>';
+  }
+
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
+    headers: { Accept: 'application/vnd.github+json' }
+  })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (release) {
+      var assets = release.assets || [];
+
+      // Resolve every platform to a real published asset; anything a release
+      // does not contain simply does not get a button.
+      var found = PLATFORMS.map(function (p) {
+        var asset = null;
+        for (var i = 0; i < assets.length; i++) {
+          if (p.match(assets[i].name)) { asset = assets[i]; break; }
+        }
+        return asset ? { p: p, asset: asset } : null;
+      }).filter(Boolean);
+
+      if (!found.length) { fallback('Version ' + (release.tag_name || '')); return; }
+
+      var mine = guessPlatform();
+      var primary = null;
+      for (var i = 0; i < found.length; i++) {
+        if (found[i].p.id === mine) { primary = found[i]; break; }
+      }
+
+      var version = (release.tag_name || '').replace(/^v/, '');
+      var main = document.getElementById('main');
+
+      if (primary) {
+        main.className = '';
+        main.innerHTML =
+          '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
+            'Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
+            '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
+          '</a>' +
+          '<p class="meta">Version ' + version + ' · ' +
+            '<a href="' + RELEASES + '" style="color:inherit">Änderungen ansehen</a></p>';
+      } else {
+        main.className = '';
+        main.innerHTML = '<p class="meta" style="margin:0 0 8px">Version ' + version +
+          ' — wähle dein System:</p>';
+      }
+
+      // Everything except the highlighted one goes into the list below.
+      var rest = found.filter(function (f) { return f !== primary; });
+      if (rest.length) {
+        document.getElementById('others-wrap').hidden = false;
+        document.getElementById('others').innerHTML = rest.map(function (f) {
+          return '<a class="row" href="' + f.asset.browser_download_url + '">' +
+                   '<span class="os">' + f.p.label +
+                     '<span class="note">' + f.p.note + '</span>' +
+                   '</span>' +
+                   '<span class="size">' + mb(f.asset.size) + '</span>' +
+                 '</a>';
+        }).join('');
+      }
+    })
+    .catch(function () {
+      fallback('Alle Dateien auf GitHub');
+    });
+})();
+</script>
+</body>
+</html>
