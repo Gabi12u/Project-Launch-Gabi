@@ -3,35 +3,51 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Launch Gabi herunterladen</title>
-<meta name="description" content="Launch Gabi - ein moderner Minecraft-Launcher, Mod-Manager und Instance-Manager fuer Windows, macOS und Linux.">
+<title>Launch Gabi — Minecraft-Launcher, Mod-Manager und Instance-Manager</title>
+<meta name="description" content="Beliebig viele getrennte Minecraft-Instanzen, Fabric, Forge, NeoForge und Quilt vollautomatisch, Mods von Modrinth und CurseForge. Kostenlos fuer Windows, macOS und Linux.">
 <meta name="theme-color" content="#0a0512">
+<link rel="canonical" href="https://gabi12u.github.io/Project-Launch-Gabi/">
+
+<!-- Link previews in Discord, WhatsApp and the rest. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Launch Gabi">
+<meta property="og:title" content="Launch Gabi — Minecraft-Launcher">
+<meta property="og:description" content="Beliebig viele getrennte Instanzen, alle vier Mod Loader vollautomatisch, Mods von Modrinth und CurseForge. Kostenlos fuer Windows, macOS und Linux.">
+<meta property="og:url" content="https://gabi12u.github.io/Project-Launch-Gabi/">
+<meta property="og:image" content="https://gabi12u.github.io/Project-Launch-Gabi/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="preload" as="image" href="assets/end-bg.jpg">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127918;</text></svg>">
+
 <style>
   :root {
-    /* Sampled from the background so the UI and the image share one palette. */
     --void:       #0a0512;
     --ink:        #f4ecff;
-    --muted:      #b9a9d4;
-    --muted-dim:  #8e7fa8;
+    --muted:      #bcaddb;
+    --muted-dim:  #8f80ab;
 
     --accent:     #c74dff;
     --accent-warm:#ff5cc8;
     --accent-deep:#7c2ae8;
 
-    --glass:      rgba(255, 255, 255, 0.065);
-    --glass-hi:   rgba(255, 255, 255, 0.11);
-    --glass-line: rgba(255, 255, 255, 0.15);
-    --glass-lit:  rgba(255, 255, 255, 0.28);
+    --glass:      rgba(255, 255, 255, 0.06);
+    --glass-hi:   rgba(255, 255, 255, 0.10);
+    --glass-line: rgba(255, 255, 255, 0.14);
+    --glass-lit:  rgba(255, 255, 255, 0.26);
 
-    --r:          16px;
-    --ease:       cubic-bezier(0.4, 0, 0.2, 1);
+    --r:    18px;
+    --r-sm: 12px;
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --nav-h: 66px;
   }
 
   * { box-sizing: border-box; }
-
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
 
   body {
     margin: 0;
@@ -43,203 +59,332 @@
     overflow-x: hidden;
   }
 
-  /* ------------------------------------------------------------------ *
-   * Background: the sharpened End vista, held behind a legibility scrim
-   * ------------------------------------------------------------------ */
+  /* ================================================================== *
+   * Background
+   * ================================================================== */
   .bg {
     position: fixed;
-    inset: -2%;              /* slack so the slow drift never exposes an edge */
+    inset: -2%;
     z-index: 0;
-    background: var(--void) url("assets/end-bg.jpg") center 42% / cover no-repeat;
-    /* Fades in once decoded, so the page never flashes a half-drawn image. */
+    background: var(--void) url("assets/end-bg.jpg") center 40% / cover no-repeat;
     opacity: 0;
     transition: opacity 1.1s var(--ease);
-    animation: drift 46s ease-in-out infinite alternate;
+    animation: drift 52s ease-in-out infinite alternate;
   }
   .bg.ready { opacity: 1; }
-
-  /* If the image never arrives, this still reads as The End rather than a void. */
   .bg.failed {
     opacity: 1;
+    animation: none;
     background:
       radial-gradient(80% 60% at 50% 12%, #6b2a86 0%, #2a1040 45%, transparent 78%),
       radial-gradient(60% 50% at 20% 80%, #3b1550 0%, transparent 70%),
       var(--void);
-    animation: none;
   }
-
   @keyframes drift {
     from { transform: scale(1)     translate3d(0, 0, 0); }
     to   { transform: scale(1.055) translate3d(0, -1%, 0); }
   }
-
-  /* Scrim: dark at the rim and along the bottom, open in the middle so the
-     portal glow still shows through behind the title. */
   .bg::after {
     content: "";
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(115% 85% at 50% 18%,
-        rgba(10, 5, 18, 0.15) 0%,
-        rgba(10, 5, 18, 0.55) 52%,
-        rgba(7, 3, 13, 0.88) 100%),
+      radial-gradient(115% 80% at 50% 14%,
+        rgba(10, 5, 18, 0.10) 0%, rgba(10, 5, 18, 0.5) 54%, rgba(7, 3, 13, 0.86) 100%),
       linear-gradient(180deg,
-        rgba(9, 4, 17, 0.62) 0%,
-        rgba(9, 4, 17, 0.38) 26%,
-        rgba(9, 4, 17, 0.55) 62%,
-        rgba(6, 2, 12, 0.93) 100%);
+        rgba(9, 4, 17, 0.58) 0%, rgba(9, 4, 17, 0.3) 30%, rgba(9, 4, 17, 0.6) 100%);
   }
 
-  .wrap {
-    position: relative;
-    z-index: 1;
-    max-width: 700px;
-    margin: 0 auto;
-    padding: clamp(64px, 12vh, 116px) 20px 110px;
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Hero
-   * ------------------------------------------------------------------ */
-  header { text-align: center; margin-bottom: clamp(36px, 6vh, 56px); }
-
-  h1 {
-    font-size: clamp(2.4rem, 9vw, 4rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.05;
-    margin: 0 0 18px;
-    background: linear-gradient(180deg, #ffffff 30%, #e9c6ff 75%, var(--accent-warm) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    /* Glow sits under the glyphs, not on them, so the text stays crisp. */
-    filter: drop-shadow(0 4px 26px rgba(199, 77, 255, 0.45));
-  }
-
-  .tagline {
-    color: var(--muted);
-    font-size: clamp(.98rem, 2.6vw, 1.1rem);
-    margin: 0;
-    text-shadow: 0 2px 14px rgba(0, 0, 0, .7);
-  }
-
-  /* ------------------------------------------------------------------ *
-   * Glass surfaces
-   * ------------------------------------------------------------------ */
+  /* ================================================================== *
+   * Shared glass surface
+   * ================================================================== */
   .glass {
     background: var(--glass);
     border: 1px solid var(--glass-line);
     border-radius: var(--r);
     -webkit-backdrop-filter: blur(18px) saturate(160%);
     backdrop-filter: blur(18px) saturate(160%);
-    box-shadow:
-      inset 0 1px 0 var(--glass-lit),
-      0 10px 34px rgba(0, 0, 0, 0.42);
+    box-shadow: inset 0 1px 0 var(--glass-lit), 0 10px 34px rgba(0, 0, 0, 0.42);
   }
-
-  /* Frosted glass needs a real backdrop; without support it becomes a tinted
-     panel instead of a transparent smear. */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .glass { background: rgba(23, 11, 38, 0.86); }
+    .glass, .nav.solid { background: rgba(23, 11, 38, 0.9); }
   }
 
-  /* ------------------------------------------------------------------ *
-   * Primary download button
-   * ------------------------------------------------------------------ */
+  /* ================================================================== *
+   * Navigation
+   * ================================================================== */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    height: var(--nav-h);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 clamp(16px, 4vw, 30px);
+    border-bottom: 1px solid transparent;
+    transition: background .35s var(--ease), border-color .35s var(--ease),
+                backdrop-filter .35s var(--ease);
+  }
+  /* Only frosts once the page has moved, so the hero keeps a clean edge. */
+  .nav.solid {
+    background: rgba(12, 5, 22, 0.72);
+    border-bottom-color: var(--glass-line);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; color: var(--ink); }
+  .brand strong { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.02em; }
+  .brand svg { display: block; }
+
+  .nav-links { display: flex; gap: 4px; margin-left: auto; }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: .9rem;
+    font-weight: 550;
+    padding: 8px 14px;
+    border-radius: 999px;
+    transition: color .25s var(--ease), background .25s var(--ease);
+  }
+  .nav-links a:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+
+  .nav-cta {
+    text-decoration: none;
+    font-size: .88rem;
+    font-weight: 650;
+    color: #fff;
+    padding: 9px 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 6px 20px rgba(199,77,255,.3);
+    transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+    white-space: nowrap;
+  }
+  .nav-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 12px 30px rgba(199,77,255,.5);
+  }
+
+  @media (max-width: 720px) {
+    .nav-links { display: none; }
+    .nav-cta { margin-left: auto; }
+  }
+
+  /* ================================================================== *
+   * Layout
+   * ================================================================== */
+  main { position: relative; z-index: 1; }
+  .inner { max-width: 1010px; margin: 0 auto; padding: 0 20px; }
+  .narrow { max-width: 700px; margin: 0 auto; }
+
+  /* Everything past the hero sits on a darkening veil, so long-form text
+     stays readable while the vista still shows through. */
+  .veil {
+    background: linear-gradient(180deg,
+      transparent 0%,
+      rgba(8, 3, 16, 0.72) 9%,
+      rgba(8, 3, 16, 0.93) 26%,
+      rgba(7, 3, 14, 0.97) 100%);
+    padding-bottom: 1px;
+  }
+
+  section { padding: clamp(56px, 9vh, 92px) 0; }
+
+  .eyebrow {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .22em;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h2 {
+    font-size: clamp(1.6rem, 4.4vw, 2.3rem);
+    font-weight: 750;
+    letter-spacing: -0.028em;
+    margin: 0 0 14px;
+    line-height: 1.15;
+  }
+  .lede { color: var(--muted); margin: 0 0 40px; max-width: 56ch; font-size: 1.03rem; }
+
+  /* ================================================================== *
+   * Hero
+   * ================================================================== */
+  .hero {
+    min-height: clamp(560px, 92vh, 860px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding-top: calc(var(--nav-h) + 40px);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    align-self: center;
+    padding: 7px 16px 7px 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--glass-line);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 26px;
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, .2);
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 8.5vw, 4.6rem);
+    font-weight: 800;
+    letter-spacing: -0.038em;
+    line-height: 1.02;
+    margin: 0 0 20px;
+    background: linear-gradient(180deg, #ffffff 28%, #ecccff 72%, var(--accent-warm) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 4px 30px rgba(199, 77, 255, 0.42));
+  }
+
+  .tagline {
+    color: var(--muted);
+    font-size: clamp(1rem, 2.7vw, 1.2rem);
+    margin: 0 auto 38px;
+    max-width: 46ch;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, .75);
+  }
+
+  .cta-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 420px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ---- the primary button ---- */
   .primary {
     position: relative;
     display: block;
+    width: 100%;
     overflow: hidden;
     text-align: center;
     text-decoration: none;
-    padding: 22px 30px;
+    padding: 20px 30px;
     border-radius: var(--r);
     color: #fff;
-    background:
-      linear-gradient(135deg, rgba(199, 77, 255, 0.92) 0%, rgba(124, 42, 232, 0.92) 55%, rgba(255, 92, 200, 0.86) 100%);
+    background: linear-gradient(135deg,
+      rgba(199, 77, 255, 0.94) 0%, rgba(124, 42, 232, 0.94) 55%, rgba(255, 92, 200, 0.88) 100%);
     border: 1px solid rgba(255, 255, 255, 0.26);
     -webkit-backdrop-filter: blur(14px) saturate(150%);
     backdrop-filter: blur(14px) saturate(150%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.42),
-      inset 0 -14px 26px rgba(80, 12, 130, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.44),
+      inset 0 -14px 26px rgba(80, 12, 130, 0.32),
       0 12px 34px rgba(0, 0, 0, 0.44),
       0 0 34px rgba(199, 77, 255, 0.32);
-    font-size: clamp(1.02rem, 3.2vw, 1.2rem);
+    font-size: clamp(1rem, 3vw, 1.14rem);
     font-weight: 700;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.012em;
     transition: transform .38s var(--ease), box-shadow .38s var(--ease);
     will-change: transform;
   }
-
   .primary > span { position: relative; z-index: 2; display: block; }
-
   .primary small {
     display: block;
     font-weight: 500;
-    font-size: .82rem;
+    font-size: .8rem;
     opacity: .9;
-    margin-top: 6px;
+    margin-top: 5px;
     letter-spacing: 0;
   }
-
-  /* Light sweeping across the surface on hover. */
   .primary::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 1;
-    background: linear-gradient(105deg,
-      transparent 32%,
-      rgba(255, 255, 255, 0.30) 48%,
-      transparent 64%);
+    background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.3) 48%, transparent 64%);
     transform: translateX(-130%);
     transition: transform .9s var(--ease);
   }
-
   .primary:hover {
     transform: translateY(-4px) scale(1.018);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.5),
-      inset 0 -14px 26px rgba(80, 12, 130, 0.3),
-      0 20px 46px rgba(0, 0, 0, 0.5),
-      0 0 58px rgba(199, 77, 255, 0.5);
+      inset 0 1px 0 rgba(255,255,255,.52),
+      inset 0 -14px 26px rgba(80,12,130,.3),
+      0 20px 46px rgba(0,0,0,.5),
+      0 0 58px rgba(199,77,255,.5);
   }
   .primary:hover::after { transform: translateX(130%); }
   .primary:active { transform: translateY(-1px) scale(1.004); }
 
-  .meta {
-    text-align: center;
+  .ghost {
+    text-decoration: none;
     color: var(--muted);
-    font-size: .88rem;
-    margin: 18px 0 0;
-    text-shadow: 0 1px 10px rgba(0, 0, 0, .6);
+    font-size: .9rem;
+    font-weight: 550;
+    padding: 9px 18px;
+    border-radius: 999px;
+    transition: color .25s var(--ease), background .25s var(--ease);
   }
-  .meta a { color: #e0bcff; text-decoration: none; border-bottom: 1px solid rgba(224, 188, 255, .35); }
-  .meta a:hover { color: #fff; border-bottom-color: rgba(255, 255, 255, .7); }
+  .ghost:hover { color: #fff; background: rgba(255,255,255,.07); }
 
-  /* ------------------------------------------------------------------ *
-   * Sections
-   * ------------------------------------------------------------------ */
-  section { margin-top: clamp(40px, 7vh, 60px); }
-
-  h2 {
-    font-size: .74rem;
-    text-transform: uppercase;
-    letter-spacing: .2em;
-    font-weight: 700;
-    color: var(--muted-dim);
-    margin: 0 0 16px 4px;
+  /* ================================================================== *
+   * Feature grid
+   * ================================================================== */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 16px;
   }
+  .feature {
+    padding: 26px 24px;
+    transition: transform .34s var(--ease), background .34s var(--ease),
+                border-color .34s var(--ease), box-shadow .34s var(--ease);
+    will-change: transform;
+  }
+  .feature:hover {
+    transform: translateY(-5px);
+    background: var(--glass-hi);
+    border-color: rgba(199, 77, 255, 0.42);
+    box-shadow: inset 0 1px 0 var(--glass-lit), 0 20px 46px rgba(0,0,0,.5),
+                0 0 34px rgba(199,77,255,.2);
+  }
+  .feature .ico {
+    width: 44px; height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    margin-bottom: 16px;
+    color: #f0d5ff;
+    background: linear-gradient(140deg, rgba(199,77,255,.34), rgba(124,42,232,.2));
+    border: 1px solid rgba(199,77,255,.34);
+  }
+  .feature h3 { margin: 0 0 8px; font-size: 1.06rem; font-weight: 680; letter-spacing: -0.018em; }
+  .feature p { margin: 0; color: var(--muted); font-size: .93rem; line-height: 1.6; }
 
-  /* ---- platform rows ---- */
+  /* ================================================================== *
+   * Download rows
+   * ================================================================== */
   .row {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 16px 20px;
+    padding: 17px 20px;
     margin-bottom: 12px;
     text-decoration: none;
     color: var(--ink);
@@ -248,45 +393,58 @@
     will-change: transform;
   }
   .row:hover {
-    transform: translateY(-3px) scale(1.012);
+    transform: translateY(-3px) scale(1.01);
     background: var(--glass-hi);
     border-color: rgba(199, 77, 255, 0.55);
-    box-shadow:
-      inset 0 1px 0 var(--glass-lit),
-      0 16px 40px rgba(0, 0, 0, 0.48),
-      0 0 34px rgba(199, 77, 255, 0.24);
+    box-shadow: inset 0 1px 0 var(--glass-lit), 0 16px 40px rgba(0,0,0,.48),
+                0 0 34px rgba(199,77,255,.24);
   }
-  .row .os { font-weight: 650; letter-spacing: -0.01em; }
+  .row .plat-ico { flex: none; color: #e0bcff; display: grid; place-items: center; }
+  .row .os { font-weight: 640; letter-spacing: -0.012em; }
   .row .note { display: block; color: var(--muted); font-size: .84rem; font-weight: 400; }
   .row .size {
     margin-left: auto;
-    color: #e0bcff;
-    font-size: .82rem;
-    font-weight: 600;
+    color: #e6c6ff;
+    font-size: .8rem;
+    font-weight: 650;
     white-space: nowrap;
-    padding: 5px 11px;
+    padding: 5px 12px;
     border-radius: 999px;
     background: rgba(199, 77, 255, 0.14);
-    border: 1px solid rgba(199, 77, 255, 0.26);
+    border: 1px solid rgba(199, 77, 255, 0.28);
+  }
+  .row.is-you { border-color: rgba(199,77,255,.5); background: var(--glass-hi); }
+  .row .you {
+    font-size: .66rem;
+    font-weight: 750;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #14031f;
+    background: linear-gradient(135deg, var(--accent-warm), var(--accent));
+    padding: 3px 8px;
+    border-radius: 5px;
+    margin-left: 10px;
+    vertical-align: 2px;
   }
 
-  /* ---- help ---- */
+  /* ================================================================== *
+   * FAQ
+   * ================================================================== */
   details {
-    padding: 16px 20px;
+    padding: 17px 20px;
     margin-bottom: 12px;
     transition: background .3s var(--ease), border-color .3s var(--ease);
   }
-  details[open] { background: var(--glass-hi); border-color: rgba(199, 77, 255, 0.34); }
+  details[open] { background: var(--glass-hi); border-color: rgba(199,77,255,.34); }
   details summary {
     cursor: pointer;
-    font-weight: 600;
+    font-weight: 620;
     list-style: none;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 13px;
   }
   details summary::-webkit-details-marker { display: none; }
-  /* Chevron drawn in CSS so nothing extra has to load. */
   details summary::before {
     content: "";
     flex: none;
@@ -297,10 +455,11 @@
     transition: transform .3s var(--ease);
   }
   details[open] summary::before { transform: rotate(45deg); }
-  details p { color: var(--muted); margin: 14px 0 0; padding-left: 19px; }
+  details p { color: var(--muted); margin: 14px 0 0; padding-left: 20px; font-size: .95rem; }
 
   code {
-    background: rgba(0, 0, 0, 0.42);
+    position: relative;
+    background: rgba(0, 0, 0, 0.45);
     border: 1px solid rgba(199, 77, 255, 0.3);
     border-radius: 6px;
     color: #7df0d4;
@@ -309,32 +468,44 @@
     font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
     overflow-wrap: anywhere;
   }
+  code[data-copy] { cursor: pointer; transition: background .2s var(--ease), border-color .2s var(--ease); }
+  code[data-copy]:hover { background: rgba(199,77,255,.2); border-color: rgba(199,77,255,.6); }
+  code.copied { color: #4ade80; border-color: rgba(74,222,128,.6); }
 
+  /* ================================================================== *
+   * Footer
+   * ================================================================== */
   footer {
-    margin-top: clamp(48px, 8vh, 72px);
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding: 40px 0 56px;
     text-align: center;
     color: var(--muted-dim);
-    font-size: .84rem;
+    font-size: .85rem;
   }
-  footer p { margin: 7px 0; }
+  footer p { margin: 8px 0; }
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: #fff; }
 
-  .status { text-align: center; color: var(--muted); padding: 28px; }
+  .status { text-align: center; color: var(--muted); padding: 24px; }
 
-  /* Keyboard users get the same clear focus ring everywhere. */
-  a:focus-visible, summary:focus-visible {
+  a:focus-visible, summary:focus-visible, code:focus-visible {
     outline: 2px solid var(--accent-warm);
     outline-offset: 3px;
     border-radius: 8px;
   }
 
+  /* ================================================================== *
+   * Scroll reveal
+   * ================================================================== */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .bg { animation: none; }
-    .primary, .row { transition: box-shadow .2s ease, background .2s ease; }
-    .primary:hover, .row:hover { transform: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
     .primary::after { display: none; }
+    .primary:hover, .row:hover, .feature:hover, .nav-cta:hover { transform: none; }
   }
 </style>
 </head>
@@ -342,63 +513,209 @@
 
 <div class="bg" id="bg" aria-hidden="true"></div>
 
-<div class="wrap">
+<nav class="nav" id="nav">
+  <a class="brand" href="#top">
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="lg-a" x1="6" y1="58" x2="58" y2="6" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7c2ae8"/><stop offset="1" stop-color="#ff5cc8"/>
+        </linearGradient>
+        <linearGradient id="lg-b" x1="18" y1="10" x2="52" y2="44" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity=".45"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#lg-a)" opacity=".22"/>
+      <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="16.25" stroke="url(#lg-a)" stroke-width="1.5" opacity=".6"/>
+      <g opacity=".5">
+        <path d="M42 15.5 51 20.5v10L42 35.5 33 30.5v-10z" fill="url(#lg-a)" opacity=".55"/>
+        <path d="m33 20.5 9 5 9-5M42 25.5v10" stroke="#fff" stroke-width="1.3" stroke-opacity=".5"/>
+      </g>
+      <path d="M17 15v27.5a2 2 0 0 0 2 2h11.5" stroke="url(#lg-b)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M49 33.5v6.2a2 2 0 0 1-.9 1.7A12.5 12.5 0 0 1 41 43.6c-6.2 0-10.6-4.2-10.6-10.4S34.8 22.8 41 22.8c2.6 0 5 .8 6.8 2.2" stroke="url(#lg-b)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M41.5 33.6H49" stroke="url(#lg-b)" stroke-width="5.2" stroke-linecap="round"/>
+      <rect x="9" y="9" width="3.4" height="3.4" rx=".8" fill="#ff5cc8" opacity=".85"/>
+      <rect x="53" y="48" width="4" height="4" rx="1" fill="#c74dff" opacity=".8"/>
+    </svg>
+    <strong>Launch Gabi</strong>
+  </a>
 
-  <header>
-    <h1>Launch Gabi</h1>
-    <p class="tagline">Minecraft-Launcher, Mod-Manager und Instance-Manager</p>
-  </header>
+  <div class="nav-links">
+    <a href="#funktionen">Funktionen</a>
+    <a href="#download">Download</a>
+    <a href="#hilfe">Hilfe</a>
+  </div>
 
-  <div id="main" class="status">Version wird geladen …</div>
+  <a class="nav-cta" href="#download">Herunterladen</a>
+</nav>
 
-  <section id="others-wrap" hidden>
-    <h2>Andere Systeme</h2>
-    <div id="others"></div>
+<main id="top">
+
+  <!-- ============================ HERO ============================ -->
+  <section class="hero inner">
+    <span class="badge" id="badge"><span class="dot"></span>Kostenlos · Open für alle</span>
+    <h1>Minecraft,<br>endlich aufgeräumt.</h1>
+    <p class="tagline">Beliebig viele getrennte Instanzen. Mod Loader, Java und
+      Abhängigkeiten regelt Launch Gabi im Hintergrund — du drückst Play.</p>
+
+    <div class="cta-group" id="main-cta">
+      <div class="status">Version wird geladen …</div>
+    </div>
   </section>
 
-  <section>
-    <h2>Hilfe</h2>
+  <div class="veil">
 
-    <details class="glass">
-      <summary>Welchen Chip hat mein Mac?</summary>
-      <p>Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
-      nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.</p>
-    </details>
+    <!-- ========================= FEATURES ========================= -->
+    <section id="funktionen" class="inner">
+      <div class="reveal">
+        <p class="eyebrow">Funktionen</p>
+        <h2>Alles drin, nichts einzurichten</h2>
+        <p class="lede">Kein Gefummel mit Java-Versionen, keine Installer von Drittanbietern,
+          keine kaputten Mod-Ordner. Launch Gabi nimmt dir die Arbeit ab, die sonst zwischen
+          dir und dem Spiel steht.</p>
+      </div>
 
-    <details class="glass">
-      <summary>Linux: AppImage startet nicht</summary>
-      <p>Erst ausführbar machen: <code>chmod +x launch-gabi-*.AppImage</code>, dann per Doppelklick
-      oder <code>./launch-gabi-*.AppImage</code> starten.</p>
-      <p>Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek —
-      ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert: <code>sudo apt install libfuse2</code></p>
-    </details>
+      <div class="features">
 
-    <details class="glass">
-      <summary>Warnung „unbekannter Entwickler" beim ersten Start</summary>
-      <p>Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim ersten
-      Mal. Das betrifft nur den ersten Start.</p>
-      <p><strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br>
-      <strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em></p>
-    </details>
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
+          <h3>Getrennte Instanzen</h3>
+          <p>Beliebig viele Installationen nebeneinander, jede mit eigener Version, eigenen Mods,
+            Welten und RAM-Einstellung. Assets werden geteilt statt vervielfacht.</p>
+        </article>
 
-    <details class="glass">
-      <summary>Muss ich später neu herunterladen?</summary>
-      <p>Auf Windows und Linux nicht — der Launcher aktualisiert sich selbst. Auf macOS schon:
-      dort verhindert die fehlende Signatur die automatische Aktualisierung.</p>
-    </details>
-  </section>
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 7h4a2 2 0 0 1 2 2v4"/><path d="M10 3v2.5a1.5 1.5 0 0 1-3 0V3H5a2 2 0 0 0-2 2v3h2.5a1.5 1.5 0 0 1 0 3H3v3a2 2 0 0 0 2 2h3v-2.5a1.5 1.5 0 0 1 3 0V19h4"/><path d="M20 13v3a2 2 0 0 1-2 2h-2.5a1.5 1.5 0 0 0 0 3H18"/></svg></div>
+          <h3>Alle vier Mod Loader</h3>
+          <p>Fabric, NeoForge, Forge und Quilt installieren sich vollautomatisch. Forge und
+            NeoForge patcht Launch Gabi selbst — kein externer Installer nötig.</p>
+        </article>
 
-  <footer>
-    <p><a href="https://github.com/Gabi12u/Project-Launch-Gabi">Quellcode auf GitHub</a> ·
-       <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases">Alle Versionen</a></p>
-    <p>Kein offizielles Produkt von Mojang oder Microsoft.</p>
-  </footer>
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v3M10 2v3M14 2v3"/></svg></div>
+          <h3>Java ohne Nachdenken</h3>
+          <p>Vorhandene JDKs werden auf dem System gefunden. Fehlt die passende Version, lädt
+            Launch Gabi ein Temurin-Runtime und verwaltet es selbst.</p>
+        </article>
 
-</div>
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
+          <h3>Modrinth &amp; CurseForge</h3>
+          <p>Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data
+            Packs. Abhängigkeiten kommen automatisch mit.</p>
+        </article>
+
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Prüfung vor dem Start</h3>
+          <p>Loader-Konflikte, Versions-Mismatches, fehlende Abhängigkeiten, doppelte Mods.
+            Für jedes lösbare Problem gibt es einen Knopf, der es behebt.</p>
+        </article>
+
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M10 12h4"/></svg></div>
+          <h3>Backups</h3>
+          <p>Welten, Konfiguration und Mods sichern. Wiederherstellen legt vorher automatisch
+            eine Sicherheitskopie an — vor Mod-Updates auf Wunsch von allein.</p>
+        </article>
+
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.6 9.6a2.8 2.8 0 0 1-4-4Z"/><path d="m18 2 4 4"/></svg></div>
+          <h3>Selbstreparatur</h3>
+          <p>Prüft Ordnerstruktur, Client-Jar, Bibliotheken, Assets, Natives und Mod-Dateien per
+            SHA1 — und repariert, was defekt ist.</p>
+        </article>
+
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></div>
+          <h3>Updates von allein</h3>
+          <p>Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft
+            gerade Minecraft, wartet er.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ========================= DOWNLOAD ========================= -->
+    <section id="download" class="inner">
+      <div class="narrow">
+        <div class="reveal">
+          <p class="eyebrow">Download</p>
+          <h2>Wähle dein System</h2>
+          <p class="lede" id="dl-lede">Ein Download, danach hält sich der Launcher selbst aktuell.</p>
+        </div>
+        <div id="downloads" class="reveal">
+          <div class="status">Dateien werden geladen …</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================== HILFE ========================== -->
+    <section id="hilfe" class="inner">
+      <div class="narrow">
+        <div class="reveal">
+          <p class="eyebrow">Hilfe</p>
+          <h2>Häufige Fragen</h2>
+        </div>
+
+        <div class="reveal">
+          <details class="glass">
+            <summary>Welchen Chip hat mein Mac?</summary>
+            <p>Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
+            nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.</p>
+          </details>
+
+          <details class="glass">
+            <summary>Linux: das AppImage startet nicht</summary>
+            <p>Erst ausführbar machen — klick den Befehl an, dann liegt er in der Zwischenablage:
+            <code data-copy>chmod +x launch-gabi-*.AppImage</code></p>
+            <p>Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek.
+            Ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert:
+            <code data-copy>sudo apt install libfuse2</code></p>
+          </details>
+
+          <details class="glass">
+            <summary>Warnung „unbekannter Entwickler" beim ersten Start</summary>
+            <p>Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim
+            ersten Mal. Das betrifft nur den ersten Start.</p>
+            <p><strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br>
+            <strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em></p>
+          </details>
+
+          <details class="glass">
+            <summary>Muss ich später neu herunterladen?</summary>
+            <p>Auf Windows und Linux nicht — der Launcher aktualisiert sich selbst. Auf macOS schon:
+            dort verhindert die fehlende Signatur die automatische Aktualisierung.</p>
+          </details>
+
+          <details class="glass">
+            <summary>Brauche ich ein Minecraft-Konto?</summary>
+            <p>Zum Spielen ja — Launch Gabi meldet dich per Microsoft-Login an, wie der offizielle
+            Launcher auch. Zum Ausprobieren der Oberfläche gibt es zusätzlich Offline-Profile.</p>
+          </details>
+
+          <details class="glass">
+            <summary>Was kostet das?</summary>
+            <p>Nichts. Launch Gabi ist ein privates Projekt, kein kommerzielles Produkt — keine Konten,
+            keine Werbung, kein Abo.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="inner">
+        <p><a href="https://github.com/Gabi12u/Project-Launch-Gabi">Quellcode auf GitHub</a> ·
+           <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases">Alle Versionen</a></p>
+        <p>Kein offizielles Produkt von Mojang oder Microsoft. Minecraft ist eine Marke von Mojang AB.</p>
+      </div>
+    </footer>
+
+  </div>
+</main>
 
 <script>
 /* ------------------------------------------------------------------ *
- * Background: reveal only once decoded, and survive a missing file
+ * Background: reveal once decoded, survive a missing file
  * ------------------------------------------------------------------ */
 (function () {
   var bg = document.getElementById('bg');
@@ -409,19 +726,69 @@
 })();
 
 /* ------------------------------------------------------------------ *
+ * Nav frosts once the page scrolls
+ * ------------------------------------------------------------------ */
+(function () {
+  var nav = document.getElementById('nav');
+  function sync() { nav.classList.toggle('solid', window.scrollY > 40); }
+  window.addEventListener('scroll', sync, { passive: true });
+  sync();
+})();
+
+/* ------------------------------------------------------------------ *
+ * Reveal on scroll -- everything stays visible if unsupported
+ * ------------------------------------------------------------------ */
+function observeReveals(root) {
+  var nodes = (root || document).querySelectorAll('.reveal:not(.in)');
+  if (!('IntersectionObserver' in window)) {
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.add('in');
+    return;
+  }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+  for (var j = 0; j < nodes.length; j++) io.observe(nodes[j]);
+}
+observeReveals();
+
+/* ------------------------------------------------------------------ *
+ * Click a command to copy it
+ * ------------------------------------------------------------------ */
+(function () {
+  document.addEventListener('click', function (ev) {
+    var el = ev.target.closest && ev.target.closest('code[data-copy]');
+    if (!el || !navigator.clipboard) return;
+    navigator.clipboard.writeText(el.textContent.trim()).then(function () {
+      var original = el.textContent;
+      el.classList.add('copied');
+      el.textContent = 'Kopiert!';
+      setTimeout(function () { el.textContent = original; el.classList.remove('copied'); }, 1300);
+    }).catch(function () { /* clipboard refused; the text is still selectable */ });
+  });
+})();
+
+/* ------------------------------------------------------------------ *
  * Download links, built from whatever the newest release actually holds
  * ------------------------------------------------------------------ */
 (function () {
   var REPO = 'Gabi12u/Project-Launch-Gabi';
   var RELEASES = 'https://github.com/' + REPO + '/releases/latest';
 
+  var ICONS = {
+    win:   '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.6 10.2 4.6v6.9H3V5.6Zm0 12.8 7.2 1V11.9H3v6.5Zm8.2 1.2L21 21V12.9h-9.8v6.7Zm0-15.2v7.1H21V3l-9.8 1.4Z"/></svg>',
+    mac:   '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M16.1 12.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.3.8-.7 0-1.7-.8-2.8-.8-1.5 0-2.8.9-3.6 2.2-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.2 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1 2.6-2.1.8-1.2 1.2-2.4 1.2-2.4-.1 0-2.2-.9-2.2-3.4ZM14 6.2c.6-.7 1-1.7.9-2.7-.9 0-2 .6-2.6 1.3-.6.6-1.1 1.7-.9 2.6 1 .1 2-.5 2.6-1.2Z"/></svg>',
+    linux: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.8c0-1 .9-1.8 2.5-1.8s2.5.8 2.5 1.8v3.4c0 1.2 3 3.6 3 7.3 0 1.4.9 2.3 1.4 3.2.5.9-.2 1.8-1.6 1.8H7.7c-1.4 0-2.1-.9-1.6-1.8.5-.9 1.4-1.8 1.4-3.2 0-3.7 2-6.1 2-7.3V3.8Z"/><path d="M10.6 6.2h.01M13.4 6.2h.01"/><path d="m10.8 9.4 1.2.9 1.2-.9"/></svg>'
+  };
+
   // Each platform recognises its own asset, so a rename in electron-builder
   // cannot silently point a button at the wrong file.
   var PLATFORMS = [
-    { id: 'win',     label: 'Windows',          note: 'Installer (.exe)',   match: function (n) { return /\.exe$/i.test(n); } },
-    { id: 'mac-arm', label: 'Mac · Apple-Chip', note: 'M1 bis M4 (.dmg)',   match: function (n) { return /arm64\.dmg$/i.test(n); } },
-    { id: 'mac-x64', label: 'Mac · Intel-Chip', note: 'Ältere Macs (.dmg)', match: function (n) { return /x64\.dmg$/i.test(n); } },
-    { id: 'linux',   label: 'Linux',            note: 'AppImage',           match: function (n) { return /\.AppImage$/i.test(n); } }
+    { id: 'win',     icon: 'win',   label: 'Windows',          note: 'Installer (.exe) · 10 und 11', match: function (n) { return /\.exe$/i.test(n); } },
+    { id: 'mac-arm', icon: 'mac',   label: 'Mac · Apple-Chip', note: 'M1 bis M4 (.dmg)',             match: function (n) { return /arm64\.dmg$/i.test(n); } },
+    { id: 'mac-x64', icon: 'mac',   label: 'Mac · Intel-Chip', note: 'Ältere Macs (.dmg)',           match: function (n) { return /x64\.dmg$/i.test(n); } },
+    { id: 'linux',   icon: 'linux', label: 'Linux',            note: 'AppImage · x86_64',            match: function (n) { return /\.AppImage$/i.test(n); } }
   ];
 
   function guessPlatform() {
@@ -445,12 +812,14 @@
   function mb(bytes) { return Math.round(bytes / 1048576) + ' MB'; }
 
   function fallback(message) {
-    var main = document.getElementById('main');
-    main.className = '';
-    main.innerHTML =
-      '<a class="primary" href="' + RELEASES + '">' +
-        '<span>Zu den Downloads<small>' + message + '</small></span>' +
+    document.getElementById('main-cta').innerHTML =
+      '<a class="primary" href="' + RELEASES + '"><span>Zu den Downloads' +
+      '<small>' + message + '</small></span></a>';
+    document.getElementById('downloads').innerHTML =
+      '<a class="row glass" href="' + RELEASES + '">' +
+        '<span class="os">Alle Dateien auf GitHub<span class="note">' + message + '</span></span>' +
       '</a>';
+    observeReveals();
   }
 
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
@@ -480,35 +849,37 @@
       }
 
       var version = (release.tag_name || '').replace(/^v/, '');
-      var main = document.getElementById('main');
-      main.className = '';
+      document.getElementById('badge').innerHTML =
+        '<span class="dot"></span>Version ' + version + ' · kostenlos';
 
-      if (primary) {
-        main.innerHTML =
-          '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
+      // Hero: the visitor's own platform, or a nudge to the list below.
+      document.getElementById('main-cta').innerHTML = primary
+        ? '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
             '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
               '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
-            '</span>' +
-          '</a>' +
-          '<p class="meta">Version ' + version + ' · ' +
-            '<a href="' + RELEASES + '">Änderungen ansehen</a></p>';
-      } else {
-        main.innerHTML = '<p class="meta" style="margin:0 0 10px">Version ' + version +
-          ' — wähle dein System:</p>';
-      }
+            '</span></a>' +
+          '<a class="ghost" href="#download">Andere Systeme ansehen</a>'
+        : '<a class="primary" href="#download"><span>Download wählen' +
+            '<small>Windows · macOS · Linux</small></span></a>';
 
-      var rest = found.filter(function (f) { return f !== primary; });
-      if (rest.length) {
-        document.getElementById('others-wrap').hidden = false;
-        document.getElementById('others').innerHTML = rest.map(function (f) {
-          return '<a class="row glass" href="' + f.asset.browser_download_url + '">' +
-                   '<span class="os">' + f.p.label +
-                     '<span class="note">' + f.p.note + '</span>' +
-                   '</span>' +
-                   '<span class="size">' + mb(f.asset.size) + '</span>' +
-                 '</a>';
-        }).join('');
-      }
+      // Download section always lists every platform, with the visitor's marked.
+      document.getElementById('downloads').innerHTML = found.map(function (f) {
+        var you = (f === primary) ? '<span class="you">Dein System</span>' : '';
+        return '<a class="row glass' + (f === primary ? ' is-you' : '') + '" href="' +
+                 f.asset.browser_download_url + '">' +
+                 '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
+                 '<span class="os">' + f.p.label + you +
+                   '<span class="note">' + f.p.note + '</span>' +
+                 '</span>' +
+                 '<span class="size">' + mb(f.asset.size) + '</span>' +
+               '</a>';
+      }).join('');
+
+      document.getElementById('dl-lede').innerHTML =
+        'Version ' + version + ' · ein Download, danach hält sich der Launcher selbst aktuell. ' +
+        '<a href="' + RELEASES + '" style="color:#e0bcff">Änderungen ansehen</a>';
+
+      observeReveals();
     })
     .catch(function () {
       fallback('Alle Dateien auf GitHub');
