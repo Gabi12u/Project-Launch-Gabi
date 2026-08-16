@@ -9,6 +9,61 @@ Loader und Abhängigkeiten laufen im Hintergrund, ohne dass sich jemand damit be
 
 ---
 
+## ⬇️ Download
+
+### **[» Launch Gabi herunterladen «](https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest)**
+
+Dort unter **„Assets"** die Datei für dein System auswählen:
+
+| Dein System | Datei | Danach |
+|---|---|---|
+| **Windows** | `launch-gabi-…-setup.exe` | Doppelklick, Installer folgen |
+| **Mac** mit Apple-Chip (M1–M4) | `launch-gabi-…-mac-arm64.dmg` | Öffnen, App in „Programme" ziehen |
+| **Mac** mit Intel-Chip | `launch-gabi-…-mac-x64.dmg` | Öffnen, App in „Programme" ziehen |
+| **Linux** | `launch-gabi-…-linux-x64.AppImage` | Ausführbar machen, dann starten |
+
+Der Launcher aktualisiert sich danach selbst — herunterladen musst du also nur einmal.
+
+<details>
+<summary><b>Welchen Chip hat mein Mac?</b></summary>
+
+Apple-Menü oben links → *Über diesen Mac*. Steht dort **Apple M1/M2/M3/M4**, nimm `arm64`.
+Steht dort **Intel**, nimm `x64`.
+</details>
+
+<details>
+<summary><b>Hinweise für Linux</b></summary>
+
+AppImage ausführbar machen und starten:
+
+```bash
+chmod +x launch-gabi-*-linux-x64.AppImage
+./launch-gabi-*-linux-x64.AppImage
+```
+
+Passiert nichts oder kommt ein Fehler zu *FUSE*, fehlt eine Systembibliothek. Ab Ubuntu 22.04 ist
+sie nicht mehr vorinstalliert:
+
+```bash
+sudo apt install libfuse2
+```
+</details>
+
+<details>
+<summary><b>Warnung beim ersten Start?</b></summary>
+
+Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim ersten Mal
+vor einem unbekannten Entwickler. Die Warnung betrifft nur den ersten Start.
+
+- **Windows:** *Weitere Informationen* → *Trotzdem ausführen*
+- **macOS:** Rechtsklick auf die App → *Öffnen* → im Dialog nochmals *Öffnen*
+
+Auf macOS funktioniert aus demselben Grund die automatische Aktualisierung nicht — dort musst du
+neue Versionen von Hand herunterladen. Windows und Linux aktualisieren sich selbst.
+</details>
+
+---
+
 ## Was der Launcher kann
 
 **Instanzen** — Beliebig viele getrennte Installationen, jede mit eigener Minecraft-Version, eigenem
@@ -176,18 +231,24 @@ Dieser Wert wird beim Bauen fest in die installierte App geschrieben — er muss
 ### Eine neue Version veröffentlichen
 
 1. `version` in `package.json` erhöhen (z. B. `1.0.1`). Der Updater vergleicht genau dieses Feld.
-2. `npm run dist` — erzeugt in `dist/`:
-   - `launch-gabi-<version>-setup.exe` — der Installer
-   - `latest.yml` — der Update-Feed, den installierte Launcher abfragen
-   - `*.blockmap` — ermöglicht Delta-Updates, es wird nur das Geänderte geladen
-3. Ein GitHub-Release mit dem Tag `v<version>` anlegen und **alle drei Dateien** anhängen.
-   Fehlt `latest.yml`, findet kein Client das Update.
+2. Committen, dann den passenden Tag setzen und pushen:
 
-Bestehende Installationen holen sich das Update dann von selbst. Zum Testen genügt es, eine ältere
-Version zu installieren und den Launcher zu starten.
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+
+Das genügt. Der Workflow in `.github/workflows/release.yml` baut daraufhin auf GitHubs eigenen
+Rechnern alle Installer, legt das Release an und hängt sie samt Update-Feeds (`latest.yml`,
+`latest-mac.yml`, `latest-linux.yml`) an. Bestehende Installationen holen sich das Update von selbst.
+
+macOS und Linux lassen sich **nicht** auf einem Windows-Rechner bauen — ein `.dmg` braucht
+macOS-Werkzeuge, Linux-Builds offiziell Docker. Deshalb der Umweg über die Runner. Lokal bauen geht
+weiterhin mit `npm run dist`, das erzeugt nur den Windows-Installer in `dist/`.
 
 > Ohne Code-Signatur zeigt Windows SmartScreen beim ersten Start eine Warnung. Das betrifft die
-> Installation, nicht den Update-Vorgang — der läuft danach still durch.
+> Installation, nicht den Update-Vorgang — der läuft danach still durch. Auf macOS verhindert die
+> fehlende Signatur zusätzlich die automatische Aktualisierung.
 
 ---
 
