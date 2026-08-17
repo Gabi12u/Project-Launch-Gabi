@@ -7,11 +7,24 @@ const logger = log('compat')
 
 /** Cheap in-memory cache so repeated checks do not hammer the APIs. */
 const nameCache = new Map<string, string>()
+/** Bounded so a long session browsing many mods cannot grow it without end. */
+const NAME_CACHE_MAX = 500
+
+/** Strips punctuation and case so "Fabric API" and "fabric-api" compare equal. */
+function flattenName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
 
 async function projectName(provider: 'modrinth' | 'curseforge', projectId: string): Promise<string> {
   const key = `${provider}:${projectId}`
   const cached = nameCache.get(key)
   if (cached) return cached
+
+  if (nameCache.size >= NAME_CACHE_MAX) {
+    // Insertion-ordered, so this drops the oldest entry.
+    const oldest = nameCache.keys().next().value
+    if (oldest !== undefined) nameCache.delete(oldest)
+  }
 
   try {
     const project =
@@ -61,16 +74,21 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     enabled.filter((c) => c.projectId).map((c) => `${c.provider}:${c.projectId}`)
   )
   const installedProjectIds = new Set(enabled.filter((c) => c.projectId).map((c) => c.projectId as string))
+  const installedNames = new Set(enabled.map((c) => flattenName(c.name)))
 
   // 1. Mods in a vanilla instance -----------------------------------
   if (instance.loader === 'vanilla' && enabled.length > 0) {
     issues.push({
       id: 'vanilla-with-mods',
-      severity: 'error',
+      // A warning, not an error: without a loader nothing reads the mods
+      // folder, so the jars just sit there and the game starts normally.
+      // Blocking the launch made a harmless leftover file (a mod kept after
+      // switching back to vanilla) render the instance unplayable.
+      severity: 'warning',
       title: 'Diese Instanz hat keinen Mod Loader',
       detail:
         `In der Instanz liegen ${enabled.length} Mods, aber es ist kein Mod Loader installiert. ` +
-        `Ohne Fabric, Forge, NeoForge oder Quilt werden Mods ignoriert.`
+        `Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.`
     })
   }
 
@@ -121,6 +139,15 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
 
         const provider = mod.provider === 'curseforge' ? 'curseforge' : 'modrinth'
         const name = await projectName(provider, dependency.projectId)
+
+        // A dependency id always lives in the requiring mod's own namespace,
+        // and CurseForge's numeric ids never coincide with Modrinth's base62
+        // ones — so the same library installed from the *other* platform could
+        // never match above. Comparing the resolved project name catches that,
+        // which is exactly the Fabric-API-from-Modrinth-required-by-a-
+        // CurseForge-mod case. It can only silence a false alarm, never raise
+        // a new one.
+        if (name && installedNames.has(flattenName(name))) continue
 
         issues.push({
           id: `dep-${mod.id}-${dependency.projectId}`,
@@ -188,7 +215,11 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   // 6. Shaders without a shader loader -------------------------------
   const shaders = instance.content.filter((c) => c.type === 'shaderpack' && c.enabled)
   if (shaders.length > 0) {
-    const shaderLoaders = ['iris', 'optifine', 'oculus', 'sodium']
+    // Sodium is deliberately absent: it is a rendering optimiser, not a
+    // shaderpack loader. Counting it meant a Sodium-only instance silently
+    // suppressed this warning while the shaderpack never rendered — Iris is
+    // what actually loads them on top of Sodium.
+    const shaderLoaders = ['iris', 'optifine', 'oculus']
     const hasShaderLoader = enabled.some((mod) =>
       shaderLoaders.some((name) => mod.name.toLowerCase().includes(name))
     )

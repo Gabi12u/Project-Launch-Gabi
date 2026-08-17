@@ -54,6 +54,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'settings', label: 'Einstellungen' }
 ]
 
+/**
+ * Every tab body renders conditionally, so an id that matches none of them
+ * leaves the panel blank with nothing selected. Routes are built from strings
+ * elsewhere — notification payloads carry a free-form `route` — so an unknown
+ * value falls back to the overview instead of rendering nothing.
+ */
+function toTab(raw: string | null): Tab {
+  return TABS.some((t) => t.id === raw) ? (raw as Tab) : 'overview'
+}
+
 export function InstanceDetailView({
   instanceId,
   query
@@ -65,7 +75,7 @@ export function InstanceDetailView({
   const summary = instances.find((i) => i.id === instanceId)
 
   const [instance, setInstance] = useState<InstanceDetail | null>(null)
-  const [tab, setTab] = useState<Tab>((query.get('tab') as Tab) ?? 'overview')
+  const [tab, setTab] = useState<Tab>(() => toTab(query.get('tab')))
   const [preflight, setPreflight] = useState<LaunchPreflight | null>(null)
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [checking, setChecking] = useState(true)
@@ -815,12 +825,36 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const boxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    void window.gabi.launch.logs(instanceId).then(setLines).catch(() => undefined)
+    let cancelled = false
+    // Switching instances must not carry the previous one's lines into the
+    // merge below.
+    setLines([])
 
-    return window.gabi.events.onLogLine((line) => {
+    void window.gabi.launch
+      .logs(instanceId)
+      .then((history) => {
+        if (cancelled) return
+        // The subscription is already live, so lines can land while this fetch
+        // is still in flight. Replacing the array outright would discard them,
+        // worst exactly when watching a crash happen — so the history goes in
+        // front of what already streamed in, minus what it repeats.
+        setLines((streamed) => {
+          const seen = new Set(history.map((line) => `${line.time}|${line.text}`))
+          const fresh = streamed.filter((line) => !seen.has(`${line.time}|${line.text}`))
+          return [...history, ...fresh].slice(-1200)
+        })
+      })
+      .catch(() => undefined)
+
+    const off = window.gabi.events.onLogLine((line) => {
       if (line.instanceId !== instanceId) return
       setLines((current) => [...current, line].slice(-1200))
     })
+
+    return () => {
+      cancelled = true
+      off()
+    }
   }, [instanceId])
 
   useEffect(() => {

@@ -15,6 +15,8 @@ const USER_AGENT = 'LaunchGabi/1.0.0 (Minecraft launcher; +https://launchgabi.gg
 
 export interface DownloadItem {
   url: string
+  /** Alternative sources, tried in order once `url` is exhausted. */
+  mirrors?: string[]
   /** Absolute destination path. */
   path: string
   sha1?: string
@@ -311,33 +313,76 @@ export async function downloadFile(
   retries = 3,
   signal?: AbortSignal
 ): Promise<void> {
-  if (await isSatisfied(item)) return
+  // The failure of whoever held the slot while we waited. Under contention
+  // this call may never get a turn of its own, and that other writer's error
+  // is then the real reason nothing landed on disk.
+  let waitedError: unknown
 
-  const running = inFlight.get(item.path)
-  if (running) return running
-
-  const run = async (): Promise<void> => {
-    let lastError: unknown
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      if (signal?.aborted) throw new TaskCancelledError()
-      try {
-        await fetchToFile(item, onBytes, signal)
-        return
-      } catch (err) {
-        if (signal?.aborted) throw new TaskCancelledError()
-        lastError = err
-        if (!isRetryable(err) || attempt === retries) break
-        await sleep(400 * 2 ** attempt)
-      }
+  // Bounded because every round either claims the slot and downloads, or waits
+  // for a write to this path that is genuinely in flight.
+  for (let round = 0; round < 8; round++) {
+    if (await isSatisfied(item)) {
+      // Someone else's write satisfied us. The caller's batch counted this
+      // file's bytes in its total, so without this credit its progress bar
+      // stalls short of 100% for every shared library or asset.
+      if (round > 0 && item.size !== undefined) onBytes?.(item.size)
+      return
     }
-    throw lastError
+
+    // Read and claim in one synchronous step, so two callers that both saw an
+    // empty slot cannot both start writing the same destination.
+    const running = inFlight.get(item.path)
+
+    if (!running) {
+      const run = async (): Promise<void> => {
+        // The primary source first, then any mirrors. Modpack manifests list
+        // several precisely so a yanked or 404'd CDN link does not sink the
+        // file when a working copy is named right next to it.
+        const sources = [item.url, ...(item.mirrors ?? [])]
+        let lastError: unknown
+
+        for (const [index, url] of sources.entries()) {
+          if (index > 0) logger.warn(`Weiche auf Spiegel aus für ${item.path}: ${url}`)
+
+          for (let attempt = 0; attempt <= retries; attempt++) {
+            if (signal?.aborted) throw new TaskCancelledError()
+            try {
+              await fetchToFile({ ...item, url }, onBytes, signal)
+              return
+            } catch (err) {
+              if (signal?.aborted) throw new TaskCancelledError()
+              lastError = err
+              if (!isRetryable(err) || attempt === retries) break
+              await sleep(400 * 2 ** attempt)
+            }
+          }
+        }
+        throw lastError
+      }
+
+      const promise = run().finally(() => {
+        inFlight.delete(item.path)
+      })
+      inFlight.set(item.path, promise)
+      return promise
+    }
+
+    if (signal?.aborted) throw new TaskCancelledError()
+
+    // Wait for the other writer rather than racing it for the same path — but
+    // do not adopt its result. The slot is keyed by destination alone, so it
+    // may have been fetching different bytes for the same file name; only our
+    // own hash and size decide whether what landed there is what we asked for.
+    await running.catch((err: unknown) => {
+      waitedError = err
+    })
   }
 
-  const promise = run().finally(() => {
-    inFlight.delete(item.path)
-  })
-  inFlight.set(item.path, promise)
-  return promise
+  // Prefer the concrete failure over "you never got a turn": a 404, a blocked
+  // host or a checksum mismatch tells the user what to do, the bound alone
+  // tells them nothing.
+  if (waitedError !== undefined) throw waitedError
+  throw new Error(`Download für ${item.path} kam nicht zum Zug`)
 }
 
 function formatBytes(bytes: number): string {
@@ -353,6 +398,13 @@ export interface DownloadAllOptions {
   concurrency?: number
   /** Called after every completed file. */
   onFile?: (item: DownloadItem, index: number, total: number) => void
+  /**
+   * Decides what a single failed file means for the batch. The default is
+   * `fail`, which is right for a game install where a missing library breaks
+   * everything. A modpack is the opposite case: one mod its author forbade
+   * third-party downloads for should not throw away the other three hundred.
+   */
+  onError?: (item: DownloadItem, err: unknown) => 'skip' | 'fail'
 }
 
 /**
@@ -364,7 +416,7 @@ export async function downloadAll(
   items: DownloadItem[],
   options: DownloadAllOptions = {}
 ): Promise<void> {
-  const { task, label = 'Lade Dateien', onFile } = options
+  const { task, label = 'Lade Dateien', onFile, onError } = options
   const concurrency = Math.max(1, options.concurrency ?? getSettings().concurrentDownloads)
 
   // Asset indexes map several names onto one hash, so the same destination can
@@ -431,15 +483,25 @@ export async function downloadAll(
       if (task?.cancelled) throw new TaskCancelledError()
       const index = cursor++
       const item = pending[index]
-      await downloadFile(
-        item,
-        (delta) => {
-          doneBytes += delta
-          report()
-        },
-        3,
-        task?.signal
-      )
+
+      try {
+        await downloadFile(
+          item,
+          (delta) => {
+            doneBytes += delta
+            report()
+          },
+          3,
+          task?.signal
+        )
+      } catch (err) {
+        // A cancellation is never a per-file decision.
+        if (err instanceof TaskCancelledError || task?.cancelled) throw err
+        if (onError?.(item, err) !== 'skip') throw err
+        // Credit the skipped size so the bar still reaches the end.
+        if (item.size !== undefined) doneBytes += item.size
+      }
+
       doneFiles++
       onFile?.(item, doneFiles, pending.length)
       report()

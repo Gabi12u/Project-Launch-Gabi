@@ -39,10 +39,20 @@ export function HomeView(): JSX.Element {
   const featured = instances[0] ?? null
   const recent = instances.slice(0, 6)
 
+  // The aggregate tiles (total play time, disk usage, mod count) come from the
+  // main process, not from the instance list. Keying them on `instances.length`
+  // alone meant a play session started and ended on this very view changed
+  // nothing observable, so the numbers stayed frozen at whatever they were on
+  // mount until the user navigated away and back.
+  const statsKey = instances.map((i) => `${i.id}:${i.lastPlayed ?? 0}:${i.modCount}`).join(',')
+
   useEffect(() => {
     void window.gabi.news.list(8).then(setNews).catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
     void window.gabi.app.stats().then(setStats).catch(() => undefined)
-  }, [instances.length])
+  }, [statsKey])
 
   useEffect(() => {
     if (!featured?.appearance.background) {

@@ -64,7 +64,18 @@ export function getSettings(): LauncherSettings {
 }
 
 export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings {
-  const next = { ...getSettings(), ...patch }
+  const current = getSettings()
+  const next = { ...current, ...patch }
+
+  // The empty-string fallback in `getSettings` only runs on first load, so a
+  // cleared text field would otherwise persist `dataDirectory: ''` and every
+  // `paths.*()` call would resolve against `process.cwd()` for the rest of the
+  // session, scattering instances and backups outside the data directory.
+  if (typeof next.dataDirectory !== 'string' || !next.dataDirectory.trim()) {
+    logger.warn('Leeres Datenverzeichnis abgelehnt, bisheriger Pfad bleibt bestehen')
+    next.dataDirectory = current.dataDirectory
+  }
+
   settings = next
   writeJsonAtomic(settingsFile(), next)
   return next

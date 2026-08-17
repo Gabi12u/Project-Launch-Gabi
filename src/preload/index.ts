@@ -48,6 +48,7 @@ const api = {
     update: call(IPC.instanceUpdate),
     remove: call(IPC.instanceDelete),
     duplicate: call(IPC.instanceDuplicate),
+    importFolder: call(IPC.instanceImportFolder),
     openFolder: call(IPC.instanceOpenFolder),
     createShortcut: call(IPC.instanceCreateShortcut),
     repair: call(IPC.instanceRepair),

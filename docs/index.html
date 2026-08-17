@@ -20,7 +20,8 @@
 <meta name="twitter:card" content="summary_large_image">
 
 <link rel="icon" href="assets/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <link rel="preload" as="image" href="assets/end-bg.jpg">
 
@@ -41,7 +42,6 @@
     --glass-lit:  rgba(255, 255, 255, 0.26);
 
     --r:    18px;
-    --r-sm: 12px;
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --nav-h: 66px;
   }
@@ -497,17 +497,24 @@
   /* ================================================================== *
    * Scroll reveal
    * ================================================================== */
-  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
-  .reveal.in { opacity: 1; transform: none; }
+  /* Scoped to .js: the reveal animation needs a script to ever add .in, so
+     without one an unscoped rule would leave the whole page below the hero
+     permanently invisible instead of merely un-animated. */
+  .js .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+  .js .reveal.in { opacity: 1; transform: none; }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .bg { animation: none; }
-    .reveal { opacity: 1; transform: none; transition: none; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
     .primary::after { display: none; }
     .primary:hover, .row:hover, .feature:hover, .nav-cta:hover { transform: none; }
   }
 </style>
+<!-- Marks that scripts are running, which is what arms the reveal animation.
+     A blocker that stops this one also stops the rest, so the page falls back
+     to plain visible content rather than to an empty screen. -->
+<script>document.documentElement.className += ' js';</script>
 </head>
 <body>
 
@@ -557,8 +564,13 @@
     <p class="tagline">Beliebig viele getrennte Instanzen. Mod Loader, Java und
       Abhängigkeiten regelt Launch Gabi im Hintergrund. Du drückst Play.</p>
 
+    <!-- The script replaces this with the visitor's own build. It is a real
+         link rather than a placeholder so the page still leads somewhere when
+         JavaScript is disabled or a blocker stops the script from running. -->
     <div class="cta-group" id="main-cta">
-      <div class="status">Version wird geladen …</div>
+      <a class="primary" href="https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest">
+        <span>Zu den Downloads<small>Version wird geladen …</small></span>
+      </a>
     </div>
   </section>
 
@@ -644,7 +656,9 @@
           <p class="lede" id="dl-lede">Ein Download, danach hält sich der Launcher selbst aktuell.</p>
         </div>
         <div id="downloads" class="reveal">
-          <div class="status">Dateien werden geladen …</div>
+          <a class="row glass" href="https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest">
+            <span class="os">Alle Dateien auf GitHub<span class="note">Dateien werden geladen …</span></span>
+          </a>
         </div>
       </div>
     </section>
@@ -797,27 +811,51 @@ observeReveals();
     if (/Linux/i.test(ua) && !/Android/i.test(ua)) return 'linux';
     if (/Mac OS X|Macintosh/i.test(ua)) {
       // Safari and Chrome both report Intel on Apple Silicon, so the user agent
-      // cannot settle this. WebGL does: Apple's own GPU only exists on M-series.
+      // cannot settle this. WebGL can — Apple's own GPU only exists on M-series
+      // — but privacy modes (Brave's farbling, resistFingerprinting, blocker
+      // extensions) hide or spoof that string. Falling back to Intel there
+      // hands an M-series Mac a build that will not run, so an unreadable
+      // renderer stays undecided and the visitor picks from the list instead.
       try {
         var gl = document.createElement('canvas').getContext('webgl');
         var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
-        var renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : '';
+        var renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '') : '';
         if (/Apple (M\d|GPU)/i.test(renderer)) return 'mac-arm';
-      } catch (e) { /* fall through to Intel */ }
-      return 'mac-x64';
+        if (/Intel|AMD|Radeon|NVIDIA/i.test(renderer)) return 'mac-x64';
+      } catch (e) { /* undecided */ }
+      return null;
     }
     return null;
   }
 
   function mb(bytes) { return Math.round(bytes / 1048576) + ' MB'; }
 
+  // Everything below is built with innerHTML, and tag names and asset URLs come
+  // from the GitHub API rather than from this page. A release published with a
+  // crafted tag would otherwise run script on every visitor.
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Only a real GitHub download link may become an href; anything else (a
+  // "javascript:" URL from a tampered response) degrades to the releases page.
+  function safeUrl(value) {
+    var url = String(value == null ? '' : value);
+    return /^https:\/\/github\.com\//i.test(url) ? esc(url) : RELEASES;
+  }
+
   function fallback(message) {
     document.getElementById('main-cta').innerHTML =
       '<a class="primary" href="' + RELEASES + '"><span>Zu den Downloads' +
-      '<small>' + message + '</small></span></a>';
+      '<small>' + esc(message) + '</small></span></a>';
     document.getElementById('downloads').innerHTML =
       '<a class="row glass" href="' + RELEASES + '">' +
-        '<span class="os">Alle Dateien auf GitHub<span class="note">' + message + '</span></span>' +
+        '<span class="os">Alle Dateien auf GitHub<span class="note">' + esc(message) + '</span></span>' +
       '</a>';
     observeReveals();
   }
@@ -848,13 +886,13 @@ observeReveals();
         if (found[i].p.id === mine) { primary = found[i]; break; }
       }
 
-      var version = (release.tag_name || '').replace(/^v/, '');
+      var version = esc((release.tag_name || '').replace(/^v/, ''));
       document.getElementById('badge').innerHTML =
         '<span class="dot"></span>Version ' + version + ' · kostenlos';
 
       // Hero: the visitor's own platform, or a nudge to the list below.
       document.getElementById('main-cta').innerHTML = primary
-        ? '<a class="primary" href="' + primary.asset.browser_download_url + '">' +
+        ? '<a class="primary" href="' + safeUrl(primary.asset.browser_download_url) + '">' +
             '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
               '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
             '</span></a>' +
@@ -866,7 +904,7 @@ observeReveals();
       document.getElementById('downloads').innerHTML = found.map(function (f) {
         var you = (f === primary) ? '<span class="you">Dein System</span>' : '';
         return '<a class="row glass' + (f === primary ? ' is-you' : '') + '" href="' +
-                 f.asset.browser_download_url + '">' +
+                 safeUrl(f.asset.browser_download_url) + '">' +
                  '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
                  '<span class="os">' + f.p.label + you +
                    '<span class="note">' + f.p.note + '</span>' +

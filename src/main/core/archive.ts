@@ -1,7 +1,17 @@
 import AdmZip from 'adm-zip'
-import { createWriteStream, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  createWriteStream,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  symlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { basename, dirname, join, relative, sep } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { log } from '../logger'
 
 const logger = log('archive')
@@ -180,6 +190,39 @@ export async function zipFolder(
   return filtered.length
 }
 
+/**
+ * Recreates a tar link entry.
+ *
+ * Symlink ('2') and hardlink ('1') headers carry their target in the header's
+ * `linkname` field and have no data body, so the generic write-a-file branch
+ * turned them into empty files. JDK archives link shared files under `legal/`
+ * this way, which silently lost their contents.
+ */
+function extractLink(type: string, link: string, dest: string, targetDir: string): void {
+  if (!link || existsSync(dest)) return
+  mkdirSync(dirname(dest), { recursive: true })
+
+  // A symlink target is relative to the entry's own folder, a hardlink target
+  // to the archive root. Either way it must stay inside the extraction folder.
+  const base = type === '2' ? dirname(dest) : targetDir
+  const resolvedRoot = resolve(targetDir)
+  const resolvedLink = resolve(base, link)
+  if (resolvedLink !== resolvedRoot && !resolvedLink.startsWith(resolvedRoot + sep)) return
+
+  try {
+    if (type === '2') symlinkSync(link, dest)
+    else linkSync(resolvedLink, dest)
+  } catch {
+    // Windows needs a privilege for symlinks, and a target can appear later in
+    // the archive than the link to it. A copy keeps the content either way.
+    try {
+      if (existsSync(resolvedLink)) copyFileSync(resolvedLink, dest)
+    } catch {
+      // A missing legal notice is not worth failing the whole extraction.
+    }
+  }
+}
+
 /** Extracts a tar.gz archive (used by the Linux/macOS Java runtimes). */
 export async function extractTarGz(archivePath: string, targetDir: string): Promise<void> {
   const { createGunzip } = await import('node:zlib')
@@ -192,7 +235,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   // Minimal tar reader: enough for the Adoptium archives, which only contain
   // regular files, directories and the occasional long-name header.
   let buffer = Buffer.alloc(0)
-  let pendingHeader: { path: string; size: number; type: string } | null = null
+  let pendingHeader: { path: string; size: number; type: string; link: string } | null = null
   let remaining = 0
   let sink: number[] = []
   let longName: string | null = null
@@ -207,6 +250,8 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
       mkdirSync(dest, { recursive: true })
     } else if (pendingHeader.type === 'L') {
       longName = Buffer.from(sink).toString('utf8').replace(/\0+$/, '')
+    } else if (pendingHeader.type === '1' || pendingHeader.type === '2') {
+      extractLink(pendingHeader.type, pendingHeader.link, dest, targetDir)
     } else {
       mkdirSync(dirname(dest), { recursive: true })
       writeFileSync(dest, Buffer.from(sink))
@@ -245,9 +290,11 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
         const sizeField = header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim()
         const size = parseInt(sizeField, 8) || 0
         const type = String.fromCharCode(header[156]) || '0'
+        // `linkname`, only populated for link entries.
+        const link = header.subarray(157, 257).toString('utf8').replace(/\0.*$/, '')
         const prefix = header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '')
 
-        pendingHeader = { path: prefix ? `${prefix}/${name}` : name, size, type }
+        pendingHeader = { path: prefix ? `${prefix}/${name}` : name, size, type, link }
         remaining = size
 
         if (size === 0) flushFile()

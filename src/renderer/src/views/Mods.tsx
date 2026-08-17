@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { ContentItem, InstanceSummary } from '@shared/types'
 import { getState, navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { LOADER_LABELS, formatBytes, formatRelative, loaderColor, pluralise } from '../lib/format'
@@ -32,12 +32,17 @@ export function ModsView(): JSX.Element {
   const [search, setSearch] = useState('')
   const [onlyUpdates, setOnlyUpdates] = useState(false)
   const [instanceFilter, setInstanceFilter] = useState('all')
+  const requestId = useRef(0)
 
   // Keyed by the instance ids rather than the array itself: the list object is
   // replaced on every refresh, which would otherwise reload on each render.
   const instanceKey = instances.map((i) => i.id).join(',')
 
   const load = useCallback(async (): Promise<void> => {
+    // One fetch per instance, so this runs long enough for an added or deleted
+    // instance to restart it mid-loop. Without the guard a slower earlier pass
+    // could finish last and put rows for a since-deleted instance back.
+    const request = ++requestId.current
     setLoading(true)
     try {
       const collected: Row[] = []
@@ -47,11 +52,11 @@ export function ModsView(): JSX.Element {
           collected.push({ instance, item })
         }
       }
-      setRows(collected)
+      if (request === requestId.current) setRows(collected)
     } catch (err) {
-      toastError(err, 'Mods konnten nicht geladen werden')
+      if (request === requestId.current) toastError(err, 'Mods konnten nicht geladen werden')
     } finally {
-      setLoading(false)
+      if (request === requestId.current) setLoading(false)
     }
   }, [instanceKey])
 

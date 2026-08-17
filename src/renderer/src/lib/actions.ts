@@ -99,3 +99,19 @@ export async function importModpack(): Promise<void> {
     toastError(err, 'Modpack konnte nicht importiert werden')
   }
 }
+
+/** Takes over an existing instance folder from Prism, MultiMC or a .minecraft. */
+export async function importInstanceFolder(): Promise<void> {
+  try {
+    const instance = await window.gabi.instances.importFolder()
+    if (!instance) return
+    toast(
+      'success',
+      'Import gestartet',
+      `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`
+    )
+    await refreshInstances()
+  } catch (err) {
+    toastError(err, 'Ordner konnte nicht importiert werden')
+  }
+}

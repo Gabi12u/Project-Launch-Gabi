@@ -160,9 +160,12 @@ function mapHit(hit: ModrinthSearchHit): SearchResultItem {
     downloads: hit.downloads,
     follows: hit.follows,
     updatedAt: hit.date_modified,
-    categories: hit.display_categories ?? hit.categories,
-    gameVersions: hit.versions,
-    loaders: hit.categories.filter((c) =>
+    // Every array below is defaulted: these come straight off the API, and one
+    // missing field used to throw out of the whole search rather than costing
+    // this single entry its categories.
+    categories: hit.display_categories ?? hit.categories ?? [],
+    gameVersions: hit.versions ?? [],
+    loaders: (hit.categories ?? []).filter((c) =>
       ['fabric', 'forge', 'neoforge', 'quilt'].includes(c)
     ),
     pageUrl: `https://modrinth.com/${hit.project_type}/${hit.slug}`,
@@ -171,10 +174,14 @@ function mapHit(hit: ModrinthSearchHit): SearchResultItem {
 }
 
 export function mapVersion(version: ModrinthVersion): ProjectVersion | null {
-  const file = version.files.find((f) => f.primary) ?? version.files[0]
+  // Returning null drops just this version; reading the arrays unguarded threw
+  // out of `getVersions` and made the entire project unopenable because one
+  // legacy entry was missing a field.
+  const files = Array.isArray(version.files) ? version.files : []
+  const file = files.find((f) => f.primary) ?? files[0]
   if (!file) return null
 
-  const dependencies: ContentDependency[] = version.dependencies
+  const dependencies: ContentDependency[] = (version.dependencies ?? [])
     .filter((d) => d.project_id)
     .map((d) => ({
       projectId: d.project_id as string,
@@ -215,7 +222,11 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
   })
 
   const response = await fetchJson<ModrinthSearchResponse>(`${API}/search?${params.toString()}`)
-  return { items: response.hits.map(mapHit), total: response.total_hits }
+  // Cast, not validated — a changed or partial body would otherwise throw on
+  // `.map` and take the whole merged search down with it, instead of leaving
+  // the other provider's results standing.
+  const hits = Array.isArray(response.hits) ? response.hits : []
+  return { items: hits.map(mapHit), total: response.total_hits ?? hits.length }
 }
 
 export async function getProject(projectId: string): Promise<ProjectDetails> {

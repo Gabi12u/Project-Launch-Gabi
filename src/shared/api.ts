@@ -34,6 +34,14 @@ import type {
   UpdateStatus
 } from './types'
 
+/**
+ * What `onInstanceChanged` delivers. A create or update sends the full summary;
+ * a delete has nothing left to describe and sends only the id.
+ */
+export type InstanceChange =
+  | (InstanceSummary & { deleted?: false })
+  | { id: string; deleted: true }
+
 export interface AppInfo {
   version: string
   electron: string
@@ -117,6 +125,12 @@ export interface GabiApi {
     update(id: string, patch: Partial<Instance>): Promise<Instance>
     remove(id: string): Promise<InstanceSummary[]>
     duplicate(id: string, name?: string): Promise<Instance>
+    /**
+     * Takes over an instance folder written by another launcher (Prism,
+     * MultiMC) or a plain `.minecraft`. Opens a folder picker when no path is
+     * given, and resolves to `null` when the user cancels.
+     */
+    importFolder(sourceDir?: string): Promise<Instance | null>
     openFolder(id: string, sub?: string): Promise<string>
     /** `iconImages` are PNG data URLs the renderer draws for the .ico file. */
     createShortcut(id: string, iconImages?: string[]): Promise<string>
@@ -210,7 +224,12 @@ export interface GabiApi {
   }
   events: {
     onTask(fn: (task: TaskProgress) => void): Unsubscribe
-    onInstanceChanged(fn: (summary: InstanceSummary & { deleted?: boolean }) => void): Unsubscribe
+    /**
+     * A delete carries only the id — the instance is gone, so there is no
+     * summary left to send. Modelled as a union rather than an optional flag
+     * so a listener has to narrow on `deleted` before reading any other field.
+     */
+    onInstanceChanged(fn: (change: InstanceChange) => void): Unsubscribe
     onLaunchStatus(fn: (status: LaunchStatus) => void): Unsubscribe
     onLogLine(fn: (line: LogLine) => void): Unsubscribe
     onDeviceCode(fn: (prompt: DeviceCodePrompt | null) => void): Unsubscribe

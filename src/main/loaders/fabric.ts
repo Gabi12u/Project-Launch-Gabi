@@ -40,12 +40,26 @@ export async function listFabricLikeVersions(
     return []
   }
 
-  return entries.map((entry) => ({
-    version: entry.loader.version,
-    // Quilt marks beta builds through the version string rather than the flag.
-    stable: entry.loader.stable && !entry.loader.version.includes('beta'),
-    gameVersion: mcVersion
-  }))
+  // `fetchJsonCached` casts without checking, so a 200 carrying anything other
+  // than the expected array (a maintenance page, a CDN error body, a future
+  // API change) used to reach `.map` outside the try above and throw a raw
+  // TypeError — and the bad body stayed in the disk cache for half an hour,
+  // repeating the crash long after the API recovered.
+  if (!Array.isArray(entries)) {
+    logger.warn(`Unerwartete Antwort der ${loader}-API für ${mcVersion}`)
+    return []
+  }
+
+  return entries
+    .filter((entry) => typeof entry?.loader?.version === 'string')
+    .map((entry) => ({
+      version: entry.loader.version,
+      // Quilt marks prerelease builds through the version string rather than
+      // the flag, and not only with "beta" — an "-rc"/"-pre" build published
+      // with `stable: true` would otherwise be offered as a stable choice.
+      stable: entry.loader.stable && !/-?(beta|alpha|rc|pre)/i.test(entry.loader.version),
+      gameVersion: mcVersion
+    }))
 }
 
 /** True when this loader has any build for the given Minecraft version. */

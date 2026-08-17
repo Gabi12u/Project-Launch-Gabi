@@ -1,7 +1,7 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { extname, join } from 'node:path'
+import { extname, resolve, sep } from 'node:path'
 import { totalmem } from 'node:os'
 import { IPC } from '@shared/ipc'
 import type {
@@ -14,7 +14,7 @@ import type {
   LoaderId,
   SearchQuery
 } from '@shared/types'
-import { ensureRootLayout, paths } from './paths'
+import { ensureRootLayout, paths, safeJoin } from './paths'
 import { getSettings, resetSettings, saveSettings } from './store'
 import { getMainWindow, notify } from './events'
 import { log, getLogDirectory } from './logger'
@@ -29,6 +29,7 @@ import {
   duplicateInstance,
   getInstance,
   installInstance,
+  invalidateInstanceCache,
   listScreenshots,
   listSummaries,
   listWorlds,
@@ -38,7 +39,14 @@ import {
   toggleContent,
   updateInstance
 } from './core/instances'
-import { getLogBuffer, getStatus, launchInstance, preflight, stopInstance } from './core/launch'
+import {
+  dropLogBuffer,
+  getLogBuffer,
+  getStatus,
+  launchInstance,
+  preflight,
+  stopInstance
+} from './core/launch'
 import {
   applyFix,
   applyUpdate,
@@ -52,6 +60,7 @@ import { checkCompatibility } from './core/compat'
 import { createBackup, deleteBackup, listBackups, restoreBackup, backupFolder } from './core/backups'
 import { repairInstance } from './core/repair'
 import { exportMrpack, importModpack, installModpackFromProvider } from './core/modpack'
+import { importInstanceFolder } from './core/instanceFolder'
 import { createDesktopShortcut } from './core/shortcuts'
 import { getCategories, getProject, getVersions, searchAll } from './providers'
 import {
@@ -82,6 +91,26 @@ function handle<T extends unknown[], R>(
       throw new Error(message)
     }
   })
+}
+
+/**
+ * Opens a path with the OS shell, but only inside launcher-owned folders.
+ *
+ * `shell.openPath` hands the target to the shell's default handler, which on
+ * Windows *runs* an .exe or .bat instead of opening it. Everything the
+ * renderer legitimately opens — data directory, logs, worlds, screenshots,
+ * backups — lives under one of these two roots, so anything else is refused
+ * rather than executed.
+ */
+function openLauncherPath(target: string): Promise<string> {
+  const resolved = resolve(target)
+  const roots = [paths.root(), getLogDirectory()].map((dir) => resolve(dir))
+
+  const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir + sep))
+  if (!inside) {
+    throw new Error('Dieser Pfad liegt außerhalb der Launcher-Ordner.')
+  }
+  return shell.openPath(resolved)
 }
 
 export function registerIpc(): void {
@@ -120,7 +149,7 @@ export function registerIpc(): void {
     return shell.openExternal(url)
   })
 
-  handle(IPC.appOpenPath, (path: string) => shell.openPath(path))
+  handle(IPC.appOpenPath, (path: string) => openLauncherPath(path))
 
   handle(IPC.appPickDirectory, async (title?: string) => {
     const win = getMainWindow()
@@ -156,10 +185,16 @@ export function registerIpc(): void {
     const previous = getSettings()
     const next = saveSettings(patch)
 
-    if (patch.dataDirectory && patch.dataDirectory !== previous.dataDirectory) {
+    // Compared against the stored result rather than the patch: `saveSettings`
+    // refuses an empty directory and keeps the previous one, and reacting to
+    // the patch alone would invalidate caches for a move that never happened.
+    if (next.dataDirectory !== previous.dataDirectory) {
       ensureRootLayout()
       invalidateJavaCache()
-      logger.info(`Datenverzeichnis gewechselt zu ${patch.dataDirectory}`)
+      // Every `paths.*()` call resolves against the new root from here on, so
+      // anything still holding instances read out of the old one has to go.
+      invalidateInstanceCache()
+      logger.info(`Datenverzeichnis gewechselt zu ${next.dataDirectory}`)
     }
     return next
   })
@@ -189,14 +224,38 @@ export function registerIpc(): void {
 
   handle(IPC.instanceDelete, (id: string) => {
     deleteInstance(id)
+    // Only after the delete succeeded — it throws when the folder is locked,
+    // and the instance is then still there with its log worth keeping.
+    dropLogBuffer(id)
     return listSummaries()
   })
 
   handle(IPC.instanceDuplicate, (id: string, name?: string) => duplicateInstance(id, name))
 
+  handle(IPC.instanceImportFolder, async (sourceDir?: string) => {
+    let target = sourceDir
+    if (!target) {
+      const win = getMainWindow()
+      // A folder, not a file: the modpack picker cannot select one, which is
+      // why an instance that already exists on disk had no way in at all.
+      const result = await dialog.showOpenDialog(win as BrowserWindow, {
+        title: 'Instanz-Ordner auswählen',
+        message: 'Wähle den Ordner einer Instanz (Prism, MultiMC oder ein .minecraft-Ordner).',
+        buttonLabel: 'Importieren',
+        properties: ['openDirectory']
+      })
+      if (result.canceled) return null
+      target = result.filePaths[0]
+    }
+    return importInstanceFolder(target)
+  })
+
   handle(IPC.instanceOpenFolder, (id: string, sub?: string) => {
-    const target = sub ? join(paths.gameDir(id), sub) : paths.gameDir(id)
-    return shell.openPath(existsSync(target) ? target : paths.instance(id))
+    // Both arguments come from the renderer, so `sub` goes through safeJoin and
+    // the result is checked against the launcher root by openLauncherPath.
+    const gameDir = paths.gameDir(id)
+    const target = sub ? safeJoin(gameDir, sub) : gameDir
+    return openLauncherPath(existsSync(target) ? target : paths.instance(id))
   })
 
   handle(IPC.instanceCreateShortcut, (id: string, iconImages?: string[]) => {
@@ -460,7 +519,7 @@ export function registerIpc(): void {
     return listBackups(instanceId)
   })
 
-  handle(IPC.backupOpenFolder, (instanceId: string) => shell.openPath(backupFolder(instanceId)))
+  handle(IPC.backupOpenFolder, (instanceId: string) => openLauncherPath(backupFolder(instanceId)))
 
   /* ---------------------------------------------------------------- *
    * News & tasks

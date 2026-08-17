@@ -1,11 +1,11 @@
 import { useMemo, useState, type JSX } from 'react'
 import type { LoaderId } from '@shared/types'
 import { setState, useStore } from '../lib/store'
-import { importModpack } from '../lib/actions'
+import { importInstanceFolder, importModpack } from '../lib/actions'
 import { LOADER_LABELS } from '../lib/format'
 import { InstanceCard } from '../components/InstanceCard'
 import { EmptyState, Segmented } from '../components/ui'
-import { IconCube, IconDownload, IconPlus, IconSearch } from '../components/Icons'
+import { IconCube, IconDownload, IconFolder, IconPlus, IconSearch } from '../components/Icons'
 
 type SortKey = 'recent' | 'name' | 'created' | 'played'
 
@@ -72,9 +72,21 @@ export function InstancesView(): JSX.Element {
           </p>
         </div>
         <div className="row gap-8">
-          <button className="btn" onClick={() => void importModpack()}>
+          <button
+            className="btn"
+            onClick={() => void importModpack()}
+            title="Ein .mrpack oder ein CurseForge-Zip einlesen"
+          >
             <IconDownload size={16} />
-            Importieren
+            Modpack
+          </button>
+          <button
+            className="btn"
+            onClick={() => void importInstanceFolder()}
+            title="Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen"
+          >
+            <IconFolder size={16} />
+            Ordner
           </button>
           <button className="btn primary" onClick={() => setState({ createOpen: true })}>
             <IconPlus size={16} />

@@ -11,7 +11,7 @@ import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './i
 import { contentFilePath } from './content'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
-import { isRunning } from './running'
+import { activeVersionIds, isRunning } from './running'
 
 const logger = log('repair')
 
@@ -33,6 +33,13 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   }
 
   const instance = getInstance(instanceId)
+
+  // The install started in the background at creation time downloads the very
+  // files this would verify and delete, and both write the instance record at
+  // the end — the loser's `installed` flag then describes the other one's work.
+  if (instance.installing) {
+    throw new Error('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.')
+  }
 
   return withTask(`${instance.name} wird repariert`, 'Prüfung startet…', instanceId, async (task) => {
     const report: RepairReport = {
@@ -96,26 +103,41 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
       if (library.download) items.push(library.download)
     }
 
-    let broken = 0
-    for (const item of items) {
-      report.checkedFiles++
-      if (!(await isSatisfied(item))) {
-        broken++
-        // A corrupt file must go, otherwise the downloader trusts its size.
-        rmSync(item.path, { force: true })
+    // The client jar, the libraries and the natives folder belong to the
+    // *version*, not to this instance — a second instance on the same version
+    // may have them open right now. Deleting and re-fetching them underneath a
+    // running game pulls loaded jars and DLLs away mid-session, so those steps
+    // stand down rather than break someone else's session.
+    const versionBusy = activeVersionIds().includes(versionId)
+
+    if (versionBusy) {
+      step(
+        'Minecraft & Bibliotheken',
+        'failed',
+        'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.'
+      )
+    } else {
+      let broken = 0
+      for (const item of items) {
+        report.checkedFiles++
+        if (!(await isSatisfied(item))) {
+          broken++
+          // A corrupt file must go, otherwise the downloader trusts its size.
+          rmSync(item.path, { force: true })
+        }
       }
+
+      task.span(0.15, 0.55)
+      await downloadAll(items, { task, label: 'Beschädigte Dateien' })
+      task.span(0, 1)
+      report.repairedFiles += broken
+
+      step(
+        'Minecraft & Bibliotheken',
+        broken > 0 ? 'repaired' : 'ok',
+        broken > 0 ? `${broken} von ${items.length} Dateien erneuert` : `${items.length} Dateien in Ordnung`
+      )
     }
-
-    task.span(0.15, 0.55)
-    await downloadAll(items, { task, label: 'Beschädigte Dateien' })
-    task.span(0, 1)
-    report.repairedFiles += broken
-
-    step(
-      'Minecraft & Bibliotheken',
-      broken > 0 ? 'repaired' : 'ok',
-      broken > 0 ? `${broken} von ${items.length} Dateien erneuert` : `${items.length} Dateien in Ordnung`
-    )
 
     // 4. Assets --------------------------------------------------------
     task.update('Assets werden geprüft…', 0.6)
@@ -130,9 +152,13 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
 
     // 5. Natives -------------------------------------------------------
     task.update('Natives werden erneuert…', 0.82)
-    rmSync(paths.natives(versionId), { recursive: true, force: true })
-    mkdirSync(paths.natives(versionId), { recursive: true })
-    step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+    if (versionBusy) {
+      step('Natives', 'failed', 'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.')
+    } else {
+      rmSync(paths.natives(versionId), { recursive: true, force: true })
+      mkdirSync(paths.natives(versionId), { recursive: true })
+      step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+    }
 
     // 6. Content files -------------------------------------------------
     task.update('Mods werden geprüft…', 0.86)
@@ -228,27 +254,47 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   })
 }
 
-/** Removes leftovers from interrupted downloads and crashed sessions. */
-function cleanTempFiles(instanceId: string): void {
-  const gameDir = paths.gameDir(instanceId)
-  if (!existsSync(gameDir)) return
+/**
+ * Removes leftovers from interrupted downloads and crashed sessions.
+ *
+ * The shared folders are swept too, not just the instance's own: `fetchToFile`
+ * writes its `.part` files next to the destination, and the bulk of those
+ * destinations are the shared libraries, assets and version trees. Quitting or
+ * crashing mid-install used to strand them there with no code path — automatic
+ * or manual — that would ever remove them.
+ */
+export function cleanTempFiles(instanceId?: string): number {
+  const roots = [paths.libraries(), paths.assets(), paths.versions(), paths.cache()]
+  if (instanceId) roots.unshift(paths.gameDir(instanceId))
 
-  const stack = [gameDir]
+  let removed = 0
+  const stack = [...roots]
+
   while (stack.length > 0) {
     const dir = stack.pop()
     if (!dir || !existsSync(dir)) continue
 
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const full = join(dir, entry.name)
-      if (entry.isDirectory()) {
-        stack.push(full)
-        continue
+    try {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          stack.push(full)
+          continue
+        }
+        if (entry.name.endsWith('.part') || entry.name.endsWith('.tmp')) {
+          try {
+            rmSync(full, { force: true })
+            removed++
+          } catch {
+            // A download still in flight holds its own temp file open.
+          }
+        }
       }
-      if (entry.name.endsWith('.part') || entry.name.endsWith('.tmp')) {
-        rmSync(full, { force: true })
-      }
+    } catch {
+      // unreadable directory
     }
   }
+  return removed
 }
 
 /** Disk usage of the whole launcher data folder, for the settings screen. */

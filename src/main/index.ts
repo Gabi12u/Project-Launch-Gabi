@@ -1,4 +1,4 @@
-import { BrowserWindow, app, nativeTheme, shell } from 'electron'
+import { BrowserWindow, app, dialog, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
@@ -7,6 +7,8 @@ import { getSettings } from './store'
 import { emit, navigate, notify, setMainWindow } from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
+import { adoptRunningFromDisk } from './core/running'
+import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
@@ -62,7 +64,10 @@ function createWindow(): BrowserWindow {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      // The preload only touches `contextBridge` and `ipcRenderer`, so nothing
+      // here needs the unsandboxed Node access that turning this off buys —
+      // it would only widen the blast radius of a renderer-side compromise.
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       // The renderer loads mod icons straight from Modrinth/CurseForge CDNs.
@@ -84,14 +89,30 @@ function createWindow(): BrowserWindow {
 
   // External links never open inside the app window.
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+    if (/^https?:\/\//i.test(url)) {
+      // A machine with no default browser association rejects this, and an
+      // unhandled rejection here would take the launcher down over a link click.
+      void shell.openExternal(url).catch((err: unknown) => {
+        logger.error(`Link konnte nicht geöffnet werden (${url}):`, err)
+      })
+    }
     return { action: 'deny' }
   })
 
+  const failedToLoad = (err: unknown): void => {
+    // A missing or quarantined renderer bundle would otherwise reject silently
+    // and leave the user with an invisible window and nothing in the log.
+    logger.error('Oberfläche konnte nicht geladen werden:', err)
+    dialog.showErrorBox(
+      'Launch Gabi konnte nicht starten',
+      'Die Programmoberfläche konnte nicht geladen werden. Eine Neuinstallation behebt das in der Regel.'
+    )
+  }
+
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
-    void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    void window.loadURL(process.env['ELECTRON_RENDERER_URL']).catch(failedToLoad)
   } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadFile(join(__dirname, '../renderer/index.html')).catch(failedToLoad)
   }
 
   // F12 opens the devtools in development; Ctrl+R reloads the renderer.
@@ -111,6 +132,17 @@ function createWindow(): BrowserWindow {
  * ------------------------------------------------------------------ */
 
 function bootstrap(): void {
+  // Without these, any stray rejection or throw anywhere in the main process
+  // terminates the launcher outright — taking every running download and the
+  // window with it. Logging and carrying on is nearly always the better trade
+  // for a desktop app the user has work open in.
+  process.on('uncaughtException', (err) => {
+    logger.error('Unbehandelter Fehler im Hauptprozess:', err)
+  })
+  process.on('unhandledRejection', (reason) => {
+    logger.error('Unbehandelte Promise-Ablehnung im Hauptprozess:', reason)
+  })
+
   app.on('open-url', (event, url) => {
     event.preventDefault()
     handleDeepLink(url)
@@ -129,7 +161,17 @@ function bootstrap(): void {
 
     registerProtocol()
     registerIpc()
-    loadInstances()
+    // Before the instances are read, so their `running` flag reflects a game
+    // the previous session left behind rather than claiming nothing is up.
+    adoptRunningFromDisk()
+    try {
+      loadInstances()
+    } catch (err) {
+      // The data directory can sit on a disconnected network drive or an
+      // unhydrated cloud folder. Starting with an empty list beats dying before
+      // a window ever appears, with only a log line to show for it.
+      logger.error('Instanzen konnten nicht geladen werden:', err)
+    }
 
     createWindow()
     handleStartupArgs(process.argv)
@@ -142,6 +184,16 @@ function bootstrap(): void {
     setTimeout(() => {
       // Starts the background check; failures only ever land in the log.
       initUpdater()
+
+      // A quit or crash during a download strands its `.part` file, and nothing
+      // else ever sweeps the shared library/asset trees where most of them land.
+      try {
+        const removed = cleanTempFiles()
+        if (removed > 0) logger.info(`${removed} unterbrochene Downloads aufgeräumt`)
+      } catch (err) {
+        logger.warn('Aufräumen unterbrochener Downloads fehlgeschlagen:', err)
+      }
+
       void runStartupChecks()
       void consumePendingLaunch()
     }, 1200)
@@ -154,7 +206,9 @@ function bootstrap(): void {
   app.on('before-quit', () => {
     disposeUpdater()
     // Minecraft keeps running on its own; only stop it if the user asked us to.
-    if (getSettings().launchBehaviour === 'close') stopAll()
+    // Killed outright rather than gracefully: the escalation timer inside
+    // `stopInstance` would die with this process before it could ever fire.
+    if (getSettings().launchBehaviour === 'close') stopAll(true)
   })
 }
 

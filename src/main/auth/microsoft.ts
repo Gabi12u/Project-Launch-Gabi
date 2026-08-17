@@ -135,10 +135,17 @@ function json(body: unknown, headers: Record<string, string> = {}): RequestInit 
   }
 }
 
-let activeLogin: { cancelled: boolean } | null = null
+/**
+ * Every login whose poll loop has not exited yet.
+ *
+ * A single slot meant a second login attempt silently orphaned the first: its
+ * loop kept polling, unreachable by `cancelLogin`, and could still push its
+ * own (expired) device code over the one the user was looking at.
+ */
+const activeLogins = new Set<{ cancelled: boolean }>()
 
 export function cancelLogin(): void {
-  if (activeLogin) activeLogin.cancelled = true
+  for (const session of activeLogins) session.cancelled = true
 }
 
 /**
@@ -154,7 +161,10 @@ export async function loginWithMicrosoft(): Promise<Account> {
   }
 
   const session = { cancelled: false }
-  activeLogin = session
+  // Starting a new login retires any older one, so only the code currently on
+  // screen belongs to a loop that is still allowed to talk to the UI.
+  for (const previous of activeLogins) previous.cancelled = true
+  activeLogins.add(session)
 
   const endpoints = endpointsFor(clientId)
   logger.info(`Anmeldung über ${endpoints.kind === 'live' ? 'login.live.com' : 'Azure AD'}`)
@@ -182,7 +192,7 @@ export async function loginWithMicrosoft(): Promise<Account> {
     emit(EVENTS.deviceCode, null)
     return account
   } finally {
-    if (activeLogin === session) activeLogin = null
+    activeLogins.delete(session)
   }
 }
 
@@ -276,7 +286,11 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
         TokenType: 'JWT'
       })
     )
-    return { token: xsts.Token, uhs: xsts.DisplayClaims.xui[0].uhs }
+    const uhs = xsts.DisplayClaims?.xui?.[0]?.uhs
+    // Same guard as `xboxLogin`: a 200 with an unexpected body shape would
+    // otherwise surface as a raw TypeError instead of a readable message.
+    if (!uhs) throw new Error('XSTS hat keine Benutzerkennung geliefert')
+    return { token: xsts.Token, uhs }
   } catch (err) {
     if (err instanceof HttpError && err.status === 401) {
       throw new Error(
@@ -299,16 +313,24 @@ async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
 
   // A missing entitlement means the account does not own the game; the profile
   // request below would fail with a confusing 404 otherwise.
+  // The answer is kept apart from whether we got one at all. Telling the two
+  // cases apart used to rely on the German word "Lizenz" appearing in the
+  // thrown message, so a timeout, a 429 or an edit to that message text would
+  // silently disable the check.
+  let owned: boolean | null = null
   try {
     const entitlements = await fetchJson<{ items: { name: string }[] }>(MC_ENTITLEMENTS_URL, {
       headers: { Authorization: `Bearer ${mc.access_token}` }
     })
-    if (!entitlements.items || entitlements.items.length === 0) {
-      throw new Error('Dieses Konto besitzt keine Minecraft-Java-Edition-Lizenz.')
-    }
+    owned = Boolean(entitlements.items?.length)
   } catch (err) {
-    if (err instanceof Error && err.message.includes('Lizenz')) throw err
+    // A transient failure is no evidence either way, so the check is skipped
+    // rather than turned into a false "no licence".
     logger.warn('Lizenzprüfung übersprungen:', err)
+  }
+
+  if (owned === false) {
+    throw new Error('Dieses Konto besitzt keine Minecraft-Java-Edition-Lizenz.')
   }
 
   const profile = await fetchJson<MinecraftProfile>(MC_PROFILE_URL, {
@@ -362,12 +384,45 @@ function formatUuid(raw: string): string {
  * Refresh
  * ------------------------------------------------------------------ */
 
+/**
+ * Account id -> in-flight refresh.
+ *
+ * A refresh token is single use: the moment one grant succeeds, Microsoft
+ * invalidates the token the other caller is still holding. Two concurrent
+ * calls — launching while the account panel validates the same session is
+ * enough — would leave the loser with `invalid_grant` and send the user
+ * through a full re-login for nothing.
+ */
+const refreshing = new Map<string, Promise<string>>()
+
 /** Returns a valid Minecraft access token, refreshing it when needed. */
 export async function getValidAccessToken(accountId: string): Promise<string> {
   const accounts = readAccounts()
   const account = accounts.find((a) => a.id === accountId)
   if (!account) throw new Error('Account nicht gefunden')
   if (account.type === 'offline') return ''
+
+  const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
+  if (stillValid && account.accessToken) {
+    return decrypt(account.accessToken, account.secure)
+  }
+
+  const running = refreshing.get(accountId)
+  if (running) return running
+
+  const run = refreshAccessToken(accountId).finally(() => {
+    refreshing.delete(accountId)
+  })
+  refreshing.set(accountId, run)
+  return run
+}
+
+async function refreshAccessToken(accountId: string): Promise<string> {
+  // Re-read rather than reusing the caller's snapshot: whoever won a race for
+  // this account may have written fresh tokens while we were queued.
+  const accounts = readAccounts()
+  const account = accounts.find((a) => a.id === accountId)
+  if (!account) throw new Error('Account nicht gefunden')
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {

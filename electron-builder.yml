@@ -8,13 +8,23 @@ directories:
 
 files:
   - '!**/.vscode/*'
-  - '!src/*'
+  # `src/*` only matches direct children, and nothing lives directly in src/ —
+  # so this excluded nothing and the whole uncompiled TypeScript tree shipped
+  # inside app.asar next to the built output in every installer.
+  - '!src/**'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 
 asarUnpack:
   - resources/**
+
+# `build/` is the buildResources folder, which electron-builder excludes from
+# the package — so the icon desktop shortcuts point at was never shipped and
+# `appIconPath()` in src/main/core/shortcuts.ts found nothing in a real install.
+extraResources:
+  - from: build/icon.ico
+    to: icon.ico
 
 win:
   executableName: LaunchGabi

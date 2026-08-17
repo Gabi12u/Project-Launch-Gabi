@@ -32,7 +32,19 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
   if (version.javaVersion?.majorVersion) return version.javaVersion.majorVersion
 
   // Snapshot ids ("24w14a") carry no dotted version at all. Treating them as
-  // "1.0" used to fall through every threshold and demand Java 8.
+  // "1.0" used to fall through every threshold and demand Java 8 — but the
+  // two-digit year in front says which era they belong to, so an old snapshot
+  // no longer gets handed a JVM that cannot run it.
+  const snapshot = /^(\d{2})w\d{2}[a-z]?$/i.exec(mcVersion.trim())
+  if (snapshot) {
+    const year = Number(snapshot[1])
+    // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) in the 21w3x range;
+    // 1.17 (Java 16) in 21w03a. Anything older than that predates the bump.
+    if (year >= 24) return 21
+    if (year >= 22) return 17
+    if (year === 21) return 16
+    return 8
+  }
   if (!/^\d+\.\d+/.test(mcVersion.trim())) return 21
 
   const parts = mcVersion.split('.')
@@ -423,15 +435,29 @@ export async function resolveJava(options: {
   }
 
   if (!autoManage) {
-    // Fall back to the closest newer runtime rather than refusing to start.
-    const newer = preferred.filter((r) => r.major > major).sort((a, b) => a.major - b.major)[0]
+    // Fall back to the closest newer runtime rather than refusing to start —
+    // but only within a range that actually still runs the game. Java 9 removed
+    // the reflective access pre-1.13 Forge depends on, so handing a Java 8
+    // instance a Java 21 (the only JVM many machines have in 2026) produced a
+    // guaranteed crash dressed up as a successful launch. Refusing with an
+    // actionable message beats that.
+    const LIMIT = 4
+    const newer = preferred
+      .filter((r) => r.major > major && r.major <= major + LIMIT)
+      .sort((a, b) => a.major - b.major)[0]
+
     if (newer) {
       logger.warn(`Kein Java ${major} gefunden, nutze Java ${newer.major}`)
       return newer
     }
+
+    const closest = preferred.sort((a, b) => a.major - b.major)[0]
     throw new Error(
-      `Für diese Version wird Java ${major} benötigt, es wurde aber keine passende Installation gefunden. ` +
-        `Aktiviere die automatische Java-Verwaltung in den Einstellungen.`
+      `Für diese Version wird Java ${major} benötigt.` +
+        (closest
+          ? ` Gefunden wurde nur Java ${preferred.map((r) => r.major).join(', ')}, das damit nicht läuft.`
+          : ' Es wurde keine Java-Installation gefunden.') +
+        ` Aktiviere die automatische Java-Verwaltung in den Einstellungen oder installiere Java ${major}.`
     )
   }
 

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MinecraftVersion } from '@shared/types'
-import { paths } from '../paths'
+import { paths, safeJoin } from '../paths'
 import { writeJsonAtomic } from '../store'
 import { downloadAll, downloadFile, fetchJson, fetchJsonCached, type DownloadItem } from './net'
 import type { Task } from '../tasks'
@@ -12,6 +12,9 @@ const logger = log('mojang')
 
 const VERSION_MANIFEST = 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json'
 const RESOURCES_BASE = 'https://resources.download.minecraft.net'
+
+/** Asset objects are stored under their sha1, so nothing else is accepted. */
+const ASSET_HASH = /^[a-f0-9]{40}$/i
 
 /* ------------------------------------------------------------------ *
  * Mojang JSON shapes
@@ -307,6 +310,26 @@ export interface ResolvedLibrary {
   excludes: string[]
 }
 
+/**
+ * Builds the download URL for a library that ships no `downloads` block.
+ *
+ * These entries carry neither sha1 nor size, so `fetchToFile` has nothing to
+ * verify the response against and writes whatever the server hands back — into
+ * a jar that then lands on the classpath. TLS is the only guarantee left, so a
+ * plain-http maven is upgraded rather than trusted, and anything that is not
+ * http(s) at all is refused.
+ */
+function mavenUrl(base: string, relative: string): string {
+  const url = `${base.replace(/\/$/, '')}/${relative}`
+
+  if (/^https:\/\//i.test(url)) return url
+  if (/^http:\/\//i.test(url)) {
+    logger.warn(`Bibliothek ohne Prüfsumme wird über HTTPS statt HTTP geladen: ${url}`)
+    return url.replace(/^http:\/\//i, 'https://')
+  }
+  throw new Error(`Bibliothek verweist auf ein unerwartetes Protokoll: ${url}`)
+}
+
 export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
   const resolved: ResolvedLibrary[] = []
   const seen = new Set<string>()
@@ -319,7 +342,11 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     native: boolean
   ): void => {
     const relative = artifact?.path ?? mavenToPath(library.name, classifier ?? undefined)
-    const absolute = join(paths.libraries(), ...relative.split('/'))
+    // `relative` comes out of a downloaded manifest, and for modded instances
+    // that is a loader's install profile rather than Mojang's own JSON. Pinning
+    // it into the libraries folder stops a crafted entry such as
+    // "../../../autostart/evil.jar" from writing wherever it likes.
+    const absolute = safeJoin(paths.libraries(), relative)
 
     const key = `${relative}|${classifier ?? ''}`
     if (seen.has(key)) return
@@ -329,11 +356,11 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     if (artifact?.url) {
       download = { url: artifact.url, path: absolute, sha1: artifact.sha1, size: artifact.size }
     } else if (library.url) {
-      download = { url: `${library.url.replace(/\/$/, '')}/${relative}`, path: absolute }
+      download = { url: mavenUrl(library.url, relative), path: absolute }
     } else if (!artifact) {
       // Forge installers place some libraries on disk themselves; if they are
       // still missing, Mojang's maven mirror is the best guess.
-      download = { url: `https://libraries.minecraft.net/${relative}`, path: absolute }
+      download = { url: mavenUrl('https://libraries.minecraft.net', relative), path: absolute }
     }
 
     resolved.push({
@@ -435,12 +462,19 @@ export async function installAssets(version: VersionJson, task?: Task): Promise<
   const index = JSON.parse(await readFile(indexFile, 'utf8')) as AssetIndex
   const objects = Object.values(index.objects ?? {})
 
-  const items: DownloadItem[] = objects.map((obj) => ({
-    url: `${RESOURCES_BASE}/${obj.hash.slice(0, 2)}/${obj.hash}`,
-    path: join(paths.assetObjects(), obj.hash.slice(0, 2), obj.hash),
-    sha1: obj.hash,
-    size: obj.size
-  }))
+  const items: DownloadItem[] = objects.map((obj) => {
+    // The hash is both the URL and the file name on disk, so a crafted index
+    // could otherwise steer the write out of the objects folder.
+    if (!ASSET_HASH.test(obj.hash)) {
+      throw new Error(`Ungültiger Asset-Hash im Index "${version.assetIndex?.id}": "${obj.hash}"`)
+    }
+    return {
+      url: `${RESOURCES_BASE}/${obj.hash.slice(0, 2)}/${obj.hash}`,
+      path: join(paths.assetObjects(), obj.hash.slice(0, 2), obj.hash),
+      sha1: obj.hash,
+      size: obj.size
+    }
+  })
 
   await downloadAll(items, { task, label: 'Spiel-Assets' })
   logger.info(`Assets für Index ${version.assetIndex.id} vollständig (${objects.length} Objekte)`)
@@ -456,8 +490,11 @@ export async function buildVirtualAssets(version: VersionJson, targetDir: string
   if (!index.virtual && !index.map_to_resources) return
 
   for (const [name, obj] of Object.entries(index.objects ?? {})) {
+    if (!ASSET_HASH.test(obj.hash)) continue
     const source = join(paths.assetObjects(), obj.hash.slice(0, 2), obj.hash)
-    const dest = join(targetDir, ...name.split('/'))
+    // `name` is an index key, so it is pinned into the virtual tree the same
+    // way modpack overrides are.
+    const dest = safeJoin(targetDir, name)
     if (!existsSync(source) || existsSync(dest)) continue
     await mkdir(dirname(dest), { recursive: true })
     await copyFile(source, dest)

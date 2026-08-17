@@ -161,6 +161,17 @@ export async function createBackup(
   )
 }
 
+/**
+ * Backups that must survive a prune because a restore is currently reading one.
+ *
+ * `restoreBackup` takes a safety copy of the present state first, and every
+ * `createBackup` prunes the oldest automatic entries afterwards. Restoring the
+ * *oldest* automatic backup therefore used to delete that very archive moments
+ * before it was unpacked — deterministically, as soon as the keep limit was
+ * reached, destroying the restore point the user had just picked.
+ */
+const inUse = new Set<string>()
+
 /** Keeps only the newest N automatic backups. */
 function pruneAutomatic(instanceId: string): void {
   const keep = getSettings().automaticBackupKeep
@@ -168,7 +179,7 @@ function pruneAutomatic(instanceId: string): void {
 
   const entries = readIndex(instanceId)
   const automatic = entries.filter((e) => e.reason === 'automatic').sort((a, b) => b.createdAt - a.createdAt)
-  const excess = automatic.slice(keep)
+  const excess = automatic.slice(keep).filter((e) => !inUse.has(e.id))
 
   if (excess.length === 0) return
 
@@ -195,91 +206,120 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
   const instance = getInstance(instanceId)
   const includes = entry.includes?.length ? entry.includes : ['saves', 'config']
 
-  await withTask(
-    `Sicherung wird eingespielt`,
-    `${entry.name} wird wiederhergestellt…`,
-    instanceId,
-    async (task) => {
-      // 1. Prove the archive is readable BEFORE touching a single game file.
-      // `existsSync` above only says the file is there, not that it is intact.
-      task.update('Sicherung wird geprüft…', null)
-      let entryCount = 0
-      try {
-        entryCount = listEntries(archive).length
-      } catch (err) {
-        throw new Error(
-          `Die Sicherung ist beschädigt und wurde nicht eingespielt. Deine Daten sind unverändert. (${
-            err instanceof Error ? err.message : String(err)
-          })`
-        )
-      }
-      if (entryCount === 0) {
-        throw new Error('Die Sicherung ist leer und wurde nicht eingespielt. Deine Daten sind unverändert.')
-      }
-
-      // 2. Safety net. A failure here used to be logged and ignored, which is
-      // exactly the situation where the restore must NOT continue.
-      task.update('Aktueller Stand wird gesichert…', null)
-      const hasCurrentData = includes.some((key) => existsSync(join(paths.gameDir(instanceId), key)))
-      if (hasCurrentData) {
+  // Held for the whole restore, not just the safety-copy step: the archive is
+  // not opened until `extractAll` near the end.
+  inUse.add(entry.id)
+  try {
+    await withTask(
+      `Sicherung wird eingespielt`,
+      `${entry.name} wird wiederhergestellt…`,
+      instanceId,
+      async (task) => {
+        // 1. Prove the archive is readable BEFORE touching a single game file.
+        // `existsSync` above only says the file is there, not that it is intact.
+        task.update('Sicherung wird geprüft…', null)
+        let entryCount = 0
         try {
-          await createBackup(instanceId, {
-            name: `Automatisch vor Wiederherstellung`,
-            reason: 'automatic',
-            includes
-          })
+          entryCount = listEntries(archive).length
         } catch (err) {
           throw new Error(
-            `Die Sicherheitskopie des aktuellen Stands ist fehlgeschlagen, deshalb wurde nichts ` +
-              `überschrieben. Deine Daten sind unverändert. (${
-                err instanceof Error ? err.message : String(err)
-              })`
+            `Die Sicherung ist beschädigt und wurde nicht eingespielt. Deine Daten sind unverändert. (${
+              err instanceof Error ? err.message : String(err)
+            })`
           )
         }
-      }
-
-      task.update('Dateien werden zurückgespielt…', null)
-      const gameDir = paths.gameDir(instanceId)
-
-      // 3. Move the current folders aside instead of deleting them, so a failed
-      // extraction can be rolled back. Deleted files still disappear, because
-      // the folders are gone before the archive is unpacked.
-      const parked = join(paths.instanceBackups(instanceId), `restore-${randomUUID().slice(0, 8)}`)
-      const moved: { key: string; from: string; to: string }[] = []
-
-      try {
-        for (const key of includes) {
-          const from = join(gameDir, key)
-          if (!existsSync(from)) continue
-          const to = join(parked, key)
-          mkdirSync(parked, { recursive: true })
-          renameSync(from, to)
-          moved.push({ key, from, to })
+        if (entryCount === 0) {
+          throw new Error('Die Sicherung ist leer und wurde nicht eingespielt. Deine Daten sind unverändert.')
         }
 
-        extractAll(archive, gameDir, true)
-      } catch (err) {
-        // Put everything back exactly as it was.
-        for (const item of moved) {
+        // 2. Safety net. A failure here used to be logged and ignored, which is
+        // exactly the situation where the restore must NOT continue.
+        task.update('Aktueller Stand wird gesichert…', null)
+        const hasCurrentData = includes.some((key) => existsSync(join(paths.gameDir(instanceId), key)))
+        if (hasCurrentData) {
           try {
-            rmSync(item.from, { recursive: true, force: true })
-            renameSync(item.to, item.from)
-          } catch (rollbackErr) {
-            logger.error(`Rollback von ${item.key} fehlgeschlagen:`, rollbackErr)
+            await createBackup(instanceId, {
+              name: `Automatisch vor Wiederherstellung`,
+              reason: 'automatic',
+              includes
+            })
+          } catch (err) {
+            throw new Error(
+              `Die Sicherheitskopie des aktuellen Stands ist fehlgeschlagen, deshalb wurde nichts ` +
+                `überschrieben. Deine Daten sind unverändert. (${
+                  err instanceof Error ? err.message : String(err)
+                })`
+            )
           }
         }
-        throw new Error(
-          `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. (${
-            err instanceof Error ? err.message : String(err)
-          })`
-        )
-      }
 
-      // 4. Only now is the old state expendable.
-      rmSync(parked, { recursive: true, force: true })
-      logger.info(`Sicherung ${entry.fileName} in ${instance.name} eingespielt`)
-    }
-  )
+        task.update('Dateien werden zurückgespielt…', null)
+        const gameDir = paths.gameDir(instanceId)
+
+        // 3. Move the current folders aside instead of deleting them, so a failed
+        // extraction can be rolled back. Deleted files still disappear, because
+        // the folders are gone before the archive is unpacked.
+        const parked = join(paths.instanceBackups(instanceId), `restore-${randomUUID().slice(0, 8)}`)
+        const moved: { key: string; from: string; to: string }[] = []
+
+        try {
+          for (const key of includes) {
+            const from = join(gameDir, key)
+            if (!existsSync(from)) continue
+            const to = join(parked, key)
+            mkdirSync(parked, { recursive: true })
+            renameSync(from, to)
+            moved.push({ key, from, to })
+          }
+
+          extractAll(archive, gameDir, true)
+        } catch (err) {
+          // Put everything back exactly as it was.
+          for (const item of moved) {
+            try {
+              rmSync(item.from, { recursive: true, force: true })
+              renameSync(item.to, item.from)
+            } catch (rollbackErr) {
+              logger.error(`Rollback von ${item.key} fehlgeschlagen:`, rollbackErr)
+            }
+          }
+
+          // Folders the backup introduces that the instance did not have are
+          // never in `moved`, so a partial extraction would leave them behind
+          // while the message below promises the previous state is back.
+          const restoredKeys = new Set(moved.map((item) => item.key))
+          for (const key of includes) {
+            if (restoredKeys.has(key)) continue
+            try {
+              rmSync(join(gameDir, key), { recursive: true, force: true })
+            } catch (cleanupErr) {
+              logger.error(`Aufräumen von ${key} fehlgeschlagen:`, cleanupErr)
+            }
+          }
+
+          // The staging folder is empty now; leaving it would litter one per
+          // failed attempt.
+          try {
+            rmSync(parked, { recursive: true, force: true })
+          } catch {
+            // best effort
+          }
+
+          throw new Error(
+            `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. (${
+              err instanceof Error ? err.message : String(err)
+            })`
+          )
+        }
+
+        // 4. Only now is the old state expendable.
+        rmSync(parked, { recursive: true, force: true })
+        logger.info(`Sicherung ${entry.fileName} in ${instance.name} eingespielt`)
+      }
+    )
+  } finally {
+    inUse.delete(entry.id)
+  }
 }
 
 export function deleteBackup(instanceId: string, backupId: string): void {

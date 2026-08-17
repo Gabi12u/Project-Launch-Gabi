@@ -19,6 +19,7 @@ import {
   resolveLibraries,
   rulesAllow,
   type Argument,
+  type ResolvedLibrary,
   type VersionJson
 } from './mojang'
 import { extractNatives } from './archive'
@@ -33,7 +34,15 @@ import {
 } from './instances'
 import { checkCompatibility } from './compat'
 import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
-import { clearRunning, getRunning, isRunning, listRunning, setRunning } from './running'
+import {
+  activeVersionIds,
+  clearRunning,
+  getAdopted,
+  getRunning,
+  isRunning,
+  listRunning,
+  setRunning
+} from './running'
 
 const logger = log('launch')
 
@@ -55,6 +64,19 @@ function pushLog(line: LogLine): void {
 
 export function getLogBuffer(instanceId: string): LogLine[] {
   return logBuffers.get(instanceId) ?? []
+}
+
+/**
+ * Drops an instance's log buffer.
+ *
+ * Nothing evicted these before, so every id ever launched kept up to 800 lines
+ * for the life of the process — and a new instance that reused a freed slug
+ * would open its "Log" tab on the previous one's output. Called from the IPC
+ * layer rather than from `instances.ts`, which cannot import this module
+ * without creating a cycle.
+ */
+export function dropLogBuffer(instanceId: string): void {
+  logBuffers.delete(instanceId)
 }
 
 function setStatus(instanceId: string, phase: LaunchPhase, detail: string, extra: Partial<LaunchStatus> = {}): void {
@@ -114,9 +136,61 @@ function windowlessJava(javaPath: string): string {
   return candidate !== javaPath && existsSync(candidate) ? candidate : javaPath
 }
 
+/**
+ * Version id -> in-flight natives extraction.
+ *
+ * The natives folder is shared by every instance on a version, and a launch is
+ * not registered as running until long after this step — so two launches
+ * started within a second of each other would both see the version as unused,
+ * both wipe the folder, and one would delete DLLs the other was still
+ * extracting. Serialising per version closes the window `listRunning()` cannot.
+ */
+const nativesLocks = new Map<string, Promise<void>>()
+
+async function prepareNatives(
+  versionId: string,
+  nativesDir: string,
+  libraries: ResolvedLibrary[]
+): Promise<void> {
+  const previous = nativesLocks.get(versionId) ?? Promise.resolve()
+
+  // A failed extraction must not block the next launch from trying again.
+  const run = previous.catch(() => undefined).then(() => {
+    // A stale natives folder from a crashed run can break the launch, but
+    // wiping it while another game is running pulls its loaded DLLs away
+    // (EPERM on Windows, a hard crash elsewhere), so then we only overwrite.
+    const versionInUse = activeVersionIds().includes(versionId)
+    if (!versionInUse) {
+      rmSync(nativesDir, { recursive: true, force: true })
+    }
+    mkdirSync(nativesDir, { recursive: true })
+    for (const library of libraries) {
+      if (!library.native) continue
+      extractNatives(library.path, nativesDir, library.excludes)
+    }
+  })
+
+  nativesLocks.set(versionId, run)
+  try {
+    await run
+  } finally {
+    if (nativesLocks.get(versionId) === run) nativesLocks.delete(versionId)
+  }
+}
+
+/**
+ * A hand-edited instance.json can put `null` into any of these string
+ * settings: `normalise()` merges `raw.settings` shallowly over the defaults, so
+ * an explicit null overrides the default instead of falling back to it. This
+ * is the same class of bad input the `memoryMb` guard further down handles.
+ */
+function userText(value: string): string {
+  return typeof value === 'string' ? value : ''
+}
+
 function splitUserArgs(raw: string): string[] {
   // Respects quoted segments so paths with spaces survive.
-  const matches = raw.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
+  const matches = userText(raw).match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
   return matches.map((a) => a.replace(/^["']|["']$/g, '')).filter(Boolean)
 }
 
@@ -207,13 +281,29 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   const { instanceId } = options
 
   if (isRunning(instanceId) || starting.has(instanceId)) {
-    throw new Error('Diese Instanz läuft bereits.')
+    // A game left over from a previous launcher session needs a different
+    // message: the user cannot stop it from here, and starting a second JVM on
+    // the same world is exactly what this guard exists to prevent.
+    const orphan = getAdopted(instanceId)
+    throw new Error(
+      orphan
+        ? `Minecraft läuft für diese Instanz noch aus einer früheren Sitzung (PID ${orphan.pid}). ` +
+          `Beende das Spiel, danach lässt sich die Instanz wieder starten.`
+        : 'Diese Instanz läuft bereits.'
+    )
   }
   starting.add(instanceId)
 
   const settings = getSettings()
   const instance = getInstance(instanceId)
   const task = new Task(`${instance.name} wird gestartet`, 'Vorbereitung…', instanceId)
+
+  // Kept outside the try so the catch can still reach a process that was
+  // already spawned when the launch fell over.
+  let child: ReturnType<typeof spawn> | null = null
+  let launchFailed = false
+  /** Set once the OS confirms the process actually started. */
+  let spawned = false
 
   try {
     setStatus(instanceId, 'preparing', 'Vorbereitung…')
@@ -277,19 +367,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     const nativesDir = paths.natives(versionId)
     const libraries = resolveLibraries(versionJson)
 
-    // A stale natives folder from a crashed run can break the launch, but the
-    // folder is shared by every instance on this version. Wiping it while
-    // another game is running pulls its loaded DLLs away (EPERM on Windows,
-    // a hard crash elsewhere), so in that case the extraction just overwrites.
-    const versionInUse = listRunning().some((game) => game.versionId === versionId)
-    if (!versionInUse) {
-      rmSync(nativesDir, { recursive: true, force: true })
-    }
-    mkdirSync(nativesDir, { recursive: true })
-    for (const library of libraries) {
-      if (!library.native) continue
-      extractNatives(library.path, nativesDir, library.excludes)
-    }
+    await prepareNatives(versionId, nativesDir, libraries)
 
     // 6. Classpath ---------------------------------------------------
     const classpath = libraries
@@ -404,7 +482,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     const args = [...jvmArgs, versionJson.mainClass, ...gameArgs]
 
     // 9. Spawn -------------------------------------------------------
-    if (instance.settings.preLaunchCommand.trim()) {
+    if (userText(instance.settings.preLaunchCommand).trim()) {
       task.update('Pre-Launch-Befehl läuft…', null)
       await runPreLaunch(instance, gameDir)
     }
@@ -418,7 +496,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     let command = javaBinary
     let commandArgs = args
-    if (instance.settings.wrapperCommand.trim()) {
+    if (userText(instance.settings.wrapperCommand).trim()) {
       const wrapper = splitUserArgs(instance.settings.wrapperCommand)
       command = wrapper[0]
       commandArgs = [...wrapper.slice(1), javaBinary, ...args]
@@ -433,7 +511,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       time: Date.now()
     })
 
-    const child = spawn(command, commandArgs, {
+    child = spawn(command, commandArgs, {
       cwd: gameDir,
       env,
       windowsHide: true,
@@ -449,10 +527,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       status: { instanceId, phase: 'running', detail: 'Läuft', progress: null, pid: child.pid, startedAt }
     })
 
-    markPlayed(instanceId)
-    setStatus(instanceId, 'running', 'Minecraft läuft', { pid: child.pid, startedAt })
-    task.done('Minecraft gestartet')
-
+    // The steps after this can still throw — `markPlayed` writes instance.json,
+    // and a virus scanner holding that file briefly is enough. Registering the
+    // handlers first means the process stays reachable and accounted for no
+    // matter where the rest of the launch fails.
     attachOutput(instanceId, child)
 
     child.on('error', (err) => {
@@ -464,6 +542,22 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         text: `Prozessfehler: ${err.message}`,
         time: Date.now()
       })
+
+      // Node does not promise an 'exit' after a failed spawn — the classic
+      // ENOENT case fires 'error' alone. Without this the instance would stay
+      // in the running registry forever: unlaunchable ("läuft bereits"), and
+      // blocking the launcher's own update, until the app is restarted.
+      if (!spawned) {
+        clearRunning(instanceId)
+        setStatus(instanceId, 'idle', `Java konnte nicht gestartet werden: ${err.message}`)
+      }
+    })
+
+    // 'spawn' only fires once the process is genuinely up, which is what tells
+    // the two handlers apart: a later 'error' belongs to a live process that
+    // 'exit' will clean up after.
+    child.on('spawn', () => {
+      spawned = true
     })
 
     child.on('exit', (code, signal) => {
@@ -483,30 +577,69 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         time: endedAt
       })
 
-      setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? `Absturz (Code ${code})` : 'Beendet', {
-        exitCode: code
-      })
+      // A failed launch already reported why in the catch below, and the game
+      // is only exiting because that failure killed it. Overwriting the reason
+      // with "Beendet" would hide what actually went wrong.
+      if (!launchFailed) {
+        setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? `Absturz (Code ${code})` : 'Beendet', {
+          exitCode: code
+        })
 
-      const minutes = Math.round((endedAt - startedAt) / 60000)
-      if (crashed) {
-        notify(
-          'error',
-          `${instance.name} ist abgestürzt`,
-          `Minecraft wurde mit Code ${code} beendet. Das Log findest du im Instanz-Tab.`,
-          { route: `/instances/${instanceId}?tab=logs` }
-        )
-      } else if (getSettings().notifyOnGameExit) {
-        notify('info', `${instance.name} beendet`, `Spielzeit: ${minutes} Minuten`)
+        const minutes = Math.round((endedAt - startedAt) / 60000)
+        if (crashed) {
+          notify(
+            'error',
+            `${instance.name} ist abgestürzt`,
+            `Minecraft wurde mit Code ${code} beendet. Das Log findest du im Instanz-Tab.`,
+            { route: `/instances/${instanceId}?tab=logs` }
+          )
+        } else if (getSettings().notifyOnGameExit) {
+          notify('info', `${instance.name} beendet`, `Spielzeit: ${minutes} Minuten`)
+        }
       }
 
       handleWindowRestore()
     })
 
+    markPlayed(instanceId)
+    setStatus(instanceId, 'running', 'Minecraft läuft', { pid: child.pid, startedAt })
+    task.done('Minecraft gestartet')
+
     handleWindowBehaviour(instance)
   } catch (err) {
+    launchFailed = true
+
+    // A game that is already up must not outlive the launch that failed, or it
+    // keeps running with the UI showing "idle" and no way to stop it.
+    const stillUp = child !== null && child.exitCode === null && !child.killed
+    if (stillUp && child) {
+      try {
+        child.kill()
+      } catch {
+        // already gone
+      }
+    }
+
     task.fail(err)
     setStatus(instanceId, 'idle', err instanceof Error ? err.message : String(err))
-    clearRunning(instanceId)
+
+    if (stillUp) {
+      // A process that was only just signalled is not dead yet. Clearing the
+      // registry right now would advertise the instance as free while the JVM
+      // is still shutting down — long enough for a second launch against the
+      // same world. The exit handler clears it once the process is really gone.
+      const doomed = child
+      setTimeout(() => {
+        // Identity check so a newer launch's entry is never removed.
+        if (getRunning(instanceId)?.process === doomed) {
+          logger.warn(`Prozess von ${instanceId} reagierte nicht auf kill, Eintrag wird verworfen`)
+          clearRunning(instanceId)
+        }
+      }, 10_000).unref?.()
+    } else {
+      clearRunning(instanceId)
+    }
+
     throw err
   } finally {
     starting.delete(instanceId)
@@ -603,9 +736,27 @@ function handleWindowRestore(): void {
   if (!win.isVisible()) win.show()
 }
 
-export function stopInstance(instanceId: string): void {
+/**
+ * @param immediate Skip the graceful SIGTERM window and kill outright. Used
+ *   while the launcher itself is quitting, where the timer that would escalate
+ *   to SIGKILL five seconds later dies with the process that armed it — leaving
+ *   a JVM that ignored SIGTERM running with nothing left to supervise it.
+ */
+export function stopInstance(instanceId: string, immediate = false): void {
   const game = getRunning(instanceId)
-  if (!game) return
+  if (!game) {
+    // Deliberately not killed by pid: the id comes from a file written by an
+    // earlier session, and the OS may have handed that number to something
+    // else entirely since. Telling the user beats killing a stranger's process.
+    const orphan = getAdopted(instanceId)
+    if (orphan) {
+      throw new Error(
+        `Dieses Spiel wurde von einer früheren Sitzung gestartet (PID ${orphan.pid}) und lässt ` +
+          `sich von hier nicht beenden. Schließe das Minecraft-Fenster selbst.`
+      )
+    }
+    return
+  }
 
   logger.info(`Beende Instanz ${instanceId} (PID ${game.process.pid})`)
   pushLog({
@@ -618,7 +769,20 @@ export function stopInstance(instanceId: string): void {
 
   if (process.platform === 'win32' && game.process.pid) {
     // Minecraft spawns child processes; /T takes the whole tree down.
-    spawn('taskkill', ['/pid', String(game.process.pid), '/f', '/t'], { windowsHide: true })
+    const killer = spawn('taskkill', ['/pid', String(game.process.pid), '/f', '/t'], {
+      windowsHide: true
+    })
+    // An 'error' with no listener is a hard throw in Node, and there is no
+    // uncaughtException handler — so a taskkill.exe that cannot be spawned (a
+    // stripped PATH, an AppLocker policy) would take the whole launcher down
+    // instead of failing this one stop request.
+    killer.on('error', (err) => {
+      logger.error(`taskkill für ${instanceId} fehlgeschlagen:`, err)
+      // Fall back to the signal path so the request still does something.
+      game.process.kill('SIGKILL')
+    })
+  } else if (immediate) {
+    game.process.kill('SIGKILL')
   } else {
     game.process.kill('SIGTERM')
     setTimeout(() => {
@@ -627,6 +791,14 @@ export function stopInstance(instanceId: string): void {
   }
 }
 
-export function stopAll(): void {
-  for (const game of listRunning()) stopInstance(game.instanceId)
+export function stopAll(immediate = false): void {
+  for (const game of listRunning()) {
+    try {
+      stopInstance(game.instanceId, immediate)
+    } catch (err) {
+      // One instance refusing to stop must not skip the rest, and this runs
+      // from `before-quit` where a throw would be unhandled.
+      logger.error(`Beenden von ${game.instanceId} fehlgeschlagen:`, err)
+    }
+  }
 }

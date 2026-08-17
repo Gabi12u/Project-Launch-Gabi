@@ -49,12 +49,34 @@ export async function searchAll(query: SearchQuery): Promise<SearchResponse> {
   const items = results.flatMap((r) => r.items)
   const total = results.reduce((sum, r) => sum + r.total, 0)
 
-  // Interleave the providers so neither dominates the first screen, then sort
-  // the merged list by relevance proxy (downloads) when the user asked for it.
+  // Each provider sorts its own page correctly, but concatenating them lists
+  // all of one platform before any of the other — so a project updated minutes
+  // ago can end up below a week-old one. Every sort except relevance therefore
+  // gets applied across the merged list; relevance has no comparable score
+  // between platforms, so there the lists are interleaved instead.
   const merged =
     wanted.length > 1 && query.sort === 'relevance' ? interleave(results.map((r) => r.items)) : items
 
-  if (query.sort === 'downloads') merged.sort((a, b) => b.downloads - a.downloads)
+  const time = (value?: string): number => {
+    const parsed = value ? Date.parse(value) : Number.NaN
+    // Undated entries sort last rather than jumping to the top as NaN would.
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+
+  switch (query.sort) {
+    case 'downloads':
+      merged.sort((a, b) => b.downloads - a.downloads)
+      break
+    case 'follows':
+      merged.sort((a, b) => (b.follows ?? 0) - (a.follows ?? 0))
+      break
+    case 'updated':
+    case 'newest':
+      merged.sort((a, b) => time(b.updatedAt) - time(a.updatedAt))
+      break
+    default:
+      break
+  }
 
   return { items: merged, total, errors }
 }

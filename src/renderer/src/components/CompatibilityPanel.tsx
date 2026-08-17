@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import type { CompatibilityIssue, CompatibilityReport } from '@shared/types'
 import { setState, toast, toastError, useStore } from '../lib/store'
 import { startInstanceForced } from '../lib/actions'
@@ -154,6 +154,16 @@ export function CompatibilityGate(): JSX.Element | null {
   const { compatGate } = useStore()
   const [fixing, setFixing] = useState(false)
   const [report, setReport] = useState<CompatibilityReport | null>(null)
+
+  const gateInstanceId = compatGate?.instanceId ?? null
+
+  // The gate in the store can be swapped to another instance without `close()`
+  // ever running — the command palette is reachable while this modal is open.
+  // Without the reset the new instance's name would sit above the previous
+  // instance's issue list.
+  useEffect(() => {
+    setReport(null)
+  }, [gateInstanceId])
 
   const current = report ?? compatGate?.report ?? null
 

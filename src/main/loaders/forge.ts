@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { LoaderVersion } from '@shared/types'
-import { paths } from '../paths'
+import { paths, safeJoin } from '../paths'
 import { writeJsonAtomic } from '../store'
 import { downloadAll, downloadFile, fetchJsonCached, fetchText } from '../core/net'
 import { extractSubtree, readEntryJson, readEntryText } from '../core/archive'
@@ -196,7 +196,31 @@ function installerUrl(loader: ForgeLikeLoader, mcVersion: string, version: strin
  * ------------------------------------------------------------------ */
 
 function libraryPath(coords: string): string {
-  return join(paths.libraries(), ...mavenToPath(coords).split('/'))
+  // `coords` comes out of the installer's own profile, so the path it produces
+  // is pinned into the libraries folder instead of being trusted.
+  return safeJoin(paths.libraries(), mavenToPath(coords))
+}
+
+/**
+ * Reads the `.sha1` sidecar that every maven publishes next to an artifact.
+ *
+ * The installer jar is not just stored — its processors are executed as Java
+ * code further down, so downloading it unverified lets a tampered mirror run
+ * code as the user. Maven's checksum file is the only hash published for these
+ * artifacts. A mirror that cannot serve it is not treated as fatal, since that
+ * would make every install hinge on one extra request, but the download then
+ * proceeds unverified and says so in the log.
+ */
+async function mavenSha1(url: string): Promise<string | undefined> {
+  try {
+    const body = await fetchText(`${url}.sha1`)
+    const match = /\b[a-f0-9]{40}\b/i.exec(body)
+    if (match) return match[0].toLowerCase()
+    logger.warn(`Prüfsummendatei zu ${url} ist unlesbar, Installer wird ungeprüft geladen`)
+  } catch (err) {
+    logger.warn(`Prüfsumme zu ${url} nicht abrufbar, Installer wird ungeprüft geladen:`, err)
+  }
+  return undefined
 }
 
 /** Resolves `[net.example:artifact:1.0]` style arguments to absolute paths. */
@@ -247,7 +271,10 @@ export async function installForgeLike(
   const url = installerUrl(loader, mcVersion, loaderVersion)
   const installer = join(paths.cache(), `${loader}-${mcVersion}-${loaderVersion}-installer.jar`)
 
-  await downloadFile({ url, path: installer, trustExisting: true })
+  // With a hash present `isSatisfied` verifies the cached copy too, so a jar
+  // left corrupt by an interrupted run is re-fetched instead of reused.
+  const installerSha1 = await mavenSha1(url)
+  await downloadFile({ url, path: installer, sha1: installerSha1, trustExisting: true })
 
   const profile = await readEntryJson<InstallProfile>(installer, 'install_profile.json')
   if (!profile) throw new Error(`${label}-Installer enthält kein install_profile.json`)

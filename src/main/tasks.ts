@@ -157,8 +157,12 @@ export function cancelTask(id: string): void {
   // Interrupt the transfer in flight, not just the loop between files.
   handles.get(id)?.abort()
   const task = tasks.get(id)
-  if (task) {
+  // A finished task lingers here for a few seconds so the UI can show the
+  // result, so a cancel click that lands just after it completed would
+  // otherwise relabel it "Wird abgebrochen…" while it still reads as done.
+  if (task && task.state === 'running') {
     task.detail = 'Wird abgebrochen…'
+    task.updatedAt = Date.now()
     emit(EVENTS.taskUpdate, { ...task })
   }
 }

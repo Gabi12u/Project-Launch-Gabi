@@ -129,9 +129,22 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
 
   // Overlapping checks confuse the state machine and the progress bar.
   if (checking) return status
+
+  // A background poll must not walk over an update that is already downloaded
+  // and waiting, or one still downloading — it would flip the state back to
+  // "checking" and take the "restart to install" prompt off the screen.
+  if (!manual && (status.state === 'ready' || status.state === 'downloading')) {
+    return status
+  }
+
   checking = true
+  armCheckTimeout()
   try {
-    autoUpdater.autoDownload = getSettings().autoUpdate !== false || manual
+    // Deliberately not `|| manual`: pressing "Jetzt suchen" asks us to look for
+    // an update, not to download one. Forcing it here made the setting for
+    // "download automatically" unobservable and started a transfer on a metered
+    // connection the user had explicitly opted out of.
+    autoUpdater.autoDownload = getSettings().autoUpdate !== false
     await autoUpdater.checkForUpdates()
     if (manual && status.state === 'up-to-date') {
       notify('info', 'Kein Update verfügbar', `Launch Gabi ${app.getVersion()} ist die neueste Version.`)
@@ -144,6 +157,28 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     checking = false
   }
   return status
+}
+
+/**
+ * Releases the `checking` guard if a check never settles.
+ *
+ * `checkForUpdates` clears the flag in its `finally`, but a request that hangs
+ * forever never reaches it — and every later check, manual or scheduled, then
+ * returns early with the panel stuck on "Suche nach Updates…" and the button
+ * permanently inert.
+ */
+function armCheckTimeout(): void {
+  const guard = setTimeout(() => {
+    if (!checking) return
+    checking = false
+    logger.warn('Update-Prüfung hat nicht geantwortet, Sperre wird gelöst')
+    setStatus({
+      state: 'error',
+      error: 'Zeitüberschreitung',
+      detail: 'Die Update-Prüfung hat nicht geantwortet.'
+    })
+  }, 120_000)
+  guard.unref?.()
 }
 
 /** Downloads an update that was found while auto-download was off. */

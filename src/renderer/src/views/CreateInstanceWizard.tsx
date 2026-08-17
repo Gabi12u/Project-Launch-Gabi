@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { LoaderId, LoaderVersion, MinecraftVersion } from '@shared/types'
 import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
@@ -29,6 +29,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const [loaderVersions, setLoaderVersions] = useState<Record<string, LoaderVersion[]>>({})
   const [loaderVersion, setLoaderVersion] = useState('')
   const [checkingLoaders, setCheckingLoaders] = useState(false)
+  const loaderRequestId = useRef(0)
 
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🟩')
@@ -68,6 +69,12 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   useEffect(() => {
     if (!open || !mcVersion || step !== 1) return
 
+    // Stepping back and picking another Minecraft version restarts this, and a
+    // slower earlier response would otherwise overwrite the newer one — leaving
+    // a loader build selected that does not belong to the chosen version, which
+    // is then what `create()` submits.
+    const request = ++loaderRequestId.current
+
     setCheckingLoaders(true)
     setLoaderVersions({})
 
@@ -81,8 +88,13 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         }
       })
     )
-      .then((entries) => setLoaderVersions(Object.fromEntries(entries)))
-      .finally(() => setCheckingLoaders(false))
+      .then((entries) => {
+        if (request !== loaderRequestId.current) return
+        setLoaderVersions(Object.fromEntries(entries))
+      })
+      .finally(() => {
+        if (request === loaderRequestId.current) setCheckingLoaders(false)
+      })
   }, [open, mcVersion, step])
 
   /* --- Default the loader build when the loader changes ------------ */

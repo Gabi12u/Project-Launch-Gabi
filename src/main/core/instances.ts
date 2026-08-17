@@ -27,6 +27,15 @@ const logger = log('instances')
 const cache = new Map<string, Instance>()
 let loaded = false
 
+/**
+ * Ids that were deleted while work was still running against them.
+ *
+ * Installs are started fire-and-forget, so a delete can land in the middle of
+ * one. The id stays here for the rest of the session, which is cheap and keeps
+ * a late write from recreating the instance.
+ */
+const deleted = new Set<string>()
+
 /* ------------------------------------------------------------------ *
  * Loading & persistence
  * ------------------------------------------------------------------ */
@@ -81,6 +90,24 @@ export function loadInstances(force = false): Instance[] {
   return [...cache.values()]
 }
 
+/**
+ * Drops the cached instances so the next read comes from disk again.
+ *
+ * `paths.*()` resolves against `getSettings().dataDirectory` on every call, so
+ * the moment the user points the launcher at another folder every file
+ * operation moves with it — while this cache would keep serving the instances
+ * of the *old* directory, metadata and all. Called from the settings handler
+ * alongside the other cache invalidations.
+ */
+export function invalidateInstanceCache(): void {
+  cache.clear()
+  loaded = false
+  // Tombstones are keyed by id, and ids are only unique within one data
+  // directory — keeping them would blackhole a same-named instance over there.
+  deleted.clear()
+  logger.info('Instanz-Cache verworfen')
+}
+
 export function getInstance(id: string): Instance {
   if (!loaded) loadInstances()
   const instance = cache.get(id)
@@ -94,6 +121,15 @@ export function tryGetInstance(id: string): Instance | null {
 }
 
 export function persist(instance: Instance): Instance {
+  // A delete cannot wait for the fire-and-forget install that may still be
+  // running against this id, and `writeJsonAtomic` recreates missing parent
+  // directories — so without this check the install's next write would bring
+  // the folder and the cache entry back, holding half-installed state.
+  if (deleted.has(instance.id)) {
+    logger.debug(`Schreibvorgang für gelöschte Instanz ${instance.id} verworfen`)
+    return instance
+  }
+
   cache.set(instance.id, instance)
   writeJsonAtomic(paths.instanceFile(instance.id), instance)
   emit(EVENTS.instanceChanged, toSummary(instance))
@@ -160,12 +196,21 @@ function slugify(name: string): string {
 
 function uniqueId(name: string): string {
   const base = slugify(name)
-  if (!existsSync(paths.instance(base))) return base
+
+  // A deleted instance frees its slug again as soon as the folder is gone, so
+  // handing that id out means lifting the tombstone `deleteInstance` left —
+  // otherwise every write for the new instance would be silently dropped.
+  const claim = (id: string): string => {
+    deleted.delete(id)
+    return id
+  }
+
+  if (!existsSync(paths.instance(base))) return claim(base)
   for (let i = 2; i < 100; i++) {
     const candidate = `${base}-${i}`
-    if (!existsSync(paths.instance(candidate))) return candidate
+    if (!existsSync(paths.instance(candidate))) return claim(candidate)
   }
-  return `${base}-${randomUUID().slice(0, 6)}`
+  return claim(`${base}-${randomUUID().slice(0, 6)}`)
 }
 
 /**
@@ -274,18 +319,22 @@ export async function resolveVersionId(instance: Instance): Promise<string> {
     default: {
       // Forge/NeoForge ids vary between generations, so read what the
       // installer wrote instead of guessing.
-      const found = findInstalledLoaderVersionId(instance)
+      const found = findInstalledLoaderVersionId(instance, loaderVersion)
       if (found) return found
       return installLoader(instance.loader, instance.mcVersion, loaderVersion)
     }
   }
 }
 
-function findInstalledLoaderVersionId(instance: Instance): string | null {
+function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string): string | null {
   const dir = paths.versions()
   if (!existsSync(dir)) return null
 
-  const needle = instance.loaderVersion
+  // The *resolved* version, not `instance.loaderVersion` — that one is still
+  // empty for an instance created without pinning a build, and an empty needle
+  // matched any installed directory for the loader, including one belonging to
+  // a different instance on the same Minecraft version.
+  const needle = loaderVersion
   const candidates = readdirSync(dir).filter((name) => {
     const lower = name.toLowerCase()
     if (!lower.includes(instance.loader)) return false
@@ -344,8 +393,24 @@ export function deleteInstance(id: string): void {
   const dir = assertInside(paths.instances(), paths.instance(id), 'Instanz')
   const backupDir = assertInside(paths.backups(), paths.instanceBackups(id), 'Sicherungen')
 
-  rmSync(dir, { recursive: true, force: true })
-  rmSync(backupDir, { recursive: true, force: true })
+  // Marked before the files go, so an install still writing against this id
+  // cannot slip a `persist()` in between the delete and the cache eviction.
+  deleted.add(id)
+
+  try {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(backupDir, { recursive: true, force: true })
+  } catch (err) {
+    // `force` swallows a missing path but not EBUSY/EPERM, which Windows hands
+    // out freely while a virus scanner or the search indexer still holds the
+    // folder. The instance survives that failure, so the tombstone has to be
+    // lifted with it — leaving it in place would silently drop every later
+    // write for this id, and the user's changes would vanish on restart with
+    // nothing but a debug log to show for it.
+    deleted.delete(id)
+    throw err
+  }
+
   cache.delete(id)
   logger.info(`Instanz ${id} gelöscht`)
   emit(EVENTS.instanceChanged, { id, deleted: true })

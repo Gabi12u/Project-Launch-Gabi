@@ -27,6 +27,7 @@ export const IPC = {
   instanceUpdate: 'instance:update',
   instanceDelete: 'instance:delete',
   instanceDuplicate: 'instance:duplicate',
+  instanceImportFolder: 'instance:import-folder',
   instanceOpenFolder: 'instance:open-folder',
   instanceCreateShortcut: 'instance:create-shortcut',
   instanceRepair: 'instance:repair',

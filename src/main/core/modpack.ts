@@ -4,6 +4,7 @@ import { basename, extname, join } from 'node:path'
 import type { ContentItem, ContentType, Instance, LoaderId, ProjectVersion } from '@shared/types'
 import { ensureInstanceLayout, paths, safeJoin } from '../paths'
 import { log } from '../logger'
+import { notify } from '../events'
 import { withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
@@ -38,7 +39,16 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
   loaderVersion: string
   mcVersion: string
 } {
-  const mcVersion = dependencies['minecraft'] ?? '1.21.11'
+  // `minecraft` is mandatory in the mrpack spec. Quietly substituting a
+  // hardcoded version produced an instance pinned to something the pack's mods
+  // were never built for, which only shows up as a crash at first launch.
+  const mcVersion = dependencies['minecraft']
+  if (typeof mcVersion !== 'string' || !mcVersion.trim()) {
+    throw new Error(
+      'Im Modpack fehlt die Angabe, für welche Minecraft-Version es gedacht ist. ' +
+        'Es wurde nicht importiert.'
+    )
+  }
 
   if (dependencies['fabric-loader']) {
     return { loader: 'fabric', loaderVersion: dependencies['fabric-loader'], mcVersion }
@@ -53,6 +63,18 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
     return { loader: 'forge', loaderVersion: dependencies['forge'], mcVersion }
   }
   return { loader: 'vanilla', loaderVersion: '', mcVersion }
+}
+
+/**
+ * Pulls the project and version id out of a Modrinth CDN link.
+ *
+ * They look like `https://cdn.modrinth.com/data/<projectId>/versions/<versionId>/<file>.jar`,
+ * which is the only place an mrpack carries them — the index itself lists just
+ * paths and hashes.
+ */
+function modrinthIdsFromUrl(url: string): { projectId: string; versionId: string } | null {
+  const match = /cdn\.modrinth\.com\/data\/([A-Za-z0-9]+)\/versions\/([A-Za-z0-9]+)\//.exec(url)
+  return match ? { projectId: match[1], versionId: match[2] } : null
 }
 
 function contentTypeFromPath(path: string): ContentType {
@@ -135,17 +157,22 @@ async function installMrpackFiles(
   const downloads: DownloadItem[] = []
   const rejected: string[] = []
   for (const file of clientFiles) {
-    const url = file.downloads?.[0]
-    if (!url) {
+    const urls = (file.downloads ?? []).filter((u): u is string => typeof u === 'string' && u.length > 0)
+    if (urls.length === 0) {
       rejected.push(`${file.path} (kein Download-Link)`)
       continue
     }
     try {
       downloads.push({
-        url,
+        url: urls[0],
+        // The spec lists further URLs as mirrors precisely so a dead primary
+        // link does not sink the file; only the first was ever tried.
+        mirrors: urls.slice(1),
         path: safeJoin(gameDir, file.path),
-        sha1: file.hashes?.sha1,
-        size: file.fileSize
+        // Typed as string/number but never checked — a hash emitted as a number
+        // reached `sha1.toLowerCase()` deep in the downloader and threw there.
+        sha1: typeof file.hashes?.sha1 === 'string' ? file.hashes.sha1 : undefined,
+        size: typeof file.fileSize === 'number' ? file.fileSize : undefined
       })
     } catch (err) {
       rejected.push(`${file.path} (${err instanceof Error ? err.message : String(err)})`)
@@ -164,8 +191,30 @@ async function installMrpackFiles(
   }
 
   task.span(0, 0.85)
-  await downloadAll(downloads, { task, label: 'Modpack-Dateien' })
+  // Same reasoning as the CurseForge path: one dead CDN link (after its mirrors
+  // were tried) should cost the pack that one file, not the whole install.
+  const failed: string[] = []
+  await downloadAll(downloads, {
+    task,
+    label: 'Modpack-Dateien',
+    onError: (item, err) => {
+      failed.push(basename(item.path))
+      logger.warn(`Datei ${basename(item.path)} konnte nicht geladen werden:`, err)
+      return 'skip'
+    }
+  })
   task.span(0, 1)
+
+  if (failed.length > 0) {
+    notify(
+      'warning',
+      `${failed.length} ${failed.length === 1 ? 'Datei fehlt' : 'Dateien fehlen'}`,
+      `Das Modpack wurde installiert, aber ${failed.slice(0, 3).join(', ')}${
+        failed.length > 3 ? ' und weitere' : ''
+      } konnten nicht geladen werden.`,
+      { route: `/instances/${instanceId}` }
+    )
+  }
 
   // 2. Overrides ------------------------------------------------------
   task.update('Konfigurationen werden entpackt…', 0.9)
@@ -185,12 +234,21 @@ async function installMrpackFiles(
   const enriched: ContentItem[] = instance.content.map((item) => {
     const match = clientFiles.find((f) => basename(f.path) === item.fileName)
     if (!match) return item
+
+    const url = match.downloads?.[0] ?? ''
+    const ids = modrinthIdsFromUrl(url)
+
     return {
       ...item,
-      // Modrinth CDN links carry the project and version id in the path.
-      provider: match.downloads[0]?.includes('modrinth') ? 'modrinth' : item.provider,
-      sha1: match.hashes.sha1 ?? item.sha1,
-      size: match.fileSize,
+      provider: ids ? 'modrinth' : item.provider,
+      // Without these two the item is skipped by `checkUpdates` (it filters on
+      // `projectId`) and dropped from the slim download list on export, so an
+      // imported pack silently never saw updates and re-exported every mod as a
+      // bundled binary. The ids sit right there in the CDN path.
+      projectId: ids?.projectId ?? item.projectId,
+      versionId: ids?.versionId ?? item.versionId,
+      sha1: match.hashes?.sha1 ?? item.sha1,
+      size: typeof match.fileSize === 'number' ? match.fileSize : item.size,
       type: contentTypeFromPath(match.path)
     }
   })
@@ -253,9 +311,19 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     throw new Error('Die Dateiliste im CurseForge-Modpack fehlt oder ist beschädigt.')
   }
 
-  const modLoaders = manifest.minecraft.modLoaders ?? []
-  const primary = modLoaders.find((l) => l.primary) ?? modLoaders[0]
-  const { loader, loaderVersion } = loaderFromCurseId(primary?.id ?? '')
+  const modLoaders = Array.isArray(manifest.minecraft.modLoaders) ? manifest.minecraft.modLoaders : []
+  const primary = modLoaders.find((l) => l?.primary) ?? modLoaders[0]
+
+  // An empty list silently produced a vanilla instance that then got filled
+  // with Forge/Fabric jars — an import that "succeeded" and crashes at launch,
+  // with nothing pointing at the manifest as the cause.
+  if (!primary?.id) {
+    throw new Error(
+      'Das CurseForge-Modpack nennt keinen Mod Loader (manifest.json unvollständig) und wurde nicht importiert.'
+    )
+  }
+
+  const { loader, loaderVersion } = loaderFromCurseId(primary.id)
   const name = nameOverride?.trim() || manifest.name || 'CurseForge Modpack'
 
   const instance = await createInstance({
@@ -275,12 +343,23 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   void withTask(`${name} wird importiert`, 'Mods werden aufgelöst…', instance.id, async (task) => {
     const gameDir = paths.gameDir(instance.id)
 
-    // Resolve every file id to a download url in batches.
-    const fileIds = manifest.files.map((f) => f.fileID)
+    // Resolve every file id to a download url in batches. Entries without a
+    // usable id are dropped here rather than sent along, where a single bad
+    // value made the API reject the whole 100-item batch.
+    const fileIds = manifest.files
+      .map((f) => f?.fileID)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
+
     const resolved: ProjectVersion[] = []
     for (let i = 0; i < fileIds.length; i += 100) {
       task.update(`Mods werden aufgelöst (${i}/${fileIds.length})…`, i / Math.max(fileIds.length, 1))
-      resolved.push(...(await curseforge.getFiles(fileIds.slice(i, i + 100))))
+      try {
+        resolved.push(...(await curseforge.getFiles(fileIds.slice(i, i + 100))))
+      } catch (err) {
+        // One rejected batch must not abort an import of several hundred mods;
+        // the shortfall is reported below either way.
+        logger.warn(`CurseForge-Batch ab ${i} konnte nicht aufgelöst werden:`, err)
+      }
     }
 
     if (resolved.length < fileIds.length) {
@@ -305,8 +384,33 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     }))
 
     task.span(0, 0.85)
-    await downloadAll(downloads, { task, label: 'Modpack-Mods' })
+    // Per file rather than fail-fast: CurseForge lets an author forbid
+    // third-party downloads, and the guessed CDN url for such a mod answers
+    // 403. One of those used to throw away an otherwise finished install of
+    // several hundred mods, with no way to resume — re-importing started over
+    // in a brand new instance folder.
+    const failed: string[] = []
+    await downloadAll(downloads, {
+      task,
+      label: 'Modpack-Mods',
+      onError: (item, err) => {
+        failed.push(basename(item.path))
+        logger.warn(`Mod ${basename(item.path)} konnte nicht geladen werden:`, err)
+        return 'skip'
+      }
+    })
     task.span(0, 1)
+
+    if (failed.length > 0) {
+      notify(
+        'warning',
+        `${failed.length} ${failed.length === 1 ? 'Mod fehlt' : 'Mods fehlen'}`,
+        `${name} wurde installiert, aber ${failed.slice(0, 3).join(', ')}${
+          failed.length > 3 ? ' und weitere' : ''
+        } konnten nicht geladen werden. Lade sie bei Bedarf von Hand nach.`,
+        { route: `/instances/${instance.id}` }
+      )
+    }
 
     task.update('Konfigurationen werden entpackt…', 0.9)
     extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)

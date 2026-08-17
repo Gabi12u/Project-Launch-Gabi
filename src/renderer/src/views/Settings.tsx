@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { JavaRuntime, LaunchBehaviour, ThemeId, UpdateStatus } from '@shared/types'
 import type { AppInfo } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
-import { refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
@@ -257,6 +257,10 @@ export function SettingsView(): JSX.Element {
                       const dir = await window.gabi.app.pickDirectory('Datenverzeichnis wählen')
                       if (!dir) return
                       await saveSettings({ dataDirectory: dir })
+                      // The main process just dropped its instance cache, so the
+                      // list on screen still shows the old directory's instances
+                      // until it is read again.
+                      await refreshInstances()
                       toast(
                         'warning',
                         'Verzeichnis geändert',

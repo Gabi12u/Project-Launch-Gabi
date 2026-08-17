@@ -8,9 +8,21 @@ import { icoFromDataUrls } from './ico'
 
 const logger = log('shortcuts')
 
-/** Characters Windows refuses in file names. */
+/**
+ * Collapses anything that would end the current line.
+ *
+ * Instance names are user supplied and only trimmed at the edges, so a pasted
+ * name carrying a newline would break out of a `Name=` key in a .desktop file,
+ * or out of the `rem`/`#` comment in the generated start scripts — turning the
+ * rest of the name into its own directive or shell command.
+ */
+function singleLine(value: string): string {
+  return value.replace(/[\x00-\x1f\x7f]+/g, ' ').trim()
+}
+
+/** Characters Windows refuses in file names, plus anything line-breaking. */
 function safeFileName(name: string): string {
-  return name.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
+  return singleLine(name).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
 }
 
 /**
@@ -25,7 +37,13 @@ function launchTarget(): { target: string; baseArgs: string[] } {
   return { target: process.execPath, baseArgs: [app.getAppPath()] }
 }
 
-/** Falls back to the Launch Gabi application icon. */
+/**
+ * Falls back to the Launch Gabi application icon.
+ *
+ * The first candidate is the packaged one — `extraResources` in
+ * electron-builder.yml copies `build/icon.ico` there, because the build folder
+ * itself is excluded from the package. The rest cover running from source.
+ */
 function appIconPath(): string | null {
   const candidates = [
     join(process.resourcesPath ?? '', 'icon.ico'),
@@ -77,7 +95,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
     const ok = shell.writeShortcutLink(linkPath, 'create', {
       target,
       args,
-      description: `${instance.name} — Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
+      description: `${singleLine(instance.name)} — Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
       cwd: app.getAppPath(),
       icon,
       iconIndex: 0
@@ -94,7 +112,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
       '[Desktop Entry]',
       'Type=Application',
       `Name=${fileName}`,
-      `Comment=${instance.name} - Minecraft ${instance.mcVersion}`,
+      `Comment=${singleLine(instance.name)} - Minecraft ${instance.mcVersion}`,
       `Exec="${target}" ${args}`,
       'Terminal=false',
       'Categories=Game;'
@@ -195,7 +213,7 @@ export function writeLaunchScript(instanceId: string): string {
     const file = join(dir, 'start.bat')
     writeFileSync(
       file,
-      `@echo off\r\nrem Startet ${instance.name} direkt\r\nstart "" "${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\r\n`,
+      `@echo off\r\nrem Startet ${singleLine(instance.name)} direkt\r\nstart "" "${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\r\n`,
       'utf8'
     )
     return file
@@ -204,7 +222,7 @@ export function writeLaunchScript(instanceId: string): string {
   const file = join(dir, 'start.sh')
   writeFileSync(
     file,
-    `#!/bin/sh\n# Startet ${instance.name} direkt\n"${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\n`,
+    `#!/bin/sh\n# Startet ${singleLine(instance.name)} direkt\n"${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\n`,
     { mode: 0o755 }
   )
   return file

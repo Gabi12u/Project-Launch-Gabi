@@ -40,6 +40,28 @@ function targetDir(instanceId: string, type: ContentType): string {
   return dir
 }
 
+/**
+ * Strips any directory part from a provider-supplied file name.
+ *
+ * `fileName` comes straight from the Modrinth/CurseForge API, so a crafted
+ * release could name its file `../../../autostart/evil.jar` and escape the
+ * mods folder — on install, and just as badly later on update (overwrite) or
+ * removal (delete). A content file only ever needs a bare name, so anything
+ * else is dropped rather than trusted.
+ */
+function contentFileName(fileName: string): string {
+  const safe = basename(fileName.replace(/\\/g, '/'))
+  if (!safe || safe === '.' || safe === '..') {
+    throw new Error(`Ungültiger Dateiname aus der Quelle: "${fileName}"`)
+  }
+  return safe
+}
+
+/** Joins a provider-supplied file name into a content folder, pinned to it. */
+function contentPath(dir: string, fileName: string): string {
+  return join(dir, contentFileName(fileName))
+}
+
 function toContentItem(
   version: ProjectVersion,
   type: ContentType,
@@ -49,7 +71,7 @@ function toContentItem(
     id: randomUUID(),
     type,
     provider: version.provider,
-    fileName: version.fileName,
+    fileName: contentFileName(version.fileName),
     name: meta.name,
     version: version.versionNumber,
     versionId: version.versionId,
@@ -124,7 +146,7 @@ export async function installContent(options: InstallContentOptions): Promise<Co
 
   // Download ---------------------------------------------------------
   const dir = targetDir(instanceId, type)
-  const destination = join(dir, version.fileName)
+  const destination = contentPath(dir, version.fileName)
 
   options.task?.update(`${project.name} wird geladen…`, null)
 
@@ -140,7 +162,7 @@ export async function installContent(options: InstallContentOptions): Promise<Co
     (c) => c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName
   )
   if (previous) {
-    const oldPath = join(contentDir(instanceId, previous.type), previous.fileName)
+    const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
     rmSync(oldPath, { force: true })
     removeContentRecord(instanceId, previous.id)
   }
@@ -195,7 +217,7 @@ export function removeContent(instanceId: string, contentId: string): Instance {
   const item = instance.content.find((c) => c.id === contentId)
   if (!item) return instance
 
-  const file = join(contentDir(instanceId, item.type), item.fileName)
+  const file = contentPath(contentDir(instanceId, item.type), item.fileName)
   rmSync(file, { force: true })
   logger.info(`${item.name} aus ${instanceId} entfernt`)
 
@@ -303,7 +325,7 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
           update: {
             versionId: candidate.versionId,
             versionNumber: candidate.versionNumber,
-            fileName: candidate.fileName,
+            fileName: contentFileName(candidate.fileName),
             downloadUrl: candidate.downloadUrl,
             sha1: candidate.sha1,
             size: candidate.size,
@@ -320,9 +342,25 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
     }
   }
 
-  const result = persist({ ...getInstance(instanceId), content: updated })
-  const count = updated.filter((c) => c.update).length
-  logger.info(`${count} Updates für ${instance.name} gefunden`)
+  // The loop above makes one network call per mod, so on a large pack it runs
+  // for many seconds — long enough for the user to remove or toggle a mod, or
+  // for an `applyUpdate` to finish. Writing `updated` wholesale would revert
+  // whatever happened in the meantime, so the freshly read list decides which
+  // items still exist and only the update marker is merged onto them.
+  const scanned = new Map(updated.map((item) => [item.id, item]))
+  const current = getInstance(instanceId)
+
+  const merged = current.content.map((item) => {
+    const seen = scanned.get(item.id)
+    // A different version on disk means this item changed underneath us; a
+    // marker computed against the old one must not be pinned to the new one.
+    if (!seen || seen.versionId !== item.versionId) return item
+    return { ...item, update: seen.update ?? null }
+  })
+
+  const result = persist({ ...current, content: merged })
+  const count = merged.filter((c) => c.update).length
+  logger.info(`${count} Updates für ${current.name} gefunden`)
   return result
 }
 
@@ -332,7 +370,7 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
   if (!item?.update) return null
 
   const dir = targetDir(instanceId, item.type)
-  const destination = join(dir, item.update.fileName)
+  const destination = contentPath(dir, item.update.fileName)
 
   await downloadFile({
     url: item.update.downloadUrl,
@@ -343,12 +381,12 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
 
   // Remove the old file unless the name is unchanged.
   if (item.fileName !== item.update.fileName) {
-    rmSync(join(dir, item.fileName), { force: true })
+    rmSync(contentPath(dir, item.fileName), { force: true })
   }
 
   const next: ContentItem = {
     ...item,
-    fileName: item.update.fileName,
+    fileName: contentFileName(item.update.fileName),
     version: item.update.versionNumber,
     versionId: item.update.versionId,
     sha1: item.update.sha1,
@@ -497,7 +535,7 @@ export async function fixAll(instanceId: string, issues: CompatibilityIssue[]): 
  * ------------------------------------------------------------------ */
 
 export function contentFilePath(instanceId: string, item: ContentItem): string {
-  return join(contentDir(instanceId, item.type), item.fileName)
+  return contentPath(contentDir(instanceId, item.type), item.fileName)
 }
 
 export function contentTypeFromFile(fileName: string): ContentType {

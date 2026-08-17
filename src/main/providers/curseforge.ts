@@ -15,6 +15,8 @@ const logger = log('curseforge')
 
 const API = 'https://api.curseforge.com/v1'
 const GAME_ID = 432
+/** The search endpoint rejects anything larger and silently clamps the rest. */
+const CF_MAX_PAGE_SIZE = 50
 
 /** CurseForge class ids for the content types we support. */
 const CLASS_ID: Record<ContentType | 'modpack', number> = {
@@ -249,7 +251,10 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
     sortField: String(SORT_FIELD[query.sort]),
     sortOrder: 'desc',
     index: String(query.offset),
-    pageSize: String(Math.min(query.limit, 50))
+    // The API caps a page at 50. The caller's offset is its own, so a limit
+    // above the cap would make it skip forward by more than it received and
+    // lose the results in between.
+    pageSize: String(Math.min(query.limit, CF_MAX_PAGE_SIZE))
   })
 
   if (query.gameVersion) params.set('gameVersion', query.gameVersion)
@@ -261,9 +266,14 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
     headers: headers()
   })
 
+  // The response shape is cast, never verified, so a changed or partial body
+  // would otherwise throw on `.map` and take the whole merged search down
+  // rather than just this provider's half of it.
+  const data = Array.isArray(response.data) ? response.data : []
+
   return {
-    items: response.data.map(mapMod),
-    total: response.pagination?.totalCount ?? response.data.length
+    items: data.map(mapMod),
+    total: response.pagination?.totalCount ?? data.length
   }
 }
 
@@ -301,16 +311,33 @@ export async function getVersions(
   gameVersion?: string,
   loader?: LoaderId
 ): Promise<ProjectVersion[]> {
-  const params = new URLSearchParams({ pageSize: '200' })
-  if (gameVersion) params.set('gameVersion', gameVersion)
-  if (loader && loader !== 'vanilla') params.set('modLoaderType', String(LOADER_TYPE[loader]))
+  // Paged rather than one shot: a mod that has supported Minecraft for years
+  // carries hundreds of files, and taking only the first page silently hid the
+  // exact-version match further down — `bestVersionFor` then either installed a
+  // near miss or claimed no version existed at all.
+  const PAGE = 200
+  const MAX_PAGES = 15
 
-  const response = await fetchJson<CfListResponse<CfFile>>(
-    `${API}/mods/${projectId}/files?${params.toString()}`,
-    { headers: headers() }
-  )
+  const files: CfFile[] = []
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const params = new URLSearchParams({ index: String(page * PAGE), pageSize: String(PAGE) })
+    if (gameVersion) params.set('gameVersion', gameVersion)
+    if (loader && loader !== 'vanilla') params.set('modLoaderType', String(LOADER_TYPE[loader]))
 
-  return response.data
+    const response = await fetchJson<CfListResponse<CfFile>>(
+      `${API}/mods/${projectId}/files?${params.toString()}`,
+      { headers: headers() }
+    )
+
+    const batch = Array.isArray(response.data) ? response.data : []
+    files.push(...batch)
+
+    const total = response.pagination?.totalCount
+    if (batch.length < PAGE) break
+    if (typeof total === 'number' && files.length >= total) break
+  }
+
+  return files
     .map(mapFile)
     .sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
 }
