@@ -12,6 +12,20 @@ const logger = log('updater')
 /** Re-check this often while the launcher stays open. */
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 
+/**
+ * How long after start a finished download still counts as "was already on
+ * disk when we opened".
+ *
+ * Within this window the update came out of the cache — the check found it
+ * ready from a previous session and nothing was transferred — so applying it
+ * costs only the installer run. After the window it means the file just
+ * finished downloading while the user was working, and pulling the launcher
+ * out from under them for that would be rude; it waits for the next start.
+ */
+const STARTUP_INSTALL_WINDOW_MS = 25_000
+
+const startedAt = Date.now()
+
 let status: UpdateStatus = { state: 'idle', currentVersion: app.getVersion() }
 let timer: NodeJS.Timeout | null = null
 let checking = false
@@ -47,9 +61,16 @@ export function initUpdater(): void {
     debug: (...args: unknown[]) => logger.debug(...args)
   }
 
-  // Downloading is silent; installing waits for the user to be done playing.
-  autoUpdater.autoDownload = getSettings().autoUpdate !== false
-  autoUpdater.autoInstallOnAppQuit = true
+  const settings = getSettings()
+
+  // Downloading is silent and never blocks the window.
+  autoUpdater.autoDownload = settings.autoUpdate !== false
+
+  // The two install moments are mutually exclusive. Installing on quit is
+  // invisible — which is exactly what made it impossible to tell whether an
+  // update had happened — so when the start-up install is on, the download is
+  // deliberately left pending for the next launch, where the user sees it.
+  autoUpdater.autoInstallOnAppQuit = settings.autoInstallUpdates === false
 
   autoUpdater.on('checking-for-update', () => {
     setStatus({ state: 'checking', detail: 'Suche nach Updates…' })
@@ -81,6 +102,36 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-downloaded', (info) => {
     logger.info(`Update ${info.version} bereit zur Installation`)
+
+    // Straight from the cache during startup: apply it now and come back up on
+    // the new version, which is the whole point of the setting. A game already
+    // running vetoes it — restarting the launcher would orphan that process.
+    const fromCache = Date.now() - startedAt < STARTUP_INSTALL_WINDOW_MS
+    const wanted = getSettings().autoInstallUpdates !== false
+
+    if (fromCache && wanted && runningCount() === 0) {
+      logger.info(`Update ${info.version} wird direkt beim Start eingespielt`)
+      setStatus({
+        state: 'installing',
+        version: info.version,
+        percent: 100,
+        detail: `Version ${info.version} wird installiert…`
+      })
+      notify('info', `Update auf ${info.version}`, 'Launch Gabi startet gleich neu.')
+
+      // Long enough for the renderer to paint the message, short enough that it
+      // still feels like part of starting up.
+      setTimeout(() => {
+        try {
+          autoUpdater.quitAndInstall(false, true)
+        } catch (err) {
+          logger.error('Automatische Installation fehlgeschlagen:', err)
+          setStatus({ state: 'ready', version: info.version, detail: 'Update wartet auf Neustart.' })
+        }
+      }, 900)
+      return
+    }
+
     setStatus({
       state: 'ready',
       version: info.version,
@@ -90,7 +141,7 @@ export function initUpdater(): void {
     notify(
       'success',
       `Update auf ${info.version} bereit`,
-      'Die neue Version wird beim nächsten Beenden installiert. Jetzt neu starten?',
+      'Die neue Version wird beim nächsten Start installiert. Jetzt neu starten?',
       { route: '/settings?section=updates' }
     )
   })
@@ -102,7 +153,10 @@ export function initUpdater(): void {
     setStatus({ state: 'error', error: message, detail: 'Update-Prüfung fehlgeschlagen.' })
   })
 
-  if (getSettings().autoUpdate !== false) {
+  // The check itself is one small request and runs off the main path, so it
+  // never delays the window. A pending update from last session resolves inside
+  // it almost immediately, which is what makes the start-up install quick.
+  if (settings.autoUpdate !== false || settings.autoInstallUpdates !== false) {
     void checkForUpdates(false)
     timer = setInterval(() => void checkForUpdates(false), CHECK_INTERVAL_MS)
     // Nothing should keep the process alive just to poll for updates.

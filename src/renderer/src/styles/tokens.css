@@ -130,6 +130,125 @@
   --field-3: #072b2b;
 }
 
+/*
+ * Gradient palette. Same three-colour recipe as above: `field-1` and `field-2`
+ * are the two lit ends of the background field, `field-3` the deep tint it
+ * settles into. `bg`/`bg-elev` stay near black and only carry the hue, so the
+ * shared text and surface tokens keep their contrast in every one of these.
+ */
+
+:root[data-theme='cobalt'] {
+  --bg: #06080f;
+  --bg-elev: #0b0e1a;
+  --field-1: #3d6fff;
+  --field-2: #1b3bd6;
+  --field-3: #0e1740;
+}
+
+:root[data-theme='indigo'] {
+  --bg: #070713;
+  --bg-elev: #0c0c1e;
+  --field-1: #5b4bff;
+  --field-2: #2a1d8f;
+  --field-3: #151046;
+}
+
+:root[data-theme='violet'] {
+  --bg: #0a0714;
+  --bg-elev: #100b1e;
+  --field-1: #6b5cff;
+  --field-2: #a24bff;
+  --field-3: #1e1145;
+}
+
+:root[data-theme='prism'] {
+  --bg: #08081a;
+  --bg-elev: #0e0e24;
+  --field-1: #3d8cff;
+  --field-2: #ff4fd8;
+  --field-3: #1d1240;
+}
+
+:root[data-theme='orchid'] {
+  --bg: #0a0812;
+  --bg-elev: #110d1c;
+  --field-1: #25c2b0;
+  --field-2: #e0559f;
+  --field-3: #241338;
+}
+
+:root[data-theme='dusk'] {
+  --bg: #0b0810;
+  --bg-elev: #110c18;
+  --field-1: #8a5cff;
+  --field-2: #ff8a4d;
+  --field-3: #241634;
+}
+
+:root[data-theme='sunset'] {
+  --bg: #0f0809;
+  --bg-elev: #170c0f;
+  --field-1: #ff9b3d;
+  --field-2: #ff4d7a;
+  --field-3: #2e1220;
+}
+
+:root[data-theme='ember'] {
+  --bg: #0d0708;
+  --bg-elev: #140a0c;
+  --field-1: #ff4d3d;
+  --field-2: #a01020;
+  --field-3: #2a0a0c;
+}
+
+:root[data-theme='rust'] {
+  --bg: #0e0907;
+  --bg-elev: #150d0a;
+  --field-1: #c96a45;
+  --field-2: #7a2f22;
+  --field-3: #2b1410;
+}
+
+:root[data-theme='moss'] {
+  --bg: #0b0b07;
+  --bg-elev: #11110b;
+  --field-1: #a8a24d;
+  --field-2: #5c5327;
+  --field-3: #1e1d10;
+}
+
+:root[data-theme='fern'] {
+  --bg: #080c09;
+  --bg-elev: #0d120e;
+  --field-1: #6f9e6a;
+  --field-2: #37543a;
+  --field-3: #15201a;
+}
+
+:root[data-theme='pine'] {
+  --bg: #070e0d;
+  --bg-elev: #0c1614;
+  --field-1: #2fae86;
+  --field-2: #1a5e57;
+  --field-3: #0c2622;
+}
+
+:root[data-theme='lagoon'] {
+  --bg: #060d12;
+  --bg-elev: #0b141b;
+  --field-1: #2f8fff;
+  --field-2: #2fd6a8;
+  --field-3: #0b2436;
+}
+
+:root[data-theme='slate'] {
+  --bg: #0a0c11;
+  --bg-elev: #101319;
+  --field-1: #7d93c8;
+  --field-2: #3f4d6b;
+  --field-3: #161c2a;
+}
+
 /* Users who ask for less motion get instant transitions everywhere. */
 :root[data-motion='reduced'] *,
 :root[data-motion='reduced'] *::before,

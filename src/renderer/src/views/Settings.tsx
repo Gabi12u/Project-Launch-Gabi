@@ -47,6 +47,8 @@ function updateHeadline(status: UpdateStatus): string {
       return `Wird geladen… ${Math.round(status.percent ?? 0)}%`
     case 'ready':
       return `Version ${status.version} ist bereit`
+    case 'installing':
+      return `Version ${status.version} wird installiert, der Launcher startet gleich neu…`
     case 'up-to-date':
       return 'Launch Gabi ist aktuell'
     case 'error':
@@ -102,7 +104,7 @@ function UpdatePanel(): JSX.Element {
         <div className="row gap-8 mt-16">
           <button
             className="btn"
-            disabled={busy || state === 'checking' || state === 'downloading'}
+            disabled={busy || state === 'checking' || state === 'downloading' || state === 'installing'}
             onClick={() => run(() => window.gabi.updates.check())}
           >
             <IconRefresh />
@@ -136,20 +138,42 @@ function UpdatePanel(): JSX.Element {
         <h3>Verhalten</h3>
         <SettingToggle
           label="Updates automatisch herunterladen"
-          hint="Neue Versionen werden im Hintergrund geladen und beim Beenden installiert."
+          hint="Neue Versionen werden still im Hintergrund geladen, während du den Launcher benutzt."
           checked={settings.autoUpdate}
           onChange={(value) => void saveSettings({ autoUpdate: value })}
+        />
+        <SettingToggle
+          label="Beim Start automatisch installieren"
+          hint="Ist ein Update fertig geladen, wird es beim nächsten Öffnen eingespielt und der Launcher startet neu. Es wird dabei nichts heruntergeladen, der Start bleibt schnell."
+          checked={settings.autoInstallUpdates}
+          onChange={(value) => void saveSettings({ autoInstallUpdates: value })}
         />
       </section>
     </>
   )
 }
 
+// `colors` is only the swatch in the picker; the real values live in
+// tokens.css, so the two lists have to be kept in step.
 const THEMES: { id: ThemeId; label: string; colors: [string, string] }[] = [
   { id: 'midnight', label: 'Midnight', colors: ['#6b4cff', '#2b6fff'] },
   { id: 'nebula', label: 'Nebula', colors: ['#a24bff', '#ff4fa3'] },
   { id: 'abyss', label: 'Abyss', colors: ['#1e6fff', '#00c2c7'] },
-  { id: 'aurora', label: 'Aurora', colors: ['#24d1a0', '#4f7bff'] }
+  { id: 'aurora', label: 'Aurora', colors: ['#24d1a0', '#4f7bff'] },
+  { id: 'cobalt', label: 'Cobalt', colors: ['#3d6fff', '#1b3bd6'] },
+  { id: 'indigo', label: 'Indigo', colors: ['#5b4bff', '#2a1d8f'] },
+  { id: 'violet', label: 'Violet', colors: ['#6b5cff', '#a24bff'] },
+  { id: 'prism', label: 'Prism', colors: ['#3d8cff', '#ff4fd8'] },
+  { id: 'orchid', label: 'Orchid', colors: ['#25c2b0', '#e0559f'] },
+  { id: 'dusk', label: 'Dusk', colors: ['#8a5cff', '#ff8a4d'] },
+  { id: 'sunset', label: 'Sunset', colors: ['#ff9b3d', '#ff4d7a'] },
+  { id: 'ember', label: 'Ember', colors: ['#ff4d3d', '#a01020'] },
+  { id: 'rust', label: 'Rust', colors: ['#c96a45', '#7a2f22'] },
+  { id: 'moss', label: 'Moss', colors: ['#a8a24d', '#5c5327'] },
+  { id: 'fern', label: 'Fern', colors: ['#6f9e6a', '#37543a'] },
+  { id: 'pine', label: 'Pine', colors: ['#2fae86', '#1a5e57'] },
+  { id: 'lagoon', label: 'Lagoon', colors: ['#2f8fff', '#2fd6a8'] },
+  { id: 'slate', label: 'Slate', colors: ['#7d93c8', '#3f4d6b'] }
 ]
 
 export function SettingsView(): JSX.Element {

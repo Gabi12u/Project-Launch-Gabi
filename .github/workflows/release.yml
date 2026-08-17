@@ -14,8 +14,8 @@ jobs:
   release:
     strategy:
       fail-fast: false
-      # One at a time: all three jobs publish into the same release, and running
-      # them in parallel makes them race to create it.
+      # One at a time: all three upload into the same draft release, and letting
+      # them start together makes them race to create it.
       max-parallel: 1
       matrix:
         include:
@@ -49,3 +49,49 @@ jobs:
           # keychain identity and fail the macOS build.
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run publish:${{ matrix.platform }}
+
+  # Every platform uploads into one draft; this turns that draft into the real
+  # release exactly once. Without it the draft would sit there invisible and no
+  # installed launcher would ever see the update.
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Taken from package.json rather than the ref, so a manual re-run from
+          # the Actions tab targets the same release a tag push would.
+          TAG="v$(node -p "require('./package.json').version")"
+          echo "Veröffentliche $TAG"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+
+      - name: Verify the release carries every expected file
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          ASSETS=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          echo "$ASSETS"
+          # The three manifests are what the updater reads; a missing one means
+          # that platform silently never updates, which is not worth shipping.
+          for required in latest.yml latest-mac.yml latest-linux.yml; do
+            echo "$ASSETS" | grep -qx "$required" || {
+              echo "::error::$required fehlt im Release $TAG"
+              exit 1
+            }
+          done
+          # A second release for the same tag is the failure this setup exists
+          # to prevent, so it is worth failing loudly on.
+          COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "[.[] | select(.tag_name==\"$TAG\")] | length")
+          if [ "$COUNT" != "1" ]; then
+            echo "::error::$COUNT Releases mit Tag $TAG gefunden, erwartet genau 1"
+            exit 1
+          fi
+          echo "Release $TAG ist vollständig."

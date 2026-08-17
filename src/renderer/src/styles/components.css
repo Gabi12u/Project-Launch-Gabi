@@ -219,11 +219,18 @@
   opacity: 1;
 }
 
-/* The bright bar at the left edge of the active item. */
+/*
+ * The bright bar at the left edge of the sidebar, riding along with the pill.
+ *
+ * Its flat left side is the shape of something flush against an edge, so it has
+ * to reach one: the pill sits 12px inside `.nav-list`, which itself sits 12px
+ * inside the sidebar's padding — offsetting by both puts the bar on the
+ * sidebar's own border instead of leaving it floating in the padding.
+ */
 .nav-pill::before {
   content: '';
   position: absolute;
-  left: -12px;
+  left: -24px;
   top: 50%;
   translate: 0 -50%;
   width: 3px;

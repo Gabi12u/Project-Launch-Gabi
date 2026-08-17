@@ -244,7 +244,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         <div className="col gap-16">
           <p className="hint">
             Der Mod Loader entscheidet, welche Mods du installieren kannst. Ohne Loader läuft Minecraft
-            unverändert. Nicht verfügbare Loader gibt es für {mcVersion} (noch) nicht.
+            unverändert. Ausgegraute Loader gibt es für {mcVersion} noch nicht.
           </p>
 
           <div className="option-grid">
@@ -279,11 +279,19 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                       wird geprüft…
                     </div>
                   )}
-                  {!unknown && entry.id !== 'vanilla' && (
+                  {/*
+                    * Vanilla gets a line too, even though it has no loader
+                    * versions to count: the grid stretches every card to the
+                    * tallest one, so leaving it out left a visible gap under
+                    * Vanilla while every neighbour was filled to the bottom.
+                    */}
+                  {!unknown && (
                     <div className="hint mt-8">
-                      {available
-                        ? `${loaderVersions[entry.id].length} Versionen`
-                        : `Nicht für ${mcVersion}`}
+                      {entry.id === 'vanilla'
+                        ? 'Immer verfügbar'
+                        : available
+                          ? `${loaderVersions[entry.id].length} Versionen`
+                          : `Nicht für ${mcVersion}`}
                     </div>
                   )}
                 </button>

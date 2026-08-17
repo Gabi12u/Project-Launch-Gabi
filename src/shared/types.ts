@@ -362,6 +362,8 @@ export type UpdateState =
   | 'available'
   | 'downloading'
   | 'ready'
+  /** Applying a previously downloaded update; the launcher restarts next. */
+  | 'installing'
   | 'error'
   /** Running unpackaged, where there is nothing to update. */
   | 'disabled'
@@ -450,7 +452,28 @@ export interface LaunchPreflight {
  * Settings
  * ------------------------------------------------------------------ */
 
-export type ThemeId = 'midnight' | 'nebula' | 'abyss' | 'aurora'
+export type ThemeId =
+  | 'midnight'
+  | 'nebula'
+  | 'abyss'
+  | 'aurora'
+  // Gradient palette added in 1.0.2. All dark: the launcher's text and surface
+  // tokens are built for a dark ground, so a light theme needs its own token
+  // set rather than just another background pair.
+  | 'cobalt'
+  | 'indigo'
+  | 'violet'
+  | 'prism'
+  | 'orchid'
+  | 'dusk'
+  | 'sunset'
+  | 'ember'
+  | 'rust'
+  | 'moss'
+  | 'fern'
+  | 'pine'
+  | 'lagoon'
+  | 'slate'
 export type LanguageId = 'de' | 'en'
 
 export interface LauncherSettings {
@@ -470,6 +493,12 @@ export interface LauncherSettings {
   checkContentUpdatesOnStart: boolean
   /** Download launcher updates in the background as soon as they appear. */
   autoUpdate: boolean
+  /**
+   * Apply an already downloaded update while the launcher is starting, then
+   * relaunch. Only ever installs what is already on disk, so startup never
+   * waits for a transfer.
+   */
+  autoInstallUpdates: boolean
   autoInstallDependencies: boolean
   notifyOnUpdates: boolean
   notifyOnGameExit: boolean

@@ -176,15 +176,19 @@ function bootstrap(): void {
     createWindow()
     handleStartupArgs(process.argv)
 
+    // Started right alongside the window rather than after the usual settling
+    // delay: an update left pending by the previous session resolves out of the
+    // cache in milliseconds, and every second it waits here is a second the
+    // user stares at a launcher that is about to restart anyway. The check is
+    // one small request and holds nothing up if there is no update.
+    initUpdater()
+
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
 
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
-      // Starts the background check; failures only ever land in the log.
-      initUpdater()
-
       // A quit or crash during a download strands its `.part` file, and nothing
       // else ever sweeps the shared library/asset trees where most of them land.
       try {

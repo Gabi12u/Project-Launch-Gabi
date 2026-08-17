@@ -38,6 +38,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   downloadThrottleKbps: 0,
   checkContentUpdatesOnStart: true,
   autoUpdate: true,
+  autoInstallUpdates: true,
   autoInstallDependencies: true,
   notifyOnUpdates: true,
   notifyOnGameExit: false,

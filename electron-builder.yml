@@ -54,7 +54,12 @@ publish:
   - provider: github
     owner: Gabi12u
     repo: Project-Launch-Gabi
-    releaseType: release
+    # Draft, not release: the publisher uploads into an existing *draft* for the
+    # tag. Publishing from the first platform job meant the next one found no
+    # draft and created a second release for the same tag, splitting the
+    # installers and the update manifests across the two. The workflow flips
+    # this to published once all three platforms have uploaded.
+    releaseType: draft
 
 # macOS and Linux are built on GitHub Actions runners -- neither target can be
 # produced on Windows. See .github/workflows/release.yml.
