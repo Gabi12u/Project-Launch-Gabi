@@ -17,7 +17,10 @@
     "dist:dir": "electron-vite build && electron-builder --win --dir",
     "publish:win": "electron-vite build && electron-builder --win --publish always",
     "publish:mac": "electron-vite build && electron-builder --mac --publish always",
-    "publish:linux": "electron-vite build && electron-builder --linux --publish always"
+    "publish:linux": "electron-vite build && electron-builder --linux --publish always",
+    "pack:win": "electron-vite build && electron-builder --win --publish never",
+    "pack:mac": "electron-vite build && electron-builder --mac --publish never",
+    "pack:linux": "electron-vite build && electron-builder --linux --publish never"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",

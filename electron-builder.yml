@@ -46,20 +46,15 @@ protocols:
   - name: Launch Gabi
     schemes: [launchgabi]
 
-# Where the installed app looks for updates. electron-builder bakes this into
-# app-update.yml inside the package, so it has to be right BEFORE `npm run dist`.
-# GitHub Releases needs no server of your own: publish the installer plus the
-# generated latest.yml as release assets and the updater finds them.
+# Where the installed app looks for updates. This block is still required so
+# electron-builder writes app-update.yml into the package and generates the
+# latest*.yml manifests — but nothing here publishes any more. The release is
+# assembled centrally in .github/workflows/release.yml, because three runners
+# each creating their own release produced two releases for one tag.
 publish:
   - provider: github
     owner: Gabi12u
     repo: Project-Launch-Gabi
-    # Draft, not release: the publisher uploads into an existing *draft* for the
-    # tag. Publishing from the first platform job meant the next one found no
-    # draft and created a second release for the same tag, splitting the
-    # installers and the update manifests across the two. The workflow flips
-    # this to published once all three platforms have uploaded.
-    releaseType: draft
 
 # macOS and Linux are built on GitHub Actions runners -- neither target can be
 # produced on Windows. See .github/workflows/release.yml.

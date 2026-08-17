@@ -1,8 +1,16 @@
 name: Release
 
-# Builds Launch Gabi for all three platforms and attaches the installers to the
-# GitHub release for the current version. macOS and Linux artifacts cannot be
-# produced on a Windows machine, so they are built on GitHub's runners instead.
+# Builds Launch Gabi for all three platforms and attaches the installers to one
+# GitHub release. macOS and Linux artifacts cannot be produced on a Windows
+# machine, so they are built on GitHub's runners instead.
+#
+# The platform jobs deliberately do NOT publish. Letting electron-builder create
+# the release from three separate runners produced two releases for the same
+# tag twice in a row: whichever job goes first creates one, and the next does
+# not reliably find it. Installers and update manifests then land on different
+# releases, and the launcher either sees no update at all or cannot use the
+# small differential download. Building into artifacts and assembling one
+# release at the end removes the race entirely.
 on:
   push:
     tags:
@@ -11,12 +19,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
-      # One at a time: all three upload into the same draft release, and letting
-      # them start together makes them race to create it.
-      max-parallel: 1
       matrix:
         include:
           - os: windows-latest
@@ -27,8 +32,6 @@ jobs:
             platform: linux
 
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -42,19 +45,34 @@ jobs:
 
       - run: npm run typecheck
 
-      - name: Build and publish ${{ matrix.platform }}
+      - name: Build ${{ matrix.platform }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Without an Apple certificate, auto-discovery would pick up a random
           # keychain identity and fail the macOS build.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: npm run publish:${{ matrix.platform }}
+        run: npm run pack:${{ matrix.platform }}
 
-  # Every platform uploads into one draft; this turns that draft into the real
-  # release exactly once. Without it the draft would sit there invisible and no
-  # installed launcher would ever see the update.
-  publish:
-    needs: release
+      # Only the shippable files. `dist/` also holds the unpacked app trees,
+      # which are large and useless as release assets.
+      - name: Collect installers
+        shell: bash
+        run: |
+          mkdir -p upload
+          for pattern in '*.exe' '*.dmg' '*.AppImage' '*.blockmap' 'latest*.yml'; do
+            find dist -maxdepth 1 -name "$pattern" -exec cp {} upload/ \; 2>/dev/null || true
+          done
+          echo "Hochzuladen:"
+          ls -1 upload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.platform }}
+          path: upload/
+          retention-days: 1
+          if-no-files-found: error
+
+  release:
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -62,23 +80,47 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish the draft release
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Assemble one release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           # Taken from package.json rather than the ref, so a manual re-run from
           # the Actions tab targets the same release a tag push would.
           TAG="v$(node -p "require('./package.json').version")"
-          echo "Veröffentliche $TAG"
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+          mkdir -p out
+          find artifacts -type f -exec cp {} out/ \;
 
-      - name: Verify the release carries every expected file
+          echo "Dateien für $TAG:"
+          ls -1 out
+
+          # Recreated rather than appended to, so a re-run cannot leave assets
+          # from an older build sitting next to the new ones.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Vorhandenes Release $TAG wird ersetzt"
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes
+          fi
+
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --generate-notes \
+            --latest \
+            out/*
+
+      - name: Verify the release is complete
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           TAG="v$(node -p "require('./package.json').version")"
           ASSETS=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
           echo "$ASSETS"
+
           # The three manifests are what the updater reads; a missing one means
           # that platform silently never updates, which is not worth shipping.
           for required in latest.yml latest-mac.yml latest-linux.yml; do
@@ -87,11 +129,13 @@ jobs:
               exit 1
             }
           done
-          # A second release for the same tag is the failure this setup exists
-          # to prevent, so it is worth failing loudly on.
-          COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq "[.[] | select(.tag_name==\"$TAG\")] | length")
+
+          # The failure this whole layout exists to prevent.
+          COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq "[.[] | select(.tag_name==\"$TAG\")] | length" | head -1)
           if [ "$COUNT" != "1" ]; then
             echo "::error::$COUNT Releases mit Tag $TAG gefunden, erwartet genau 1"
             exit 1
           fi
+
           echo "Release $TAG ist vollständig."
