@@ -123,7 +123,12 @@ export function initUpdater(): void {
       // still feels like part of starting up.
       setTimeout(() => {
         try {
-          autoUpdater.quitAndInstall(false, true)
+          // Silent, emphatically. The NSIS installer is configured with
+          // `oneClick: false` and `allowToChangeInstallationDirectory`, so a
+          // non-silent run shows the entire first-time setup wizard — target
+          // folder and all — on every single update. Users read that as having
+          // to reinstall the launcher from scratch.
+          autoUpdater.quitAndInstall(true, true)
         } catch (err) {
           logger.error('Automatische Installation fehlgeschlagen:', err)
           setStatus({ state: 'ready', version: info.version, detail: 'Update wartet auf Neustart.' })
@@ -266,6 +271,8 @@ export function installUpdate(): void {
   }
 
   logger.info('Installiere Update und starte neu')
-  // `isSilent: false` shows the installer UI, `isForceRunAfter` reopens the app.
-  setImmediate(() => autoUpdater.quitAndInstall(false, true))
+  // Silent for the same reason as the start-up path above: this installer is
+  // an assisted one, so showing its UI walks the user through the full setup
+  // wizard again. `isForceRunAfter` brings the launcher back up afterwards.
+  setImmediate(() => autoUpdater.quitAndInstall(true, true))
 }
