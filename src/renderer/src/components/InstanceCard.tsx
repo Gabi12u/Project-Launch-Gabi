@@ -1,34 +1,10 @@
-import { useEffect, useState, type JSX } from 'react'
+import { type JSX } from 'react'
 import type { InstanceSummary } from '@shared/types'
 import { navigate, useStore } from '../lib/store'
 import { startInstance, stopInstance, toggleFavorite } from '../lib/actions'
-import { useTilt } from '../lib/hooks'
+import { useInstanceIcon, useTilt } from '../lib/hooks'
 import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/format'
 import { IconPlay, IconStar, IconStarFilled, IconStop } from './Icons'
-
-/** Reads the custom icon of an instance once and caches it in component state. */
-function useInstanceIcon(instance: InstanceSummary): string | null {
-  const [src, setSrc] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!instance.appearance.icon.startsWith('img:')) {
-      setSrc(null)
-      return
-    }
-    let cancelled = false
-    void window.gabi.instances
-      .get(instance.id)
-      .then((detail) => {
-        if (!cancelled && detail.resolvedIcon) setSrc(`file://${detail.resolvedIcon.replace(/\\/g, '/')}`)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [instance.id, instance.appearance.icon])
-
-  return src
-}
 
 export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.Element {
   const { starting } = useStore()

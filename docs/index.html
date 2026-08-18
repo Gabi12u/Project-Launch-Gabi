@@ -861,7 +861,11 @@ observeReveals();
   }
 
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
-    headers: { Accept: 'application/vnd.github+json' }
+    headers: { Accept: 'application/vnd.github+json' },
+    // The API allows caching for a minute, and a browser that held on to an
+    // older answer kept advertising the previous version long after a release
+    // went out. The page is worthless if it shows a stale one.
+    cache: 'no-store'
   })
     .then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);

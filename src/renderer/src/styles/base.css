@@ -301,6 +301,12 @@ h4 {
   font-variant-ligatures: none;
 }
 
+/*
+ * No `min-width: 0` needed here, despite the usual flexbox advice: a flex
+ * item's automatic minimum size is already zero whenever `overflow` is not
+ * `visible`, and this rule sets `overflow: hidden`. Measured both ways — the
+ * ellipsis engages either way.
+ */
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -350,13 +356,22 @@ h4 {
   min-width: 0;
 }
 
+/*
+ * Every step used anywhere in the app has to exist here. A class name that is
+ * merely written in the markup does nothing — the gap silently falls back to 0
+ * and the layout collapses without any error to notice. `gap-32` sits on the
+ * top-level container of Home, Instances and the instance settings, so its
+ * absence squashed every section on those pages together.
+ */
 .gap-4 { gap: 4px; }
 .gap-6 { gap: 6px; }
 .gap-8 { gap: 8px; }
+.gap-10 { gap: 10px; }
 .gap-12 { gap: 12px; }
 .gap-16 { gap: 16px; }
 .gap-20 { gap: 20px; }
 .gap-24 { gap: 24px; }
+.gap-32 { gap: 32px; }
 
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }

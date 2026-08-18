@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import type { InstanceSummary } from '@shared/types'
 import { getState } from './store'
 
 /**
@@ -143,4 +144,40 @@ export function useParallax<T extends HTMLElement>(
       element.removeEventListener('mouseleave', onLeave)
     }
   }, [ref, strength])
+}
+
+/**
+ * Resolves an instance's custom picture icon to a displayable URL.
+ *
+ * `appearance.icon` is either an emoji or `img:<filename>`; the filename only
+ * becomes a real path through the main process. Anything rendering the raw
+ * field shows the literal string "img:a1b2c3.png" instead of the picture, so
+ * every place that displays an instance icon goes through here.
+ *
+ * Returns null for emoji icons, which the caller renders directly.
+ */
+export function useInstanceIcon(instance: InstanceSummary): string | null {
+  const [src, setSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!instance.appearance.icon.startsWith('img:')) {
+      setSrc(null)
+      return
+    }
+    let cancelled = false
+    void window.gabi.instances
+      .get(instance.id)
+      .then((detail) => {
+        // Windows separators have to become forward slashes for a file:// URL.
+        if (!cancelled && detail.resolvedIcon) {
+          setSrc(`file://${detail.resolvedIcon.replace(/\\/g, '/')}`)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [instance.id, instance.appearance.icon])
+
+  return src
 }

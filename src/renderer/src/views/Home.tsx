@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type JSX, type ReactNode } from 'react'
 import type { InstanceSummary, LauncherStats, NewsItem } from '@shared/types'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
-import { useCountUp, useParallax, useSpotlight } from '../lib/hooks'
+import { useCountUp, useInstanceIcon, useParallax, useSpotlight } from '../lib/hooks'
 import {
   LOADER_LABELS,
   formatMemory,
@@ -199,6 +199,7 @@ function FeaturedInstance({
 }): JSX.Element {
   const { launchStatus } = useStore()
   const status = launchStatus[instance.id]
+  const heroIcon = useInstanceIcon(instance)
   const heroRef = useRef<HTMLElement | null>(null)
 
   useParallax(heroRef, 18)
@@ -219,7 +220,9 @@ function FeaturedInstance({
       <div className="hero-content">
         <div className="col gap-12" style={{ minWidth: 260 }}>
           <div className="row gap-16">
-            <div className="hero-icon">{instance.appearance.icon}</div>
+            <div className="hero-icon">
+              {heroIcon ? <img src={heroIcon} alt="" /> : instance.appearance.icon}
+            </div>
             <div className="col gap-4">
               <span className="badge accent" style={{ alignSelf: 'flex-start' }}>
                 {instance.favorite ? 'Favorit' : 'Zuletzt gespielt'}
@@ -300,6 +303,7 @@ function FeaturedInstance({
 
 function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolean }): JSX.Element {
   const spotlight = useSpotlight<HTMLButtonElement>()
+  const quickIcon = useInstanceIcon(instance)
 
   return (
     <button
@@ -308,7 +312,9 @@ function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolea
       onClick={() => navigate(`/instances/${instance.id}`)}
       {...spotlight}
     >
-      <div className="quick-icon">{instance.appearance.icon}</div>
+      <div className="quick-icon">
+        {quickIcon ? <img src={quickIcon} alt="" /> : instance.appearance.icon}
+      </div>
 
       <div className="col grow" style={{ position: 'relative', zIndex: 1, overflow: 'hidden' }}>
         <span className="truncate" style={{ fontSize: 14, fontWeight: 650 }}>
