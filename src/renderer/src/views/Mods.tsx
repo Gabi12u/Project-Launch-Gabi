@@ -74,7 +74,7 @@ export function ModsView(): JSX.Element {
       }
       toast(
         total > 0 ? 'info' : 'success',
-        total > 0 ? `${total} Updates gefunden` : 'Alles aktuell',
+        total > 0 ? `${total} ${pluralise(total, 'Update', 'Updates')} gefunden` : 'Alles aktuell',
         total > 0 ? 'Du kannst sie einzeln oder pro Instanz installieren.' : undefined
       )
       await refreshInstances()
@@ -94,7 +94,7 @@ export function ModsView(): JSX.Element {
         if (instance.updateCount === 0) continue
         total += await window.gabi.content.updateAll(instance.id)
       }
-      toast('success', `${total} Mods aktualisiert`)
+      toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
       await refreshInstances()
       await load()
     } catch (err) {
@@ -131,9 +131,9 @@ export function ModsView(): JSX.Element {
         <div>
           <h1 className="page-title">Mods</h1>
           <p className="page-sub">
-            Alle Inhalte über sämtliche Instanzen hinweg — {rows.length}{' '}
+            Alle Inhalte über sämtliche Instanzen hinweg, {rows.length}{' '}
             {pluralise(rows.length, 'Eintrag', 'Einträge')}
-            {totalUpdates > 0 ? `, ${totalUpdates} Updates verfügbar` : ''}.
+            {totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : ''}.
           </p>
         </div>
 
@@ -145,7 +145,7 @@ export function ModsView(): JSX.Element {
           {totalUpdates > 0 && (
             <button className="btn primary" onClick={updateEverything} disabled={checking}>
               <IconSparkle size={16} />
-              {totalUpdates} Updates installieren
+              {totalUpdates} {pluralise(totalUpdates, 'Update', 'Updates')} installieren
             </button>
           )}
         </div>
@@ -207,7 +207,7 @@ export function ModsView(): JSX.Element {
             <EmptyState
               icon={<IconPackage size={26} />}
               title="Noch keine Mods installiert"
-              message="Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus — Launch Gabi installiert Abhängigkeiten automatisch mit."
+              message="Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus, Launch Gabi installiert Abhängigkeiten automatisch mit."
               action={
                 <button className="btn primary" onClick={() => navigate('/discover')}>
                   <IconSearch size={16} />

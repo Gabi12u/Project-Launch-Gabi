@@ -44,7 +44,7 @@ export function Onboarding(): JSX.Element {
               <h2 style={{ fontSize: 22 }}>Schön, dass du da bist.</h2>
               <p style={{ color: 'var(--text-2)', lineHeight: 1.7, fontSize: 14 }}>
                 Launch Gabi verwaltet beliebig viele voneinander getrennte Minecraft-Installationen. Jede
-                davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten — nichts kommt sich
+                davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten, nichts kommt sich
                 in die Quere.
               </p>
               <p style={{ color: 'var(--text-3)', lineHeight: 1.7, fontSize: 13.5 }}>
@@ -106,7 +106,7 @@ export function Onboarding(): JSX.Element {
                 <div className="col gap-4">
                   <span className="option-name">Java automatisch verwalten</span>
                   <span className="option-desc">
-                    Launch Gabi lädt die passende Java-Version selbst herunter — du musst nichts installieren.
+                    Launch Gabi lädt die passende Java-Version selbst herunter, du musst nichts installieren.
                   </span>
                 </div>
                 <button

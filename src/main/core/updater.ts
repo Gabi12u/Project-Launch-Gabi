@@ -6,6 +6,7 @@ import { emit, notify } from '../events'
 import { log } from '../logger'
 import { getSettings } from '../store'
 import { runningCount } from './running'
+import { startingCount } from './launch'
 
 const logger = log('updater')
 
@@ -109,7 +110,12 @@ export function initUpdater(): void {
     const fromCache = Date.now() - startedAt < STARTUP_INSTALL_WINDOW_MS
     const wanted = getSettings().autoInstallUpdates !== false
 
-    if (fromCache && wanted && runningCount() === 0) {
+    // `startingCount` matters as much as `runningCount` here: a launch that is
+    // still downloading files has no process yet, so the running registry says
+    // "nothing is up" while the user is very much waiting for their game.
+    const busy = runningCount() > 0 || startingCount() > 0
+
+    if (fromCache && wanted && !busy) {
       logger.info(`Update ${info.version} wird direkt beim Start eingespielt`)
       setStatus({
         state: 'installing',
@@ -265,7 +271,18 @@ export function installUpdate(): void {
     notify(
       'warning',
       'Update später',
-      'Beende erst Minecraft — das Update wird sonst mitten in der Sitzung eingespielt.'
+      'Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.'
+    )
+    return
+  }
+
+  // Same reasoning as the automatic path: a start that is still downloading
+  // would be thrown away by the restart.
+  if (startingCount() > 0) {
+    notify(
+      'warning',
+      'Update später',
+      'Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.'
     )
     return
   }

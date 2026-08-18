@@ -1,5 +1,6 @@
 import type { JSX } from 'react'
 import { dismissToast, navigate, useStore } from '../lib/store'
+import { clickable } from '../lib/a11y'
 import { IconCheckCircle, IconInfo, IconWarning, IconX } from './Icons'
 
 const ICONS = {
@@ -20,12 +21,15 @@ export function Toasts(): JSX.Element {
           <div
             key={item.id}
             className={`toast ${item.kind}`}
-            onClick={() => {
-              if (item.route) {
-                navigate(item.route)
-                dismissToast(item.id)
-              }
-            }}
+            // Only the ones that navigate somewhere become a control; a plain
+            // notification stays a passive region rather than an empty button
+            // in the tab order.
+            {...(item.route
+              ? clickable(() => {
+                  navigate(item.route as string)
+                  dismissToast(item.id)
+                })
+              : {})}
             style={item.route ? { cursor: 'pointer' } : undefined}
           >
             <Icon className="toast-icon" size={20} />

@@ -352,7 +352,7 @@ export function SettingsView(): JSX.Element {
                 <h3>Bewegung</h3>
                 <SettingToggle
                   label="Animationen reduzieren"
-                  hint="Schaltet Übergänge und Effekte ab — hilfreich auf schwächerer Hardware."
+                  hint="Schaltet Übergänge und Effekte ab, hilfreich auf schwächerer Hardware."
                   checked={settings.reduceMotion}
                   onChange={(value) => void saveSettings({ reduceMotion: value })}
                 />
@@ -576,7 +576,7 @@ export function SettingsView(): JSX.Element {
             <section className="setting-group">
               <h3>Microsoft-Anmeldung</h3>
               <p className="hint">
-                Launch Gabi meldet sich über den Geräte-Code-Ablauf an — dein Passwort wird nie im Launcher
+                Launch Gabi meldet sich über den Geräte-Code-Ablauf an, dein Passwort wird nie im Launcher
                 eingegeben. Voreingestellt ist die Anwendungs-ID des offiziellen Minecraft-Launchers, die
                 über <span className="mono">login.live.com</span> läuft. Trägst du hier stattdessen eine
                 eigene Azure-Anwendungs-ID im GUID-Format ein, wechselt Launch Gabi automatisch auf den

@@ -105,6 +105,28 @@ function compareVersionsDesc(a: string, b: string): number {
 }
 
 /**
+ * Reads the Minecraft version a modded profile is built on from its own
+ * version JSON (`<versions>/<id>/<id>.json`), the same `inheritsFrom` field
+ * `loadVersionJson` in mojang.ts resolves for a normal launch.
+ *
+ * This is what actually identifies a NeoForge folder: its name alone
+ * (`neoforge-21.1.57`) carries no Minecraft version, unlike legacy Forge's
+ * `<mcVersion>-forge-<loaderVersion>` layout. Guessing from NeoForge's own
+ * version-number scheme would be one more thing to keep in sync with a
+ * scheme that has already changed once; the profile just states it outright.
+ */
+function readInheritsFrom(versionsDir: string, id: string): string | null {
+  try {
+    const file = join(versionsDir, id, `${id}.json`)
+    if (!existsSync(file)) return null
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as { inheritsFrom?: unknown }
+    return typeof parsed.inheritsFrom === 'string' ? parsed.inheritsFrom : null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Last resort for a bare `.minecraft`: the folder names under `versions/` are
  * the only record of what this installation was ever run as.
  */
@@ -139,6 +161,15 @@ function guessFromVersionsFolder(
         mcVersion: forge[1],
         loader: forge[2].toLowerCase() === 'neoforge' ? 'neoforge' : 'forge',
         loaderVersion: forge[3]
+      }
+    }
+    // Modern NeoForge installers name the folder just `neoforge-<version>`,
+    // with no Minecraft version in the name at all.
+    const neoforge = /^neoforge-([\w.+-]+)$/i.exec(name)
+    if (neoforge) {
+      const mcVersion = readInheritsFrom(dir, name)
+      if (mcVersion) {
+        return { mcVersion, loader: 'neoforge', loaderVersion: neoforge[1] }
       }
     }
   }
@@ -341,7 +372,7 @@ export async function importInstanceFolder(
     await syncContentWithDisk(instance.id)
 
     persist({ ...getInstance(instance.id), installing: false, installed: true })
-    task.update(`Import abgeschlossen (${copied} Dateien)`, 1)
+    task.update(`Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})`, 1)
   }).catch((err) => {
     logger.error(`Ordner-Import von ${name} fehlgeschlagen:`, err)
     try {

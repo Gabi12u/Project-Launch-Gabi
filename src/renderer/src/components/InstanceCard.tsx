@@ -3,6 +3,7 @@ import type { InstanceSummary } from '@shared/types'
 import { navigate, useStore } from '../lib/store'
 import { startInstance, stopInstance, toggleFavorite } from '../lib/actions'
 import { useInstanceIcon, useTilt } from '../lib/hooks'
+import { clickable } from '../lib/a11y'
 import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/format'
 import { IconPlay, IconStar, IconStarFilled, IconStop } from './Icons'
 
@@ -18,7 +19,8 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
     <article
       className="instance-card"
       style={{ ['--card-accent' as string]: accent }}
-      onClick={() => navigate(`/instances/${instance.id}`)}
+      aria-label={instance.name}
+      {...clickable(() => navigate(`/instances/${instance.id}`))}
       {...tilt}
     >
       <div className="instance-cover">

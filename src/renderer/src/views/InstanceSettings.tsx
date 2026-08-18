@@ -74,8 +74,17 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
   const save = async (): Promise<void> => {
     setSaving(true)
     try {
+      // Clearing a number field yields Number('') === 0, and the launch command
+      // builder passes these straight through to the game with no fallback of
+      // its own. The `min` attribute on the inputs is only a validity hint, it
+      // does not clamp anything.
+      const safeWidth = Number.isFinite(width) && width >= 640 ? Math.round(width) : 854
+      const safeHeight = Number.isFinite(height) && height >= 480 ? Math.round(height) : 480
+      // The stored name is the one the toast should report, not the raw field.
+      const savedName = name.trim() || instance.name
+
       await window.gabi.instances.update(instance.id, {
-        name: name.trim() || instance.name,
+        name: savedName,
         description,
         group: group.trim(),
         appearance: { ...instance.appearance, icon, accent },
@@ -88,16 +97,23 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           wrapperCommand: wrapper,
           javaPath,
           fullscreen,
-          windowWidth: width,
-          windowHeight: height,
+          windowWidth: safeWidth,
+          windowHeight: safeHeight,
           launchBehaviour: behaviour,
           backupBeforeUpdates
         }
       })
+
+      // Reflect whatever was actually stored, so the form never shows a value
+      // the backend rejected.
+      setName(savedName)
+      setWidth(safeWidth)
+      setHeight(safeHeight)
+
       await refreshInstances()
       await onChanged()
       setDirty(false)
-      toast('success', 'Gespeichert', `${name} wurde aktualisiert.`)
+      toast('success', 'Gespeichert', `${savedName} wurde aktualisiert.`)
     } catch (err) {
       toastError(err, 'Speichern fehlgeschlagen')
     } finally {
@@ -181,8 +197,12 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                 <button
                   className="btn sm ghost"
                   onClick={async () => {
+                    // Spreading `instance.appearance` alone would write back the
+                    // icon and accent as they were when the page loaded, quietly
+                    // undoing an unsaved pick in the picker above while that pick
+                    // still shows as selected on screen.
                     await window.gabi.instances.update(instance.id, {
-                      appearance: { ...instance.appearance, background: null }
+                      appearance: { ...instance.appearance, icon, accent, background: null }
                     })
                     await onChanged()
                   }}
@@ -228,7 +248,7 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
               onChange={(e) => setMemory(Number(e.target.value))}
             />
             <span className="hint">
-              Mehr ist nicht automatisch besser — über 8 GB bringt bei den meisten Modpacks nichts mehr und
+              Mehr ist nicht automatisch besser. Über 8 GB bringt bei den meisten Modpacks nichts mehr und
               kann die Garbage Collection sogar verlangsamen.
             </span>
           </div>

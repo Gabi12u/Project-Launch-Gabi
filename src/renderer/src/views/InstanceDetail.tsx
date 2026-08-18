@@ -9,6 +9,7 @@ import type {
 import type { InstanceDetail, ScreenshotInfo, WorldInfo } from '@shared/api'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { createShortcut, startInstance, stopInstance } from '../lib/actions'
+import { clickable } from '../lib/a11y'
 import {
   LOADER_LABELS,
   formatBytes,
@@ -17,7 +18,8 @@ import {
   formatPlayTime,
   formatRelative,
   formatTime,
-  loaderColor
+  loaderColor,
+  pluralise
 } from '../lib/format'
 import { Confirm, EmptyState, ProgressBar } from '../components/ui'
 import { CompatibilityPanel } from '../components/CompatibilityPanel'
@@ -126,9 +128,10 @@ export function InstanceDetailView({
       toast(
         failed > 0 ? 'warning' : 'success',
         'Reparatur abgeschlossen',
-        `${result.checkedFiles} Dateien geprüft, ${result.repairedFiles} erneuert, ${repaired} Bereiche korrigiert${
-          failed > 0 ? `, ${failed} Schritte fehlgeschlagen` : ''
-        }.`,
+        `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ` +
+          `${result.repairedFiles} erneuert, ${repaired} ${pluralise(repaired, 'Bereich', 'Bereiche')} korrigiert` +
+          (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
+          '.',
         9000
       )
       await load()
@@ -530,7 +533,7 @@ function ContentTab({
       const count = updated.content.filter((c) => c.update).length
       toast(
         count > 0 ? 'info' : 'success',
-        count > 0 ? `${count} Updates verfügbar` : 'Alles aktuell',
+        count > 0 ? `${count} ${pluralise(count, 'Update', 'Updates')} verfügbar` : 'Alles aktuell',
         count > 0 ? 'Du kannst einzeln oder alle auf einmal aktualisieren.' : undefined
       )
       await onChanged()
@@ -545,7 +548,7 @@ function ContentTab({
     setChecking(true)
     try {
       const count = await window.gabi.content.updateAll(instance.id)
-      toast('success', `${count} Mods aktualisiert`)
+      toast('success', `${count} ${pluralise(count, 'Mod', 'Mods')} aktualisiert`)
       await onChanged()
     } catch (err) {
       toastError(err, 'Update fehlgeschlagen')
@@ -593,7 +596,7 @@ function ContentTab({
         {updates > 0 && (
           <button className="btn sm primary" onClick={updateAll} disabled={checking}>
             <IconDownload size={14} />
-            {updates} Updates installieren
+            {updates} {pluralise(updates, 'Update', 'Updates')} installieren
           </button>
         )}
 
@@ -603,7 +606,7 @@ function ContentTab({
             try {
               const added = await window.gabi.content.importFile(instance.id, type)
               if (added.length > 0) {
-                toast('success', `${added.length} Dateien hinzugefügt`)
+                toast('success', `${added.length} ${pluralise(added.length, 'Datei', 'Dateien')} hinzugefügt`)
                 await onChanged()
               }
             } catch (err) {
@@ -752,7 +755,7 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
       <EmptyState
         icon={<IconCube size={26} />}
         title="Noch keine Welten"
-        message="Sobald du in dieser Instanz eine Welt erstellst, erscheint sie hier — inklusive Größe und letztem Spielstand."
+        message="Sobald du in dieser Instanz eine Welt erstellst, erscheint sie hier, inklusive Größe und letztem Spielstand."
       />
     )
   }
@@ -806,7 +809,14 @@ function ScreenshotsTab({ instanceId }: { instanceId: string }): JSX.Element {
   return (
     <div className="shot-grid">
       {shots.map((shot) => (
-        <div key={shot.file} className="shot" onClick={() => void window.gabi.app.openPath(shot.file)}>
+        <div
+          key={shot.file}
+          className="shot"
+          // The image itself is decorative (alt=""), so without a label here a
+          // screen reader would announce this tile as an unnamed button.
+          aria-label={`Screenshot ${formatDateTime(shot.takenAt)} öffnen`}
+          {...clickable(() => void window.gabi.app.openPath(shot.file))}
+        >
           {shot.dataUrl && <img src={shot.dataUrl} alt="" loading="lazy" />}
         </div>
       ))}

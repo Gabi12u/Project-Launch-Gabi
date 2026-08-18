@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { CompatibilityIssue, CompatibilityReport } from '@shared/types'
 import { setState, toast, toastError, useStore } from '../lib/store'
+import { pluralise } from '../lib/format'
 import { startInstanceForced } from '../lib/actions'
 import { Modal } from './ui'
 import { IconCheckCircle, IconInfo, IconPlay, IconSparkle, IconWarning } from './Icons'
@@ -81,7 +82,7 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
         latest = await window.gabi.content.applyFix(instanceId, issue.fix!)
       }
       onChanged(latest)
-      toast('success', 'Fertig', `${fixable.length} Probleme wurden automatisch behoben.`)
+      toast('success', 'Fertig', fixable.length === 1 ? '1 Problem wurde automatisch behoben.' : `${fixable.length} Probleme wurden automatisch behoben.`)
     } catch (err) {
       toastError(err, 'Nicht alle Probleme konnten behoben werden')
     } finally {
@@ -128,7 +129,7 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
           <span className={`badge ${errors > 0 ? 'danger' : 'warn'} dot`}>
             {errors > 0
               ? `${errors} ${errors === 1 ? 'Problem' : 'Probleme'}`
-              : `${report.issues.length} Hinweise`}
+              : `${report.issues.length} ${pluralise(report.issues.length, 'Hinweis', 'Hinweise')}`}
           </span>
           {report.launchable && <span className="badge ok">Start möglich</span>}
         </div>

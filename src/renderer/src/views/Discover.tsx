@@ -50,7 +50,7 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
         <div>
           <h1 className="page-title">Entdecken</h1>
           <p className="page-sub">
-            Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge — in einer Suche.
+            Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
         <EmptyState
           icon={<IconCompass size={26} />}
           title="Erst eine Instanz, dann die Mods"
-          message="Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an — Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit."
+          message="Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit."
           action={
             <button className="btn primary" onClick={() => setState({ createOpen: true })}>
               <IconPlus size={16} />

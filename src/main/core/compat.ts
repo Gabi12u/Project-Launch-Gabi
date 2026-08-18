@@ -87,7 +87,10 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       severity: 'warning',
       title: 'Diese Instanz hat keinen Mod Loader',
       detail:
-        `In der Instanz liegen ${enabled.length} Mods, aber es ist kein Mod Loader installiert. ` +
+        (enabled.length === 1
+          ? 'In der Instanz liegt 1 Mod, '
+          : `In der Instanz liegen ${enabled.length} Mods, `) +
+        `aber es ist kein Mod Loader installiert. ` +
         `Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.`
     })
   }

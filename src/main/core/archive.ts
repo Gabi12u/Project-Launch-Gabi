@@ -237,6 +237,13 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   let buffer = Buffer.alloc(0)
   let pendingHeader: { path: string; size: number; type: string; link: string } | null = null
   let remaining = 0
+  // Padding is tracked separately from `remaining` rather than folded into it.
+  // A file's data can finish exactly at a stream chunk boundary, before any of
+  // its 0-511 padding bytes have arrived yet; folding padding into `remaining`
+  // meant that case hit `break` with `remaining` already at 0, so the next
+  // write() skipped straight to header parsing on the still-unstripped
+  // padding — corrupting every entry after it for the rest of the archive.
+  let paddingRemaining = 0
   let sink: number[] = []
   let longName: string | null = null
 
@@ -272,11 +279,21 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           buffer = buffer.subarray(take)
           remaining -= take
           if (remaining === 0) {
-            const padding = (512 - (sink.length % 512)) % 512
-            if (buffer.length < padding) break
-            buffer = buffer.subarray(padding)
+            // The content is fully buffered now, so the file is written
+            // immediately rather than waiting for its padding to arrive too —
+            // padding is only bytes to skip, not part of the file.
+            const size = sink.length
             flushFile()
+            paddingRemaining = (512 - (size % 512)) % 512
           }
+          continue
+        }
+
+        if (paddingRemaining > 0) {
+          const skip = Math.min(paddingRemaining, buffer.length)
+          if (skip === 0) break
+          buffer = buffer.subarray(skip)
+          paddingRemaining -= skip
           continue
         }
 

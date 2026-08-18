@@ -164,6 +164,14 @@ export function useInstanceIcon(instance: InstanceSummary): string | null {
       setSrc(null)
       return
     }
+
+    // Cleared before the new lookup, not after it resolves. A component that
+    // stays mounted while its `instance` prop changes — the featured card on
+    // the home page does exactly that when the last-played instance changes —
+    // would otherwise keep showing the previous instance's picture next to the
+    // new one's name until the round trip finished.
+    setSrc(null)
+
     let cancelled = false
     void window.gabi.instances
       .get(instance.id)

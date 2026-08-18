@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { LoaderId, LoaderVersion, MinecraftVersion } from '@shared/types'
 import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
-import { formatDate, formatMemory } from '../lib/format'
+import { formatDate, formatMemory, pluralise } from '../lib/format'
 import { Modal } from '../components/ui'
 import { IconCheck, IconSearch, IconSparkle } from '../components/Icons'
 
@@ -290,7 +290,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                       {entry.id === 'vanilla'
                         ? 'Immer verfügbar'
                         : available
-                          ? `${loaderVersions[entry.id].length} Versionen`
+                          ? `${loaderVersions[entry.id].length} ${pluralise(loaderVersions[entry.id].length, 'Version', 'Versionen')}`
                           : `Nicht für ${mcVersion}`}
                     </div>
                   )}
@@ -315,7 +315,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 ))}
               </select>
               <span className="hint">
-                Im Zweifel die empfohlene Version nehmen — sie ist am besten getestet.
+                Im Zweifel die empfohlene Version nehmen, sie ist am besten getestet.
               </span>
             </div>
           )}

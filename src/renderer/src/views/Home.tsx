@@ -3,6 +3,7 @@ import type { InstanceSummary, LauncherStats, NewsItem } from '@shared/types'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { useCountUp, useInstanceIcon, useParallax, useSpotlight } from '../lib/hooks'
+import { clickable } from '../lib/a11y'
 import {
   LOADER_LABELS,
   formatMemory,
@@ -254,7 +255,7 @@ function FeaturedInstance({
             )}
             <span className="badge">RAM: {formatMemory(instance.memoryMb)}</span>
             {instance.updateCount > 0 && (
-              <span className="badge warn">{instance.updateCount} Updates verfügbar</span>
+              <span className="badge warn">{instance.updateCount} {pluralise(instance.updateCount, 'Update', 'Updates')} verfügbar</span>
             )}
           </div>
 
@@ -385,7 +386,8 @@ function NewsCard({ item }: { item: NewsItem }): JSX.Element {
   return (
     <article
       className="project-card"
-      onClick={() => void window.gabi.app.openExternal(item.url)}
+      aria-label={item.title}
+      {...clickable(() => void window.gabi.app.openExternal(item.url))}
       {...spotlight}
     >
       {item.imageUrl ? (

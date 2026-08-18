@@ -10,6 +10,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
   const [prompt, setPrompt] = useState<DeviceCodePrompt | null>(null)
   const [busy, setBusy] = useState(false)
   const [offlineName, setOfflineName] = useState('')
+  const [creatingOffline, setCreatingOffline] = useState(false)
 
   useEffect(() => {
     return window.gabi.events.onDeviceCode((next) => setPrompt(next))
@@ -40,8 +41,22 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     setBusy(false)
   }
 
+  /** Closing the dialog must not leave a login running in the background. */
+  const closeAndCancel = (): void => {
+    if (busy) {
+      void window.gabi.accounts.cancelLogin().catch(() => undefined)
+    }
+    setPrompt(null)
+    setBusy(false)
+    onClose()
+  }
+
   const loginOffline = async (): Promise<void> => {
-    if (!offlineName.trim()) return
+    if (!offlineName.trim() || creatingOffline) return
+    // Without this guard a double click fires two concurrent requests and two
+    // success toasts for one intent, unlike the Microsoft button which is
+    // disabled while busy.
+    setCreatingOffline(true)
     try {
       const account = await window.gabi.accounts.loginOffline(offlineName.trim())
       toast('success', 'Offline-Profil angelegt', account.username)
@@ -49,6 +64,8 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       await refreshAccounts()
     } catch (err) {
       toastError(err, 'Profil konnte nicht angelegt werden')
+    } finally {
+      setCreatingOffline(false)
     }
   }
 
@@ -67,8 +84,15 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       open={open}
       title="Accounts"
       subtitle="Melde dich mit Microsoft an, um online zu spielen, oder nutze ein Offline-Profil zum Testen."
-      onClose={busy && prompt ? cancelLogin : onClose}
-      busy={busy && Boolean(prompt)}
+      // Every close path cancels a login in flight first. The old condition
+      // (`busy && prompt`) left a gap: between clicking "log in" and the device
+      // code arriving there is one network round trip during which closing went
+      // through the plain `onClose`, which never cancels — so the login kept
+      // polling invisibly for its full lifetime and could resurface later with
+      // a code the user thought they had dismissed. Locking the dialog instead
+      // would be worse, since that gap has no cancel button on screen yet.
+      onClose={closeAndCancel}
+      busy={false}
       width="wide"
     >
       {prompt ? (
@@ -111,7 +135,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
                   onChange={(event) => setOfflineName(event.target.value)}
                   onKeyDown={(event) => event.key === 'Enter' && void loginOffline()}
                 />
-                <button className="btn" onClick={loginOffline} disabled={offlineName.trim().length < 3}>
+                <button
+                  className="btn"
+                  onClick={loginOffline}
+                  disabled={creatingOffline || offlineName.trim().length < 3}
+                >
                   Anlegen
                 </button>
               </div>

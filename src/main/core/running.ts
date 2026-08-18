@@ -82,20 +82,37 @@ function persist(): void {
 }
 
 /**
+ * How long a record from a previous session is trusted.
+ *
+ * A pid says nothing about *which* process holds it. Once the real game exits
+ * without this launcher running to notice, the OS is free to hand that number
+ * to something unrelated — and `alive()` then reports "still running" forever,
+ * locking the instance out permanently. Failing open after a generous window
+ * is the lesser evil: the worst case becomes the behaviour we had before this
+ * file existed, while a genuinely forgotten game is caught for a full day.
+ */
+const ADOPTED_MAX_AGE_MS = 18 * 60 * 60 * 1000
+
+/**
  * Re-reads the games a previous run left behind and keeps the ones still alive.
  *
  * Nothing is ever killed on the strength of this file: a pid can be recycled by
  * an unrelated process, and acting on that would be far worse than the problem
- * it solves. The entries only block a second launch, and they clear themselves
- * as soon as the pid goes away.
+ * it solves. The entries only block a second launch, they age out, and the
+ * user can clear one from the UI through the normal stop button.
  */
 export function adoptRunningFromDisk(): void {
   const stored = readJson<AdoptedGame[]>(stateFile(), [])
   if (!Array.isArray(stored)) return
 
   adopted.clear()
+  const now = Date.now()
   for (const entry of stored) {
     if (!entry || typeof entry.instanceId !== 'string' || typeof entry.pid !== 'number') continue
+    if (typeof entry.startedAt === 'number' && now - entry.startedAt > ADOPTED_MAX_AGE_MS) {
+      logger.info(`Eintrag für ${entry.instanceId} ist zu alt und wird verworfen`)
+      continue
+    }
     if (!alive(entry.pid)) continue
     adopted.set(entry.instanceId, entry)
   }

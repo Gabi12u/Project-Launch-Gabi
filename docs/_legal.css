@@ -1,0 +1,75 @@
+/* Shared styling for the legal pages. Kept in one file so Impressum and
+   Datenschutz cannot drift apart. Tokens mirror index.html. */
+:root {
+  --void:      #0a0512;
+  --ink:       #f4ecff;
+  --muted:     #bcaddb;
+  --muted-dim: #8f80ab;
+  --accent:    #c74dff;
+  --glass:     rgba(255,255,255,.06);
+  --glass-line:rgba(255,255,255,.14);
+  --r: 18px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font: 16px/1.7 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.inner { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+header.bar {
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 20px 0;
+  margin-bottom: 48px;
+}
+header.bar a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+header.bar a:hover { color: #fff; }
+h1 {
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  line-height: 1.15;
+  margin: 0 0 8px;
+  letter-spacing: -.02em;
+}
+.lede { color: var(--muted); margin: 0 0 48px; }
+h2 {
+  font-size: 1.15rem;
+  margin: 44px 0 12px;
+  letter-spacing: -.01em;
+}
+h3 { font-size: 1rem; margin: 28px 0 8px; color: var(--muted); }
+p, li { color: var(--muted); }
+p { margin: 0 0 14px; }
+ul { margin: 0 0 14px; padding-left: 22px; }
+li { margin: 4px 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.box {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r);
+  padding: 22px 24px;
+  margin: 0 0 14px;
+}
+.box p:last-child { margin-bottom: 0; }
+address { font-style: normal; color: var(--ink); line-height: 1.8; }
+/* Placeholders that must be replaced before the page goes online. */
+.todo {
+  background: rgba(255,196,0,.16);
+  border: 1px dashed rgba(255,196,0,.7);
+  color: #ffdf80;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-weight: 600;
+}
+footer {
+  border-top: 1px solid rgba(255,255,255,.08);
+  margin-top: 64px;
+  padding: 32px 0 56px;
+  text-align: center;
+  color: var(--muted-dim);
+  font-size: .85rem;
+}
+footer a { color: var(--muted); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }

@@ -446,7 +446,7 @@ export async function updateAll(instanceId: string): Promise<number> {
       }
     }
 
-    task.update(`${done} Mods aktualisiert`, 1)
+    task.update(`${done} ${done === 1 ? 'Mod' : 'Mods'} aktualisiert`, 1)
     return done
   })
 }

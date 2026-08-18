@@ -10,6 +10,7 @@ import type {
 } from '@shared/types'
 import { refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatNumber, formatRelative, plainText } from '../lib/format'
+import { clickable } from '../lib/a11y'
 import { EmptyState, Modal, Segmented } from '../components/ui'
 import {
   IconCheck,
@@ -241,7 +242,7 @@ export function ContentBrowser({
             <div className="issue-title">CurseForge ist nicht verbunden</div>
             <div className="issue-detail">
               Für die CurseForge-Suche wird ein kostenloser API-Schlüssel benötigt. Du kannst ihn in den
-              Einstellungen unter „Inhalte" eintragen — Modrinth funktioniert auch ohne.
+              Einstellungen unter „Inhalte“ eintragen. Modrinth funktioniert auch ohne.
             </div>
           </div>
         </div>
@@ -329,7 +330,7 @@ function ProjectCard({
   onOpen: () => void
 }): JSX.Element {
   return (
-    <article className="project-card" onClick={onOpen}>
+    <article className="project-card" aria-label={item.name} {...clickable(onOpen)}>
       {item.iconUrl ? (
         <img className="project-icon" src={item.iconUrl} alt="" loading="lazy" />
       ) : (

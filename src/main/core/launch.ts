@@ -188,6 +188,12 @@ function userText(value: string): string {
   return typeof value === 'string' ? value : ''
 }
 
+/** A window dimension the game will actually accept, or the vanilla default. */
+function windowSize(value: number, fallback: number): number {
+  const rounded = Math.round(Number(value))
+  return Number.isFinite(rounded) && rounded >= 100 ? rounded : fallback
+}
+
 function splitUserArgs(raw: string): string[] {
   // Respects quoted segments so paths with spaces survive.
   const matches = userText(raw).match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
@@ -276,6 +282,19 @@ export interface LaunchOptions {
  * sails past the guard and starts a second game in the same directory.
  */
 const starting = new Set<string>()
+
+/**
+ * How many launches are underway but have not spawned a process yet.
+ *
+ * The updater needs this on top of `runningCount()`: everything before the
+ * spawn — the compatibility check, file downloads, a Java install — can take
+ * minutes, during which the running registry is still empty. Restarting for an
+ * update in that window throws the user's Play click away with nothing to show
+ * for it.
+ */
+export function startingCount(): number {
+  return starting.size
+}
 
 export async function launchInstance(options: LaunchOptions): Promise<void> {
   const { instanceId } = options
@@ -425,8 +444,11 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       user_type: userType,
       user_properties: '{}',
       version_type: versionJson.type ?? 'release',
-      resolution_width: String(instance.settings.windowWidth),
-      resolution_height: String(instance.settings.windowHeight),
+      // Guarded like `memoryMb` above: a hand-edited instance.json, or one
+      // saved by an older build before the settings form clamped these, can
+      // carry 0 or a non-number, which the game receives as `--width 0`.
+      resolution_width: String(windowSize(instance.settings.windowWidth, 854)),
+      resolution_height: String(windowSize(instance.settings.windowHeight, 480)),
       quickPlayPath: '',
       quickPlaySingleplayer: options.quickPlay?.type === 'singleplayer' ? options.quickPlay.id : '',
       quickPlayMultiplayer: options.quickPlay?.type === 'multiplayer' ? options.quickPlay.id : '',
@@ -747,13 +769,22 @@ export function stopInstance(instanceId: string, immediate = false): void {
   if (!game) {
     // Deliberately not killed by pid: the id comes from a file written by an
     // earlier session, and the OS may have handed that number to something
-    // else entirely since. Telling the user beats killing a stranger's process.
+    // else entirely since. Killing a stranger's process would be far worse
+    // than the problem. Dropping our own record is safe though, and it is the
+    // user's way out when a recycled pid makes us think a long-gone game is
+    // still running — without it the instance stays locked indefinitely.
     const orphan = getAdopted(instanceId)
     if (orphan) {
-      throw new Error(
-        `Dieses Spiel wurde von einer früheren Sitzung gestartet (PID ${orphan.pid}) und lässt ` +
-          `sich von hier nicht beenden. Schließe das Minecraft-Fenster selbst.`
+      clearRunning(instanceId)
+      logger.info(`Übernommener Eintrag für ${instanceId} (PID ${orphan.pid}) verworfen`)
+      setStatus(instanceId, 'idle', 'Eintrag entfernt, die Instanz lässt sich wieder starten.')
+      notify(
+        'info',
+        'Eintrag entfernt',
+        `Falls Minecraft noch offen ist, schließe das Fenster selbst — dieser Launcher kann es ` +
+          `nicht beenden, weil es eine frühere Sitzung gestartet hat.`
       )
+      return
     }
     return
   }

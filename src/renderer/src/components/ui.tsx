@@ -137,17 +137,21 @@ export function Confirm({
 export function Switch({
   checked,
   onChange,
-  disabled
+  disabled,
+  label
 }: {
   checked: boolean
   onChange: (value: boolean) => void
   disabled?: boolean
+  /** Read out instead of just "switch, on" when there is no visible label. */
+  label?: string
 }): JSX.Element {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       className={`switch ${checked ? 'on' : ''}`}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
@@ -175,7 +179,10 @@ export function SettingToggle({
         <span style={{ fontSize: 13.5, fontWeight: 600 }}>{label}</span>
         {hint && <span className="hint">{hint}</span>}
       </div>
-      <Switch checked={checked} onChange={onChange} disabled={disabled} />
+      {/* The visible text sits in a plain span, which no assistive technology
+          connects to the control on its own. Without this the switch is
+          announced as "switch, on" with no hint what it toggles. */}
+      <Switch checked={checked} onChange={onChange} disabled={disabled} label={label} />
     </div>
   )
 }

@@ -72,7 +72,45 @@ export interface CreateBackupOptions {
   includes?: string[]
 }
 
+/**
+ * One chain of pending backup work per instance.
+ *
+ * Creating and restoring both rename and unpack whole folders inside the same
+ * game directory, and both run for many seconds. The UI's own guards vanish
+ * the moment the view unmounts — a deep link or a desktop shortcut navigating
+ * away is enough — so the only place this can be enforced reliably is here.
+ * Two restores landing on one instance would otherwise move each other's
+ * folders aside and extract over the top.
+ */
+const instanceLocks = new Map<string, Promise<unknown>>()
+
+async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = instanceLocks.get(instanceId) ?? Promise.resolve()
+  // A failed operation must not wedge the queue for everything after it.
+  const run = previous.catch(() => undefined).then(fn)
+
+  instanceLocks.set(instanceId, run)
+  try {
+    return await run
+  } finally {
+    if (instanceLocks.get(instanceId) === run) instanceLocks.delete(instanceId)
+  }
+}
+
 export async function createBackup(
+  instanceId: string,
+  options: CreateBackupOptions = {}
+): Promise<BackupEntry> {
+  return withInstanceLock(instanceId, () => createBackupUnlocked(instanceId, options))
+}
+
+/**
+ * The actual work, without taking the lock.
+ *
+ * `restoreBackup` already holds it when it takes its safety copy, so going
+ * through the public entry point there would deadlock against itself.
+ */
+async function createBackupUnlocked(
   instanceId: string,
   options: CreateBackupOptions = {}
 ): Promise<BackupEntry> {
@@ -193,6 +231,10 @@ function pruneAutomatic(instanceId: string): void {
 }
 
 export async function restoreBackup(instanceId: string, backupId: string): Promise<void> {
+  return withInstanceLock(instanceId, () => restoreBackupUnlocked(instanceId, backupId))
+}
+
+async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
   if (isRunning(instanceId)) {
     throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du eine Sicherung einspielst.')
   }
@@ -238,7 +280,9 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
         const hasCurrentData = includes.some((key) => existsSync(join(paths.gameDir(instanceId), key)))
         if (hasCurrentData) {
           try {
-            await createBackup(instanceId, {
+            // Unlocked on purpose: this restore already holds the instance
+            // lock, and the public entry point would wait on itself forever.
+            await createBackupUnlocked(instanceId, {
               name: `Automatisch vor Wiederherstellung`,
               reason: 'automatic',
               includes

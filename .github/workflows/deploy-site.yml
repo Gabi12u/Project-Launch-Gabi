@@ -1,0 +1,75 @@
+name: Deploy Website
+
+# Kopiert den Inhalt von docs/ auf den eigenen Server, sobald sich dort etwas
+# aendert und der Stand auf main landet. In VS Code reicht damit der normale
+# Push-Knopf, ein zweiter Schritt von Hand entfaellt.
+#
+# Bewusst ohne fremde Marketplace-Actions: der private SSH-Schluessel wuerde
+# sonst durch Code laufen, der nicht in diesem Repository steht.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-site.yml'
+  # Erlaubt ein Deployment von Hand ueber den Actions-Tab.
+  workflow_dispatch:
+
+# Zwei Deployments gleichzeitig wuerden sich beim Kopieren in die Quere kommen.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zielpfad pruefen
+        env:
+          WEB_ROOT: ${{ secrets.WEB_ROOT }}
+        run: |
+          # rsync --delete raeumt im Zielordner auf. Ein leeres oder zu weit
+          # oben liegendes Ziel wuerde damit den halben Server loeschen, also
+          # hier abbrechen statt es zu versuchen.
+          if [ -z "$WEB_ROOT" ]; then
+            echo "Secret WEB_ROOT ist nicht gesetzt." >&2
+            exit 1
+          fi
+          case "$WEB_ROOT" in
+            /|/root|/home|/etc|/usr|/var|/var/www)
+              echo "WEB_ROOT '$WEB_ROOT' ist zu weit oben und wird abgelehnt." >&2
+              exit 1
+              ;;
+          esac
+          echo "Ziel: $WEB_ROOT"
+
+      - name: SSH einrichten
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # Holt den Hostkey des Servers, damit ssh nicht nachfragt.
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Dateien uebertragen
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          WEB_ROOT: ${{ secrets.WEB_ROOT }}
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_deploy -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
+            docs/ "$SSH_USER@$SSH_HOST:$WEB_ROOT/"
+
+      - name: Schluessel entfernen
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

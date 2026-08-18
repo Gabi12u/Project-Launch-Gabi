@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { BackupEntry } from '@shared/types'
 import { navigate, toast, toastError, useStore } from '../lib/store'
-import { formatBytes, formatDateTime, formatRelative } from '../lib/format'
+import { formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
 import { Confirm, EmptyState, Modal } from '../components/ui'
 import { IconFolder, IconRefresh, IconSave, IconTrash, IconUpload } from '../components/Icons'
 
@@ -60,7 +60,7 @@ export function BackupsView(): JSX.Element {
           <h1 className="page-title">Backups</h1>
           <p className="page-sub">
             {backups.length > 0
-              ? `${backups.length} Sicherungen · ${formatBytes(totalSize)} belegt`
+              ? `${backups.length} ${pluralise(backups.length, 'Sicherung', 'Sicherungen')} · ${formatBytes(totalSize)} belegt`
               : 'Sichere deine Welten, bevor du an Mods schraubst.'}
           </p>
         </div>
@@ -188,8 +188,10 @@ export function BackupsView(): JSX.Element {
         message={
           restoring ? (
             <>
-              Die Ordner <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
-              <strong>{restoring.instanceName}</strong> werden durch den Stand vom{' '}
+              {pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner')}{' '}
+              <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
+              <strong>{restoring.instanceName}</strong>{' '}
+              {pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom{' '}
               {formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch
               gesichert.
             </>

@@ -206,19 +206,42 @@ function candidateRoots(): string[] {
   return roots
 }
 
-function executableIn(root: string): string | null {
-  const direct = join(root, 'bin', EXE)
-  if (existsSync(direct)) return direct
+/**
+ * Where a JDK's launcher sits relative to a runtime root.
+ *
+ * A plain `bin/` covers Windows and Linux. macOS ships the JDK inside an
+ * application bundle, so everything lives under `Contents/Home` instead.
+ */
+const EXE_SUBPATHS: string[][] = [
+  ['bin', EXE],
+  ['Contents', 'Home', 'bin', EXE]
+]
 
-  // macOS bundles and some archives nest one level deeper.
-  const nested = join(root, 'Contents', 'Home', 'bin', EXE)
-  if (existsSync(nested)) return nested
+/**
+ * Finds the `java` executable belonging to a runtime root.
+ *
+ * Exported for the folder-layout test: this function is the only thing
+ * standing between a correctly downloaded JDK and "konnte nicht entpackt
+ * werden", and it silently got that wrong for every macOS install.
+ */
+export function executableIn(root: string): string | null {
+  for (const parts of EXE_SUBPATHS) {
+    const direct = join(root, ...parts)
+    if (existsSync(direct)) return direct
+  }
 
+  // Adoptium archives unpack into a single versioned folder (`jdk-21.0.1+12`),
+  // so the real root is one level down. On macOS that folder then holds the
+  // bundle as well — `<versioned>/Contents/Home/bin/java`, four segments deep.
+  // Only probing `<versioned>/bin` there is what made every managed install on
+  // macOS fail with a misleading "could not be extracted".
   try {
     if (!statSync(root).isDirectory()) return null
     for (const entry of readdirSync(root)) {
-      const candidate = join(root, entry, 'bin', EXE)
-      if (existsSync(candidate)) return candidate
+      for (const parts of EXE_SUBPATHS) {
+        const candidate = join(root, entry, ...parts)
+        if (existsSync(candidate)) return candidate
+      }
     }
   } catch {
     // ignore
@@ -317,6 +340,25 @@ export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   return promise
 }
 
+/** Removes staging folders a crashed or killed install left behind. */
+function sweepStagingDirs(): void {
+  const root = paths.java()
+  if (!existsSync(root)) return
+  try {
+    for (const entry of readdirSync(root)) {
+      if (!entry.includes('.new-')) continue
+      try {
+        rmSync(join(root, entry), { recursive: true, force: true })
+        logger.info(`Verwaisten Entpack-Ordner entfernt: ${entry}`)
+      } catch {
+        // A folder still held open is retried on the next install.
+      }
+    }
+  } catch {
+    // best effort
+  }
+}
+
 async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime> {
   const targetDir = join(paths.java(), `temurin-${major}`)
 
@@ -341,6 +383,13 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   // and a JVM currently running out of `targetDir` keeps its files.
   const staging = `${targetDir}.new-${randomUUID().slice(0, 8)}`
 
+  // A crash between extraction and the rename below leaves one of these behind
+  // forever. They sit inside `paths.java()`, which `candidateRoots()` scans on
+  // every detection run, so each leftover costs a pointless `java -version`
+  // spawn — and a nearly-complete one can even pass that probe and be offered
+  // as a usable runtime. Nothing else in the app sweeps them.
+  sweepStagingDirs()
+
   try {
     let received = 0
     await downloadFile({ url, path: archive }, (delta) => {
@@ -354,8 +403,25 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
     if (isZip) extractAll(archive, staging, true)
     else await extractTarGz(archive, staging)
 
-    if (!executableIn(staging)) {
+    const staged = executableIn(staging)
+    if (!staged) {
       throw new Error(`Java ${major} konnte nicht entpackt werden`)
+    }
+
+    // The download carries no checksum, so the archive itself cannot be
+    // verified. Running the unpacked JVM once is the stronger check anyway:
+    // it catches a truncated archive, a half-written extraction and a binary
+    // for the wrong architecture in one go, and it means `targetDir` only ever
+    // receives a runtime that provably starts.
+    task?.update(`Java ${major} wird geprüft…`, null)
+    const probed = await probeJava(staged)
+    if (!probed) {
+      throw new Error(`Java ${major} wurde geladen, lässt sich aber nicht starten.`)
+    }
+    if (probed.major !== major) {
+      throw new Error(
+        `Es wurde Java ${probed.major} statt Java ${major} geladen, die Installation wurde verworfen.`
+      )
     }
 
     rmSync(targetDir, { recursive: true, force: true })

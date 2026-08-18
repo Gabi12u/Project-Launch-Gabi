@@ -25,6 +25,22 @@ export async function startInstance(instanceId: string, instanceName: string): P
     const report = await window.gabi.content.compatibility(instanceId)
 
     if (!report.launchable) {
+      // Only one gate fits on screen, and it is a single slot in the store. If
+      // another instance already claimed it, silently overwriting would drop
+      // that one's result with no feedback at all — the user's Play click on
+      // the first instance would just quietly do nothing. A toast keeps this
+      // one visible instead, and the gate stays with whoever got there first.
+      const claimed = getState().compatGate
+      if (claimed && claimed.instanceId !== instanceId) {
+        toast(
+          'warning',
+          `${instanceName} kann nicht starten`,
+          'Es gibt Probleme mit den Mods. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          8000
+        )
+        return
+      }
+
       setState({ compatGate: { instanceId, instanceName, report } })
       return
     }
