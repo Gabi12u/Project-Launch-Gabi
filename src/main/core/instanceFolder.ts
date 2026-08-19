@@ -181,6 +181,44 @@ function guessFromVersionsFolder(
   return null
 }
 
+/** Best-effort loader guess from CurseForge/Modrinth's own jar naming conventions. */
+function guessLoaderFromMods(modsDir: string): { loader: LoaderId; loaderVersion: string } | null {
+  if (!existsSync(modsDir)) return null
+  let jars: string[] = []
+  try {
+    jars = readdirSync(modsDir).filter((f) => f.toLowerCase().endsWith('.jar'))
+  } catch {
+    return null
+  }
+  const has = (pattern: RegExp): boolean => jars.some((j) => pattern.test(j))
+  // Order matters: Quilt ships fabric-api's own compatibility jar too.
+  if (has(/quilt-loader|quilted-fabric-api/i)) return { loader: 'quilt', loaderVersion: '' }
+  if (has(/neoforge/i)) return { loader: 'neoforge', loaderVersion: '' }
+  if (has(/(^|[-_])forge([-_.]|$)/i)) return { loader: 'forge', loaderVersion: '' }
+  if (has(/fabric-api|fabric-loader/i)) return { loader: 'fabric', loaderVersion: '' }
+  return null
+}
+
+/**
+ * Third-party clients like Lunar, Feather and Badlion keep one folder per
+ * Minecraft version instead of Mojang's `versions/<id>/` layout, so there is
+ * no version JSON to read at all — the folder's own name is the only signal
+ * left. None of these clients record the loader anywhere either, so it is
+ * guessed from the jar names sitting in `mods/`.
+ */
+function guessFromFolderName(
+  gameDir: string
+): { mcVersion: string; loader: LoaderId; loaderVersion: string } | null {
+  const name = basename(gameDir)
+  if (!/^\d+\.\d+(\.\d+)?$/.test(name)) return null
+  const guessedLoader = guessLoaderFromMods(join(gameDir, 'mods'))
+  return {
+    mcVersion: name,
+    loader: guessedLoader?.loader ?? 'vanilla',
+    loaderVersion: guessedLoader?.loaderVersion ?? ''
+  }
+}
+
 /** True when this folder looks like a game directory rather than a wrapper. */
 function looksLikeGameDir(dir: string): boolean {
   return ['mods', 'saves', 'config', 'resourcepacks', 'options.txt'].some((entry) =>
@@ -282,7 +320,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     )
   }
 
-  const guessed = guessFromVersionsFolder(gameDir)
+  const guessed = guessFromVersionsFolder(gameDir) ?? guessFromFolderName(gameDir)
   if (!guessed) {
     throw new Error(
       'Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Lege die Instanz von Hand ' +

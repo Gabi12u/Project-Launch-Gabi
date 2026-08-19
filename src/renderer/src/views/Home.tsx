@@ -79,7 +79,7 @@ export function HomeView(): JSX.Element {
       <header className="row-between wrap">
         <div>
           <h1 className="greeting">
-            {greeting()}, <span>{activeAccount?.username ?? 'Gabi'}</span> 👋
+            {greeting()}, <span>{activeAccount?.username ?? 'Spieler'}</span> 👋
           </h1>
           <p className="page-sub">
             {instances.length === 0
