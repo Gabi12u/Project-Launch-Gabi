@@ -1,6 +1,6 @@
 {
   "name": "launch-gabi",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Launch Gabi - a modern Minecraft launcher, mod manager and instance manager",
   "main": "./out/main/index.js",
   "author": "Gabi",
