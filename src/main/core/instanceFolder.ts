@@ -8,6 +8,7 @@
  */
 
 import { cpSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { gunzipSync } from 'node:zlib'
 import { basename, join, relative, sep } from 'node:path'
 import type { Instance, LoaderId } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
@@ -35,7 +36,7 @@ const SKIP_DIRS = new Set([
   'realms_persistence'
 ])
 
-export type SourceFlavour = 'prism' | 'launchgabi' | 'minecraft'
+export type SourceFlavour = 'prism' | 'launchgabi' | 'curseforge' | 'gdlauncher' | 'minecraft'
 
 export interface DetectedInstance {
   flavour: SourceFlavour
@@ -219,6 +220,253 @@ function guessFromFolderName(
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * level.dat
+ * ------------------------------------------------------------------ */
+
+const TAG_END = 0
+const TAG_BYTE = 1
+const TAG_SHORT = 2
+const TAG_INT = 3
+const TAG_LONG = 4
+const TAG_FLOAT = 5
+const TAG_DOUBLE = 6
+const TAG_BYTE_ARRAY = 7
+const TAG_STRING = 8
+const TAG_LIST = 9
+const TAG_COMPOUND = 10
+const TAG_INT_ARRAY = 11
+const TAG_LONG_ARRAY = 12
+
+/** Advances past one payload of `type` and returns the offset after it. */
+function skipPayload(buf: Buffer, pos: number, type: number): number {
+  switch (type) {
+    case TAG_BYTE:
+      return pos + 1
+    case TAG_SHORT:
+      return pos + 2
+    case TAG_INT:
+    case TAG_FLOAT:
+      return pos + 4
+    case TAG_LONG:
+    case TAG_DOUBLE:
+      return pos + 8
+    case TAG_BYTE_ARRAY:
+      return pos + 4 + buf.readInt32BE(pos)
+    case TAG_STRING:
+      return pos + 2 + buf.readUInt16BE(pos)
+    case TAG_INT_ARRAY:
+      return pos + 4 + buf.readInt32BE(pos) * 4
+    case TAG_LONG_ARRAY:
+      return pos + 4 + buf.readInt32BE(pos) * 8
+    case TAG_LIST: {
+      const itemType = buf.readUInt8(pos)
+      const count = buf.readInt32BE(pos + 1)
+      let p = pos + 5
+      for (let i = 0; i < count; i++) p = skipPayload(buf, p, itemType)
+      return p
+    }
+    case TAG_COMPOUND: {
+      let p = pos
+      for (;;) {
+        const tag = buf.readUInt8(p++)
+        if (tag === TAG_END) return p
+        p += 2 + buf.readUInt16BE(p)
+        p = skipPayload(buf, p, tag)
+      }
+    }
+    default:
+      throw new Error('unbekannter NBT-Typ ' + type)
+  }
+}
+
+/** Follows `path` through nested compounds and returns the string it ends on. */
+function nbtString(buf: Buffer, pos: number, path: string[]): string | null {
+  let p = pos
+  for (;;) {
+    const type = buf.readUInt8(p++)
+    if (type === TAG_END) return null
+
+    const nameLength = buf.readUInt16BE(p)
+    p += 2
+    const name = buf.toString('utf8', p, p + nameLength)
+    p += nameLength
+
+    if (name === path[0]) {
+      if (path.length === 1) {
+        if (type !== TAG_STRING) return null
+        const length = buf.readUInt16BE(p)
+        return buf.toString('utf8', p + 2, p + 2 + length)
+      }
+      if (type !== TAG_COMPOUND) return null
+      return nbtString(buf, p, path.slice(1))
+    }
+
+    p = skipPayload(buf, p, type)
+  }
+}
+
+/**
+ * Pulls the Minecraft version out of a world's `level.dat`.
+ *
+ * Every world Minecraft has saved since 1.9 records the version that wrote it,
+ * which makes this the one signal that does not depend on a launcher's own
+ * bookkeeping. Whatever created the folder, if it was ever played there is a
+ * world here that states the version outright.
+ */
+function readLevelDatVersion(file: string): string | null {
+  try {
+    const raw = readFileSync(file)
+    // Almost always gzipped, but a hand-edited level.dat can be plain NBT.
+    let buf: Buffer
+    try {
+      buf = gunzipSync(raw)
+    } catch {
+      buf = raw
+    }
+
+    let p = 0
+    if (buf.readUInt8(p++) !== TAG_COMPOUND) return null
+    p += 2 + buf.readUInt16BE(p)
+
+    const name = nbtString(buf, p, ['Data', 'Version', 'Name'])
+    // Snapshots ("23w31a") and release candidates are of no use here, since
+    // the launcher only installs proper releases.
+    return name && /^\d+\.\d+(\.\d+)?$/.test(name) ? name : null
+  } catch {
+    return null
+  }
+}
+
+/** Reads the version from the most recently played world in `saves/`. */
+function readVersionFromSaves(gameDir: string): string | null {
+  const saves = join(gameDir, 'saves')
+  if (!existsSync(saves)) return null
+
+  let worlds: string[] = []
+  try {
+    worlds = readdirSync(saves, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+  } catch {
+    return null
+  }
+
+  // Newest first: an old world left over from a previous version would
+  // otherwise pin the instance to a version its owner stopped using.
+  const files = worlds
+    .map((world) => {
+      const file = join(saves, world, 'level.dat')
+      try {
+        return { file, modified: statSync(file).mtimeMs }
+      } catch {
+        return null
+      }
+    })
+    .filter((entry): entry is { file: string; modified: number } => entry !== null)
+    .sort((a, b) => b.modified - a.modified)
+
+  for (const entry of files) {
+    const version = readLevelDatVersion(entry.file)
+    if (version) return version
+  }
+  return null
+}
+
+/* ------------------------------------------------------------------ *
+ * Other launchers
+ * ------------------------------------------------------------------ */
+
+interface LauncherRead {
+  name?: string
+  mcVersion: string
+  loader: LoaderId
+  loaderVersion: string
+}
+
+/**
+ * Reads CurseForge's `minecraftinstance.json`.
+ *
+ * The app keeps the game files directly in the instance folder with no
+ * `versions/` of its own, so without this file nothing in the folder names a
+ * version at all.
+ */
+function readCurseForgeInstance(dir: string): LauncherRead | null {
+  const file = join(dir, 'minecraftinstance.json')
+  if (!existsSync(file)) return null
+
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      name?: unknown
+      gameVersion?: unknown
+      baseModLoader?: { name?: unknown; minecraftVersion?: unknown; forgeVersion?: unknown } | null
+    }
+
+    const base = parsed.baseModLoader ?? {}
+    const mcVersion =
+      (typeof base.minecraftVersion === 'string' && base.minecraftVersion) ||
+      (typeof parsed.gameVersion === 'string' && parsed.gameVersion) ||
+      ''
+    if (!mcVersion) return null
+
+    // "forge-47.2.20", "neoforge-21.1.57", "fabric-0.15.3-1.20.1".
+    let loader: LoaderId = 'vanilla'
+    let loaderVersion = ''
+    const raw = typeof base.name === 'string' ? base.name : ''
+    const match = /^(neoforge|forge|fabric|quilt)-(.+)$/i.exec(raw)
+    if (match) {
+      loader = match[1].toLowerCase() as LoaderId
+      const tail = match[2]
+      // Fabric repeats the Minecraft version at the end, Forge does not.
+      loaderVersion =
+        typeof base.forgeVersion === 'string' && base.forgeVersion
+          ? base.forgeVersion
+          : tail.endsWith('-' + mcVersion)
+            ? tail.slice(0, -(mcVersion.length + 1))
+            : tail
+    }
+
+    return {
+      name: typeof parsed.name === 'string' ? parsed.name : undefined,
+      mcVersion,
+      loader,
+      loaderVersion
+    }
+  } catch (err) {
+    logger.warn('minecraftinstance.json konnte nicht gelesen werden (' + file + '):', err)
+    return null
+  }
+}
+
+/**
+ * Reads GDLauncher's `config.json`.
+ *
+ * `config.json` is far too common a name to trust on its own, so this only
+ * accepts a file that actually carries GDLauncher's loader block.
+ */
+function readGdLauncherConfig(dir: string): LauncherRead | null {
+  const file = join(dir, 'config.json')
+  if (!existsSync(file)) return null
+
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      loader?: { loaderType?: unknown; mcVersion?: unknown; loaderVersion?: unknown } | null
+    }
+    const block = parsed.loader
+    if (!block || typeof block.mcVersion !== 'string' || !block.mcVersion) return null
+
+    const type = typeof block.loaderType === 'string' ? block.loaderType.toLowerCase() : ''
+    const known: LoaderId[] = ['fabric', 'forge', 'neoforge', 'quilt']
+    return {
+      mcVersion: block.mcVersion,
+      loader: known.includes(type as LoaderId) ? (type as LoaderId) : 'vanilla',
+      loaderVersion: typeof block.loaderVersion === 'string' ? block.loaderVersion : ''
+    }
+  } catch {
+    return null
+  }
+}
+
 /** True when this folder looks like a game directory rather than a wrapper. */
 function looksLikeGameDir(dir: string): boolean {
   return ['mods', 'saves', 'config', 'resourcepacks', 'options.txt'].some((entry) =>
@@ -276,17 +524,23 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   }
 
   // 2. One of our own instance folders --------------------------------
+  //
+  // `instance.json` is not ours alone: ATLauncher and others use the same
+  // name with an entirely different shape. A file that does not carry our
+  // fields therefore falls through to the checks below instead of aborting
+  // the whole import, which used to make those folders impossible to bring
+  // over at all.
   const ownFile = join(sourceDir, 'instance.json')
   if (existsSync(ownFile)) {
+    let parsed: Partial<Instance> | null = null
     try {
-      const parsed = JSON.parse(readFileSync(ownFile, 'utf8')) as Partial<Instance>
-      const gameDir = join(sourceDir, 'minecraft')
-      if (!existsSync(gameDir)) {
-        throw new Error('Im Instanz-Ordner fehlt der Unterordner "minecraft".')
-      }
-      if (!parsed.mcVersion) {
-        throw new Error('In der instance.json fehlt die Minecraft-Version.')
-      }
+      parsed = JSON.parse(readFileSync(ownFile, 'utf8')) as Partial<Instance>
+    } catch (err) {
+      logger.warn(`instance.json konnte nicht gelesen werden (${ownFile}):`, err)
+    }
+
+    const gameDir = join(sourceDir, 'minecraft')
+    if (parsed && parsed.mcVersion && existsSync(gameDir)) {
       return {
         flavour: 'launchgabi',
         name: parsed.name?.trim() || folderName,
@@ -295,14 +549,27 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
         loaderVersion: parsed.loaderVersion ?? '',
         gameDir
       }
-    } catch (err) {
-      if (err instanceof Error && err.message.startsWith('Im Instanz-Ordner')) throw err
-      if (err instanceof Error && err.message.startsWith('In der instance.json')) throw err
-      throw new Error(
-        `Die instance.json in diesem Ordner ist beschädigt. (${
-          err instanceof Error ? err.message : String(err)
-        })`
-      )
+    }
+  }
+
+  // 2b. CurseForge and GDLauncher --------------------------------------
+  //
+  // Both keep the game files straight in the instance folder, so the folder
+  // itself is the game directory and their own metadata file is the only
+  // thing naming a version.
+  const external: { read: LauncherRead | null; flavour: SourceFlavour; note: string }[] = [
+    { read: readCurseForgeInstance(sourceDir), flavour: 'curseforge', note: 'CurseForge' },
+    { read: readGdLauncherConfig(sourceDir), flavour: 'gdlauncher', note: 'GDLauncher' }
+  ]
+  for (const candidate of external) {
+    if (!candidate.read) continue
+    return {
+      flavour: candidate.flavour,
+      name: candidate.read.name?.trim() || folderName,
+      mcVersion: candidate.read.mcVersion,
+      loader: candidate.read.loader,
+      loaderVersion: candidate.read.loaderVersion,
+      gameDir: sourceDir
     }
   }
 
@@ -320,11 +587,28 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     )
   }
 
-  const guessed = guessFromVersionsFolder(gameDir) ?? guessFromFolderName(gameDir)
+  // The saved worlds are the last resort, and the only one that works no
+  // matter which launcher built the folder or what it is called: Minecraft
+  // itself stamps the version into every level.dat it writes.
+  let guessed = guessFromVersionsFolder(gameDir) ?? guessFromFolderName(gameDir)
+  if (!guessed) {
+    const fromSaves = readVersionFromSaves(gameDir)
+    if (fromSaves) {
+      const loader = guessLoaderFromMods(join(gameDir, 'mods'))
+      guessed = {
+        mcVersion: fromSaves,
+        loader: loader?.loader ?? 'vanilla',
+        loaderVersion: loader?.loaderVersion ?? ''
+      }
+      logger.info(`Version ${fromSaves} aus einer gespeicherten Welt gelesen`)
+    }
+  }
+
   if (!guessed) {
     throw new Error(
-      'Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Lege die Instanz von Hand ' +
-        'an und kopiere die Dateien anschließend über "Ordner öffnen" hinein.'
+      'Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Das passiert, wenn der ' +
+        'Ordner weder einen "versions"-Unterordner noch eine gespeicherte Welt enthält. Lege die ' +
+        'Instanz von Hand an und kopiere die Dateien anschließend über "Ordner öffnen" hinein.'
     )
   }
 
@@ -366,6 +650,14 @@ function copyGameFiles(from: string, to: string): number {
   return files
 }
 
+const FLAVOUR_LABELS: Record<SourceFlavour, string> = {
+  prism: 'Aus Prism/MultiMC übernommen',
+  launchgabi: 'Aus einem Launch-Gabi-Ordner übernommen',
+  curseforge: 'Aus der CurseForge-App übernommen',
+  gdlauncher: 'Aus GDLauncher übernommen',
+  minecraft: 'Aus einem Minecraft-Ordner übernommen'
+}
+
 /**
  * Creates an instance from a folder another launcher wrote.
  *
@@ -389,12 +681,7 @@ export async function importInstanceFolder(
     mcVersion: detected.mcVersion,
     loader: detected.loader,
     loaderVersion: detected.loaderVersion,
-    description:
-      detected.flavour === 'prism'
-        ? 'Aus Prism/MultiMC übernommen'
-        : detected.flavour === 'launchgabi'
-          ? 'Aus einem Launch-Gabi-Ordner übernommen'
-          : 'Aus einem .minecraft-Ordner übernommen',
+    description: FLAVOUR_LABELS[detected.flavour],
     icon: '📥'
   })
 

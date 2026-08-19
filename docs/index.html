@@ -177,7 +177,11 @@
    * Layout
    * ================================================================== */
   main { position: relative; z-index: 1; }
-  .inner { max-width: 1010px; margin: 0 auto; padding: 0 20px; }
+  /* Bewusst die Langform: `padding: 0 20px` hat die senkrechte Polsterung
+     von `section` ueberschrieben, weil eine Klasse einen Element-Selektor
+     schlaegt. Damit stand jede Sektion ohne Abstand direkt an der
+     vorherigen. */
+  .inner { max-width: 1010px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
   .narrow { max-width: 700px; margin: 0 auto; }
 
   /* Everything past the hero sits on a darkening veil, so long-form text
@@ -220,6 +224,7 @@
     justify-content: center;
     text-align: center;
     padding-top: calc(var(--nav-h) + 40px);
+    padding-bottom: 0;
   }
 
   .badge {
@@ -250,7 +255,11 @@
     font-weight: 800;
     letter-spacing: -0.038em;
     line-height: 1.02;
-    margin: 0 0 20px;
+    margin: 0 0 10px;
+    /* background-clip: text malt nur innerhalb des Elementkastens. Bei dieser
+       engen Zeilenhoehe ragen Unterlaengen darunter hinaus und blieben
+       farblos, das "g" in "aufgeraeumt" sah abgeschnitten aus. */
+    padding-bottom: .16em;
     background: linear-gradient(180deg, #ffffff 28%, #ecccff 72%, var(--accent-warm) 100%);
     -webkit-background-clip: text;
     background-clip: text;
