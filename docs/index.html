@@ -427,6 +427,26 @@
     vertical-align: 2px;
   }
 
+  /* Shown instead of the download buttons on phones and tablets, where the
+     installer cannot run at all. The rows stay visible underneath as plain
+     text so the page still says which systems are supported. */
+  .mobile-note {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    border-radius: var(--r);
+    background: rgba(255, 176, 60, 0.10);
+    border: 1px solid rgba(255, 176, 60, 0.34);
+    text-align: left;
+  }
+  .mobile-note svg { flex: none; color: #ffc46b; margin-top: 1px; }
+  .mobile-note strong { display: block; margin-bottom: 4px; letter-spacing: -.01em; }
+  .mobile-note span { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+  .row.locked { opacity: .58; cursor: default; }
+  .row.locked:hover { transform: none; background: var(--glass); border-color: var(--glass-line); box-shadow: none; }
+
   /* ================================================================== *
    * FAQ
    * ================================================================== */
@@ -829,7 +849,38 @@ observeReveals();
     return null;
   }
 
+  /**
+   * True only for phones and tablets. Deliberately built the strict way round:
+   * a device has to positively identify itself as mobile, so anything the list
+   * does not recognise stays a desktop and keeps its download buttons.
+   *
+   * Screen width is not part of this on purpose. A narrow browser window on a
+   * PC would trip it, and that is exactly the false positive that must not
+   * happen. Touch alone is not enough either, since Windows laptops and the
+   * Surface have touchscreens and run the installer perfectly well.
+   */
+  function isMobile() {
+    var ua = navigator.userAgent;
+    if (/Android|iPhone|iPod|iPad|Windows Phone|IEMobile|BlackBerry|webOS|Opera Mini/i.test(ua)) {
+      return true;
+    }
+    // iPadOS 13 and newer send a desktop Macintosh user agent. A real Mac has
+    // never had a touchscreen, so that is what separates the two.
+    if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return true;
+    return false;
+  }
+
   function mb(bytes) { return Math.round(bytes / 1048576) + ' MB'; }
+
+  var MOBILE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M11 18.4h2"/></svg>';
+
+  var MOBILE_NOTE =
+    '<div class="mobile-note">' + MOBILE_ICON +
+      '<span><strong>Auf dem Handy leider nicht möglich</strong>' +
+      'Launch Gabi ist ein Programm für Windows, macOS und Linux. ' +
+      'Auf einem Handy oder Tablet lässt es sich nicht installieren. ' +
+      'Öffne diese Seite einfach an deinem PC, dann kannst du direkt herunterladen.</span>' +
+    '</div>';
 
   // Everything below is built with innerHTML, and tag names and asset URLs come
   // from the GitHub API rather than from this page. A release published with a
@@ -851,6 +902,16 @@ observeReveals();
   }
 
   function fallback(message) {
+    // Same rule as the normal path: a phone never gets pointed at a download,
+    // not even the plain GitHub listing.
+    if (isMobile()) {
+      document.getElementById('main-cta').innerHTML =
+        '<a class="primary" href="#download"><span>Nur am PC verfügbar' +
+        '<small>Warum? Kurz erklärt</small></span></a>';
+      document.getElementById('downloads').innerHTML = MOBILE_NOTE;
+      observeReveals();
+      return;
+    }
     document.getElementById('main-cta').innerHTML =
       '<a class="primary" href="' + RELEASES + '"><span>Zu den Downloads' +
       '<small>' + esc(message) + '</small></span></a>';
@@ -885,7 +946,8 @@ observeReveals();
 
       if (!found.length) { fallback('Version ' + (release.tag_name || '')); return; }
 
-      var mine = guessPlatform();
+      var mobile = isMobile();
+      var mine = mobile ? null : guessPlatform();
       var primary = null;
       for (var i = 0; i < found.length; i++) {
         if (found[i].p.id === mine) { primary = found[i]; break; }
@@ -895,28 +957,40 @@ observeReveals();
       document.getElementById('badge').innerHTML =
         '<span class="dot"></span>Version ' + version + ' · kostenlos';
 
-      // Hero: the visitor's own platform, or a nudge to the list below.
-      document.getElementById('main-cta').innerHTML = primary
-        ? '<a class="primary" href="' + safeUrl(primary.asset.browser_download_url) + '">' +
-            '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
-              '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
-            '</span></a>' +
-          '<a class="ghost" href="#download">Andere Systeme ansehen</a>'
-        : '<a class="primary" href="#download"><span>Download wählen' +
-            '<small>Windows · macOS · Linux</small></span></a>';
+      // Hero: the visitor's own platform, or a nudge to the list below. On a
+      // phone every download would be a dead end, so the button points at the
+      // explanation instead of handing over a file that cannot be opened.
+      document.getElementById('main-cta').innerHTML = mobile
+        ? '<a class="primary" href="#download"><span>Nur am PC verfügbar' +
+            '<small>Warum? Kurz erklärt</small></span></a>'
+        : primary
+          ? '<a class="primary" href="' + safeUrl(primary.asset.browser_download_url) + '">' +
+              '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
+                '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
+              '</span></a>' +
+            '<a class="ghost" href="#download">Andere Systeme ansehen</a>'
+          : '<a class="primary" href="#download"><span>Download wählen' +
+              '<small>Windows · macOS · Linux</small></span></a>';
 
       // Download section always lists every platform, with the visitor's marked.
-      document.getElementById('downloads').innerHTML = found.map(function (f) {
-        var you = (f === primary) ? '<span class="you">Dein System</span>' : '';
-        return '<a class="row glass' + (f === primary ? ' is-you' : '') + '" href="' +
-                 safeUrl(f.asset.browser_download_url) + '">' +
-                 '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
-                 '<span class="os">' + f.p.label + you +
-                   '<span class="note">' + f.p.note + '</span>' +
-                 '</span>' +
-                 '<span class="size">' + mb(f.asset.size) + '</span>' +
-               '</a>';
-      }).join('');
+      // On mobile the same rows render as plain divs: still informative about
+      // what exists, but nothing that starts a download.
+      document.getElementById('downloads').innerHTML =
+        (mobile ? MOBILE_NOTE : '') +
+        found.map(function (f) {
+          var you = (f === primary) ? '<span class="you">Dein System</span>' : '';
+          var inner =
+            '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
+            '<span class="os">' + f.p.label + you +
+              '<span class="note">' + f.p.note + '</span>' +
+            '</span>' +
+            '<span class="size">' + mb(f.asset.size) + '</span>';
+
+          return mobile
+            ? '<div class="row glass locked">' + inner + '</div>'
+            : '<a class="row glass' + (f === primary ? ' is-you' : '') + '" href="' +
+                safeUrl(f.asset.browser_download_url) + '">' + inner + '</a>';
+        }).join('');
 
       document.getElementById('dl-lede').innerHTML =
         'Version ' + version + ' · ein Download, danach hält sich der Launcher selbst aktuell. ' +
