@@ -24,7 +24,14 @@ header.bar {
   padding: 20px 0;
   margin-bottom: 48px;
 }
-header.bar a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+header.bar a {
+  display: inline-block;
+  padding: 12px 8px;
+  margin: -12px -8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: .9rem;
+}
 header.bar a:hover { color: #fff; }
 h1 {
   font-size: clamp(1.8rem, 5vw, 2.6rem);
@@ -45,6 +52,10 @@ ul { margin: 0 0 14px; padding-left: 22px; }
 li { margin: 4px 0; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* Verweise mitten im Text bleiben inline, damit der Umbruch stimmt, bekommen
+   aber senkrechte Polsterung. Das vergroessert die Flaeche, die ein Finger
+   treffen muss, ohne den Zeilenabstand zu veraendern. */
+p a, address a, li a { padding: 12px 0; }
 .box {
   background: var(--glass);
   border: 1px solid var(--glass-line);
@@ -71,5 +82,9 @@ footer {
   color: var(--muted-dim);
   font-size: .85rem;
 }
-footer a { color: var(--muted); }
+footer a {
+  display: inline-block;
+  padding: 11px 7px;
+  color: var(--muted);
+}
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
