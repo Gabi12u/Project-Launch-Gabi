@@ -457,18 +457,47 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   const accessEnc = encrypt(mc.access_token)
   const refreshEnc = token.refresh_token ? encrypt(token.refresh_token) : undefined
 
-  const updated = accounts.map((a) =>
-    a.id === accountId
-      ? {
-          ...a,
-          accessToken: accessEnc.value,
-          refreshToken: refreshEnc?.value ?? a.refreshToken,
-          secure: accessEnc.secure,
-          expiresAt: Date.now() + mc.expires_in * 1000
-        }
-      : a
-  )
-  writeAccounts(updated)
+  // The profile carries the currently worn skin. Without re-reading it here the
+  // stored skinUrl stays frozen at whatever it was during the very first login,
+  // so a player who changes their skin keeps seeing the old head forever.
+  // A failure here must not cost the caller its token, so it degrades to the
+  // previous value.
+  let skinUrl: string | undefined
+  try {
+    const profile = await fetchJson<MinecraftProfile>(MC_PROFILE_URL, {
+      headers: { Authorization: `Bearer ${mc.access_token}` }
+    })
+    skinUrl = profile.skins?.find((s) => s.state === 'ACTIVE')?.url
+  } catch (err) {
+    logger.warn(`Profil von ${account.username} nicht erneuerbar, Skin bleibt wie er war:`, err)
+  }
+
+  // Re-read immediately before writing rather than reusing the snapshot from
+  // the top of this function. The four network calls above take seconds, and
+  // writeAccounts overwrites the whole file: anything the user did meanwhile
+  // (removing an account, adding an offline profile, switching the active one)
+  // would otherwise be silently rolled back.
+  const latest = readAccounts()
+  if (latest.some((a) => a.id === accountId)) {
+    writeAccounts(
+      latest.map((a) =>
+        a.id === accountId
+          ? {
+              ...a,
+              accessToken: accessEnc.value,
+              refreshToken: refreshEnc?.value ?? a.refreshToken,
+              secure: accessEnc.secure,
+              expiresAt: Date.now() + mc.expires_in * 1000,
+              skinUrl: skinUrl ?? a.skinUrl
+            }
+          : a
+      )
+    )
+  } else {
+    // Removed while we were refreshing. Handing back the token lets the
+    // operation that asked for it finish, but the account stays deleted.
+    logger.info(`${account.username} wurde waehrend der Erneuerung entfernt, nicht zurueckgeschrieben`)
+  }
 
   return mc.access_token
 }

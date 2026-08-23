@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
-import { avatarUrl, initials } from '../lib/format'
+import { initials, skinHeadStyle } from '../lib/format'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
 import {
@@ -111,25 +111,14 @@ export function Sidebar(): JSX.Element {
         <div style={{ flex: 1 }} />
 
         <button className="account-chip no-drag" onClick={() => setAccountOpen(true)}>
-          <div className="avatar">
-            {active ? (
-              active.type === 'microsoft' ? (
-                <img
-                  src={avatarUrl(active.uuid)}
-                  alt=""
-                  width={32}
-                  height={32}
-                  onError={(event) => {
-                    // Crafatar is optional; fall back to the initials tile.
-                    event.currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : (
-                initials(active.username)
-              )
-            ) : (
-              '?'
-            )}
+          <div
+            className={`avatar${active && skinHeadStyle(active.skinUrl) ? ' skin-head' : ''}`}
+            style={active ? (skinHeadStyle(active.skinUrl) ?? undefined) : undefined}
+          >
+            {/* The head is painted by the background layers, so the tile stays
+                empty whenever a skin is available. Without one it falls back
+                to the initials, which is the offline-account case. */}
+            {active ? (skinHeadStyle(active.skinUrl) ? '' : initials(active.username)) : '?'}
           </div>
           <div className="col grow" style={{ overflow: 'hidden' }}>
             <span className="truncate" style={{ fontSize: 13, fontWeight: 620 }}>

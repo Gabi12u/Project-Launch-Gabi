@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { LoaderId } from '@shared/types'
 
 export function formatBytes(bytes: number, decimals = 1): string {
@@ -136,7 +137,21 @@ export function initials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
-/** Crafatar avatar for a Minecraft UUID; offline accounts fall back to initials. */
-export function avatarUrl(uuid: string): string {
-  return `https://crafatar.com/avatars/${uuid}?size=64&overlay&default=MHF_Steve`
+/**
+ * Style props that paint an account's own skin as a head tile.
+ *
+ * Replaces an earlier Crafatar call that carried `default=MHF_Steve`, the
+ * 2009 Steve head. That fallback showed up whenever Crafatar had no cached
+ * skin for a UUID, which made current accounts look like they had never
+ * picked a skin. The launcher already receives the worn skin straight from
+ * Mojang at login and on every token renewal, so it does not need a third
+ * party for this at all, and no account UUID leaves the machine.
+ *
+ * Returns null when there is no skin to show, which is the offline-account
+ * case; the caller then renders the initials tile as before.
+ */
+export function skinHeadStyle(skinUrl: string | undefined): CSSProperties | null {
+  if (!skinUrl) return null
+  // Quoted, so a URL containing brackets or spaces cannot break out of url().
+  return { ['--skin' as string]: `url("${encodeURI(skinUrl)}")` }
 }

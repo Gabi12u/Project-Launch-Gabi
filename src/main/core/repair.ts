@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
@@ -167,6 +167,7 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
 
     let restored = 0
     let removed = 0
+    const failed: string[] = []
     const survivors = [...current.content]
 
     for (const item of current.content) {
@@ -202,18 +203,53 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
         )
         if (!version) continue
 
-        rmSync(file, { force: true })
-        await downloadFile({
-          url: version.downloadUrl,
-          path: contentFilePath(instanceId, { ...item, fileName: version.fileName }),
-          sha1: version.sha1,
-          size: version.size
-        })
+        const target = contentFilePath(instanceId, { ...item, fileName: version.fileName })
+        const aside = `${file}.repair-${process.pid}`
+        let movedAside = false
 
-        const index = survivors.indexOf(item)
-        survivors[index] = { ...item, fileName: version.fileName, sha1: version.sha1, size: version.size }
-        restored++
+        try {
+          // Moved aside instead of deleted. The previous order removed the file
+          // first and only logged on failure, so a network drop between the two
+          // left the mod gone from disk while content.json still listed it as
+          // installed. Now the original is only dropped once its replacement is
+          // safely written, and comes back if anything goes wrong.
+          if (existsSync(file)) {
+            renameSync(file, aside)
+            movedAside = true
+          }
+
+          await downloadFile({
+            url: version.downloadUrl,
+            path: target,
+            sha1: version.sha1,
+            size: version.size
+          })
+
+          if (movedAside) rmSync(aside, { force: true })
+
+          const index = survivors.indexOf(item)
+          survivors[index] = {
+            ...item,
+            fileName: version.fileName,
+            sha1: version.sha1,
+            size: version.size
+          }
+          restored++
+        } catch (err) {
+          if (movedAside && !existsSync(file)) {
+            try {
+              renameSync(aside, file)
+            } catch (restoreErr) {
+              logger.error(`${item.name} konnte nicht zurueckgelegt werden:`, restoreErr)
+            }
+          }
+          throw err
+        }
       } catch (err) {
+        // Counted, not just logged: a mod the repair could not restore has to
+        // show up in the report, otherwise the user is told everything is fine
+        // while a mod is still broken.
+        failed.push(item.name)
         logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
       }
     }
@@ -221,12 +257,17 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     persist({ ...getInstance(instanceId), content: survivors })
     report.repairedFiles += restored
 
+    const changed = restored > 0 || removed > 0
     step(
       'Mods & Inhalte',
-      restored > 0 || removed > 0 ? 'repaired' : 'ok',
-      restored > 0 || removed > 0
-        ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt`
-        : `${current.content.length} Dateien in Ordnung`
+      failed.length > 0 ? 'failed' : changed ? 'repaired' : 'ok',
+      failed.length > 0
+        ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt, ` +
+          `${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
+          (failed.length > 3 ? ' und weitere' : '')
+        : changed
+          ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt`
+          : `${current.content.length} Dateien in Ordnung`
     )
 
     // 7. Java ----------------------------------------------------------

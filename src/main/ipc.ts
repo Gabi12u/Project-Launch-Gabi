@@ -514,8 +514,8 @@ export function registerIpc(): void {
     restoreBackup(instanceId, backupId)
   )
 
-  handle(IPC.backupDelete, (instanceId: string, backupId: string) => {
-    deleteBackup(instanceId, backupId)
+  handle(IPC.backupDelete, async (instanceId: string, backupId: string) => {
+    await deleteBackup(instanceId, backupId)
     return listBackups(instanceId)
   })
 

@@ -281,6 +281,18 @@ export interface LaunchOptions {
  * check, downloads, Java install) is awaited — so without this a second click
  * sails past the guard and starts a second game in the same directory.
  */
+/**
+ * Instances whose exit was asked for rather than unexpected.
+ *
+ * Windows has no signals: `taskkill /f` ends the JVM with a non-zero exit code
+ * and a null signal, which by exit code alone is indistinguishable from a real
+ * crash. Without this marker every ordinary click on "Stopp" was recorded as a
+ * crash, logged as one, and raised the red crash notification. On POSIX the
+ * signal field already tells the two apart, so this only matters on Windows,
+ * which happens to be the platform most people run this on.
+ */
+const stopRequested = new Set<string>()
+
 const starting = new Set<string>()
 
 /**
@@ -312,6 +324,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     )
   }
   starting.add(instanceId)
+  // A stop that never produced an exit (an orphaned record, a taskkill that
+  // failed) would otherwise leave its marker behind and excuse the next
+  // genuine crash of this instance as intentional.
+  stopRequested.delete(instanceId)
 
   const settings = getSettings()
   const instance = getInstance(instanceId)
@@ -584,7 +600,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     child.on('exit', (code, signal) => {
       const endedAt = Date.now()
-      const crashed = code !== 0 && code !== null
+      // Consumed here, so a later unexpected exit of the same instance is not
+      // excused by a stop the user asked for minutes earlier.
+      const requested = stopRequested.delete(instanceId)
+      const crashed = !requested && code !== 0 && code !== null
       clearRunning(instanceId)
 
       recordSession(instanceId, { startedAt, endedAt, crashed, exitCode: code })
@@ -797,6 +816,8 @@ export function stopInstance(instanceId: string, immediate = false): void {
     text: 'Minecraft wird beendet…',
     time: Date.now()
   })
+
+  stopRequested.add(instanceId)
 
   if (process.platform === 'win32' && game.process.pid) {
     // Minecraft spawns child processes; /T takes the whole tree down.

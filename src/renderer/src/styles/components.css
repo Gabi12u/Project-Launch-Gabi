@@ -309,6 +309,34 @@
   border-radius: var(--r-sm);
 }
 
+/*
+ * Crops the head out of a raw Minecraft skin texture.
+ *
+ * A skin is a 64x64 sheet (64x32 on very old ones) where the face sits at
+ * (8,8) and the hat layer at (40,8), each 8x8. Scaling the sheet to eight
+ * times the tile size makes one texture pixel exactly one eighth of the tile,
+ * so both layers can be positioned with plain arithmetic: the face lands at
+ * -1 tile, the hat at -5.
+ *
+ * Height stays `auto` on purpose. That keeps the horizontal scale identical
+ * for 64x64 and 64x32 sheets, so the legacy format lines up too.
+ *
+ * Doing it in CSS rather than on a canvas avoids reading the pixels, which a
+ * cross-origin texture would not allow anyway.
+ */
+.skin-head {
+  --tile: 32px;
+  background-image: var(--skin), var(--skin);
+  background-size: calc(var(--tile) * 8) auto;
+  background-position:
+    calc(var(--tile) * -5) calc(var(--tile) * -1),
+    calc(var(--tile) * -1) calc(var(--tile) * -1);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.avatar.lg.skin-head { --tile: 44px; }
+
 /* --- Buttons ------------------------------------------------------- */
 
 .btn {

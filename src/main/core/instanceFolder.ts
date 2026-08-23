@@ -238,71 +238,135 @@ const TAG_COMPOUND = 10
 const TAG_INT_ARRAY = 11
 const TAG_LONG_ARRAY = 12
 
-/** Advances past one payload of `type` and returns the offset after it. */
-function skipPayload(buf: Buffer, pos: number, type: number): number {
-  switch (type) {
-    case TAG_BYTE:
-      return pos + 1
-    case TAG_SHORT:
-      return pos + 2
-    case TAG_INT:
-    case TAG_FLOAT:
-      return pos + 4
-    case TAG_LONG:
-    case TAG_DOUBLE:
-      return pos + 8
-    case TAG_BYTE_ARRAY:
-      return pos + 4 + buf.readInt32BE(pos)
-    case TAG_STRING:
-      return pos + 2 + buf.readUInt16BE(pos)
-    case TAG_INT_ARRAY:
-      return pos + 4 + buf.readInt32BE(pos) * 4
-    case TAG_LONG_ARRAY:
-      return pos + 4 + buf.readInt32BE(pos) * 8
-    case TAG_LIST: {
-      const itemType = buf.readUInt8(pos)
-      const count = buf.readInt32BE(pos + 1)
-      let p = pos + 5
-      for (let i = 0; i < count; i++) p = skipPayload(buf, p, itemType)
-      return p
-    }
-    case TAG_COMPOUND: {
-      let p = pos
-      for (;;) {
-        const tag = buf.readUInt8(p++)
-        if (tag === TAG_END) return p
-        p += 2 + buf.readUInt16BE(p)
-        p = skipPayload(buf, p, tag)
-      }
-    }
-    default:
-      throw new Error('unbekannter NBT-Typ ' + type)
+/** Payload width of the fixed-size tags. */
+const FIXED_WIDTH = new Map<number, number>([
+  [TAG_BYTE, 1],
+  [TAG_SHORT, 2],
+  [TAG_INT, 4],
+  [TAG_LONG, 8],
+  [TAG_FLOAT, 4],
+  [TAG_DOUBLE, 8]
+])
+
+/** Element width of the three array tags. */
+const ARRAY_WIDTH = new Map<number, number>([
+  [TAG_BYTE_ARRAY, 1],
+  [TAG_INT_ARRAY, 4],
+  [TAG_LONG_ARRAY, 8]
+])
+
+/** Real level.dat files nest a handful of levels deep at most. */
+const MAX_NBT_DEPTH = 64
+
+/** A level.dat is a few kilobytes. This ceiling is already absurdly generous. */
+const MAX_LEVEL_DAT_BYTES = 32 * 1024 * 1024
+
+/**
+ * Throws unless the `count` bytes starting at `pos` really lie inside `buf`,
+ * and returns the offset just past them.
+ *
+ * Every offset this parser computes goes through here. A level.dat is
+ * attacker-controlled in practice — it arrives inside whatever folder the user
+ * points the importer at — and its length fields are just numbers in a file.
+ * Without this check a single inflated or negative length walks the cursor
+ * past the end or backwards, and a cursor that moves backwards is how a
+ * crafted file turns the loops below into an infinite one that never throws.
+ */
+function bounded(buf: Buffer, pos: number, count: number): number {
+  if (!Number.isSafeInteger(pos) || !Number.isSafeInteger(count)) {
+    throw new Error('NBT: unbrauchbarer Offset')
   }
+  if (pos < 0 || count < 0) throw new Error('NBT: negative Länge')
+  const end = pos + count
+  if (end > buf.length) throw new Error('NBT: Länge zeigt hinter das Dateiende')
+  return end
+}
+
+/** Advances past one payload of `type` and returns the offset after it. */
+function skipPayload(buf: Buffer, pos: number, type: number, depth: number): number {
+  if (depth > MAX_NBT_DEPTH) throw new Error('NBT: zu tief verschachtelt')
+
+  const fixed = FIXED_WIDTH.get(type)
+  if (fixed !== undefined) return bounded(buf, pos, fixed)
+
+  const width = ARRAY_WIDTH.get(type)
+  if (width !== undefined) {
+    bounded(buf, pos, 4)
+    return bounded(buf, pos + 4, buf.readInt32BE(pos) * width)
+  }
+
+  if (type === TAG_STRING) {
+    bounded(buf, pos, 2)
+    return bounded(buf, pos + 2, buf.readUInt16BE(pos))
+  }
+
+  if (type === TAG_LIST) {
+    bounded(buf, pos, 5)
+    const itemType = buf.readUInt8(pos)
+    const count = buf.readInt32BE(pos + 1)
+    if (count < 0) throw new Error('NBT: negative Listenlänge')
+    const start = pos + 5
+    if (count === 0) return start
+    if (itemType === TAG_END) throw new Error('NBT: Liste ohne Elementtyp')
+
+    // Fixed-width elements get measured, not walked. Stepping through them one
+    // by one reads nothing from the buffer, so a five-byte header claiming two
+    // milliarden elements would spin here for minutes without ever tripping a
+    // bounds check, freezing the entire launcher.
+    const itemWidth = FIXED_WIDTH.get(itemType)
+    if (itemWidth !== undefined) return bounded(buf, start, count * itemWidth)
+
+    // Every remaining element type consumes at least one byte, so `bounded`
+    // inside the recursion ends this loop well before `count` runs out.
+    let p = start
+    for (let i = 0; i < count; i++) p = skipPayload(buf, p, itemType, depth + 1)
+    return p
+  }
+
+  if (type === TAG_COMPOUND) {
+    let p = pos
+    for (;;) {
+      bounded(buf, p, 1)
+      const tag = buf.readUInt8(p++)
+      if (tag === TAG_END) return p
+      bounded(buf, p, 2)
+      p = bounded(buf, p + 2, buf.readUInt16BE(p))
+      p = skipPayload(buf, p, tag, depth + 1)
+    }
+  }
+
+  throw new Error('NBT: unbekannter Typ ' + type)
 }
 
 /** Follows `path` through nested compounds and returns the string it ends on. */
-function nbtString(buf: Buffer, pos: number, path: string[]): string | null {
+function nbtString(buf: Buffer, pos: number, path: string[], depth = 0): string | null {
+  if (depth > MAX_NBT_DEPTH) throw new Error('NBT: zu tief verschachtelt')
+
   let p = pos
   for (;;) {
+    bounded(buf, p, 1)
     const type = buf.readUInt8(p++)
     if (type === TAG_END) return null
 
+    bounded(buf, p, 2)
     const nameLength = buf.readUInt16BE(p)
     p += 2
-    const name = buf.toString('utf8', p, p + nameLength)
-    p += nameLength
+    const nameEnd = bounded(buf, p, nameLength)
+    const name = buf.toString('utf8', p, nameEnd)
+    p = nameEnd
 
     if (name === path[0]) {
       if (path.length === 1) {
         if (type !== TAG_STRING) return null
+        bounded(buf, p, 2)
         const length = buf.readUInt16BE(p)
-        return buf.toString('utf8', p + 2, p + 2 + length)
+        return buf.toString('utf8', p + 2, bounded(buf, p + 2, length))
       }
       if (type !== TAG_COMPOUND) return null
-      return nbtString(buf, p, path.slice(1))
+      return nbtString(buf, p, path.slice(1), depth + 1)
     }
 
-    p = skipPayload(buf, p, type)
+    p = skipPayload(buf, p, type, depth + 1)
   }
 }
 
@@ -317,23 +381,31 @@ function nbtString(buf: Buffer, pos: number, path: string[]): string | null {
 function readLevelDatVersion(file: string): string | null {
   try {
     const raw = readFileSync(file)
+
     // Almost always gzipped, but a hand-edited level.dat can be plain NBT.
     let buf: Buffer
     try {
-      buf = gunzipSync(raw)
+      // Capped, so a gzip bomb sitting in saves/ cannot eat all memory before
+      // the parser gets a chance to reject it.
+      buf = gunzipSync(raw, { maxOutputLength: MAX_LEVEL_DAT_BYTES })
     } catch {
+      if (raw.length > MAX_LEVEL_DAT_BYTES) return null
       buf = raw
     }
 
     let p = 0
+    bounded(buf, p, 1)
     if (buf.readUInt8(p++) !== TAG_COMPOUND) return null
-    p += 2 + buf.readUInt16BE(p)
+    bounded(buf, p, 2)
+    p = bounded(buf, p + 2, buf.readUInt16BE(p))
 
     const name = nbtString(buf, p, ['Data', 'Version', 'Name'])
     // Snapshots ("23w31a") and release candidates are of no use here, since
     // the launcher only installs proper releases.
     return name && /^\d+\.\d+(\.\d+)?$/.test(name) ? name : null
   } catch {
+    // A corrupt or hostile world simply yields no version; the caller falls
+    // back to its other detection paths.
     return null
   }
 }

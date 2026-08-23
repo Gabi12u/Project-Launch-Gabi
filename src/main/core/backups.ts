@@ -366,17 +366,32 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   }
 }
 
-export function deleteBackup(instanceId: string, backupId: string): void {
-  const entries = readIndex(instanceId)
-  const entry = entries.find((e) => e.id === backupId)
-  if (!entry) return
+/**
+ * Removes one backup.
+ *
+ * Runs under the same per-instance lock as creating and restoring, and
+ * respects the same `inUse` marker. Without both it was a second door into
+ * exactly the hazard those were built for: deleting an archive while a restore
+ * was still reading it, or slipping between another operation's read and write
+ * of the index and silently dropping a just-created entry.
+ */
+export async function deleteBackup(instanceId: string, backupId: string): Promise<void> {
+  return withInstanceLock(instanceId, async () => {
+    const entries = readIndex(instanceId)
+    const entry = entries.find((e) => e.id === backupId)
+    if (!entry) return
 
-  rmSync(join(paths.instanceBackups(instanceId), entry.fileName), { force: true })
-  writeIndex(
-    instanceId,
-    entries.filter((e) => e.id !== backupId)
-  )
-  logger.info(`Sicherung ${entry.fileName} gelöscht`)
+    if (inUse.has(entry.id)) {
+      throw new Error('Diese Sicherung wird gerade eingespielt und kann nicht gelöscht werden.')
+    }
+
+    rmSync(join(paths.instanceBackups(instanceId), entry.fileName), { force: true })
+    writeIndex(
+      instanceId,
+      entries.filter((e) => e.id !== backupId)
+    )
+    logger.info(`Sicherung ${entry.fileName} gelöscht`)
+  })
 }
 
 export function backupFolder(instanceId: string): string {

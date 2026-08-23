@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { Account, DeviceCodePrompt } from '@shared/types'
 import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
-import { avatarUrl, initials } from '../lib/format'
+import { initials, skinHeadStyle } from '../lib/format'
 import { CopyButton, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
 
@@ -167,18 +167,11 @@ function AccountRow({
 
   return (
     <div className="content-row">
-      <div className="avatar lg">
-        {account.type === 'microsoft' ? (
-          <img
-            src={avatarUrl(account.uuid)}
-            alt=""
-            onError={(event) => {
-              event.currentTarget.style.display = 'none'
-            }}
-          />
-        ) : (
-          initials(account.username)
-        )}
+      <div
+        className={`avatar lg${skinHeadStyle(account.skinUrl) ? ' skin-head' : ''}`}
+        style={skinHeadStyle(account.skinUrl) ?? undefined}
+      >
+        {skinHeadStyle(account.skinUrl) ? '' : initials(account.username)}
       </div>
 
       <div className="grow">
