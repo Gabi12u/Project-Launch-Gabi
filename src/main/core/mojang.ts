@@ -362,7 +362,18 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     // precisely so their override is the one that survives.
     const coords = library.name.split(':')
     if (coords.length >= 2) {
-      const artifactKey = `${coords[0]}:${coords[1]}|${classifier ?? ''}`
+      // The fourth maven segment is a classifier, and that is how versions
+      // since 1.19 ship their natives: as a separate entry named
+      // `org.lwjgl:lwjgl:3.3.3:natives-windows`, with no `natives` block, so
+      // it reaches this function with `classifier === null`. Keying on
+      // group:artifact alone therefore made the natives entry look like a
+      // duplicate of the plain jar and dropped whichever came second.
+      //
+      // Those jars belong on the classpath, because LWJGL 3 unpacks lwjgl.dll
+      // out of them itself. Losing one killed the launch outright with
+      // "Failed to locate library: lwjgl.dll".
+      const mavenClassifier = coords.length >= 4 ? coords[3] : ''
+      const artifactKey = `${coords[0]}:${coords[1]}|${classifier ?? mavenClassifier}`
       if (seenArtifacts.has(artifactKey)) return
       seenArtifacts.add(artifactKey)
     }
