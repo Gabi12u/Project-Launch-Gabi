@@ -1,0 +1,7 @@
+# Launch Gabi
+# Alles darf gelesen werden, es gibt keine geschlossenen Bereiche.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://launchgabi.com/sitemap.xml
