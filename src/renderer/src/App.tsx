@@ -81,7 +81,13 @@ export function App(): JSX.Element {
 
       window.gabi.events.onNavigate((target) => navigate(target)),
 
-      window.gabi.events.onWindowState((state) => setState({ maximized: state.maximized }))
+      window.gabi.events.onWindowState((state) => setState({ maximized: state.maximized })),
+
+      // The main process emits this after every login, logout, removal and
+      // account switch, and the preload has always exposed it — but nothing
+      // ever listened, so the event went nowhere and every view except the one
+      // that caused the change kept its stale list.
+      window.gabi.events.onAccountsChanged((accounts) => setState({ accounts }))
     ]
 
     return () => unsubscribe.forEach((off) => off())

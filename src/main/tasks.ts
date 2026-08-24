@@ -153,6 +153,16 @@ export class Task {
 }
 
 export function cancelTask(id: string): void {
+  // Only remembered for a task we still know about. `forget` is the sole place
+  // that clears this set, and it only ever runs for a task that reached
+  // done/fail — so marking an id we no longer track (a stale reference from
+  // the renderer, a duplicate click racing the cleanup timer) left an entry
+  // that nothing would ever remove, for the life of the process.
+  if (!tasks.has(id) && !handles.has(id)) {
+    logger.debug(`Abbruch für unbekannte Aufgabe ${id} ignoriert`)
+    return
+  }
+
   cancelled.add(id)
   // Interrupt the transfer in flight, not just the loop between files.
   handles.get(id)?.abort()

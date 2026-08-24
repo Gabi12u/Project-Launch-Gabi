@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useState, type JSX, useRef, useCallback} from 'react'
 import type { ContentType } from '@shared/types'
 import { setState, useStore } from '../lib/store'
 import { LOADER_LABELS } from '../lib/format'
@@ -15,34 +15,48 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
   const { instances } = useStore()
 
   const [target, setTarget] = useState<string>('')
-  const [type, setType] = useState<ContentType | 'modpack'>('modpack')
+  // Read during the very first render, not from an effect afterwards.
+  // ContentBrowser takes this only as its initial value, so an effect setting
+  // it later arrived after that component had already picked its default and
+  // was quietly ignored: an install deep link opened on Modpacks instead of
+  // Mods, the opposite of what it asked for.
+  const [type, setType] = useState<ContentType | 'modpack'>(() =>
+    query.get('project') ? 'mod' : 'modpack'
+  )
   const [installedIds, setInstalledIds] = useState<string[]>([])
 
   useEffect(() => {
     if (!target && instances.length > 0) setTarget(instances[0].id)
   }, [instances, target])
 
-  // A deep link like launchgabi://install/modrinth/<id> preselects the type.
+  // Keeps up when the link changes while this view is already open.
+  const requestedProject = query.get('project')
   useEffect(() => {
-    const project = query.get('project')
-    if (project) setType('mod')
-  }, [query])
+    if (requestedProject) setType('mod')
+  }, [requestedProject])
 
   const instance = instances.find((i) => i.id === target)
 
-  const refreshInstalled = async (): Promise<void> => {
+  // Guarded against answers arriving out of order. Switching the target
+  // instance twice in quick succession could let the slower first lookup land
+  // last, so the browser marked the wrong instance's content as installed.
+  const installedRequest = useRef(0)
+
+  const refreshInstalled = useCallback(async (): Promise<void> => {
     if (!target) return
+    const ticket = ++installedRequest.current
     try {
       const detail = await window.gabi.instances.get(target)
+      if (ticket !== installedRequest.current) return
       setInstalledIds(detail.content.map((c) => c.projectId ?? '').filter(Boolean))
     } catch {
-      setInstalledIds([])
+      if (ticket === installedRequest.current) setInstalledIds([])
     }
-  }
+  }, [target])
 
   useEffect(() => {
     void refreshInstalled()
-  }, [target])
+  }, [refreshInstalled])
 
   return (
     <div className="col gap-24">

@@ -280,7 +280,11 @@ export function SettingsView(): JSX.Element {
                     onClick={async () => {
                       const dir = await window.gabi.app.pickDirectory('Datenverzeichnis wählen')
                       if (!dir) return
-                      await saveSettings({ dataDirectory: dir })
+                      // Only report a move once the save actually took. A
+                      // rejected path (unwritable, invalid) left the directory
+                      // untouched, yet this still told the user it had changed
+                      // and to go move their data across.
+                      if (!(await saveSettings({ dataDirectory: dir }))) return
                       // The main process just dropped its instance cache, so the
                       // list on screen still shows the old directory's instances
                       // until it is read again.
@@ -381,6 +385,11 @@ export function SettingsView(): JSX.Element {
                       try {
                         setRuntimes(await window.gabi.java.detect())
                         toast('success', 'Suche abgeschlossen')
+                      } catch (err) {
+                        // Was missing entirely, unlike the install buttons
+                        // below: a rejection ended as an unhandled promise and
+                        // the spinner simply stopped with no explanation.
+                        toastError(err, 'Java-Suche fehlgeschlagen')
                       } finally {
                         setDetecting(false)
                       }

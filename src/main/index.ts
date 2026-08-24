@@ -4,7 +4,7 @@ import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout } from './paths'
 import { getSettings } from './store'
-import { emit, navigate, notify, setMainWindow } from './events'
+import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
 import { adoptRunningFromDisk } from './core/running'
@@ -22,6 +22,35 @@ const logger = log('app')
 
 /** Instance the app was asked to launch through a shortcut or deep link. */
 let pendingLaunch: string | null = null
+
+/**
+ * A deep link that arrived before there was a window to send it to.
+ *
+ * `navigate` drops silently when no window exists, and that is reachable in
+ * normal use: on macOS a `launchgabi://` URL can start the app cold via
+ * `open-url`, and closing the last window there keeps the app alive, so a
+ * second link can arrive with nothing to receive it. The launch action already
+ * had this treatment through `pendingLaunch`; the other two did not and simply
+ * did nothing.
+ */
+let pendingRoute: string | null = null
+
+/** Delivers a route now, or remembers it until a window exists. */
+function routeOrQueue(target: string): void {
+  if (getMainWindow()) {
+    navigate(target)
+    return
+  }
+  pendingRoute = target
+  logger.info(`Deep Link ${target} vorgemerkt, es ist noch kein Fenster offen`)
+}
+
+function consumePendingRoute(): void {
+  if (!pendingRoute || !getMainWindow()) return
+  const target = pendingRoute
+  pendingRoute = null
+  navigate(target)
+}
 
 /* ------------------------------------------------------------------ *
  * Single instance
@@ -79,6 +108,10 @@ function createWindow(): BrowserWindow {
 
   window.on('ready-to-show', () => {
     if (!getSettings().startMinimized) window.show()
+    // A window can also appear long after startup, for instance when the dock
+    // icon is clicked on macOS. Any deep link waiting since then is delivered
+    // here rather than only by the one-shot timer during boot.
+    consumePendingRoute()
   })
 
   const pushWindowState = (): void => emit(EVENTS.windowState, { maximized: window.isMaximized() })
@@ -200,6 +233,7 @@ function bootstrap(): void {
 
       void runStartupChecks()
       void consumePendingLaunch()
+      consumePendingRoute()
     }, 1200)
   })
 
@@ -243,10 +277,10 @@ function handleDeepLink(url: string): void {
       }
       break
     case 'instance':
-      if (link.instanceId) navigate(`/instances/${link.instanceId}`)
+      if (link.instanceId) routeOrQueue(`/instances/${link.instanceId}`)
       break
     case 'install':
-      if (link.projectId) navigate(`/discover?project=${link.provider}:${link.projectId}`)
+      if (link.projectId) routeOrQueue(`/discover?project=${link.provider}:${link.projectId}`)
       break
     default:
       break

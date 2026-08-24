@@ -69,9 +69,11 @@ function appIconPath(): string | null {
 export function writeInstancePng(instanceId: string, iconImages: string[]): string | null {
   if (iconImages.length === 0) return null
   try {
-    // The list runs smallest to largest, and a desktop entry is drawn at
-    // whatever size the environment picks, so hand over the most detailed one.
-    const source = iconImages[iconImages.length - 1]
+    // renderInstanceIcon walks SIZES = [256, 128, 64, 48, 32, 16], so the list
+    // arrives largest first — the opposite of what an earlier comment here
+    // assumed. Taking the last entry handed the desktop a 16x16 tile to blow
+    // up, when the crisp 256 was sitting at the front all along.
+    const source = iconImages[0]
     const base64 = source.slice(source.indexOf(',') + 1)
     if (!base64) return null
 

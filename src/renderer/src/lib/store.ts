@@ -170,13 +170,24 @@ export async function refreshSettings(): Promise<LauncherSettings> {
   return settings
 }
 
-export async function saveSettings(patch: Partial<LauncherSettings>): Promise<void> {
+/**
+ * Saves settings and reports whether it worked.
+ *
+ * Deliberately does not throw: nearly every caller is a toggle that fires this
+ * and forgets it, and a rejection there would surface as an unhandled promise.
+ * But swallowing the failure entirely was worse — callers that awaited it read
+ * the absence of an exception as success, so a refused save still produced a
+ * success message. The boolean lets those few callers tell the difference.
+ */
+export async function saveSettings(patch: Partial<LauncherSettings>): Promise<boolean> {
   try {
     const settings = await window.gabi.settings.set(patch)
     setState({ settings })
     applyTheme(settings)
+    return true
   } catch (err) {
     toastError(err, 'Einstellung konnte nicht gespeichert werden')
+    return false
   }
 }
 

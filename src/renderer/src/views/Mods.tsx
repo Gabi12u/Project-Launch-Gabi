@@ -68,15 +68,34 @@ export function ModsView(): JSX.Element {
     setChecking(true)
     try {
       let total = 0
+      // Each instance is caught on its own. A single failure used to break out
+      // of the loop, so every instance after it was silently skipped while the
+      // toast gave no hint that the check had been left half done.
+      const failed: string[] = []
       for (const instance of instances) {
-        const updated = await window.gabi.content.checkUpdates(instance.id)
-        total += updated.content.filter((c) => c.update).length
+        try {
+          const updated = await window.gabi.content.checkUpdates(instance.id)
+          total += updated.content.filter((c) => c.update).length
+        } catch {
+          failed.push(instance.name)
+        }
       }
-      toast(
-        total > 0 ? 'info' : 'success',
-        total > 0 ? `${total} ${pluralise(total, 'Update', 'Updates')} gefunden` : 'Alles aktuell',
-        total > 0 ? 'Du kannst sie einzeln oder pro Instanz installieren.' : undefined
-      )
+
+      if (failed.length > 0) {
+        toast(
+          'warning',
+          `${failed.length} ${pluralise(failed.length, 'Instanz', 'Instanzen')} nicht prüfbar`,
+          `${total} ${pluralise(total, 'Update', 'Updates')} in den übrigen gefunden. ` +
+            `Fehlgeschlagen: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
+          8000
+        )
+      } else {
+        toast(
+          total > 0 ? 'info' : 'success',
+          total > 0 ? `${total} ${pluralise(total, 'Update', 'Updates')} gefunden` : 'Alles aktuell',
+          total > 0 ? 'Du kannst sie einzeln oder pro Instanz installieren.' : undefined
+        )
+      }
       await refreshInstances()
       await load()
     } catch (err) {
@@ -90,11 +109,28 @@ export function ModsView(): JSX.Element {
     setChecking(true)
     try {
       let total = 0
+      // Same reasoning as the check above: one broken instance must not stop
+      // the others from being updated.
+      const failed: string[] = []
       for (const instance of instances) {
         if (instance.updateCount === 0) continue
-        total += await window.gabi.content.updateAll(instance.id)
+        try {
+          total += await window.gabi.content.updateAll(instance.id)
+        } catch {
+          failed.push(instance.name)
+        }
       }
-      toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
+
+      if (failed.length > 0) {
+        toast(
+          'warning',
+          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert, ${failed.length} fehlgeschlagen`,
+          `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
+          8000
+        )
+      } else {
+        toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
+      }
       await refreshInstances()
       await load()
     } catch (err) {

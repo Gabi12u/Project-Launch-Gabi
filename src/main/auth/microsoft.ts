@@ -65,11 +65,24 @@ function encrypt(value: string): { value: string; secure: boolean } {
     if (safeStorage.isEncryptionAvailable()) {
       return { value: safeStorage.encryptString(value).toString('base64'), secure: true }
     }
+    logger.warn(
+      'Betriebssystem bietet keine Verschluesselung an, Tokens werden im Klartext abgelegt'
+    )
   } catch (err) {
-    logger.warn('safeStorage nicht verfügbar:', err)
+    logger.warn('safeStorage nicht verfügbar, Tokens werden im Klartext abgelegt:', err)
   }
   return { value, secure: false }
 }
+
+/**
+ * Thrown when a stored token cannot be read back.
+ *
+ * Distinct from "no token at all" on purpose: it means the credential store
+ * changed underneath us (a moved Windows profile, a reset keychain), and the
+ * only way out is a fresh login. Returning an empty string instead let that
+ * empty value travel all the way into the game's --accessToken argument.
+ */
+class UnreadableTokenError extends Error {}
 
 function decrypt(value: string, secure: boolean | undefined): string {
   if (!secure) return value
@@ -77,6 +90,15 @@ function decrypt(value: string, secure: boolean | undefined): string {
     return safeStorage.decryptString(Buffer.from(value, 'base64'))
   } catch (err) {
     logger.warn('Token konnte nicht entschlüsselt werden:', err)
+    throw new UnreadableTokenError('Gespeicherte Anmeldung ist unlesbar geworden.')
+  }
+}
+
+/** Decrypts without throwing, for the paths that have a fallback of their own. */
+function decryptOrEmpty(value: string, secure: boolean | undefined): string {
+  try {
+    return decrypt(value, secure)
+  } catch {
     return ''
   }
 }
@@ -187,7 +209,13 @@ export async function loginWithMicrosoft(): Promise<Account> {
     logger.info(`Device-Code ${device.user_code} ausgegeben, gültig ${device.expires_in}s`)
 
     const token = await pollForToken(clientId, device, session, endpoints)
+
+    // completeMinecraftLogin makes three more network calls and writes the
+    // account file. A login retired during those seconds must not touch the
+    // UI of the one that replaced it.
+    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
     const account = await completeMinecraftLogin(token)
+    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
 
     emit(EVENTS.deviceCode, null)
     return account
@@ -204,6 +232,7 @@ async function pollForToken(
 ): Promise<TokenResponse> {
   const deadline = Date.now() + device.expires_in * 1000
   let interval = Math.max(device.interval, 1) * 1000
+  let unreadableErrors = 0
 
   while (Date.now() < deadline) {
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
@@ -220,7 +249,14 @@ async function pollForToken(
         }),
         0
       )
-      return (await res.json()) as TokenResponse
+      const token = (await res.json()) as TokenResponse
+      // Checked once more after the response lands, not only before the wait.
+      // The user can approve in the browser and cancel here in the same
+      // breath, or start a second login that retires this one — without this
+      // the retired loop still wrote an account, resolved an abandoned
+      // promise, and blanked the device code of the newer attempt.
+      if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+      return token
     } catch (err) {
       if (!(err instanceof HttpError)) throw err
 
@@ -248,7 +284,18 @@ async function pollForToken(
         interval += 5000
         continue
       }
-      if (err.status === 400 && !err.code) continue
+      // A 400 with no readable code is ambiguous: usually a hiccup, but a
+      // wrong client_id looks identical and would otherwise keep polling
+      // until the device code expires, blaming an "expired code" for a
+      // permanent misconfiguration. A couple of retries covers the hiccup;
+      // beyond that the real error is the more useful answer.
+      if (err.status === 400 && !err.code) {
+        if (++unreadableErrors <= 3) continue
+        throw new Error(
+          'Die Anmeldung wurde abgelehnt und es kam keine verwertbare Begruendung zurueck. ' +
+            'Pruefe die Microsoft-Anwendungs-ID in den Einstellungen.'
+        )
+      }
 
       throw err
     }
@@ -273,6 +320,10 @@ async function xboxLogin(microsoftAccessToken: string): Promise<{ token: string;
 
   const uhs = xbl.DisplayClaims?.xui?.[0]?.uhs
   if (!uhs) throw new Error('Xbox Live hat keine Benutzerkennung geliefert')
+  // The token itself was never checked. A 200 carrying `uhs` but no `Token`
+  // sent `UserTokens: [undefined]` onwards, which fails several calls later
+  // with something unreadable instead of here with a plain message.
+  if (!xbl.Token) throw new Error('Xbox Live hat kein Token geliefert')
   return { token: xbl.Token, uhs }
 }
 
@@ -290,6 +341,7 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
     // Same guard as `xboxLogin`: a 200 with an unexpected body shape would
     // otherwise surface as a raw TypeError instead of a readable message.
     if (!uhs) throw new Error('XSTS hat keine Benutzerkennung geliefert')
+    if (!xsts.Token) throw new Error('XSTS hat kein Token geliefert')
     return { token: xsts.Token, uhs }
   } catch (err) {
     if (err instanceof HttpError && err.status === 401) {
@@ -337,6 +389,9 @@ async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
     headers: { Authorization: `Bearer ${mc.access_token}` }
   })
 
+  if (!profile?.id || !profile.name) {
+    throw new Error('Das Minecraft-Profil konnte nicht gelesen werden. Bitte erneut versuchen.')
+  }
   const uuid = formatUuid(profile.id)
   const skin = profile.skins?.find((s) => s.state === 'ACTIVE')?.url
 
@@ -355,7 +410,10 @@ async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
     skinUrl: skin,
     active: true,
     accessToken: accessEnc.value,
-    refreshToken: refreshEnc?.value,
+    // Falls back to what is already stored. A device-code grant does not
+    // always return a fresh refresh_token, and overwriting a still-valid one
+    // with undefined forced a full re-login at the next expiry.
+    refreshToken: refreshEnc?.value ?? (existingIndex >= 0 ? accounts[existingIndex].refreshToken : undefined),
     secure: accessEnc.secure
   }
 
@@ -404,7 +462,13 @@ export async function getValidAccessToken(accountId: string): Promise<string> {
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {
-    return decrypt(account.accessToken, account.secure)
+    try {
+      return decrypt(account.accessToken, account.secure)
+    } catch {
+      // Unreadable rather than absent: fall through and let the refresh path
+      // below try the refresh token, which may still be readable.
+      logger.info(`Zugangstoken von ${account.username} unlesbar, erneuere ueber den Refresh-Token`)
+    }
   }
 
   const running = refreshing.get(accountId)
@@ -426,10 +490,13 @@ async function refreshAccessToken(accountId: string): Promise<string> {
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {
-    return decrypt(account.accessToken, account.secure)
+    const usable = decryptOrEmpty(account.accessToken, account.secure)
+    if (usable) return usable
   }
 
-  const refreshToken = account.refreshToken ? decrypt(account.refreshToken, account.secure) : ''
+  const refreshToken = account.refreshToken
+    ? decryptOrEmpty(account.refreshToken, account.secure)
+    : ''
   if (!refreshToken) {
     throw new Error(`Die Sitzung von ${account.username} ist abgelaufen. Bitte neu anmelden.`)
   }

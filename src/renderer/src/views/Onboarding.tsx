@@ -20,13 +20,19 @@ export function Onboarding(): JSX.Element {
   const finish = async (): Promise<void> => {
     setFinishing(true)
     try {
-      await saveSettings({
+      // The result decides, not the absence of an exception. saveSettings
+      // handles its own errors, so a failed save used to reach the success
+      // toast unchanged — while `onboarded` stayed false and the app kept
+      // showing this very screen, right after telling the user setup worked.
+      const saved = await saveSettings({
         accentColor: accent,
         defaultMemoryMb: memory,
         javaAutoManage: autoJava,
         onboarded: true
       })
-      toast('success', 'Willkommen bei Launch Gabi', 'Lege jetzt deine erste Instanz an.')
+      if (saved) {
+        toast('success', 'Willkommen bei Launch Gabi', 'Lege jetzt deine erste Instanz an.')
+      }
     } catch (err) {
       toastError(err, 'Einrichtung fehlgeschlagen')
     } finally {
