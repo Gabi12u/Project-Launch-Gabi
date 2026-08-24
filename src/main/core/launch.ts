@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { totalmem } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import { app } from 'electron'
 import { EVENTS } from '@shared/ipc'
@@ -454,9 +454,25 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     await prepareNatives(versionId, nativesDir, libraries)
 
     // 6. Classpath ---------------------------------------------------
-    const classpath = libraries
-      .filter((l) => !l.native && existsSync(l.path))
-      .map((l) => l.path)
+    //
+    // A library that is missing here used to be dropped without a word, and
+    // the game then died much later with a bare ClassNotFoundException naming
+    // a class nobody can trace back to a file. installVersion ran a few lines
+    // above and fetches everything that carries a download address, so
+    // anything still absent at this point is a real fault worth naming.
+    const wanted = libraries.filter((l) => !l.native)
+    const missing = wanted.filter((l) => l.download && !existsSync(l.path))
+    if (missing.length > 0) {
+      const names = missing.slice(0, 3).map((l) => basename(l.path))
+      throw new Error(
+        `${missing.length} ${missing.length === 1 ? 'Bibliothek fehlt' : 'Bibliotheken fehlen'} ` +
+          `und konnten nicht geladen werden: ${names.join(', ')}` +
+          (missing.length > 3 ? ' und weitere' : '') +
+          '. Pruefe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".'
+      )
+    }
+
+    const classpath = wanted.filter((l) => existsSync(l.path)).map((l) => l.path)
 
     const clientJar = clientJarPath(instance.mcVersion)
     if (existsSync(clientJar)) classpath.push(clientJar)
