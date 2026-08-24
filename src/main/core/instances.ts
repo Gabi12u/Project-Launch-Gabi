@@ -584,7 +584,16 @@ function sameContent(a: ContentItem[], b: ContentItem[]): boolean {
  */
 export async function syncContentWithDisk(id: string): Promise<Instance> {
   const instance = getInstance(id)
-  const known = new Map(instance.content.map((c) => [c.fileName.toLowerCase(), c]))
+  // Keyed by the name with any `.disabled` suffix stripped, so an item is
+  // found regardless of which of the two states it was last recorded in.
+  // Keying on the stored name alone broke re-enabling a mod outside the app:
+  // the record said "mod.jar.disabled", the file on disk was suddenly
+  // "mod.jar", nothing matched, and the mod was re-registered from scratch as
+  // local content — losing its projectId, versionId and hash, and with them
+  // update checks and its download link in an exported modpack.
+  const bareKey = (name: string): string =>
+    (name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name).toLowerCase()
+  const known = new Map(instance.content.map((c) => [bareKey(c.fileName), c]))
   const result: ContentItem[] = []
 
   const folders: { dir: string; type: ContentItem['type']; extensions: string[] }[] = [
@@ -602,7 +611,7 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
       const bare = enabled ? fileName : fileName.slice(0, -'.disabled'.length)
       if (!folder.extensions.includes(extname(bare).toLowerCase())) continue
 
-      const existing = known.get(bare.toLowerCase()) ?? known.get(fileName.toLowerCase())
+      const existing = known.get(bare.toLowerCase())
       if (existing) {
         result.push({ ...existing, fileName, enabled })
         continue

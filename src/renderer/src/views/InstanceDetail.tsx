@@ -78,6 +78,15 @@ export function InstanceDetailView({
 
   const [instance, setInstance] = useState<InstanceDetail | null>(null)
   const [tab, setTab] = useState<Tab>(() => toTab(query.get('tab')))
+
+  // The view is keyed by instance id only, so navigating to the *same*
+  // instance with a different ?tab= re-renders instead of remounting and the
+  // initializer above never runs again. Without this, "In der Instanz oeffnen"
+  // on a mod row did nothing at all when that instance was already open.
+  const requestedTab = query.get('tab')
+  useEffect(() => {
+    if (requestedTab) setTab(toTab(requestedTab))
+  }, [requestedTab])
   const [preflight, setPreflight] = useState<LaunchPreflight | null>(null)
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [checking, setChecking] = useState(true)
@@ -88,10 +97,23 @@ export function InstanceDetailView({
   const running = summary?.running ?? false
   const busy = starting.includes(instanceId)
 
+  // Set on unmount, so a request still in flight cannot act on a view the
+  // user has already left. Without it a rejected lookup navigated to
+  // /instances from wherever they had since gone.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
   const load = useCallback(async (): Promise<void> => {
     try {
-      setInstance(await window.gabi.instances.get(instanceId))
+      const detail = await window.gabi.instances.get(instanceId)
+      if (mounted.current) setInstance(detail)
     } catch (err) {
+      if (!mounted.current) return
       toastError(err, 'Instanz konnte nicht geladen werden')
       navigate('/instances')
     }

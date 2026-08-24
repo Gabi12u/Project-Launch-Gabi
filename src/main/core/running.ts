@@ -109,7 +109,15 @@ export function adoptRunningFromDisk(): void {
   const now = Date.now()
   for (const entry of stored) {
     if (!entry || typeof entry.instanceId !== 'string' || typeof entry.pid !== 'number') continue
-    if (typeof entry.startedAt === 'number' && now - entry.startedAt > ADOPTED_MAX_AGE_MS) {
+    // Fails closed on a missing or unusable timestamp. Requiring a number
+    // before applying the age cap meant a hand-edited or older-format entry
+    // skipped it entirely and rode purely on `alive(pid)` — which is exactly
+    // the recycled-pid case the cap exists to stop.
+    if (typeof entry.startedAt !== 'number' || !Number.isFinite(entry.startedAt)) {
+      logger.info(`Eintrag für ${entry.instanceId} hat keinen brauchbaren Startzeitpunkt, wird verworfen`)
+      continue
+    }
+    if (now - entry.startedAt > ADOPTED_MAX_AGE_MS) {
       logger.info(`Eintrag für ${entry.instanceId} ist zu alt und wird verworfen`)
       continue
     }

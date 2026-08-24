@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { chmodSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { JavaRuntime } from '@shared/types'
 import { paths } from '../paths'
@@ -340,6 +340,17 @@ export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   return promise
 }
 
+/**
+ * Staging folders this process is filling right now.
+ *
+ * The sweep below matches on the name alone, and `installing` only dedupes
+ * installs of the *same* major. Two different majors can therefore overlap —
+ * launching an instance on Java 8 and another on Java 21 does exactly that —
+ * and the second install's sweep would delete the first one's half-extracted
+ * folder, failing it with a bogus "konnte nicht entpackt werden".
+ */
+const liveStaging = new Set<string>()
+
 /** Removes staging folders a crashed or killed install left behind. */
 function sweepStagingDirs(): void {
   const root = paths.java()
@@ -347,6 +358,8 @@ function sweepStagingDirs(): void {
   try {
     for (const entry of readdirSync(root)) {
       if (!entry.includes('.new-')) continue
+      // Owned by an install that is still running; not ours to delete.
+      if (liveStaging.has(entry)) continue
       try {
         rmSync(join(root, entry), { recursive: true, force: true })
         logger.info(`Verwaisten Entpack-Ordner entfernt: ${entry}`)
@@ -382,6 +395,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   // Staging directory, so a failure cannot leave the existing runtime damaged
   // and a JVM currently running out of `targetDir` keeps its files.
   const staging = `${targetDir}.new-${randomUUID().slice(0, 8)}`
+  liveStaging.add(basename(staging))
 
   // A crash between extraction and the rename below leaves one of these behind
   // forever. They sit inside `paths.java()`, which `candidateRoots()` scans on
@@ -441,6 +455,8 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       // best effort
     }
     throw err
+  } finally {
+    liveStaging.delete(basename(staging))
   }
 
   try {
@@ -492,7 +508,11 @@ export async function resolveJava(options: {
   // configured with 4-8 GB fails at startup with "Could not reserve enough
   // space for object heap". Prefer runtimes matching the launcher's own arch.
   const native = detected.filter((r) => archMatchesHost(r.arch))
-  const preferred = native.length > 0 ? native : detected
+  // Copied, not aliased. `detectJavaRuntimes` hands back its own cached array,
+  // and the `.sort()` calls further down mutate in place — without this copy a
+  // host whose JVMs are all foreign-arch would leave that shared cache sorted
+  // ascending for every later caller, including the settings list.
+  const preferred = native.length > 0 ? native : [...detected]
 
   // Exact major match first; Minecraft is picky about newer JVMs on old versions.
   const exact = preferred.filter((r) => r.major === major)

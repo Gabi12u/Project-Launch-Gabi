@@ -195,9 +195,14 @@ function splitGameVersions(values: string[]): { games: string[]; loaders: string
  * `downloadUrl: null`. The CDN path can still be derived from the file id.
  */
 function fallbackDownloadUrl(file: CfFile): string {
-  const id = String(file.id)
-  const first = id.slice(0, 4)
-  const second = String(Number(id.slice(4)))
+  // The CDN splits an id into `floor(id / 1000)` and `id % 1000`. Slicing the
+  // first four characters off the string only happens to match that for
+  // exactly seven-digit ids, and CurseForge's counter passed eight digits long
+  // ago — so every current id produced a guaranteed 404, in precisely the case
+  // this fallback exists to rescue.
+  const id = Number(file.id)
+  const first = Math.floor(id / 1000)
+  const second = id % 1000
   return `https://edge.forgecdn.net/files/${first}/${second}/${encodeURIComponent(file.fileName)}`
 }
 
@@ -258,7 +263,11 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
   })
 
   if (query.gameVersion) params.set('gameVersion', query.gameVersion)
-  if (query.loader && query.loader !== 'vanilla' && query.type === 'mod') {
+  // Modpacks are filtered by loader too, matching what the Modrinth provider
+  // does. Restricting this to `mod` meant a search filtered to Fabric returned
+  // every CurseForge modpack regardless of loader, while the Modrinth half of
+  // the same result list was filtered correctly.
+  if (query.loader && query.loader !== 'vanilla') {
     params.set('modLoaderType', String(LOADER_TYPE[query.loader]))
   }
 
@@ -384,6 +393,11 @@ export async function getFiles(fileIds: number[]): Promise<ProjectVersion[]> {
     headers: { ...headers(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ fileIds })
   })
+  // Same guard the search and version endpoints in this file already carry.
+  if (!Array.isArray(response?.data)) {
+    logger.warn('Unerwartete Antwort bei der Sammelabfrage von Dateien')
+    return []
+  }
   return response.data.map(mapFile)
 }
 

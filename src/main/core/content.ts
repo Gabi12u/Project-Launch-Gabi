@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, join } from 'node:path'
 import type {
   CompatibilityIssue,
   ContentItem,
@@ -538,9 +538,12 @@ export function contentFilePath(instanceId: string, item: ContentItem): string {
   return contentPath(contentDir(instanceId, item.type), item.fileName)
 }
 
-export function contentTypeFromFile(fileName: string): ContentType {
-  return extname(fileName).toLowerCase() === '.jar' ? 'mod' : 'resourcepack'
-}
+// contentTypeFromFile() stood here and was never called. It claimed to derive
+// a content type from a file name, but shaderpacks and datapacks are `.zip`
+// just like resource packs, so it silently mislabelled both — a shaderpack
+// would have landed in resourcepacks/ and never triggered the
+// shader-without-loader check. The folder an item sits in is what actually
+// decides its type, which is how syncContentWithDisk already does it.
 
 export function instanceContentSize(instanceId: string): number {
   const instance = getInstance(instanceId)

@@ -63,7 +63,12 @@ export function ContentBrowser({
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [offset, setOffset] = useState(0)
-  const [installing, setInstalling] = useState<string | null>(null)
+  // A Set, not a single id. With one shared value, starting a second install
+  // overwrote the first: the first card's spinner vanished and its button went
+  // live again while its request was still running, so a second click fired a
+  // genuinely duplicate install. Whichever call finished first also cleared
+  // the indicator for the one still in flight.
+  const [installing, setInstalling] = useState<ReadonlySet<string>>(() => new Set())
   const [detail, setDetail] = useState<SearchResultItem | null>(null)
 
   const requestId = useRef(0)
@@ -113,7 +118,9 @@ export function ContentBrowser({
 
   const install = async (item: SearchResultItem, versionId?: string): Promise<void> => {
     if (!instanceId) return
-    setInstalling(item.projectId)
+    // Guards against a double click landing twice before the first render.
+    if (installing.has(item.projectId)) return
+    setInstalling((current) => new Set(current).add(item.projectId))
 
     try {
       if (item.type === 'modpack') {
@@ -138,7 +145,11 @@ export function ContentBrowser({
     } catch (err) {
       toastError(err, `${item.name} konnte nicht installiert werden`)
     } finally {
-      setInstalling(null)
+      setInstalling((current) => {
+        const next = new Set(current)
+        next.delete(item.projectId)
+        return next
+      })
     }
   }
 
@@ -272,7 +283,7 @@ export function ContentBrowser({
                 key={`${item.provider}-${item.projectId}`}
                 item={item}
                 installed={installedProjectIds.includes(item.projectId)}
-                installing={installing === item.projectId}
+                installing={installing.has(item.projectId)}
                 canInstall={Boolean(instanceId)}
                 onInstall={() => void install(item)}
                 onOpen={() => setDetail(item)}
@@ -305,7 +316,7 @@ export function ContentBrowser({
           loader={loader}
           onClose={() => setDetail(null)}
           onInstall={(versionId) => void install(detail, versionId)}
-          installing={installing === detail.projectId}
+          installing={installing.has(detail.projectId)}
         />
       )}
     </div>

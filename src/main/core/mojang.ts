@@ -333,6 +333,7 @@ function mavenUrl(base: string, relative: string): string {
 export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
   const resolved: ResolvedLibrary[] = []
   const seen = new Set<string>()
+  const seenArtifacts = new Set<string>()
 
   /** Turns one artifact into a resolved entry, skipping duplicates. */
   const add = (
@@ -351,6 +352,20 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     const key = `${relative}|${classifier ?? ''}`
     if (seen.has(key)) return
     seen.add(key)
+
+    // The key above contains the version, so a loader pinning its own build of
+    // a library vanilla also ships (a bumped asm or guava, say) produced two
+    // separate entries and both landed on the classpath. Which one won was
+    // then down to ordering alone, and any class present in both could bind to
+    // the wrong version or crash the JVM outright. Collapsing on
+    // group:artifact keeps the first, and children are resolved first
+    // precisely so their override is the one that survives.
+    const coords = library.name.split(':')
+    if (coords.length >= 2) {
+      const artifactKey = `${coords[0]}:${coords[1]}|${classifier ?? ''}`
+      if (seenArtifacts.has(artifactKey)) return
+      seenArtifacts.add(artifactKey)
+    }
 
     let download: DownloadItem | undefined
     if (artifact?.url) {

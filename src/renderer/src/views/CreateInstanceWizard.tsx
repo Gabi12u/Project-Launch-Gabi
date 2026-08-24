@@ -54,15 +54,27 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   /* --- Minecraft versions ----------------------------------------- */
   useEffect(() => {
     if (!open) return
+    // Guarded like the loader-versions effect below. Toggling "Snapshots"
+    // twice in quick succession let the slower first answer land after the
+    // second, leaving the list showing the opposite of what the button said.
+    let current = true
     setLoadingVersions(true)
     void window.gabi.versions
       .minecraft(showSnapshots)
       .then((list) => {
+        if (!current) return
         setVersions(list)
-        setMcVersion((current) => current || list.find((v) => v.type === 'release')?.id || list[0]?.id || '')
+        setMcVersion((chosen) => chosen || list.find((v) => v.type === 'release')?.id || list[0]?.id || '')
       })
-      .catch((err) => toastError(err, 'Versionsliste konnte nicht geladen werden'))
-      .finally(() => setLoadingVersions(false))
+      .catch((err) => {
+        if (current) toastError(err, 'Versionsliste konnte nicht geladen werden')
+      })
+      .finally(() => {
+        if (current) setLoadingVersions(false)
+      })
+    return () => {
+      current = false
+    }
   }, [open, showSnapshots])
 
   /* --- Which loaders exist for the chosen version? ----------------- */

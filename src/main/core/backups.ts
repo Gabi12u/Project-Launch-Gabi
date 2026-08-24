@@ -126,10 +126,15 @@ async function createBackupUnlocked(
       const dir = paths.instanceBackups(instanceId)
       mkdirSync(dir, { recursive: true })
 
-      const stamp = new Date()
+      // Date and time kept apart. Folding ':' and '.' into '-' made the
+      // date's own separators indistinguishable from them, and the display
+      // name further down turned every '-' back into ':' — printing
+      // "2026:08:23" as the date.
+      const now = new Date()
+      const stamp = `${now.toISOString().slice(0, 10)}_${now
         .toISOString()
-        .replace(/[:.]/g, '-')
-        .slice(0, 19)
+        .slice(11, 19)
+        .replace(/:/g, '-')}`
       // The stamp only resolves to seconds, so two backups in the same second
       // would share a file name and the older index entry would point at the
       // newer archive.
@@ -180,7 +185,7 @@ async function createBackupUnlocked(
         id: randomUUID(),
         instanceId,
         instanceName: instance.name,
-        name: options.name?.trim() || `Sicherung vom ${stamp.replace('T', ' ').replace(/-/g, ':')}`,
+        name: options.name?.trim() || `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
         fileName,
         createdAt: Date.now(),
         size: statSync(target).size,
@@ -191,7 +196,16 @@ async function createBackupUnlocked(
       const entries = [entry, ...readIndex(instanceId)]
       writeIndex(instanceId, entries)
 
-      pruneAutomatic(instanceId)
+      // Tidying up old backups is housekeeping, and the new backup is already
+      // written and indexed by now. Letting an EBUSY on some unrelated old
+      // archive — one an antivirus or an Explorer preview still holds open —
+      // escape from here reported the whole operation as failed, so the user
+      // would retry and pile up a redundant copy.
+      try {
+        pruneAutomatic(instanceId)
+      } catch (err) {
+        logger.warn(`Alte Sicherungen von ${instance.name} nicht aufgeraeumt:`, err)
+      }
       logger.info(`Sicherung ${fileName} für ${instance.name} erstellt`)
 
       return entry

@@ -76,15 +76,32 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
     if (!report) return
     const fixable = report.issues.filter((i) => i.fix)
     setFixing('all')
+    // Reported after every step, not only once the whole run finishes. Each
+    // applyFix has already taken effect on disk by the time it returns, so
+    // holding the result back meant a failure halfway through discarded the
+    // successes before it and left the panel showing problems that were
+    // already gone.
+    let latest = report
+    let done = 0
     try {
-      let latest = report
       for (const issue of fixable) {
         latest = await window.gabi.content.applyFix(instanceId, issue.fix!)
+        done++
+        onChanged(latest)
       }
-      onChanged(latest)
-      toast('success', 'Fertig', fixable.length === 1 ? '1 Problem wurde automatisch behoben.' : `${fixable.length} Probleme wurden automatisch behoben.`)
+      toast(
+        'success',
+        'Fertig',
+        done === 1 ? '1 Problem wurde automatisch behoben.' : `${done} Probleme wurden automatisch behoben.`
+      )
     } catch (err) {
-      toastError(err, 'Nicht alle Probleme konnten behoben werden')
+      onChanged(latest)
+      toastError(
+        err,
+        done > 0
+          ? `${done} von ${fixable.length} Problemen behoben, dann trat ein Fehler auf`
+          : 'Nicht alle Probleme konnten behoben werden'
+      )
     } finally {
       setFixing(null)
     }
@@ -177,12 +194,14 @@ export function CompatibilityGate(): JSX.Element | null {
 
   const fixAll = async (): Promise<void> => {
     setFixing(true)
+    // Same reasoning as the panel above: publish each result as it lands, so a
+    // failure partway through does not throw away the fixes that succeeded.
+    let latest = current
     try {
-      let latest = current
       for (const issue of current.issues.filter((i) => i.fix)) {
         latest = await window.gabi.content.applyFix(compatGate.instanceId, issue.fix!)
+        setReport(latest)
       }
-      setReport(latest)
 
       if (latest.launchable) {
         toast('success', 'Probleme behoben', 'Die Instanz kann jetzt gestartet werden.')
@@ -190,6 +209,7 @@ export function CompatibilityGate(): JSX.Element | null {
         void startInstanceForced(compatGate.instanceId, compatGate.instanceName)
       }
     } catch (err) {
+      setReport(latest)
       toastError(err, 'Automatische Reparatur fehlgeschlagen')
     } finally {
       setFixing(false)

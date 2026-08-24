@@ -1,12 +1,13 @@
 import AdmZip from 'adm-zip'
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { LoaderVersion } from '@shared/types'
 import { paths, safeJoin } from '../paths'
 import { writeJsonAtomic } from '../store'
-import { downloadAll, downloadFile, fetchJsonCached, fetchText } from '../core/net'
+import { downloadAll, downloadFile, fetchJsonCached, fetchText, sha1File} from '../core/net'
 import { extractSubtree, readEntryJson, readEntryText } from '../core/archive'
 import {
   clientJarPath,
@@ -296,7 +297,12 @@ export async function installForgeLike(
   task?.update('Basis-Minecraft wird vorbereitet…', null)
   const vanilla = await loadVersionJson(mcVersion)
   const vanillaJar = clientJarPath(mcVersion)
-  if (vanilla.downloads?.client && !existsSync(vanillaJar)) {
+  if (vanilla.downloads?.client) {
+    // Deliberately not gated on existsSync: this jar is the input every
+    // patcher below builds on, and a bare existence check happily accepts one
+    // left truncated by an interrupted download or mangled by a virus scanner.
+    // downloadFile verifies the hash and skips the transfer when it already
+    // matches, so this costs nothing in the normal case.
     await downloadFile({
       url: vanilla.downloads.client.url,
       path: vanillaJar,
@@ -320,7 +326,15 @@ export async function installForgeLike(
   extractSubtree(installer, 'maven', paths.libraries())
 
   // 4. Data table ----------------------------------------------------
-  const workDir = join(paths.cache(), `${loader}-${loaderVersion}-work`)
+  // Unique per run. Keyed only by loader and version, two installs of the same
+  // build at once — two new instances both taking the recommended build, or a
+  // bulk repair — had one call's rmSync delete the directory the other was
+  // still extracting into. `fetchToFile` in core/net.ts uses the same pid plus
+  // random discipline for exactly this reason.
+  const workDir = join(
+    paths.cache(),
+    `${loader}-${loaderVersion}-work-${process.pid}-${randomUUID().slice(0, 8)}`
+  )
   rmSync(workDir, { recursive: true, force: true })
   mkdirSync(workDir, { recursive: true })
 
@@ -401,6 +415,30 @@ export async function installForgeLike(
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err)
         throw new Error(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`)
+      }
+
+      // Each processor declares the sha1 its outputs must have. Exit code zero
+      // is not proof it wrote them correctly: a processor that fails halfway
+      // and still returns zero leaves a truncated jar behind, and the install
+      // then completes "successfully" with an artifact that only breaks at
+      // launch, far away from the cause.
+      for (const [rawPath, rawHash] of Object.entries(processor.outputs ?? {})) {
+        const outputPath = resolveArgument(rawPath, data)
+        const expected = resolveArgument(rawHash, data).replace(/^'|'$/g, '')
+        if (!expected) continue
+
+        if (!existsSync(outputPath)) {
+          throw new Error(
+            `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} nicht erzeugt.`
+          )
+        }
+        const actual = await sha1File(outputPath)
+        if (actual !== expected.toLowerCase()) {
+          throw new Error(
+            `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} fehlerhaft geschrieben ` +
+              `(erwartet ${expected}, erhalten ${actual}).`
+          )
+        }
       }
     }
   }

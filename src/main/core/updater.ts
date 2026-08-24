@@ -128,6 +128,15 @@ export function initUpdater(): void {
       // Long enough for the renderer to paint the message, short enough that it
       // still feels like part of starting up.
       setTimeout(() => {
+        // Re-checked at the moment it matters. `busy` was read 900 ms ago, and
+        // that is easily enough time for someone to hit Play — quitting then
+        // would kill the game they just started.
+        if (runningCount() > 0 || startingCount() > 0) {
+          logger.info('Installation verschoben, es wurde inzwischen ein Spiel gestartet')
+          setStatus({ state: 'ready', version: info.version, detail: 'Update wartet auf Neustart.' })
+          return
+        }
+
         try {
           // Silent, emphatically. The NSIS installer is configured with
           // `oneClick: false` and `allowToChangeInstallationDirectory`, so a

@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { extname, resolve, sep } from 'node:path'
 import { totalmem } from 'node:os'
-import { IPC } from '@shared/ipc'
+import { IPC, EVENTS} from '@shared/ipc'
 import type {
   CompatibilityIssue,
   ContentItem,
@@ -16,7 +16,7 @@ import type {
 } from '@shared/types'
 import { ensureRootLayout, paths, safeJoin } from './paths'
 import { getSettings, resetSettings, saveSettings } from './store'
-import { getMainWindow, notify } from './events'
+import { emit, getMainWindow, notify } from './events'
 import { log, getLogDirectory } from './logger'
 import { cancelTask, listTasks } from './tasks'
 
@@ -110,7 +110,13 @@ function openLauncherPath(target: string): Promise<string> {
   if (!inside) {
     throw new Error('Dieser Pfad liegt außerhalb der Launcher-Ordner.')
   }
-  return shell.openPath(resolved)
+  // openPath never rejects: it resolves with an error string, or '' on
+  // success. Handing that straight back reported a missing folder or a broken
+  // file association to the renderer as if it had worked.
+  return shell.openPath(resolved).then((message) => {
+    if (message) throw new Error(`Ordner konnte nicht geöffnet werden: ${message}`)
+    return ''
+  })
 }
 
 export function registerIpc(): void {
@@ -358,11 +364,22 @@ export function registerIpc(): void {
    * Accounts
    * ---------------------------------------------------------------- */
 
+  // Every one of these changes accounts.json, and the preload has always
+  // exposed onAccountsChanged for exactly this — but nothing ever emitted it,
+  // so only the window that made the change saw the new list and every other
+  // view kept showing a stale one.
+  const announce = <T,>(accounts: T): T => {
+    emit(EVENTS.accountsChanged, accounts)
+    return accounts
+  }
+
   handle(IPC.accountList, () => listAccounts())
-  handle(IPC.accountLoginMicrosoft, () => loginWithMicrosoft())
-  handle(IPC.accountLoginOffline, (username: string) => createOfflineAccount(username))
-  handle(IPC.accountRemove, (id: string) => removeAccount(id))
-  handle(IPC.accountSetActive, (id: string) => setActiveAccount(id))
+  handle(IPC.accountLoginMicrosoft, async () => announce(await loginWithMicrosoft()))
+  handle(IPC.accountLoginOffline, async (username: string) =>
+    announce(await createOfflineAccount(username))
+  )
+  handle(IPC.accountRemove, async (id: string) => announce(await removeAccount(id)))
+  handle(IPC.accountSetActive, async (id: string) => announce(await setActiveAccount(id)))
   handle(IPC.accountCancelLogin, () => cancelLogin())
 
   /* ---------------------------------------------------------------- *

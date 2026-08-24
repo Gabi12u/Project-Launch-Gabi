@@ -60,7 +60,6 @@ export const IPC = {
   accountLoginOffline: 'account:login-offline',
   accountRemove: 'account:remove',
   accountSetActive: 'account:set-active',
-  accountRefresh: 'account:refresh',
   accountCancelLogin: 'account:cancel-login',
 
   // content providers

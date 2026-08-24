@@ -57,6 +57,35 @@ function appIconPath(): string | null {
  * Writes the instance icon as an .ico next to the instance so Windows has
  * something to show. `iconImages` are PNG data URLs rendered by the UI.
  */
+/**
+ * Writes the largest supplied icon out as a PNG.
+ *
+ * The `.ico` container `writeInstanceIcon` builds is a Windows format, while a
+ * freedesktop `.desktop` entry wants a plain image path. Without this the Linux
+ * branch left `Icon=` out entirely and every instance shortcut fell back to the
+ * generic default, even though Windows got a proper per-instance icon from the
+ * very same data.
+ */
+export function writeInstancePng(instanceId: string, iconImages: string[]): string | null {
+  if (iconImages.length === 0) return null
+  try {
+    // The list runs smallest to largest, and a desktop entry is drawn at
+    // whatever size the environment picks, so hand over the most detailed one.
+    const source = iconImages[iconImages.length - 1]
+    const base64 = source.slice(source.indexOf(',') + 1)
+    if (!base64) return null
+
+    const dir = paths.icons(instanceId)
+    mkdirSync(dir, { recursive: true })
+    const file = join(dir, 'shortcut.png')
+    writeFileSync(file, Buffer.from(base64, 'base64'))
+    return file
+  } catch (err) {
+    logger.warn(`PNG-Symbol für ${instanceId} konnte nicht geschrieben werden:`, err)
+    return null
+  }
+}
+
 export function writeInstanceIcon(instanceId: string, iconImages: string[]): string | null {
   if (iconImages.length === 0) return null
   try {
@@ -108,12 +137,14 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
 
   if (process.platform === 'linux') {
     const linkPath = join(desktop, `${fileName}.desktop`)
+    const iconFile = writeInstancePng(instanceId, iconImages) ?? appIconPath()
     const contents = [
       '[Desktop Entry]',
       'Type=Application',
       `Name=${fileName}`,
       `Comment=${singleLine(instance.name)} - Minecraft ${instance.mcVersion}`,
       `Exec="${target}" ${args}`,
+      ...(iconFile ? [`Icon=${iconFile}`] : []),
       'Terminal=false',
       'Categories=Game;'
     ].join('\n')

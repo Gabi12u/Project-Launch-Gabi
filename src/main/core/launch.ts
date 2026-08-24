@@ -147,6 +147,28 @@ function windowlessJava(javaPath: string): string {
  */
 const nativesLocks = new Map<string, Promise<void>>()
 
+/**
+ * How many launches currently depend on a version's natives folder.
+ *
+ * `activeVersionIds()` is only filled by `setRunning`, which happens many
+ * awaits after the natives are extracted — assets, arguments, the spawn
+ * itself. A second launch of the same version dequeued inside that window saw
+ * an apparently unused folder and wiped it while the first game's JVM already
+ * had those DLLs open. This counter is claimed before extraction instead, so
+ * it covers the whole gap.
+ */
+const nativesClaims = new Map<string, number>()
+
+function claimNatives(versionId: string): void {
+  nativesClaims.set(versionId, (nativesClaims.get(versionId) ?? 0) + 1)
+}
+
+function releaseNatives(versionId: string): void {
+  const left = (nativesClaims.get(versionId) ?? 1) - 1
+  if (left <= 0) nativesClaims.delete(versionId)
+  else nativesClaims.set(versionId, left)
+}
+
 async function prepareNatives(
   versionId: string,
   nativesDir: string,
@@ -159,7 +181,10 @@ async function prepareNatives(
     // A stale natives folder from a crashed run can break the launch, but
     // wiping it while another game is running pulls its loaded DLLs away
     // (EPERM on Windows, a hard crash elsewhere), so then we only overwrite.
-    const versionInUse = activeVersionIds().includes(versionId)
+    // Anything above our own claim means another launch already depends on
+    // this folder, whether or not its game has reached `setRunning` yet.
+    const claimedByOthers = (nativesClaims.get(versionId) ?? 1) > 1
+    const versionInUse = claimedByOthers || activeVersionIds().includes(versionId)
     if (!versionInUse) {
       rmSync(nativesDir, { recursive: true, force: true })
     }
@@ -337,6 +362,14 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   // already spawned when the launch fell over.
   let child: ReturnType<typeof spawn> | null = null
   let launchFailed = false
+  // Released exactly once, whether the game exits normally or the launch
+  // collapses before it ever starts.
+  let claimedVersion: string | null = null
+  const dropNativesClaim = (): void => {
+    if (claimedVersion === null) return
+    releaseNatives(claimedVersion)
+    claimedVersion = null
+  }
   /** Set once the OS confirms the process actually started. */
   let spawned = false
 
@@ -402,6 +435,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     const nativesDir = paths.natives(versionId)
     const libraries = resolveLibraries(versionJson)
 
+    claimNatives(versionId)
+    claimedVersion = versionId
     await prepareNatives(versionId, nativesDir, libraries)
 
     // 6. Classpath ---------------------------------------------------
@@ -413,9 +448,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     if (existsSync(clientJar)) classpath.push(clientJar)
 
     // Deduplicate while keeping loader overrides in front.
+    //
+    // Case is only folded on Windows, where the filesystem itself folds it.
+    // Doing it everywhere dropped two genuinely different jars as duplicates
+    // on Linux and macOS, where paths differing only in case are distinct
+    // files — and a silently missing library surfaces much later as a
+    // NoClassDefFoundError.
+    const foldCase = process.platform === 'win32'
     const seen = new Set<string>()
-    const finalClasspath = classpath.filter((p) => {
-      const key = p.toLowerCase()
+    const finalClasspath = classpath.filter((entry) => {
+      const key = foldCase ? entry.toLowerCase() : entry
       if (seen.has(key)) return false
       seen.add(key)
       return true
@@ -602,6 +644,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       const endedAt = Date.now()
       // Consumed here, so a later unexpected exit of the same instance is not
       // excused by a stop the user asked for minutes earlier.
+      dropNativesClaim()
       const requested = stopRequested.delete(instanceId)
       const crashed = !requested && code !== 0 && code !== null
       clearRunning(instanceId)
@@ -642,13 +685,28 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       handleWindowRestore()
     })
 
-    markPlayed(instanceId)
+    // Past this point the JVM is up and the user is in the game. Anything that
+    // still goes wrong here is bookkeeping, and bookkeeping must not cost them
+    // their session: the catch below kills a running child, so letting a
+    // virus scanner briefly locking instance.json bubble up would shut down
+    // Minecraft moments after it started.
+    try {
+      markPlayed(instanceId)
+    } catch (err) {
+      logger.warn(`Spielzeit für ${instanceId} nicht gespeichert:`, err)
+    }
+
     setStatus(instanceId, 'running', 'Minecraft läuft', { pid: child.pid, startedAt })
     task.done('Minecraft gestartet')
 
-    handleWindowBehaviour(instance)
+    try {
+      handleWindowBehaviour(instance)
+    } catch (err) {
+      logger.warn('Fensterverhalten konnte nicht angewendet werden:', err)
+    }
   } catch (err) {
     launchFailed = true
+    dropNativesClaim()
 
     // A game that is already up must not outlive the launch that failed, or it
     // keeps running with the UI showing "idle" and no way to stop it.

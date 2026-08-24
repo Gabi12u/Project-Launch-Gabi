@@ -285,6 +285,14 @@ export async function getVersions(
   const suffix = params.toString() ? `?${params.toString()}` : ''
   const versions = await fetchJson<ModrinthVersion[]>(`${API}/project/${projectId}/version${suffix}`)
 
+  // Guarded like the sibling endpoints. Every version lookup runs through
+  // here, so a 200 with an unexpected shape (an error object, an outage page)
+  // threw straight out of the function instead of degrading to "no versions".
+  if (!Array.isArray(versions)) {
+    logger.warn(`Unerwartete Antwort fuer Versionen von ${projectId}`)
+    return []
+  }
+
   return versions
     .map(mapVersion)
     .filter((v): v is ProjectVersion => v !== null)

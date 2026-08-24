@@ -166,6 +166,14 @@ export function CommandPalette(): JSX.Element | null {
       .map((entry) => entry.command)
   }, [commands, query])
 
+  // Clamped whenever the list shrinks for reasons other than typing: the reset
+  // below only watches `query`, but `results` also depends on live instance
+  // data. When an entry the cursor pointed at disappeared, no row was
+  // highlighted and Enter silently did nothing until an arrow key resynced it.
+  useEffect(() => {
+    setCursor((current) => (current >= results.length ? Math.max(0, results.length - 1) : current))
+  }, [results.length])
+
   /* --- Open / close ------------------------------------------------ */
   useEffect(() => {
     if (!paletteOpen) return

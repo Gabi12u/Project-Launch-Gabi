@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../lib/store'
 import { ProgressBar } from './ui'
 import { IconChevronDown, IconX } from './Icons'
@@ -8,7 +8,36 @@ export function TaskDock(): JSX.Element | null {
   const { tasks } = useStore()
   const [collapsed, setCollapsed] = useState(false)
 
-  const visible = tasks.filter((task) => task.state === 'running' || task.state === 'failed')
+  // Finished tasks linger briefly instead of vanishing the instant their state
+  // flips. They used to disappear mid-list with no 100% and no confirmation,
+  // which contradicts what App.tsx says this dock does.
+  const [lingering, setLingering] = useState<ReadonlySet<string>>(() => new Set())
+
+  useEffect(() => {
+    const finished = tasks.filter((t) => t.state === 'done' || t.state === 'cancelled')
+    const fresh = finished.filter((t) => !lingering.has(t.id))
+    if (fresh.length === 0) return
+
+    setLingering((current) => {
+      const next = new Set(current)
+      fresh.forEach((t) => next.add(t.id))
+      return next
+    })
+    const timers = fresh.map((t) =>
+      setTimeout(() => {
+        setLingering((current) => {
+          const next = new Set(current)
+          next.delete(t.id)
+          return next
+        })
+      }, 2600)
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [tasks, lingering])
+
+  const visible = tasks.filter(
+    (task) => task.state === 'running' || task.state === 'failed' || lingering.has(task.id)
+  )
   if (visible.length === 0) return null
 
   const running = visible.filter((t) => t.state === 'running')

@@ -18,12 +18,14 @@ function flattenName(value: string): string {
 async function projectName(provider: 'modrinth' | 'curseforge', projectId: string): Promise<string> {
   const key = `${provider}:${projectId}`
   const cached = nameCache.get(key)
-  if (cached) return cached
-
-  if (nameCache.size >= NAME_CACHE_MAX) {
-    // Insertion-ordered, so this drops the oldest entry.
-    const oldest = nameCache.keys().next().value
-    if (oldest !== undefined) nameCache.delete(oldest)
+  if (cached !== undefined) {
+    // Re-inserting moves the key to the end of the Map's iteration order,
+    // which is what turns the eviction below into a real least-recently-used
+    // rule. Without it a dependency looked up all session long could still be
+    // dropped in favour of a stale one-off entry.
+    nameCache.delete(key)
+    nameCache.set(key, cached)
+    return cached
   }
 
   try {
@@ -31,6 +33,14 @@ async function projectName(provider: 'modrinth' | 'curseforge', projectId: strin
       provider === 'modrinth'
         ? await modrinth.getProject(projectId)
         : await curseforge.getProject(projectId)
+
+    // Evicted only once there is something to put in its place. Trimming
+    // before the request meant a run of provider failures shrank the cache
+    // for no gain at all.
+    if (nameCache.size >= NAME_CACHE_MAX) {
+      const oldest = nameCache.keys().next().value
+      if (oldest !== undefined) nameCache.delete(oldest)
+    }
     nameCache.set(key, project.name)
     return project.name
   } catch {
@@ -95,7 +105,15 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     })
   }
 
-  for (const mod of enabled) {
+  // Everything below only matters when a loader is actually present. Without
+  // one nothing reads the mods folder at all, which the vanilla warning above
+  // says in so many words — yet a missing dependency or a duplicate jar still
+  // pushed an `error`, and an error flips `launchable` to false. A vanilla
+  // instance with a leftover mod was reported as unplayable while the game
+  // starts perfectly.
+  const loaderActive = instance.loader !== 'vanilla'
+
+  for (const mod of loaderActive ? enabled : []) {
     // 2. Loader mismatch --------------------------------------------
     if (instance.loader !== 'vanilla' && !loaderCompatible(instance, mod)) {
       issues.push({
@@ -168,7 +186,13 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       }
 
       if (dependency.type === 'incompatible') {
-        const conflicting = enabled.find((c) => c.projectId === dependency.projectId)
+        // Scoped to the same provider, like the required-dependency path just
+        // above. CurseForge's numeric ids and Modrinth's base62 ones live in
+        // separate namespaces, so an unscoped match could pair two entirely
+        // unrelated mods into a launch-blocking conflict.
+        const conflicting = enabled.find(
+          (c) => c.projectId === dependency.projectId && c.provider === mod.provider
+        )
         if (!conflicting) continue
 
         issues.push({
@@ -190,17 +214,24 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   }
 
   // 5. Duplicates ----------------------------------------------------
+  //
+  // Grouped by flattened display name rather than by project id. The id alone
+  // missed the two cases that actually happen: the same mod pulled once from
+  // Modrinth and once from CurseForge (disjoint id namespaces, so the ids
+  // never match), and two copies of a manually dropped-in jar, which carry no
+  // project id at all and were skipped outright.
   const byProject = new Map<string, ContentItem[]>()
-  for (const mod of enabled) {
-    if (!mod.projectId) continue
-    const list = byProject.get(mod.projectId) ?? []
+  for (const mod of loaderActive ? enabled : []) {
+    const key = flattenName(mod.name)
+    if (!key) continue
+    const list = byProject.get(key) ?? []
     list.push(mod)
-    byProject.set(mod.projectId, list)
+    byProject.set(key, list)
   }
   for (const [, duplicates] of byProject) {
     if (duplicates.length < 2) continue
     issues.push({
-      id: `duplicate-${duplicates[0].projectId}`,
+      id: `duplicate-${flattenName(duplicates[0].name)}`,
       severity: 'error',
       title: `${duplicates[0].name} ist doppelt installiert`,
       detail:

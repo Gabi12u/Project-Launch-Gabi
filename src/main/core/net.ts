@@ -288,6 +288,20 @@ async function fetchToFile(
       throw new Error(
         `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${item.size} Bytes)`
       )
+    } else if (item.size === undefined) {
+      // Neither hash nor expected size: loader libraries resolved through a
+      // bare `library.url` arrive that way. Previously nothing was verified at
+      // all, so a connection dropped mid-transfer was written out as if
+      // complete — and `isSatisfied` then treats any non-empty file as done,
+      // making the damage permanent. It only ever surfaces much later as a
+      // NoClassDefFoundError at launch. The server's own Content-Length is the
+      // one signal left, so use it when it is there.
+      const declared = Number(res.headers.get('content-length'))
+      if (Number.isFinite(declared) && declared > 0 && attemptBytes !== declared) {
+        throw new Error(
+          `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${declared} Bytes)`
+        )
+      }
     }
 
     renameSync(tmp, item.path)

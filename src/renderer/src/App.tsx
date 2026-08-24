@@ -124,7 +124,10 @@ export function App(): JSX.Element {
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
         event.preventDefault()
-        setState({ createOpen: true })
+        // The palette lists this same shortcut and closes itself when the entry
+        // is picked there. Opening the wizard without closing it stacked one
+        // overlay on top of the other.
+        setState({ createOpen: true, paletteOpen: false })
         return
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
