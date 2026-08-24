@@ -125,8 +125,8 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
             </div>
 
             <div className="field">
-              <label className="label">Offline-Profil</label>
-              <div className="row gap-8">
+              <label className="label" id="am-offline-profil">Offline-Profil</label>
+              <div role="group" aria-labelledby="am-offline-profil" className="row gap-8">
                 <input
                   className="input"
                   placeholder="Spielername"

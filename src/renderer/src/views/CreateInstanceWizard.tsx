@@ -313,8 +313,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
           {loader !== 'vanilla' && (loaderVersions[loader]?.length ?? 0) > 0 && (
             <div className="field">
-              <label className="label">Loader-Version</label>
-              <select
+              <label className="label" htmlFor="ci-loader-version">Loader-Version</label>
+              <select id="ci-loader-version"
                 className="select"
                 value={loaderVersion}
                 onChange={(event) => setLoaderVersion(event.target.value)}
@@ -337,8 +337,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
       {step === 2 && (
         <div className="col gap-20">
           <div className="field">
-            <label className="label">Name</label>
-            <input
+            <label className="label" htmlFor="ci-name">Name</label>
+            <input id="ci-name"
               className="input"
               placeholder={suggestedName}
               value={name}
@@ -349,8 +349,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
           <div className="row gap-16" style={{ alignItems: 'flex-start' }}>
             <div className="field grow">
-              <label className="label">Gruppe (optional)</label>
-              <input
+              <label className="label" htmlFor="ci-gruppe-optional">Gruppe (optional)</label>
+              <input id="ci-gruppe-optional"
                 className="input"
                 placeholder="z. B. Modded"
                 value={group}
@@ -358,8 +358,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               />
             </div>
             <div className="field grow">
-              <label className="label">Arbeitsspeicher: {formatMemory(memory)}</label>
-              <input
+              <label className="label" htmlFor="ci-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+              <input id="ci-arbeitsspeicher"
                 className="range"
                 type="range"
                 min={1024}
@@ -375,8 +375,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           </div>
 
           <div className="field">
-            <label className="label">Icon</label>
-            <div className="icon-picker">
+            <label className="label" id="ci-icon">Icon</label>
+            <div role="group" aria-labelledby="ci-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button
                   key={choice}
@@ -390,8 +390,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           </div>
 
           <div className="field">
-            <label className="label">Akzentfarbe</label>
-            <div className="swatches">
+            <label className="label" id="ci-akzentfarbe">Akzentfarbe</label>
+            <div role="group" aria-labelledby="ci-akzentfarbe" className="swatches">
               {ACCENT_CHOICES.map((choice) => (
                 <button
                   key={choice}

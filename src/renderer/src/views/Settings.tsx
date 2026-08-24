@@ -229,8 +229,8 @@ export function SettingsView(): JSX.Element {
                   onChange={(value) => void saveSettings({ startMinimized: value })}
                 />
                 <div className="field mt-16">
-                  <label className="label">Verhalten beim Spielstart</label>
-                  <select
+                  <label className="label" htmlFor="st-verhalten-beim-spielstart">Verhalten beim Spielstart</label>
+                  <select id="st-verhalten-beim-spielstart"
                     className="select"
                     value={settings.launchBehaviour}
                     onChange={(event) =>
@@ -454,10 +454,11 @@ export function SettingsView(): JSX.Element {
               <section className="setting-group">
                 <h3>Standardwerte für neue Instanzen</h3>
                 <div className="field">
-                  <label className="label">
+                  <label className="label" htmlFor="st-standard-arbeitsspeicher">
                     Arbeitsspeicher: {formatMemory(settings.defaultMemoryMb)}
                   </label>
                   <input
+                    id="st-standard-arbeitsspeicher"
                     className="range"
                     type="range"
                     min={1024}
@@ -477,8 +478,8 @@ export function SettingsView(): JSX.Element {
                 </div>
 
                 <div className="field mt-16">
-                  <label className="label">JVM-Argumente</label>
-                  <textarea
+                  <label className="label" htmlFor="st-jvm-argumente">JVM-Argumente</label>
+                  <textarea id="st-jvm-argumente"
                     className="textarea"
                     value={settings.defaultJvmArgs}
                     onChange={(event) => void saveSettings({ defaultJvmArgs: event.target.value })}
@@ -489,10 +490,11 @@ export function SettingsView(): JSX.Element {
               <section className="setting-group">
                 <h3>Downloads</h3>
                 <div className="field">
-                  <label className="label">
+                  <label className="label" htmlFor="st-gleichzeitige-downloads">
                     Gleichzeitige Downloads: {settings.concurrentDownloads}
                   </label>
                   <input
+                    id="st-gleichzeitige-downloads"
                     className="range"
                     type="range"
                     min={1}
@@ -563,10 +565,11 @@ export function SettingsView(): JSX.Element {
                   onChange={(value) => void saveSettings({ automaticBackups: value })}
                 />
                 <div className="field mt-16">
-                  <label className="label">
+                  <label className="label" htmlFor="st-aufbewahrte-sicherungen">
                     Anzahl aufbewahrter automatischer Sicherungen: {settings.automaticBackupKeep}
                   </label>
                   <input
+                    id="st-aufbewahrte-sicherungen"
                     className="range"
                     type="range"
                     min={1}

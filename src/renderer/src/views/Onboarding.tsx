@@ -73,8 +73,8 @@ export function Onboarding(): JSX.Element {
             </div>
 
             <div className="field">
-              <label className="label">Akzentfarbe</label>
-              <div className="swatches">
+              <label className="label" id="ob-akzentfarbe">Akzentfarbe</label>
+              <div role="group" aria-labelledby="ob-akzentfarbe" className="swatches">
                 {ACCENT_CHOICES.map((color) => (
                   <button
                     key={color}
@@ -92,8 +92,8 @@ export function Onboarding(): JSX.Element {
             </div>
 
             <div className="field">
-              <label className="label">Standard-Arbeitsspeicher: {formatMemory(memory)}</label>
-              <input
+              <label className="label" htmlFor="ob-standard-arbeitsspeicher">Standard-Arbeitsspeicher: {formatMemory(memory)}</label>
+              <input id="ob-standard-arbeitsspeicher"
                 className="range"
                 type="range"
                 min={1024}

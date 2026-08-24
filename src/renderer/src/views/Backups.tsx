@@ -309,8 +309,8 @@ function CreateBackupModal({
     >
       <div className="col gap-16">
         <div className="field">
-          <label className="label">Instanz</label>
-          <select className="select" value={target} onChange={(event) => setTarget(event.target.value)}>
+          <label className="label" htmlFor="bk-instanz">Instanz</label>
+          <select id="bk-instanz" className="select" value={target} onChange={(event) => setTarget(event.target.value)}>
             {instances.map((instance) => (
               <option key={instance.id} value={instance.id}>
                 {instance.name}
@@ -320,8 +320,8 @@ function CreateBackupModal({
         </div>
 
         <div className="field">
-          <label className="label">Bezeichnung (optional)</label>
-          <input
+          <label className="label" htmlFor="bk-bezeichnung-optional">Bezeichnung (optional)</label>
+          <input id="bk-bezeichnung-optional"
             className="input"
             placeholder="z. B. Vor dem großen Umbau"
             value={name}
@@ -330,8 +330,8 @@ function CreateBackupModal({
         </div>
 
         <div className="field">
-          <label className="label">Inhalte</label>
-          <div className="row gap-8 wrap">
+          <label className="label" id="bk-inhalte">Inhalte</label>
+          <div role="group" aria-labelledby="bk-inhalte" className="row gap-8 wrap">
             {Object.entries(FOLDER_LABELS).map(([key, label]) => (
               <button
                 key={key}

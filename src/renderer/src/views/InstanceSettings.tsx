@@ -131,12 +131,12 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         <div className="col gap-16">
           <div className="row gap-16 wrap">
             <div className="field grow">
-              <label className="label">Name</label>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+              <label className="label" htmlFor="is-name">Name</label>
+              <input id="is-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="field grow">
-              <label className="label">Gruppe</label>
-              <input
+              <label className="label" htmlFor="is-gruppe">Gruppe</label>
+              <input id="is-gruppe"
                 className="input"
                 placeholder="z. B. Modded"
                 value={group}
@@ -146,8 +146,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Beschreibung</label>
-            <input
+            <label className="label" htmlFor="is-beschreibung">Beschreibung</label>
+            <input id="is-beschreibung"
               className="input"
               placeholder="Worum geht es in dieser Instanz?"
               value={description}
@@ -156,8 +156,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Icon</label>
-            <div className="icon-picker">
+            <label className="label" id="is-icon">Icon</label>
+            <div role="group" aria-labelledby="is-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button
                   key={choice}
@@ -214,8 +214,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Akzentfarbe</label>
-            <div className="swatches">
+            <label className="label" id="is-akzentfarbe">Akzentfarbe</label>
+            <div role="group" aria-labelledby="is-akzentfarbe" className="swatches">
               {ACCENT_CHOICES.map((choice) => (
                 <button
                   key={choice}
@@ -237,8 +237,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label">Arbeitsspeicher: {formatMemory(memory)}</label>
-            <input
+            <label className="label" htmlFor="is-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+            <input id="is-arbeitsspeicher"
               className="range"
               type="range"
               min={1024}
@@ -254,8 +254,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Java-Version</label>
-            <div className="row gap-8">
+            <label className="label" id="is-java-version">Java-Version</label>
+            <div role="group" aria-labelledby="is-java-version" className="row gap-8">
               <select className="select" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
                 <option value="">Automatisch verwalten (empfohlen)</option>
                 {runtimes.map((runtime) => (
@@ -282,8 +282,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">JVM-Argumente</label>
-            <textarea className="textarea" value={jvmArgs} onChange={(e) => setJvmArgs(e.target.value)} />
+            <label className="label" htmlFor="is-jvm-argumente">JVM-Argumente</label>
+            <textarea id="is-jvm-argumente" className="textarea" value={jvmArgs} onChange={(e) => setJvmArgs(e.target.value)} />
             <span className="hint">
               Die Voreinstellung enthält bewährte G1GC-Flags für modded Minecraft. Nur ändern, wenn du weißt,
               was du tust.
@@ -306,8 +306,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         {!fullscreen && (
           <div className="row gap-16 mt-12">
             <div className="field grow">
-              <label className="label">Fensterbreite</label>
-              <input
+              <label className="label" htmlFor="is-fensterbreite">Fensterbreite</label>
+              <input id="is-fensterbreite"
                 className="input"
                 type="number"
                 value={width}
@@ -316,8 +316,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
               />
             </div>
             <div className="field grow">
-              <label className="label">Fensterhöhe</label>
-              <input
+              <label className="label" htmlFor="is-fensterhohe">Fensterhöhe</label>
+              <input id="is-fensterhohe"
                 className="input"
                 type="number"
                 value={height}
@@ -329,8 +329,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         )}
 
         <div className="field mt-16">
-          <label className="label">Launcher-Verhalten beim Start</label>
-          <select
+          <label className="label" htmlFor="is-launcher-verhalten-beim-star">Launcher-Verhalten beim Start</label>
+          <select id="is-launcher-verhalten-beim-star"
             className="select"
             value={behaviour}
             onChange={(e) => setBehaviour(e.target.value as LaunchBehaviour)}
@@ -358,8 +358,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label">Umgebungsvariablen</label>
-            <textarea
+            <label className="label" htmlFor="is-umgebungsvariablen">Umgebungsvariablen</label>
+            <textarea id="is-umgebungsvariablen"
               className="textarea"
               placeholder="KEY=VALUE&#10;MESA_GL_VERSION_OVERRIDE=4.5"
               value={envVars}
@@ -369,8 +369,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Befehl vor dem Start</label>
-            <input
+            <label className="label" htmlFor="is-befehl-vor-dem-start">Befehl vor dem Start</label>
+            <input id="is-befehl-vor-dem-start"
               className="input"
               placeholder="z. B. ein Skript, das etwas vorbereitet"
               value={preLaunch}
@@ -379,8 +379,8 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label">Wrapper-Befehl</label>
-            <input
+            <label className="label" htmlFor="is-wrapper-befehl">Wrapper-Befehl</label>
+            <input id="is-wrapper-befehl"
               className="input"
               placeholder="z. B. gamemoderun"
               value={wrapper}

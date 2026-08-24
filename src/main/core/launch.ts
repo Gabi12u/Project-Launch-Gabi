@@ -43,6 +43,7 @@ import {
   listRunning,
   setRunning
 } from './running'
+import { isRepairing } from './repair'
 
 const logger = log('launch')
 
@@ -335,6 +336,14 @@ export function startingCount(): number {
 
 export async function launchInstance(options: LaunchOptions): Promise<void> {
   const { instanceId } = options
+
+  // The repair guards the other direction already, refusing to run while the
+  // game is up. This is the missing half: mid-repair the client jar, the
+  // natives folder and the mods are being replaced, and a launch into that
+  // starts a JVM against files that are half written or briefly absent.
+  if (isRepairing(instanceId)) {
+    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+  }
 
   if (isRunning(instanceId) || starting.has(instanceId)) {
     // A game left over from a previous launcher session needs a different

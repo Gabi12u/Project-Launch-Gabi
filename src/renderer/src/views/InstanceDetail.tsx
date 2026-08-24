@@ -250,9 +250,12 @@ export function InstanceDetailView({
                 <IconStop size={18} /> BEENDEN
               </button>
             ) : (
+              // Also blocked while a repair runs: it is replacing the very
+              // files a launch would load. The main process refuses it too,
+              // because this flag is lost as soon as the view is left.
               <button
                 className="btn-play"
-                disabled={busy || instance.installing}
+                disabled={busy || instance.installing || repairing}
                 onClick={() => void startInstance(instanceId, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
