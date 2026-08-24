@@ -1249,6 +1249,11 @@
 .context-menu {
   position: fixed;
   z-index: 400;
+  /* Mehr Eintraege als ins Fenster passen wuerden sonst unten herausragen
+     und waeren weder sichtbar noch anklickbar. Die Randkorrektur beim
+     Positionieren kann das nicht loesen, weil sie die Hoehe nicht kuerzt. */
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   /* Dieselbe Flaeche wie ein Dialog. Zuvor stand hier die Klasse .glass, die
      es aber nur auf der Website gibt, nicht im Launcher: das Menue hatte damit
      ueberhaupt keinen Hintergrund und die Zeile darunter schien voll durch. */

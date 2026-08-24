@@ -83,7 +83,6 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   const installedProjects = new Set(
     enabled.filter((c) => c.projectId).map((c) => `${c.provider}:${c.projectId}`)
   )
-  const installedProjectIds = new Set(enabled.filter((c) => c.projectId).map((c) => c.projectId as string))
   const installedNames = new Set(enabled.map((c) => flattenName(c.name)))
 
   // 1. Mods in a vanilla instance -----------------------------------
@@ -155,8 +154,14 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     // 4. Dependencies ------------------------------------------------
     for (const dependency of mod.dependencies) {
       if (dependency.type === 'required') {
+        // Scoped to the requiring mod's own provider only. The unscoped
+        // fallback that used to sit here compared bare ids across providers,
+        // which the comment a few lines below calls out as unsound: a
+        // CurseForge id that happens to equal a Modrinth one would silence a
+        // genuinely missing requirement. The legitimate cross-provider case
+        // is already covered by the name comparison further down.
         const key = `${mod.provider}:${dependency.projectId}`
-        if (installedProjects.has(key) || installedProjectIds.has(dependency.projectId)) continue
+        if (installedProjects.has(key)) continue
 
         const provider = mod.provider === 'curseforge' ? 'curseforge' : 'modrinth'
         const name = await projectName(provider, dependency.projectId)

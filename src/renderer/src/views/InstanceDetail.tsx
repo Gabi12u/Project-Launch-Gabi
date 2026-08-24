@@ -362,7 +362,9 @@ export function InstanceDetailView({
           instanceId={instanceId}
           mcVersion={instance.mcVersion}
           loader={instance.loader}
-          installedProjectIds={instance.content.map((c) => c.projectId ?? '').filter(Boolean)}
+          installedProjectIds={instance.content
+            .filter((c) => c.projectId)
+            .map((c) => `${c.provider}:${c.projectId}`)}
           onInstalled={async () => {
             await load()
             await runChecks()

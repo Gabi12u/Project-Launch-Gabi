@@ -360,7 +360,13 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     // the wrong version or crash the JVM outright. Collapsing on
     // group:artifact keeps the first, and children are resolved first
     // precisely so their override is the one that survives.
-    const coords = library.name.split(':')
+    // `mavenToPath` strips an optional `@extension` suffix before splitting,
+    // and this has to parse the same string the same way. Without it a name
+    // like `group:artifact:1.0:natives-windows@jar` kept the `@jar` inside the
+    // classifier, so it no longer matched the identical entry written without
+    // the suffix and both versions survived the check below — the very
+    // situation this deduplication exists to prevent.
+    const coords = library.name.split('@')[0].split(':')
     if (coords.length >= 2) {
       // The fourth maven segment is a classifier, and that is how versions
       // since 1.19 ship their natives: as a separate entry named

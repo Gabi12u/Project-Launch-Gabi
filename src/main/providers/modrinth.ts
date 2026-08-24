@@ -181,10 +181,15 @@ export function mapVersion(version: ModrinthVersion): ProjectVersion | null {
   const file = files.find((f) => f.primary) ?? files[0]
   if (!file) return null
 
+  // Entries carrying only a `version_id` are kept, not dropped. Modrinth
+  // allows pinning a dependency to one exact version without naming its
+  // project, and filtering those away meant a genuinely required companion
+  // mod was never installed and never even reported as missing. The project
+  // id is filled in afterwards by `resolveVersionOnlyDependencies`.
   const dependencies: ContentDependency[] = (version.dependencies ?? [])
-    .filter((d) => d.project_id)
+    .filter((d) => d.project_id || d.version_id)
     .map((d) => ({
-      projectId: d.project_id as string,
+      projectId: (d.project_id ?? '') as string,
       versionId: d.version_id ?? undefined,
       type: d.dependency_type
     }))
@@ -273,6 +278,49 @@ export async function getProject(projectId: string): Promise<ProjectDetails> {
   }
 }
 
+/**
+ * Fills in the project id of dependencies that named only a version.
+ *
+ * One bulk request covers the whole batch, and it only runs when such an entry
+ * actually occurs, which is rare. Anything that cannot be resolved is dropped
+ * rather than left with an empty id, because an empty id would make the
+ * installer look for a project that does not exist.
+ */
+async function resolveVersionOnlyDependencies(versions: ProjectVersion[]): Promise<void> {
+  const missing = new Set<string>()
+  for (const version of versions) {
+    for (const dependency of version.dependencies) {
+      if (!dependency.projectId && dependency.versionId) missing.add(dependency.versionId)
+    }
+  }
+  if (missing.size === 0) return
+
+  const byVersionId = new Map<string, string>()
+  try {
+    const ids = JSON.stringify([...missing])
+    const fetched = await fetchJson<{ id?: string; project_id?: string }[]>(
+      `${API}/versions?ids=${encodeURIComponent(ids)}`
+    )
+    if (Array.isArray(fetched)) {
+      for (const entry of fetched) {
+        if (entry?.id && entry.project_id) byVersionId.set(entry.id, entry.project_id)
+      }
+    }
+  } catch (err) {
+    logger.warn('Abhaengigkeiten mit reiner Versions-ID nicht aufloesbar:', err)
+  }
+
+  for (const version of versions) {
+    version.dependencies = version.dependencies
+      .map((dependency) => {
+        if (dependency.projectId) return dependency
+        const resolved = dependency.versionId ? byVersionId.get(dependency.versionId) : undefined
+        return resolved ? { ...dependency, projectId: resolved } : null
+      })
+      .filter((dependency): dependency is ContentDependency => dependency !== null)
+  }
+}
+
 export async function getVersions(
   projectId: string,
   gameVersion?: string,
@@ -293,10 +341,13 @@ export async function getVersions(
     return []
   }
 
-  return versions
+  const mapped = versions
     .map(mapVersion)
     .filter((v): v is ProjectVersion => v !== null)
     .sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
+
+  await resolveVersionOnlyDependencies(mapped)
+  return mapped
 }
 
 /**

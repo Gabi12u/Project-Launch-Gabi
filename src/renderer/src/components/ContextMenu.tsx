@@ -36,6 +36,16 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
   const [pos, setPos] = useState({ left: x, top: y, ready: false })
   const [cursor, setCursor] = useState(0)
 
+  // Reset whenever the menu is re-anchored, which is what happens when the
+  // user right-clicks a different row without closing first. The component
+  // stays mounted in that case, so without this the highlight stayed on
+  // whatever entry was selected for the previous row — and since "Entfernen"
+  // is the last entry and asks no confirmation, a stray Enter could delete
+  // the wrong mod outright.
+  useLayoutEffect(() => {
+    setCursor(0)
+  }, [x, y, items])
+
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return

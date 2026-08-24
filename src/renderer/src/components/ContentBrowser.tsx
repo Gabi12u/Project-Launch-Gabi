@@ -78,6 +78,15 @@ export function ContentBrowser({
     return () => clearTimeout(timer)
   }, [query])
 
+  // Bumped on unmount so a search still in flight cannot set state on a view
+  // the user has already left. `requestId` alone only guards against a newer
+  // search superseding an older one.
+  useEffect(() => {
+    return () => {
+      requestId.current++
+    }
+  }, [])
+
   const search = useCallback(
     async (nextOffset: number, append: boolean): Promise<void> => {
       const id = ++requestId.current
@@ -103,7 +112,14 @@ export function ContentBrowser({
             : result
         )
       } catch (err) {
-        if (id === requestId.current) toastError(err, 'Suche fehlgeschlagen')
+        if (id === requestId.current) {
+          // Cleared on a fresh search, so the list cannot keep showing the
+          // previous type's results under a heading that already changed.
+          // An appended page is left alone: losing what is already on screen
+          // because page four failed would be worse.
+          if (!append) setResponse(null)
+          toastError(err, 'Suche fehlgeschlagen')
+        }
       } finally {
         if (id === requestId.current) setLoading(false)
       }
@@ -282,7 +298,11 @@ export function ContentBrowser({
               <ProjectCard
                 key={`${item.provider}-${item.projectId}`}
                 item={item}
-                installed={installedProjectIds.includes(item.projectId)}
+                // Keyed by provider plus id, like the React key one line up.
+                // Comparing the bare id could mark a CurseForge result as
+                // installed because an unrelated Modrinth project happened to
+                // carry the same id.
+                installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
                 installing={installing.has(item.projectId)}
                 canInstall={Boolean(instanceId)}
                 onInstall={() => void install(item)}
@@ -422,24 +442,51 @@ function ProjectModal({
   const [onlyCompatible, setOnlyCompatible] = useState(true)
 
   useEffect(() => {
+    // Guarded like the other async lookups in this app: closing the dialog
+    // while the request is still running would otherwise set state on a
+    // component that is already gone.
+    let current = true
     setLoading(true)
     void window.gabi.providers
       .project(item.provider, item.projectId)
       .then((details) => {
+        if (!current) return
         setProject(details)
         setVersions(details.versions)
       })
-      .catch((err) => toastError(err, 'Projekt konnte nicht geladen werden'))
-      .finally(() => setLoading(false))
+      .catch((err) => {
+        if (current) toastError(err, 'Projekt konnte nicht geladen werden')
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => {
+      current = false
+    }
   }, [item.provider, item.projectId])
 
   const shown = useMemo(() => {
     if (!onlyCompatible || !mcVersion) return versions
-    return versions.filter(
-      (version) =>
-        version.gameVersions.includes(mcVersion) &&
-        (!loader || loader === 'vanilla' || version.loaders.length === 0 || version.loaders.includes(loader))
-    )
+
+    // Deliberately the same rules the rest of the app applies, not stricter.
+    // Demanding an exact game-version match hid a mod published only for
+    // "1.21" from a 1.21.1 instance, even though installing it without
+    // picking a version works and the compatibility check afterwards raises
+    // no objection. The Quilt exception was missing for the same reason.
+    const line = mcVersion.split('.').slice(0, 2).join('.')
+    const versionFits = (version: (typeof versions)[number]): boolean =>
+      version.gameVersions.length === 0 ||
+      version.gameVersions.includes(mcVersion) ||
+      version.gameVersions.some((v) => v === line || v.startsWith(`${line}.`))
+
+    const loaderFits = (version: (typeof versions)[number]): boolean =>
+      !loader ||
+      loader === 'vanilla' ||
+      version.loaders.length === 0 ||
+      version.loaders.includes(loader) ||
+      (loader === 'quilt' && version.loaders.includes('fabric'))
+
+    return versions.filter((version) => versionFits(version) && loaderFits(version))
   }, [versions, onlyCompatible, mcVersion, loader])
 
   return (

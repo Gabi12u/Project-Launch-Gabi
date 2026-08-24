@@ -291,7 +291,12 @@ export async function installForgeLike(
 
   const versionId = versionJson.id ?? profile.version
   versionJson.id = versionId
-  writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), versionJson)
+  // Deliberately not written yet. Its mere presence is what repair.ts takes
+  // as proof that the loader is installed, so writing it here meant an
+  // install that died during the library download or in a processor left a
+  // marker behind claiming success: the instance refused to start and
+  // "Reparieren" still reported the loader as fine. It goes to disk once
+  // every step below has actually finished.
 
   // 2. The vanilla client jar is the input for every patcher ----------
   task?.update('Basis-Minecraft wird vorbereitet…', null)
@@ -338,114 +343,128 @@ export async function installForgeLike(
   rmSync(workDir, { recursive: true, force: true })
   mkdirSync(workDir, { recursive: true })
 
-  const data: Record<string, string> = {}
-  for (const [key, value] of Object.entries(profile.data ?? {})) {
-    let raw = value.client
-    if (!raw) continue
+  // try/finally statt Aufraeumen nur am Ende: jeder Fehler im
+  // Prozessorlauf uebersprang das rmSync, sodass der entpackte
+  // Installer nach jedem Fehlversuch im Cache liegen blieb.
+  try {
 
-    if (raw.startsWith('[') && raw.endsWith(']')) {
-      data[key] = libraryPath(raw.slice(1, -1))
-    } else if (raw.startsWith("'") && raw.endsWith("'")) {
-      data[key] = raw.slice(1, -1)
-    } else if (raw.startsWith('/')) {
-      // A path inside the installer jar: extract it and point at the copy.
-      const entry = raw.slice(1)
-      const target = join(workDir, ...entry.split('/'))
-      const extracted = extractSubtree(installer, entry.split('/').slice(0, -1).join('/'), join(workDir, ...entry.split('/').slice(0, -1)))
-      if (extracted === 0) {
-        // Single file rather than a subtree.
-        const zip = new AdmZip(installer)
-        const zipEntry = zip.getEntry(entry)
-        if (zipEntry) {
-          mkdirSync(join(target, '..'), { recursive: true })
-          writeFileSync(target, zipEntry.getData())
+    const data: Record<string, string> = {}
+    for (const [key, value] of Object.entries(profile.data ?? {})) {
+      let raw = value.client
+      if (!raw) continue
+
+      if (raw.startsWith('[') && raw.endsWith(']')) {
+        data[key] = libraryPath(raw.slice(1, -1))
+      } else if (raw.startsWith("'") && raw.endsWith("'")) {
+        data[key] = raw.slice(1, -1)
+      } else if (raw.startsWith('/')) {
+        // A path inside the installer jar: extract it and point at the copy.
+        const entry = raw.slice(1)
+        const target = join(workDir, ...entry.split('/'))
+        const extracted = extractSubtree(installer, entry.split('/').slice(0, -1).join('/'), join(workDir, ...entry.split('/').slice(0, -1)))
+        if (extracted === 0) {
+          // Single file rather than a subtree.
+          const zip = new AdmZip(installer)
+          const zipEntry = zip.getEntry(entry)
+          if (zipEntry) {
+            mkdirSync(join(target, '..'), { recursive: true })
+            writeFileSync(target, zipEntry.getData())
+          }
         }
+        data[key] = target
+      } else {
+        raw = raw.trim()
+        data[key] = raw
       }
-      data[key] = target
-    } else {
-      raw = raw.trim()
-      data[key] = raw
     }
-  }
 
-  data.MINECRAFT_JAR = vanillaJar
-  data.MINECRAFT_VERSION = mcVersion
-  data.ROOT = paths.root()
-  data.INSTALLER = installer
-  data.LIBRARY_DIR = paths.libraries()
-  data.SIDE = 'client'
+    data.MINECRAFT_JAR = vanillaJar
+    data.MINECRAFT_VERSION = mcVersion
+    data.ROOT = paths.root()
+    data.INSTALLER = installer
+    data.LIBRARY_DIR = paths.libraries()
+    data.SIDE = 'client'
 
-  // 5. Run the processors --------------------------------------------
-  const processors = (profile.processors ?? []).filter(
-    (p) => !p.sides || p.sides.includes('client')
-  )
+    // 5. Run the processors --------------------------------------------
+    const processors = (profile.processors ?? []).filter(
+      (p) => !p.sides || p.sides.includes('client')
+    )
 
-  if (processors.length > 0) {
-    const javaMajor = requiredJavaMajor(versionJson, mcVersion)
-    const java = await resolveJava({
-      major: javaMajor,
-      autoManage: getSettings().javaAutoManage,
-      task
-    })
+    if (processors.length > 0) {
+      const javaMajor = requiredJavaMajor(versionJson, mcVersion)
+      const java = await resolveJava({
+        major: javaMajor,
+        autoManage: getSettings().javaAutoManage,
+        task
+      })
 
-    for (let i = 0; i < processors.length; i++) {
-      task?.throwIfCancelled()
-      const processor = processors[i]
-      task?.update(
-        `${label} wird installiert · Schritt ${i + 1}/${processors.length}`,
-        (i + 1) / processors.length
-      )
-
-      const jar = libraryPath(processor.jar)
-      if (!existsSync(jar)) throw new Error(`Prozessor-Jar fehlt: ${processor.jar}`)
-
-      const classpath = [...processor.classpath.map(libraryPath), jar]
-      const args = processor.args.map((arg) => resolveArgument(arg, data))
-      const mainClass = await mainClassOf(jar)
-
-      logger.debug(`Prozessor ${mainClass} mit ${args.length} Argumenten`)
-
-      try {
-        const { stdout, stderr } = await execFileAsync(
-          java.path,
-          ['-cp', classpath.join(process.platform === 'win32' ? ';' : ':'), mainClass, ...args],
-          { cwd: paths.root(), timeout: 10 * 60 * 1000, maxBuffer: 32 * 1024 * 1024, windowsHide: true }
+      for (let i = 0; i < processors.length; i++) {
+        task?.throwIfCancelled()
+        const processor = processors[i]
+        task?.update(
+          `${label} wird installiert · Schritt ${i + 1}/${processors.length}`,
+          (i + 1) / processors.length
         )
-        logger.debug(`Prozessor ${mainClass} ok`, stdout.slice(-400), stderr.slice(-400))
-      } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err)
-        throw new Error(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`)
-      }
 
-      // Each processor declares the sha1 its outputs must have. Exit code zero
-      // is not proof it wrote them correctly: a processor that fails halfway
-      // and still returns zero leaves a truncated jar behind, and the install
-      // then completes "successfully" with an artifact that only breaks at
-      // launch, far away from the cause.
-      for (const [rawPath, rawHash] of Object.entries(processor.outputs ?? {})) {
-        const outputPath = resolveArgument(rawPath, data)
-        const expected = resolveArgument(rawHash, data).replace(/^'|'$/g, '')
-        if (!expected) continue
+        const jar = libraryPath(processor.jar)
+        if (!existsSync(jar)) throw new Error(`Prozessor-Jar fehlt: ${processor.jar}`)
 
-        if (!existsSync(outputPath)) {
-          throw new Error(
-            `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} nicht erzeugt.`
+        const classpath = [...processor.classpath.map(libraryPath), jar]
+        const args = processor.args.map((arg) => resolveArgument(arg, data))
+        const mainClass = await mainClassOf(jar)
+
+        logger.debug(`Prozessor ${mainClass} mit ${args.length} Argumenten`)
+
+        try {
+          const { stdout, stderr } = await execFileAsync(
+            java.path,
+            ['-cp', classpath.join(process.platform === 'win32' ? ';' : ':'), mainClass, ...args],
+            { cwd: paths.root(), timeout: 10 * 60 * 1000, maxBuffer: 32 * 1024 * 1024, windowsHide: true }
           )
+          logger.debug(`Prozessor ${mainClass} ok`, stdout.slice(-400), stderr.slice(-400))
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          throw new Error(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`)
         }
-        const actual = await sha1File(outputPath)
-        if (actual !== expected.toLowerCase()) {
-          throw new Error(
-            `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} fehlerhaft geschrieben ` +
-              `(erwartet ${expected}, erhalten ${actual}).`
-          )
+
+        // Each processor declares the sha1 its outputs must have. Exit code zero
+        // is not proof it wrote them correctly: a processor that fails halfway
+        // and still returns zero leaves a truncated jar behind, and the install
+        // then completes "successfully" with an artifact that only breaks at
+        // launch, far away from the cause.
+        for (const [rawPath, rawHash] of Object.entries(processor.outputs ?? {})) {
+          const outputPath = resolveArgument(rawPath, data)
+          const expected = resolveArgument(rawHash, data).replace(/^'|'$/g, '')
+          if (!expected) continue
+
+          if (!existsSync(outputPath)) {
+            throw new Error(
+              `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} nicht erzeugt.`
+            )
+          }
+          const actual = await sha1File(outputPath)
+          if (actual !== expected.toLowerCase()) {
+            throw new Error(
+              `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} fehlerhaft geschrieben ` +
+                `(erwartet ${expected}, erhalten ${actual}).`
+            )
+          }
         }
       }
     }
-  }
 
-  rmSync(workDir, { recursive: true, force: true })
-  logger.info(`${label} ${loaderVersion} für ${mcVersion} installiert als ${versionId}`)
-  return versionId
+
+    // Alle Schritte sind durch, jetzt darf die Markierung geschrieben werden.
+    writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), versionJson)
+    logger.info(`${label} ${loaderVersion} für ${mcVersion} installiert als ${versionId}`)
+    return versionId
+  } finally {
+    try {
+      rmSync(workDir, { recursive: true, force: true })
+    } catch {
+      // Eine noch offene Datei raeumt der naechste Reparaturlauf weg.
+    }
+  }
 }
 
 /**
@@ -465,7 +484,9 @@ async function installLegacyForge(
   versionJson.id = versionId
   if (!versionJson.inheritsFrom) versionJson.inheritsFrom = mcVersion
 
-  writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), versionJson)
+  // Written at the end, for the same reason as the modern path above: the
+  // file's presence is what marks the loader as installed, and the universal
+  // jar plus the libraries below still have to arrive first.
 
   // Copy the embedded universal jar to its maven coordinates.
   const target = libraryPath(profile.install.path)
@@ -483,6 +504,8 @@ async function installLegacyForge(
     libs.map((l) => l.download).filter((d): d is NonNullable<typeof d> => Boolean(d)),
     { task, label: 'Forge-Bibliotheken' }
   )
+
+  writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), versionJson)
 
   logger.info(`Forge (Legacy) installiert als ${versionId}`)
   return versionId

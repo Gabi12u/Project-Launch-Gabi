@@ -162,7 +162,17 @@ export function VersionPicker({
                       ) : (
                         <button
                           className="btn sm primary"
-                          disabled={installing !== null}
+                          // Blocked, not merely flagged. The badge alone was
+                          // decoration: the click still installed a version
+                          // that cannot run with this Minecraft release or
+                          // loader. Taking the filter off is the deliberate
+                          // way to reach it.
+                          disabled={installing !== null || (onlyCompatible && !compatible)}
+                          title={
+                            onlyCompatible && !compatible
+                              ? 'Passt nicht zu dieser Instanz. Nimm den Haken oben heraus, um es trotzdem zu tun.'
+                              : undefined
+                          }
                           onClick={() => void install(version)}
                         >
                           {installing === version.versionId ? (

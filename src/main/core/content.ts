@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import type {
   CompatibilityIssue,
   ContentItem,
@@ -11,6 +11,7 @@ import type {
 import { contentDir } from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
+import { notify } from '../events'
 import { Task, withTask } from '../tasks'
 import { downloadFile, sha1File } from './net'
 import {
@@ -25,6 +26,32 @@ import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
 
 const logger = log('content')
+
+/**
+ * True when both paths address the same file on this platform.
+ *
+ * Windows and macOS fold case in the filesystem, so `Mod.jar` and `mod.jar`
+ * are one and the same file there. A plain string comparison called them
+ * different, and the replace step below then deleted the file it had just
+ * written.
+ */
+function samePath(a: string, b: string): boolean {
+  const left = resolve(a)
+  const right = resolve(b)
+  return process.platform === 'linux' ? left === right : left.toLowerCase() === right.toLowerCase()
+}
+
+/**
+ * Installs already running for a project, keyed per instance.
+ *
+ * Two mods that share a dependency, installed in quick succession, both looked
+ * it up, both saw it missing and both installed it. Each pass minted its own
+ * record id, and the later `addContent` dropped the earlier one — leaving the
+ * first caller holding an id that no longer exists, so toggling or removing
+ * that entry failed afterwards. Sharing the in-flight promise makes the second
+ * caller wait for the first instead.
+ */
+const inFlight = new Map<string, Promise<ContentItem[]>>()
 
 /* ------------------------------------------------------------------ *
  * Helpers
@@ -121,6 +148,26 @@ export async function installContent(options: InstallContentOptions): Promise<Co
   if (visited.has(key)) return []
   visited.add(key)
 
+  // Shared across concurrent callers. `visited` only guards recursion within
+  // one call, so two separate installs that need the same dependency both got
+  // this far and both installed it, and the second record replaced the first.
+  const lockKey = `${instanceId}|${key}`
+  const running = inFlight.get(lockKey)
+  if (running) return running
+
+  const run = installContentOnce(options, visited).finally(() => {
+    inFlight.delete(lockKey)
+  })
+  inFlight.set(lockKey, run)
+  return run
+}
+
+async function installContentOnce(
+  options: InstallContentOptions,
+  visited: Set<string>
+): Promise<ContentItem[]> {
+  const { instanceId, provider, projectId } = options
+
   const instance = getInstance(instanceId)
   const installed: ContentItem[] = []
 
@@ -163,7 +210,12 @@ export async function installContent(options: InstallContentOptions): Promise<Co
   )
   if (previous) {
     const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
-    rmSync(oldPath, { force: true })
+    // Only when it is genuinely another file. A release that changed nothing
+    // but the capitalisation of its file name would otherwise have this
+    // delete the download that just completed.
+    if (!samePath(oldPath, destination)) {
+      rmSync(oldPath, { force: true })
+    }
     removeContentRecord(instanceId, previous.id)
   }
 
@@ -200,7 +252,16 @@ export async function installContent(options: InstallContentOptions): Promise<Co
         })
         installed.push(...sub)
       } catch (err) {
+        // Surfaced, not just logged. This dependency is declared as required,
+        // so hiding the failure behind a success message leaves the user with
+        // a mod that cannot start and no hint why.
         logger.warn(`Abhängigkeit ${dependency.projectId} konnte nicht installiert werden:`, err)
+        notify(
+          'warning',
+          `${project.name}: Abhängigkeit fehlt`,
+          `Eine benötigte Erweiterung konnte nicht geladen werden. ` +
+            `Ohne sie startet das Spiel unter Umständen nicht.`
+        )
       }
     }
   }
@@ -379,20 +440,30 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
     size: item.update.size
   })
 
-  // Remove the old file unless the name is unchanged.
-  if (item.fileName !== item.update.fileName) {
-    rmSync(contentPath(dir, item.fileName), { force: true })
+  // Re-read: the download above took time, and the entry may have been
+  // toggled meanwhile. Working from the snapshot taken before it would undo
+  // that toggle and delete a file that has since been renamed.
+  const current = getInstance(instanceId).content.find((c) => c.id === contentId)
+  if (!current) return null
+
+  const oldPath = contentPath(dir, current.fileName)
+  if (!samePath(oldPath, destination)) {
+    rmSync(oldPath, { force: true })
   }
 
   const next: ContentItem = {
-    ...item,
-    fileName: contentFileName(item.update.fileName),
+    ...current,
+    // Built on the freshly read record, and the enabled flag is carried over
+    // rather than forced to true, so an update cannot silently re-enable a
+    // mod the user just switched off.
+    fileName: current.enabled
+      ? contentFileName(item.update.fileName)
+      : `${contentFileName(item.update.fileName)}.disabled`,
     version: item.update.versionNumber,
     versionId: item.update.versionId,
     sha1: item.update.sha1,
     size: item.update.size,
     installedAt: Date.now(),
-    enabled: true,
     update: null
   }
 
