@@ -43,10 +43,12 @@ import {
   dropLogBuffer,
   getLogBuffer,
   getStatus,
+  isStarting,
   launchInstance,
   preflight,
   stopInstance
 } from './core/launch'
+import { isRunning } from './core/running'
 import {
   applyFix,
   applyUpdate,
@@ -117,6 +119,26 @@ function openLauncherPath(target: string): Promise<string> {
     if (message) throw new Error(`Ordner konnte nicht geöffnet werden: ${message}`)
     return ''
   })
+}
+
+/**
+ * Refuses a change to an instance's mods while its game is up.
+ *
+ * Minecraft reads the mods folder once at startup and keeps those jars open.
+ * Enabling, removing or updating one mid-session does nothing to the running
+ * game at best, and on Windows the file is locked so the operation fails
+ * halfway, leaving the folder and content.json describing different things.
+ * The instance would then look fine and refuse to start next time.
+ *
+ * Applied at the IPC boundary because that is where every user-triggered
+ * change arrives, the automatic compatibility fixes included.
+ */
+function requireStopped(instanceId: string, action: string): void {
+  if (isRunning(instanceId) || isStarting(instanceId)) {
+    throw new Error(
+      `${action} ist nicht möglich, solange Minecraft läuft. Beende das Spiel und versuche es dann erneut.`
+    )
+  }
 }
 
 export function registerIpc(): void {
@@ -416,6 +438,7 @@ export function registerIpc(): void {
       type?: ContentType
       skipDependencies?: boolean
     }) => {
+      requireStopped(options.instanceId, 'Mods installieren')
       const installed = await installContent(options)
       if (installed.length > 1) {
         notify(
@@ -428,23 +451,30 @@ export function registerIpc(): void {
     }
   )
 
-  handle(IPC.contentRemove, (instanceId: string, contentId: string) =>
-    removeContent(instanceId, contentId)
-  )
+  handle(IPC.contentRemove, (instanceId: string, contentId: string) => {
+    requireStopped(instanceId, 'Entfernen')
+    return removeContent(instanceId, contentId)
+  })
 
-  handle(IPC.contentToggle, (instanceId: string, contentId: string, enabled: boolean) =>
-    toggleContent(instanceId, contentId, enabled)
-  )
+  handle(IPC.contentToggle, (instanceId: string, contentId: string, enabled: boolean) => {
+    requireStopped(instanceId, enabled ? 'Aktivieren' : 'Deaktivieren')
+    return toggleContent(instanceId, contentId, enabled)
+  })
 
   handle(IPC.contentCheckUpdates, (instanceId: string) => checkUpdates(instanceId))
 
-  handle(IPC.contentUpdate, (instanceId: string, contentId: string) =>
-    applyUpdate(instanceId, contentId)
-  )
+  handle(IPC.contentUpdate, (instanceId: string, contentId: string) => {
+    requireStopped(instanceId, 'Aktualisieren')
+    return applyUpdate(instanceId, contentId)
+  })
 
-  handle(IPC.contentUpdateAll, (instanceId: string) => updateAll(instanceId))
+  handle(IPC.contentUpdateAll, (instanceId: string) => {
+    requireStopped(instanceId, 'Aktualisieren')
+    return updateAll(instanceId)
+  })
 
   handle(IPC.contentImportFile, async (instanceId: string, type: ContentType) => {
+    requireStopped(instanceId, 'Dateien hinzufuegen')
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
       title: 'Dateien hinzufügen',
@@ -465,6 +495,7 @@ export function registerIpc(): void {
   handle(
     IPC.contentApplyFix,
     async (instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>) => {
+      requireStopped(instanceId, 'Automatisch beheben')
       await applyFix(instanceId, fix)
       return checkCompatibility(instanceId)
     }

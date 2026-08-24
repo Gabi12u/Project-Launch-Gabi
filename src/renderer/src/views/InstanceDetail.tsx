@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type MouseEvent} from 'react'
 import type {
   CompatibilityReport,
   ContentItem,
@@ -41,8 +41,12 @@ import {
   IconTerminal,
   IconTrash,
   IconUpload,
-  IconWrench
-} from '../components/Icons'
+  IconWrench,
+  IconLayers,
+  IconCheck,
+  IconX} from '../components/Icons'
+import { ContextMenu, useContextMenu, type MenuItem } from '../components/ContextMenu'
+import { VersionPicker } from '../components/VersionPicker'
 
 type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'screenshots' | 'logs' | 'settings'
 
@@ -350,7 +354,7 @@ export function InstanceDetailView({
       )}
 
       {tab === 'content' && (
-        <ContentTab instance={instance} onChanged={async () => { await load(); await runChecks() }} />
+        <ContentTab instance={instance} running={running} onChanged={async () => { await load(); await runChecks() }} />
       )}
 
       {tab === 'browse' && (
@@ -531,15 +535,19 @@ const CONTENT_TABS: { id: ContentType; label: string }[] = [
 
 function ContentTab({
   instance,
-  onChanged
+  onChanged,
+  running
 }: {
   instance: InstanceDetail
   onChanged: () => Promise<void>
+  running: boolean
 }): JSX.Element {
   const [type, setType] = useState<ContentType>('mod')
   const [search, setSearch] = useState('')
   const [checking, setChecking] = useState(false)
   const [updating, setUpdating] = useState<string | null>(null)
+  const menu = useContextMenu<ContentItem>()
+  const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
 
   const items = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -656,7 +664,9 @@ function ContentTab({
               key={item.id}
               item={item}
               instanceId={instance.id}
+              running={running}
               updating={updating === item.id}
+              onContextMenu={(event) => menu.onContextMenu(event, item)}
               onUpdate={async () => {
                 setUpdating(item.id)
                 try {
@@ -682,26 +692,155 @@ function ContentTab({
           ))}
         </div>
       )}
+
+      {menu.open && (
+        <ContextMenu
+          x={menu.open.x}
+          y={menu.open.y}
+          onClose={menu.close}
+          items={contentMenuItems(menu.open.target, {
+            running,
+            onToggle: async (item, enabled) => {
+              try {
+                await window.gabi.content.toggle(instance.id, item.id, enabled)
+                await onChanged()
+              } catch (err) {
+                toastError(err, enabled ? 'Aktivieren fehlgeschlagen' : 'Deaktivieren fehlgeschlagen')
+              }
+            },
+            onUpdate: async (item) => {
+              setUpdating(item.id)
+              try {
+                await window.gabi.content.update(instance.id, item.id)
+                toast('success', `${item.name} aktualisiert`)
+                await onChanged()
+              } catch (err) {
+                toastError(err, 'Update fehlgeschlagen')
+              } finally {
+                setUpdating(null)
+              }
+            },
+            onPickVersion: (item) => setVersionFor(item),
+            onOpenPage: (item) => void window.gabi.app.openExternal(item.pageUrl as string),
+            onRemove: async (item) => {
+              try {
+                await window.gabi.content.remove(instance.id, item.id)
+                toast('info', `${item.name} entfernt`)
+                await onChanged()
+              } catch (err) {
+                toastError(err, 'Entfernen fehlgeschlagen')
+              }
+            }
+          })}
+        />
+      )}
+
+      {versionFor && (
+        <VersionPicker
+          item={versionFor}
+          instanceId={instance.id}
+          mcVersion={instance.mcVersion}
+          loader={instance.loader}
+          onClose={() => setVersionFor(null)}
+          onChanged={onChanged}
+        />
+      )}
     </div>
   )
+}
+
+/**
+ * Builds the right-click entries for one item.
+ *
+ * Kept out of the component so the list is easy to read and the "why is this
+ * greyed out" reason sits next to the entry it belongs to.
+ */
+function contentMenuItems(
+  item: ContentItem,
+  handlers: {
+    running: boolean
+    onToggle: (item: ContentItem, enabled: boolean) => void
+    onUpdate: (item: ContentItem) => void
+    onPickVersion: (item: ContentItem) => void
+    onOpenPage: (item: ContentItem) => void
+    onRemove: (item: ContentItem) => void
+  }
+): MenuItem[] {
+  const blocked = handlers.running
+  const reason = 'Nicht möglich, solange Minecraft läuft.'
+  const local = item.provider === 'local' || !item.projectId
+
+  return [
+    {
+      label: item.enabled ? 'Deaktivieren' : 'Aktivieren',
+      icon: item.enabled ? <IconX size={14} /> : <IconCheck size={14} />,
+      disabled: blocked,
+      disabledReason: reason,
+      onSelect: () => handlers.onToggle(item, !item.enabled)
+    },
+    {
+      label: item.update ? `Auf ${item.update.versionNumber} aktualisieren` : 'Kein Update verfügbar',
+      icon: <IconDownload size={14} />,
+      disabled: blocked || !item.update,
+      disabledReason: blocked ? reason : 'Dieser Eintrag ist bereits aktuell.',
+      onSelect: () => handlers.onUpdate(item)
+    },
+    {
+      label: 'Version wählen…',
+      icon: <IconLayers size={14} />,
+      disabled: blocked || local,
+      disabledReason: blocked
+        ? reason
+        : 'Diese Datei wurde von Hand hinzugefügt, es gibt keine Versionsliste.',
+      onSelect: () => handlers.onPickVersion(item)
+    },
+    {
+      label: 'Projektseite öffnen',
+      icon: <IconExternal size={14} />,
+      disabled: !item.pageUrl,
+      disabledReason: 'Für diesen Eintrag ist keine Seite hinterlegt.',
+      separated: true,
+      onSelect: () => handlers.onOpenPage(item)
+    },
+    {
+      label: 'Entfernen',
+      icon: <IconTrash size={14} />,
+      danger: true,
+      disabled: blocked,
+      disabledReason: reason,
+      onSelect: () => handlers.onRemove(item)
+    }
+  ]
 }
 
 function ContentRow({
   item,
   updating,
+  running,
   onUpdate,
   onToggle,
-  onRemove
+  onRemove,
+  onContextMenu
 }: {
   item: ContentItem
   instanceId: string
   updating: boolean
+  running: boolean
   onUpdate: () => void
   onToggle: (enabled: boolean) => void
   onRemove: () => void
+  onContextMenu: (event: MouseEvent<HTMLDivElement>) => void
 }): JSX.Element {
+  // Every change is refused by the main process while the game is up, so the
+  // buttons say so up front instead of letting the click fail.
+  const blocked = running
+  const reason = 'Nicht möglich, solange Minecraft läuft.'
+
   return (
-    <div className={`content-row ${item.enabled ? '' : 'disabled'}`}>
+    <div
+      className={`content-row ${item.enabled ? '' : 'disabled'}`}
+      onContextMenu={onContextMenu}
+    >
       {item.iconUrl ? (
         <img className="content-icon" src={item.iconUrl} alt="" loading="lazy" />
       ) : (
@@ -733,7 +872,12 @@ function ContentRow({
 
       <div className="content-actions">
         {item.update && (
-          <button className="btn sm primary" onClick={onUpdate} disabled={updating}>
+          <button
+            className="btn sm primary"
+            onClick={onUpdate}
+            disabled={updating || blocked}
+            title={blocked ? reason : undefined}
+          >
             {updating ? <span className="spinner" /> : <IconDownload size={13} />}
             Update
           </button>
@@ -750,11 +894,18 @@ function ContentRow({
         <button
           className="btn sm"
           onClick={() => onToggle(!item.enabled)}
-          title={item.enabled ? 'Deaktivieren' : 'Aktivieren'}
+          disabled={blocked}
+          title={blocked ? reason : item.enabled ? 'Deaktivieren' : 'Aktivieren'}
         >
           {item.enabled ? 'An' : 'Aus'}
         </button>
-        <button className="btn ghost icon sm" onClick={onRemove} aria-label="Entfernen">
+        <button
+          className="btn ghost icon sm"
+          onClick={onRemove}
+          disabled={blocked}
+          title={blocked ? reason : undefined}
+          aria-label="Entfernen"
+        >
           <IconTrash size={14} />
         </button>
       </div>

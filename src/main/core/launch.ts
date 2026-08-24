@@ -334,6 +334,11 @@ export function startingCount(): number {
   return starting.size
 }
 
+/** True while this instance is assembling files but has no process yet. */
+export function isStarting(instanceId: string): boolean {
+  return starting.has(instanceId)
+}
+
 export async function launchInstance(options: LaunchOptions): Promise<void> {
   const { instanceId } = options
 
