@@ -152,6 +152,16 @@ export function initials(name: string): string {
  */
 export function skinHeadStyle(skinUrl: string | undefined): CSSProperties | null {
   if (!skinUrl) return null
+
+  // Mojang hands out texture links over plain http, and the renderer's
+  // Content-Security-Policy only permits images from https. The browser
+  // therefore blocked the request outright and the tile stayed empty — with
+  // the skin class applied, so not even the initials showed through.
+  // textures.minecraft.net serves the identical file over https, and this is
+  // done at display time rather than when storing so accounts that were saved
+  // before this fix are corrected too, without needing a fresh login.
+  const secure = skinUrl.startsWith('http://') ? `https://${skinUrl.slice('http://'.length)}` : skinUrl
+
   // Quoted, so a URL containing brackets or spaces cannot break out of url().
-  return { ['--skin' as string]: `url("${encodeURI(skinUrl)}")` }
+  return { ['--skin' as string]: `url("${encodeURI(secure)}")` }
 }
