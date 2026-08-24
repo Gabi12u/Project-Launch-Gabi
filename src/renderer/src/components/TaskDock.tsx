@@ -41,15 +41,27 @@ export function TaskDock(): JSX.Element | null {
   if (visible.length === 0) return null
 
   const running = visible.filter((t) => t.state === 'running')
+  const failed = visible.filter((t) => t.state === 'failed')
+
+  // Before finished tasks were allowed to linger, only running and failed ones
+  // were ever on screen, so "nothing running" could safely be labelled as a
+  // failure. Now a completed task sits here for a moment too, and calling that
+  // "Fehlgeschlagen" while its own detail line reads "Fertig" is simply wrong.
+  const headline =
+    running.length > 0
+      ? `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`
+      : failed.length > 0
+        ? `${failed.length} ${failed.length === 1 ? 'Vorgang fehlgeschlagen' : 'Vorgänge fehlgeschlagen'}`
+        : visible.every((t) => t.state === 'cancelled')
+          ? 'Abgebrochen'
+          : 'Fertig'
 
   return (
     <div className="task-dock">
       <div className="task-dock-head">
         <span className="row gap-8">
           {running.length > 0 && <span className="spinner" style={{ width: 12, height: 12 }} />}
-          {running.length > 0
-            ? `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`
-            : 'Fehlgeschlagen'}
+          {headline}
         </span>
         <button
           className="btn ghost icon sm"
@@ -90,8 +102,12 @@ export function TaskDock(): JSX.Element | null {
 
             {task.state === 'running' ? (
               <ProgressBar value={task.progress} />
-            ) : (
+            ) : task.state === 'failed' ? (
               <div className="badge danger">Fehlgeschlagen</div>
+            ) : task.state === 'cancelled' ? (
+              <div className="badge warn">Abgebrochen</div>
+            ) : (
+              <div className="badge ok">Fertig</div>
             )}
 
             <div className="task-detail truncate">{task.detail}</div>
