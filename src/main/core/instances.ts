@@ -261,7 +261,29 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
 }
 
 /** Downloads everything the instance needs to launch. */
+/**
+ * Setups currently running, so the same instance is never installed twice.
+ *
+ * `createInstance` already starts one in the background, and the IPC channel
+ * can start another for the same instance at any time. Without this the two
+ * ran side by side: two progress entries, two loader installs writing the same
+ * files, and both racing to write `installing` and `installed` back into
+ * instance.json, where whichever finished last decided the outcome.
+ */
+const settingUp = new Map<string, Promise<void>>()
+
 export async function installInstance(id: string, force = false): Promise<void> {
+  const running = settingUp.get(id)
+  if (running) return running
+
+  const run = installInstanceOnce(id, force).finally(() => {
+    settingUp.delete(id)
+  })
+  settingUp.set(id, run)
+  return run
+}
+
+async function installInstanceOnce(id: string, force: boolean): Promise<void> {
   const instance = getInstance(id)
   if (instance.installed && !force) return
 

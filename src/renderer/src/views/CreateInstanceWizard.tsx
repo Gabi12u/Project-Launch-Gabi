@@ -4,7 +4,8 @@ import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatDate, formatMemory, pluralise } from '../lib/format'
 import { Modal } from '../components/ui'
-import { IconCheck, IconSearch, IconSparkle } from '../components/Icons'
+import { IconCheck, IconSearch, IconSparkle,
+  IconRefresh} from '../components/Icons'
 
 type Step = 0 | 1 | 2
 
@@ -29,6 +30,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const [loaderVersions, setLoaderVersions] = useState<Record<string, LoaderVersion[]>>({})
   const [loaderVersion, setLoaderVersion] = useState('')
   const [checkingLoaders, setCheckingLoaders] = useState(false)
+  // Bumped by the retry button to run the version lookup again.
+  const [versionAttempt, setVersionAttempt] = useState(0)
   const loaderRequestId = useRef(0)
 
   const [name, setName] = useState('')
@@ -75,7 +78,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
     return () => {
       current = false
     }
-  }, [open, showSnapshots])
+  }, [open, showSnapshots, versionAttempt])
 
   /* --- Which loaders exist for the chosen version? ----------------- */
   useEffect(() => {
@@ -102,7 +105,19 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
     )
       .then((entries) => {
         if (request !== loaderRequestId.current) return
-        setLoaderVersions(Object.fromEntries(entries))
+        const found = Object.fromEntries(entries)
+        setLoaderVersions(found)
+
+        // Falls back to vanilla when the loader that was selected turns out
+        // not to exist for this Minecraft version. Without this the card kept
+        // its highlight while reading "Nicht für x", and the instance was
+        // still created with that loader — the failure only surfaced later,
+        // in the background install, after the user had already been sent to
+        // the new and unusable instance.
+        setLoader((current) => {
+          if (current === 'vanilla') return current
+          return (found[current]?.length ?? 0) > 0 ? current : 'vanilla'
+        })
       })
       .finally(() => {
         if (request === loaderRequestId.current) setCheckingLoaders(false)
@@ -231,6 +246,25 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 <div key={i} className="skeleton" style={{ height: 41 }} />
               ))}
             </div>
+          ) : versions.length === 0 ? (
+            /*
+             * The list stayed simply empty when this first lookup failed, with
+             * nothing but a toast that had long since gone. "Weiter" is
+             * disabled without a chosen version, so the only ways out were
+             * toggling the snapshot switch or closing the whole wizard, and
+             * neither is anywhere suggested.
+             */
+            <div className="col gap-12" style={{ padding: '28px 0', textAlign: 'center' }}>
+              <p className="hint">
+                Die Versionsliste konnte nicht geladen werden. Meist liegt das an der
+                Internetverbindung.
+              </p>
+              <div>
+                <button className="btn" onClick={() => setVersionAttempt((n) => n + 1)}>
+                  <IconRefresh size={14} /> Erneut versuchen
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="version-list">
               {filteredVersions.map((version) => (
@@ -269,7 +303,12 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 <button
                   key={entry.id}
                   className={`option ${loader === entry.id ? 'selected' : ''}`}
-                  disabled={!available && !unknown}
+                  // Locked while the check is still running, too. It used to
+                  // stay clickable during that window, so a loader could be
+                  // picked before anyone knew whether a build for this
+                  // Minecraft version exists at all.
+                  disabled={!available || unknown}
+                  title={unknown ? 'Verfügbarkeit wird noch geprüft…' : undefined}
                   onClick={() => setLoader(entry.id)}
                 >
                   <div className="option-name">

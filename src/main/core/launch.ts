@@ -461,7 +461,14 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // above and fetches everything that carries a download address, so
     // anything still absent at this point is a real fault worth naming.
     const wanted = libraries.filter((l) => !l.native)
-    const missing = wanted.filter((l) => l.download && !existsSync(l.path))
+
+    // Natives are checked too, even though they never join the classpath.
+    // `extractNatives` quietly does nothing for a jar that is not there, so a
+    // native left behind by a failed download slipped past both this check and
+    // the extraction, and only announced itself as an unreadable JVM crash
+    // about a missing system library — the exact failure this check exists to
+    // replace with a sentence.
+    const missing = libraries.filter((l) => l.download && !existsSync(l.path))
     if (missing.length > 0) {
       const names = missing.slice(0, 3).map((l) => basename(l.path))
       throw new Error(

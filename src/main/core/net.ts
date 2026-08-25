@@ -135,9 +135,29 @@ export async function httpRequest(
   throw lastError
 }
 
+/**
+ * Reads the body inside the retry loop rather than after it.
+ *
+ * `httpRequest` returns as soon as the headers arrive, but the timeout signal
+ * stays attached to the stream. On a slow connection a large body could
+ * therefore be aborted while it was still arriving — outside the retry loop,
+ * so there was exactly one attempt and the caller saw a bare AbortError. This
+ * is the very first network step of a cold start, where a slow line is most
+ * likely.
+ */
 export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3): Promise<T> {
-  const res = await httpRequest(url, init, retries)
-  return (await res.json()) as T
+  let lastError: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await httpRequest(url, init, 0)
+      return (await res.json()) as T
+    } catch (err) {
+      lastError = err
+      if (!isRetryable(err) || attempt === retries) break
+      await sleep(400 * 2 ** attempt)
+    }
+  }
+  throw lastError
 }
 
 export async function fetchText(url: string, init?: RequestInit): Promise<string> {

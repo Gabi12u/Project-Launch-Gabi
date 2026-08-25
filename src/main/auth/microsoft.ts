@@ -214,7 +214,7 @@ export async function loginWithMicrosoft(): Promise<Account> {
     // account file. A login retired during those seconds must not touch the
     // UI of the one that replaced it.
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
-    const account = await completeMinecraftLogin(token)
+    const account = await completeMinecraftLogin(token, session)
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
 
     emit(EVENTS.deviceCode, null)
@@ -367,18 +367,76 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
     return { token: xsts.Token, uhs }
   } catch (err) {
     if (err instanceof HttpError && err.status === 401) {
-      throw new Error(
-        'Dieses Microsoft-Konto hat kein Xbox-Profil oder unterliegt einer Kindersicherung. ' +
-          'Melde dich einmal auf minecraft.net an und versuche es erneut.'
-      )
+      // Xbox states the actual reason in an `XErr` number, which the generic
+      // error parser does not look at because it only knows the `error` field.
+      // All of these used to collapse into one message telling the user to
+      // sign in at minecraft.net, which for a child account or a regional
+      // block is not the fix and simply fails again the same way.
+      let xerr: number | undefined
+      try {
+        const parsed = JSON.parse(err.body || '{}') as { XErr?: number | string }
+        xerr = parsed.XErr === undefined ? undefined : Number(parsed.XErr)
+      } catch {
+        // no readable body; fall through to the general message
+      }
+
+      switch (xerr) {
+        case 2148916233:
+          throw new Error(
+            'Zu diesem Microsoft-Konto gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
+              'xbox.com an, lege dort ein Profil an, und versuche es danach erneut.'
+          )
+        case 2148916235:
+          throw new Error(
+            'Xbox Live ist im Land dieses Kontos nicht verfügbar. Die Anmeldung ist damit ' +
+              'leider nicht möglich.'
+          )
+        case 2148916236:
+        case 2148916237:
+          throw new Error(
+            'Dieses Konto benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
+              'durch und versuche es danach erneut.'
+          )
+        case 2148916238:
+          throw new Error(
+            'Dieses Konto gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
+              'sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen ' +
+              'freigeben, danach ist die Anmeldung möglich.'
+          )
+        default:
+          throw new Error(
+            'Xbox Live hat die Anmeldung abgelehnt' +
+              (xerr ? ` (Code ${xerr})` : '') +
+              '. Melde dich einmal auf xbox.com an und versuche es danach erneut.'
+          )
+      }
     }
     throw err
   }
 }
 
-async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
+async function completeMinecraftLogin(
+  token: TokenResponse,
+  session: { cancelled: boolean }
+): Promise<Account> {
+  /**
+   * Checked between the steps, and once more right before anything is written.
+   *
+   * Guarding only around this function was not enough: the chain below makes
+   * four network calls and can easily run for several seconds, and a cancel
+   * landing inside that window used to be noticed only afterwards. By then the
+   * account had already been saved and marked active, deactivating every other
+   * account in the process, while the user was shown nothing but a failure
+   * message.
+   */
+  const abortIfCancelled = (): void => {
+    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+  }
+
   const xbl = await xboxLogin(token.access_token)
+  abortIfCancelled()
   const xsts = await xstsAuthorize(xbl.token)
+  abortIfCancelled()
 
   const mc = await fetchJson<MinecraftLoginResponse>(
     MC_LOGIN_URL,
@@ -436,6 +494,9 @@ async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
   }
   const uuid = formatUuid(profile.id)
   const skin = profile.skins?.find((s) => s.state === 'ACTIVE')?.url
+
+  // The last gate, immediately before anything touches disk.
+  abortIfCancelled()
 
   const accounts = readAccounts()
   const existingIndex = accounts.findIndex((a) => a.uuid === uuid && a.type === 'microsoft')

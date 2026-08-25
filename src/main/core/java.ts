@@ -8,7 +8,7 @@ import { paths } from '../paths'
 import { log } from '../logger'
 import { downloadFile } from './net'
 import { extractAll, extractTarGz } from './archive'
-import type { Task } from '../tasks'
+import { TaskCancelledError, type Task } from '../tasks'
 import { osArch, osName, type VersionJson } from './mojang'
 
 const logger = log('java')
@@ -326,17 +326,48 @@ function adoptiumArch(): string {
  * java folder. Java 8 needs a full JDK because some old Forge builds call
  * tools from it.
  */
-/** Major version -> in-flight install, so two launches share one download. */
-const installing = new Map<number, Promise<JavaRuntime>>()
+/**
+ * Major version -> in-flight install, so two launches share one download.
+ *
+ * The progress listeners are kept alongside it. Sharing only the promise meant
+ * a second launch waiting on the same download passed its own task object in
+ * and never heard another word: its progress bar sat at the starting message
+ * for the entire install and looked frozen, while the first launch's bar moved
+ * normally. Both are now fed from the same reporter.
+ */
+interface JavaInstall {
+  promise: Promise<JavaRuntime>
+  listeners: Set<Task>
+}
+
+const installing = new Map<number, JavaInstall>()
 
 export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   const running = installing.get(major)
-  if (running) return running
+  if (running) {
+    if (task) running.listeners.add(task)
+    return running.promise
+  }
 
-  const promise = installJavaOnce(major, task).finally(() => {
+  const listeners = new Set<Task>()
+  if (task) listeners.add(task)
+
+  // Handed down instead of the caller's own task, so every waiting launch sees
+  // the same progress.
+  const shared = {
+    update: (detail: string, progress: number | null): void => {
+      for (const listener of listeners) listener.update(detail, progress)
+    },
+    throwIfCancelled: (): void => task?.throwIfCancelled(),
+    get signal(): AbortSignal | undefined {
+      return task?.signal
+    }
+  } as unknown as Task
+
+  const promise = installJavaOnce(major, shared).finally(() => {
     installing.delete(major)
   })
-  installing.set(major, promise)
+  installing.set(major, { promise, listeners })
   return promise
 }
 
@@ -406,10 +437,21 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
 
   try {
     let received = 0
-    await downloadFile({ url, path: archive }, (delta) => {
-      received += delta
-      task?.update(`Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`, null)
-    }, 3, task?.signal)
+    try {
+      await downloadFile({ url, path: archive }, (delta) => {
+        received += delta
+        task?.update(`Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`, null)
+      }, 3, task?.signal)
+    } catch (err) {
+      // The most likely point of failure on a first start, and the one that
+      // used to hand the raw network error straight through. Cancellations
+      // keep their own type so the task system still recognises them.
+      if (err instanceof TaskCancelledError) throw err
+      throw new Error(
+        `Java ${major} konnte nicht heruntergeladen werden. Prüfe deine Internetverbindung ` +
+          `und versuche es erneut. (${err instanceof Error ? err.message : String(err)})`
+      )
+    }
 
     task?.update(`Java ${major} wird entpackt…`, null)
     rmSync(staging, { recursive: true, force: true })

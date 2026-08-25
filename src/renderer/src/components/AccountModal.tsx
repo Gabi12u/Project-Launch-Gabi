@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useState, type JSX, useRef} from 'react'
 import type { Account, DeviceCodePrompt } from '@shared/types'
 import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
@@ -20,22 +20,40 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     if (open) void refreshAccounts()
   }, [open])
 
+  /**
+   * Identifies the attempt whose result may still touch the screen.
+   *
+   * A cancelled login rejects only later, after the current poll returns. By
+   * then the user may already have started a second attempt, and the late
+   * rejection of the first would clear the device code just put on screen and
+   * re-enable the button while that second login is still running.
+   */
+  const attempt = useRef(0)
+
   const loginMicrosoft = async (): Promise<void> => {
+    const ticket = ++attempt.current
     setBusy(true)
     try {
       const account = await window.gabi.accounts.loginMicrosoft()
+      if (ticket !== attempt.current) return
       toast('success', 'Angemeldet', `Willkommen, ${account.username}!`)
       await refreshAccounts()
       setPrompt(null)
     } catch (err) {
-      toastError(err, 'Anmeldung fehlgeschlagen')
+      if (ticket !== attempt.current) return
+      // A cancel the user asked for themselves is not a failure and needs no
+      // alarming message; the dialog has already returned to its normal state.
+      if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
+        toastError(err, 'Anmeldung fehlgeschlagen')
+      }
       setPrompt(null)
     } finally {
-      setBusy(false)
+      if (ticket === attempt.current) setBusy(false)
     }
   }
 
   const cancelLogin = async (): Promise<void> => {
+    attempt.current++
     await window.gabi.accounts.cancelLogin()
     setPrompt(null)
     setBusy(false)
@@ -44,6 +62,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
   /** Closing the dialog must not leave a login running in the background. */
   const closeAndCancel = (): void => {
     if (busy) {
+      attempt.current++
       void window.gabi.accounts.cancelLogin().catch(() => undefined)
     }
     setPrompt(null)
