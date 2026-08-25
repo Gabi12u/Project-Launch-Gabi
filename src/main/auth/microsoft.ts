@@ -219,6 +219,21 @@ export async function loginWithMicrosoft(): Promise<Account> {
 
     emit(EVENTS.deviceCode, null)
     return account
+  } catch (err) {
+    // Logged before it goes on to the renderer. A failed login only ever
+    // produced a toast, so nothing about it survived in the log file and a
+    // report of "HTTP 400 while signing in" left nothing to work from. The
+    // response body is included, because with these endpoints that is the
+    // only part that says what actually went wrong.
+    if (err instanceof HttpError) {
+      logger.error(
+        `Anmeldung fehlgeschlagen: HTTP ${err.status} von ${err.url}, ` +
+          `Code: ${err.code ?? '(keiner)'}, Rumpf: ${(err.body || '(leer)').slice(0, 300)}`
+      )
+    } else if (err instanceof Error && err.message !== 'Anmeldung abgebrochen') {
+      logger.error('Anmeldung fehlgeschlagen:', err)
+    }
+    throw err
   } finally {
     activeLogins.delete(session)
   }
@@ -284,17 +299,24 @@ async function pollForToken(
         interval += 5000
         continue
       }
-      // A 400 with no readable code is ambiguous: usually a hiccup, but a
-      // wrong client_id looks identical and would otherwise keep polling
-      // until the device code expires, blaming an "expired code" for a
-      // permanent misconfiguration. A couple of retries covers the hiccup;
-      // beyond that the real error is the more useful answer.
+      // A 400 with no readable code keeps the loop going, as it always did.
+      //
+      // A stricter version of this stood here for one release: it gave up
+      // after three such answers, on the reasoning that a wrong client id
+      // looks the same and should be named rather than blamed on an expired
+      // code. That reasoning still holds, but a login that is merely waiting
+      // must never be cut short, and this branch cannot tell the two apart.
+      // The body is logged instead, so a recurring cause can be identified
+      // without guessing.
       if (err.status === 400 && !err.code) {
-        if (++unreadableErrors <= 3) continue
-        throw new Error(
-          'Die Anmeldung wurde abgelehnt und es kam keine verwertbare Begruendung zurueck. ' +
-            'Pruefe die Microsoft-Anwendungs-ID in den Einstellungen.'
-        )
+        unreadableErrors++
+        if (unreadableErrors === 1 || unreadableErrors % 10 === 0) {
+          logger.warn(
+            `Anmeldung: ${unreadableErrors}. Antwort 400 ohne lesbaren Code, Rumpf: ` +
+              `${(err.body || '(leer)').slice(0, 200)}`
+          )
+        }
+        continue
       }
 
       throw err
