@@ -181,9 +181,13 @@ img {
 }
 
 /*
- * A still field of voxels, painted once by Ambient.tsx. It used to drift on an
- * animation-frame loop; at this opacity a single paint looks near enough
- * identical and costs nothing after the first frame.
+ * The drifting voxel field from Ambient.tsx.
+ *
+ * Only `transform` is animated. That keeps the whole thing on the compositor:
+ * no layout, no repaint and no JavaScript per frame, which is what made the
+ * original animation-frame version expensive enough to be removed. The cubes
+ * are deliberately slow and travel only a few pixels, so the movement is
+ * noticeable without pulling attention away from the interface.
  */
 .voxel-field {
   position: absolute;
@@ -191,6 +195,50 @@ img {
   width: 100%;
   height: 100%;
   opacity: 0.2;
+  overflow: hidden;
+}
+
+.voxel {
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  opacity: var(--a);
+  /* Alternating avoids the jump back to the start that a looping animation
+     would produce at these durations. */
+  animation: voxel-drift var(--dur) ease-in-out var(--delay) infinite alternate;
+}
+
+/* The lit top edge that gives the flat square its cube reading. */
+.voxel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 28%;
+  background: #fff;
+  opacity: 0.55;
+}
+
+@keyframes voxel-drift {
+  from { transform: translate3d(0, 0, 0) rotate(var(--r)); }
+  to   { transform: translate3d(var(--dx), var(--dy), 0) rotate(calc(var(--r) + var(--dr))); }
+}
+
+/*
+ * With reduced motion the cubes stay, they simply stop moving. The setting
+ * asks for less movement, not for a barer window.
+ */
+.voxel-field.still .voxel {
+  animation: none;
+  transform: rotate(var(--r));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voxel {
+    animation: none;
+    transform: rotate(var(--r));
+  }
 }
 
 /* A faint perspective grid gives the window a floor to stand on. */

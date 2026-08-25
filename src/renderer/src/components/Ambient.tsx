@@ -1,113 +1,76 @@
-import { useEffect, useRef, type JSX } from 'react'
+import { useMemo, type CSSProperties, type JSX } from 'react'
 import { useStore } from '../lib/store'
 
-interface Voxel {
-  x: number
-  y: number
-  size: number
-  angle: number
-  alpha: number
-}
+/** How many cubes are scattered. Matches the density the canvas version used. */
+const COUNT = 34
 
 /**
  * The backdrop: three colour fields, a perspective floor grid and a scatter of
  * voxel cubes.
  *
- * Everything here is painted once and then left alone. An earlier version
- * animated the fields and drifted the voxels on an animation-frame loop; on a
- * laptop that alone accounted for roughly half the launcher's CPU, because a
- * running animation forces the compositor to produce frames forever whether or
- * not anything meaningful changed. The static version is nearly indis-
- * tinguishable at these opacities and costs nothing once drawn.
+ * The cubes drift, but nothing here runs on the main thread. An early version
+ * repainted them on an animation-frame loop and that alone accounted for
+ * roughly half the launcher's CPU on a laptop, which is why it was made
+ * completely still for a while. This sits in between: each cube is a plain
+ * element animated on `transform` only, which the compositor handles on its
+ * own without waking JavaScript or re-running layout for a single frame.
+ *
+ * Positions are percentages, so one scatter works at any window size and a
+ * resize needs no recalculation at all.
  */
 export function Ambient(): JSX.Element {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const { settings } = useStore()
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || settings.reduceMotion) return
-
-    const context = canvas.getContext('2d')
-    if (!context) return
-
-    /** A flat-shaded cube: body, lit top edge, outline. */
-    const drawCube = (voxel: Voxel, colour: string): void => {
-      const s = voxel.size
-      context.save()
-      context.translate(voxel.x, voxel.y)
-      context.rotate(voxel.angle)
-
-      context.globalAlpha = voxel.alpha
-      context.fillStyle = colour
-      context.fillRect(-s / 2, -s / 2, s, s)
-
-      context.globalAlpha = voxel.alpha * 0.55
-      context.fillStyle = '#ffffff'
-      context.fillRect(-s / 2, -s / 2, s, s * 0.28)
-
-      context.globalAlpha = voxel.alpha * 0.9
-      context.strokeStyle = colour
-      context.lineWidth = 1
-      context.strokeRect(-s / 2, -s / 2, s, s)
-      context.restore()
-    }
-
-    const paint = (): void => {
-      const ratio = Math.min(window.devicePixelRatio || 1, 2)
-      const width = canvas.clientWidth
-      const height = canvas.clientHeight
-      if (width === 0 || height === 0) return
-
-      canvas.width = Math.floor(width * ratio)
-      canvas.height = Math.floor(height * ratio)
-      context.setTransform(ratio, 0, 0, ratio, 0, 0)
-      context.clearRect(0, 0, width, height)
-
-      const colour =
-        getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c5cff'
-
-      // Density scales with the window so a maximised launcher is not emptier
-      // than a small one.
-      const count = Math.min(38, Math.round((width * height) / 42000))
-
-      for (let i = 0; i < count; i++) {
-        drawCube(
-          {
-            x: Math.random() * width,
-            y: Math.random() * height,
-            size: 4 + Math.random() * 10,
-            angle: Math.random() * Math.PI,
-            alpha: 0.12 + Math.random() * 0.34
-          },
-          colour
-        )
-      }
-    }
-
-    paint()
-
-    // Re-scatter on resize only; nothing else invalidates the layer.
-    let pending = 0
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(pending)
-      pending = requestAnimationFrame(paint)
-    })
-    observer.observe(canvas)
-
-    return () => {
-      cancelAnimationFrame(pending)
-      observer.disconnect()
-    }
-    // Repaint when the accent changes so the voxels follow the theme.
-  }, [settings.accentColor, settings.theme, settings.reduceMotion])
+  // Generated once. Re-rolling them on a theme change would make the whole
+  // field visibly jump, and the colour comes from CSS anyway.
+  const voxels = useMemo(
+    () =>
+      Array.from({ length: COUNT }, () => ({
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        size: `${4 + Math.random() * 10}px`,
+        rotation: `${Math.random() * 180}deg`,
+        alpha: 0.12 + Math.random() * 0.34,
+        // Each cube gets its own path and pace, otherwise the field moves as
+        // one block and reads as a sliding image rather than floating pieces.
+        driftX: `${(Math.random() - 0.5) * 26}px`,
+        driftY: `${(Math.random() - 0.5) * 26}px`,
+        driftRotation: `${(Math.random() - 0.5) * 24}deg`,
+        duration: `${14 + Math.random() * 22}s`,
+        delay: `-${Math.random() * 20}s`
+      })),
+    []
+  )
 
   return (
     <div className="ambient" aria-hidden="true">
       <div className="aurora a" />
       <div className="aurora b" />
       <div className="aurora c" />
-      {!settings.reduceMotion && <canvas ref={canvasRef} className="voxel-field" />}
+
+      <div className={`voxel-field${settings.reduceMotion ? ' still' : ''}`}>
+        {voxels.map((voxel, index) => (
+          <span
+            key={index}
+            className="voxel"
+            style={
+              {
+                left: voxel.left,
+                top: voxel.top,
+                '--s': voxel.size,
+                '--r': voxel.rotation,
+                '--a': voxel.alpha,
+                '--dx': voxel.driftX,
+                '--dy': voxel.driftY,
+                '--dr': voxel.driftRotation,
+                '--dur': voxel.duration,
+                '--delay': voxel.delay
+              } as CSSProperties
+            }
+          />
+        ))}
+      </div>
+
       <div className="ambient-grid" />
       <div className="ambient-vignette" />
     </div>

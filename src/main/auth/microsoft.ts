@@ -407,12 +407,32 @@ async function completeMinecraftLogin(token: TokenResponse): Promise<Account> {
     throw new Error('Dieses Konto besitzt keine Minecraft-Java-Edition-Lizenz.')
   }
 
-  const profile = await fetchJson<MinecraftProfile>(MC_PROFILE_URL, {
-    headers: { Authorization: `Bearer ${mc.access_token}` }
-  })
+  // The last step, and the one that fails for accounts which came this far
+  // without ever having played Java Edition. Everything before it succeeds
+  // for them: Microsoft signs them in, Xbox issues a token, and Game Pass
+  // even reports an entitlement — so the raw status code arriving here was
+  // the first and only sign anything was wrong, with nothing to act on.
+  let profile: MinecraftProfile
+  try {
+    profile = await fetchJson<MinecraftProfile>(MC_PROFILE_URL, {
+      headers: { Authorization: `Bearer ${mc.access_token}` }
+    })
+  } catch (err) {
+    if (err instanceof HttpError && (err.status === 404 || err.status === 400)) {
+      throw new Error(
+        'Für dieses Konto gibt es noch kein Minecraft-Java-Profil. ' +
+          'Das passiert bei Game Pass und bei frisch gekauften Konten, solange noch kein ' +
+          'Spielername festgelegt wurde. Melde dich einmal auf minecraft.net an, lege dort ' +
+          'einen Spielernamen fest, und versuche es danach erneut.'
+      )
+    }
+    throw err
+  }
 
   if (!profile?.id || !profile.name) {
-    throw new Error('Das Minecraft-Profil konnte nicht gelesen werden. Bitte erneut versuchen.')
+    throw new Error(
+      'Das Konto hat keinen Spielernamen. Lege auf minecraft.net einen fest und melde dich danach erneut an.'
+    )
   }
   const uuid = formatUuid(profile.id)
   const skin = profile.skins?.find((s) => s.state === 'ACTIVE')?.url
