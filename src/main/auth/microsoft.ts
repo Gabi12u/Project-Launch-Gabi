@@ -735,11 +735,26 @@ export function listAccounts(): Account[] {
 
 export function getActiveAccount(): StoredAccount | null {
   const accounts = readAccounts()
-  return accounts.find((a) => a.active) ?? accounts[0] ?? null
+  const active = accounts.find((a) => a.active)
+  if (active) return active
+  if (accounts.length === 0) return null
+
+  // Falling back to the first account silently was the old behaviour, and it
+  // meant the launcher started Minecraft with an account the account list
+  // showed as inactive. Writing the choice back keeps both in step, so what is
+  // highlighted is genuinely what plays.
+  logger.warn('Kein Konto war aktiv, das erste wird übernommen')
+  accounts[0].active = true
+  writeAccounts(accounts)
+  return accounts[0]
 }
 
 export function setActiveAccount(id: string): Account[] {
   const accounts = readAccounts().map((a) => ({ ...a, active: a.id === id }))
+  // The id can be gone by the time this arrives: removing an account and
+  // clicking another one in quick succession leaves the click pointing at a
+  // record that no longer exists. Without this every account ends up inactive.
+  if (accounts.length > 0 && !accounts.some((a) => a.active)) accounts[0].active = true
   writeAccounts(accounts)
   return accounts.map(toPublicAccount)
 }

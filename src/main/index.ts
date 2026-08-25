@@ -7,7 +7,7 @@ import { getSettings } from './store'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
-import { adoptRunningFromDisk } from './core/running'
+import { adoptRunningFromDisk, pruneAdopted } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
@@ -35,18 +35,36 @@ let pendingLaunch: string | null = null
  */
 let pendingRoute: string | null = null
 
-/** Delivers a route now, or remembers it until a window exists. */
+/**
+ * False until the renderer has had time to subscribe to main-process events.
+ *
+ * A window object exists the instant `createWindow` returns, long before the
+ * page inside it has loaded and attached its listeners. Startup arguments are
+ * handled on the very next line, so a shortcut or a `launchgabi://` link that
+ * started the launcher cold was acted on against a window that was not
+ * listening yet: the navigation went nowhere and the launch progress never
+ * reached the interface, leaving the user looking at the home screen while
+ * Minecraft started behind it. Anything aimed at the renderer waits for this.
+ */
+let bootSettled = false
+
+/** True once the renderer can be expected to receive what it is sent. */
+function rendererReachable(): boolean {
+  return bootSettled && getMainWindow() !== null
+}
+
+/** Delivers a route now, or remembers it until the renderer can receive it. */
 function routeOrQueue(target: string): void {
-  if (getMainWindow()) {
+  if (rendererReachable()) {
     navigate(target)
     return
   }
   pendingRoute = target
-  logger.info(`Deep Link ${target} vorgemerkt, es ist noch kein Fenster offen`)
+  logger.info(`Deep Link ${target} vorgemerkt, die Oberfläche ist noch nicht bereit`)
 }
 
 function consumePendingRoute(): void {
-  if (!pendingRoute || !getMainWindow()) return
+  if (!pendingRoute || !rendererReachable()) return
   const target = pendingRoute
   pendingRoute = null
   navigate(target)
@@ -112,6 +130,9 @@ function createWindow(): BrowserWindow {
     // icon is clicked on macOS. Any deep link waiting since then is delivered
     // here rather than only by the one-shot timer during boot.
     consumePendingRoute()
+    // Same for a launch waiting on a window. On macOS the app stays alive with
+    // no window at all, so a shortcut can arrive with nothing to show it.
+    void consumePendingLaunch()
   })
 
   const pushWindowState = (): void => emit(EVENTS.windowState, { maximized: window.isMaximized() })
@@ -199,6 +220,9 @@ function bootstrap(): void {
     adoptRunningFromDisk()
     try {
       loadInstances()
+      // Only meaningful once the instances are known, hence not up with the
+      // adoption itself.
+      pruneAdopted((id) => tryGetInstance(id) !== null)
     } catch (err) {
       // The data directory can sit on a disconnected network drive or an
       // unhydrated cloud folder. Starting with an empty list beats dying before
@@ -222,6 +246,8 @@ function bootstrap(): void {
 
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
+      bootSettled = true
+
       // A quit or crash during a download strands its `.part` file, and nothing
       // else ever sweeps the shared library/asset trees where most of them land.
       try {
@@ -289,7 +315,10 @@ function handleDeepLink(url: string): void {
 
 /** Starts the instance a shortcut asked for, once the app is ready. */
 async function consumePendingLaunch(): Promise<void> {
-  if (!pendingLaunch || !app.isReady()) return
+  // Left pending rather than dropped when the renderer cannot receive yet: the
+  // timer during boot calls this again, and by then the progress, the log
+  // window and the compatibility dialog all have somewhere to appear.
+  if (!pendingLaunch || !app.isReady() || !rendererReachable()) return
 
   const instanceId = pendingLaunch
   pendingLaunch = null

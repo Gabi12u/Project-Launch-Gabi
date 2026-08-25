@@ -48,6 +48,56 @@ function settingsFile(): string {
 
 let settings: LauncherSettings | null = null
 
+/** Turns anything into a usable number, or falls back if it cannot. */
+function clampNumber(value: unknown, fallback: number, min: number, max: number): number {
+  // `Number(null)`, `Number('')` and `Number(false)` are all 0, which would
+  // pass the finite check and then clamp to the minimum. A missing value is
+  // not a request for the smallest one, so these go to the default instead.
+  if (value === null || value === undefined || typeof value === 'boolean') return fallback
+  if (typeof value === 'string' && value.trim() === '') return fallback
+
+  const num = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(num)) return fallback
+  return Math.min(max, Math.max(min, Math.round(num)))
+}
+
+function textOr(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback
+}
+
+/**
+ * Brings a stored settings file back into the shape the rest of the launcher
+ * takes for granted.
+ *
+ * `launcher.json` is a plain file that can be hand-edited, restored from a
+ * backup or synced between machines, so a string can end up where a number
+ * belongs. Every field below is used further on without another check, and the
+ * damage was quiet rather than loud: a non-numeric backup count compared false
+ * against every limit and deleted all automatic backups at once, a non-numeric
+ * download count produced an empty worker pool that reported success without
+ * transferring anything, and a non-string data directory threw inside `join()`
+ * before the window ever appeared.
+ */
+function sanitize(input: LauncherSettings): LauncherSettings {
+  const next: LauncherSettings = { ...input }
+  const fallback = DEFAULT_LAUNCHER_SETTINGS
+
+  next.defaultMemoryMb = clampNumber(next.defaultMemoryMb, fallback.defaultMemoryMb, 512, 65536)
+  next.concurrentDownloads = clampNumber(next.concurrentDownloads, fallback.concurrentDownloads, 1, 32)
+  next.downloadThrottleKbps = clampNumber(next.downloadThrottleKbps, fallback.downloadThrottleKbps, 0, 1_000_000)
+  next.automaticBackupKeep = clampNumber(next.automaticBackupKeep, fallback.automaticBackupKeep, 1, 200)
+
+  next.defaultJvmArgs = textOr(next.defaultJvmArgs, fallback.defaultJvmArgs)
+  next.accentColor = textOr(next.accentColor, fallback.accentColor)
+  next.curseForgeApiKey = textOr(next.curseForgeApiKey, fallback.curseForgeApiKey)
+  next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId)
+
+  if (typeof next.dataDirectory !== 'string' || !next.dataDirectory.trim()) {
+    next.dataDirectory = join(app.getPath('userData'), 'data')
+  }
+  return next
+}
+
 export function getSettings(): LauncherSettings {
   if (!settings) {
     const raw = readJson<Partial<LauncherSettings>>(settingsFile(), {})
@@ -55,23 +105,21 @@ export function getSettings(): LauncherSettings {
     // produce a settings object with no usable fields.
     const stored = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
     // Merging with the defaults keeps configs from older builds usable.
-    settings = { ...DEFAULT_LAUNCHER_SETTINGS, ...stored }
-    if (!settings.dataDirectory) {
-      settings.dataDirectory = join(app.getPath('userData'), 'data')
-    }
+    settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, ...stored })
   }
   return settings
 }
 
 export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings {
   const current = getSettings()
-  const next = { ...current, ...patch }
+  const next = sanitize({ ...current, ...patch })
 
-  // The empty-string fallback in `getSettings` only runs on first load, so a
-  // cleared text field would otherwise persist `dataDirectory: ''` and every
-  // `paths.*()` call would resolve against `process.cwd()` for the rest of the
-  // session, scattering instances and backups outside the data directory.
-  if (typeof next.dataDirectory !== 'string' || !next.dataDirectory.trim()) {
+  // Sanitising would put the default path back, which is not what a cleared
+  // text field should mean: every `paths.*()` call would resolve somewhere
+  // else for the rest of the session, scattering instances and backups.
+  // Keeping the previous path is the answer that loses nothing.
+  const wanted = { ...current, ...patch }.dataDirectory
+  if (typeof wanted !== 'string' || !wanted.trim()) {
     logger.warn('Leeres Datenverzeichnis abgelehnt, bisheriger Pfad bleibt bestehen')
     next.dataDirectory = current.dataDirectory
   }
@@ -114,7 +162,24 @@ export function readAccounts(): StoredAccount[] {
     logger.warn('accounts.json enthält kein Array, wird ignoriert')
     return []
   }
-  return stored.filter((account): account is StoredAccount => Boolean(account) && typeof account === 'object')
+  const usable = stored.filter((account): account is StoredAccount => {
+    if (!account || typeof account !== 'object') return false
+    // An entry without these is not merely incomplete, it breaks the launch
+    // arguments: the UUID and name go straight into Minecraft's command line,
+    // and the id is how every other part of the launcher addresses the account.
+    return (
+      typeof account.id === 'string' &&
+      account.id.length > 0 &&
+      typeof account.username === 'string' &&
+      account.username.length > 0 &&
+      typeof account.uuid === 'string' &&
+      account.uuid.length > 0
+    )
+  })
+  if (usable.length !== stored.length) {
+    logger.warn(`accounts.json: ${stored.length - usable.length} unvollständige Konten übersprungen`)
+  }
+  return usable
 }
 
 export function writeAccounts(accounts: StoredAccount[]): void {

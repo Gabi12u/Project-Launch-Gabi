@@ -33,6 +33,15 @@ let checking = false
 
 function setStatus(patch: Partial<UpdateStatus>): void {
   status = { ...status, ...patch, currentVersion: app.getVersion() }
+
+  // The patch is merged, so `error` outlived the failure that set it: a check
+  // that failed once and then succeeded still carried the old message, and the
+  // settings page showed "Launch Gabi ist aktuell" with a red error underneath
+  // it. Anything that is no longer an error state has no error to report.
+  if (patch.state && patch.state !== 'error' && patch.error === undefined) {
+    status = { ...status, error: undefined }
+  }
+
   emit(EVENTS.updateStatus, status)
 }
 
@@ -67,11 +76,14 @@ export function initUpdater(): void {
   // Downloading is silent and never blocks the window.
   autoUpdater.autoDownload = settings.autoUpdate !== false
 
-  // The two install moments are mutually exclusive. Installing on quit is
-  // invisible — which is exactly what made it impossible to tell whether an
-  // update had happened — so when the start-up install is on, the download is
-  // deliberately left pending for the next launch, where the user sees it.
-  autoUpdater.autoInstallOnAppQuit = settings.autoInstallUpdates === false
+  // Never. This used to be `settings.autoInstallUpdates === false`, which meant
+  // switching automatic installation *off* switched on the one install path
+  // that gives no sign of itself at all: electron-updater runs the installer
+  // during shutdown, past every check in this file, so a game still running was
+  // not consulted and the user had asked for the opposite of what happened.
+  // Installation now only happens where it is visible, either during start-up
+  // just below or from the button in the settings.
+  autoUpdater.autoInstallOnAppQuit = false
 
   autoUpdater.on('checking-for-update', () => {
     setStatus({ state: 'checking', detail: 'Suche nach Updates…' })

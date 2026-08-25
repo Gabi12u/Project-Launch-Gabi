@@ -227,7 +227,12 @@ const inUse = new Set<string>()
 /** Keeps only the newest N automatic backups. */
 function pruneAutomatic(instanceId: string): void {
   const keep = getSettings().automaticBackupKeep
-  if (keep <= 0) return
+  // The finite check is not decoration. Every comparison against a non-numeric
+  // value is false, so `keep <= 0` waved it through and `slice(keep)` behaved
+  // like `slice(0)`: the excess list became every automatic backup there was,
+  // and one prune wiped all of them. The settings loader guards this too, this
+  // is the second lock on a door that leads to unrecoverable data.
+  if (!Number.isFinite(keep) || keep <= 0) return
 
   const entries = readIndex(instanceId)
   const automatic = entries.filter((e) => e.reason === 'automatic').sort((a, b) => b.createdAt - a.createdAt)

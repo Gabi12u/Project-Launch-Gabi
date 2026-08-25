@@ -33,6 +33,7 @@ import {
   syncContentWithDisk
 } from './instances'
 import { checkCompatibility } from './compat'
+import { isFixing } from './content'
 import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
 import {
   activeVersionIds,
@@ -348,6 +349,13 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   // starts a JVM against files that are half written or briefly absent.
   if (isRepairing(instanceId)) {
     throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+  }
+
+  // Same reasoning for the compatibility window's automatic fix: it installs,
+  // disables and removes mods one after another, and a launch into that half
+  // of the work loads a mods folder that does not match itself.
+  if (isFixing(instanceId)) {
+    throw new Error('Die Mods dieser Instanz werden gerade repariert. Warte, bis das abgeschlossen ist.')
   }
 
   if (isRunning(instanceId) || starting.has(instanceId)) {
@@ -830,6 +838,10 @@ function attachOutput(instanceId: string, child: ReturnType<typeof spawn>): void
 
 function parseEnv(raw: string): Record<string, string> {
   const env: Record<string, string> = {}
+  // Comes straight out of instance.json, so it is only a string by convention.
+  // Calling `.split` on anything else threw right before spawn, turning a
+  // cosmetic mistake in a settings file into an instance that cannot start.
+  if (typeof raw !== 'string') return env
   for (const line of raw.split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith('#')) continue

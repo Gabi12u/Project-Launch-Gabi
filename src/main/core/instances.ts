@@ -137,6 +137,11 @@ export function persist(instance: Instance): Instance {
 }
 
 export function toSummary(instance: Instance): InstanceSummary {
+  // A hand-edited or half-written instance.json can carry an object where an
+  // array belongs, and this runs for every instance in one pass: reading
+  // `.filter` off a non-array threw, and the throw took the whole list down
+  // with it, so one damaged instance emptied the library.
+  const content = Array.isArray(instance.content) ? instance.content : []
   return {
     id: instance.id,
     name: instance.name,
@@ -146,25 +151,33 @@ export function toSummary(instance: Instance): InstanceSummary {
     loader: instance.loader,
     loaderVersion: instance.loaderVersion,
     appearance: instance.appearance,
-    modCount: instance.content.filter((c) => c.type === 'mod').length,
-    memoryMb: instance.settings.memoryMb,
+    modCount: content.filter((c) => c?.type === 'mod').length,
+    memoryMb: instance.settings?.memoryMb,
     lastPlayed: instance.lastPlayed,
     totalPlayMs: instance.totalPlayMs,
     favorite: instance.favorite,
     installing: instance.installing,
     installed: instance.installed,
     running: isRunning(instance.id),
-    updateCount: instance.content.filter((c) => c.update).length
+    updateCount: content.filter((c) => c?.update).length
   }
 }
 
 export function listSummaries(): InstanceSummary[] {
-  return loadInstances()
-    .map(toSummary)
-    .sort((a, b) => {
-      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
-      return (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0)
-    })
+  const summaries: InstanceSummary[] = []
+  for (const instance of loadInstances()) {
+    try {
+      summaries.push(toSummary(instance))
+    } catch (err) {
+      // Belt and braces around the guards above: whatever else a broken file
+      // holds, the other instances stay visible and reachable.
+      logger.warn(`Instanz ${instance?.id ?? '?'} konnte nicht gelesen werden:`, err)
+    }
+  }
+  return summaries.sort((a, b) => {
+    if (a.favorite !== b.favorite) return a.favorite ? -1 : 1
+    return (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0)
+  })
 }
 
 /* ------------------------------------------------------------------ *

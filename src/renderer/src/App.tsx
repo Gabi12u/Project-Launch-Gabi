@@ -72,7 +72,17 @@ export function App(): JSX.Element {
         setState((current) => ({
           launchStatus: { ...current.launchStatus, [status.instanceId]: status }
         }))
-        if (status.phase === 'running' || status.phase === 'stopped' || status.phase === 'crashed') {
+        // `idle` belongs in this list. It is what the main process sends when
+        // a leftover record from a previous session is dropped, and without a
+        // refresh the card kept the running badge and its Beenden button: the
+        // instance was free again, but the only control offered was one that
+        // now did nothing.
+        if (
+          status.phase === 'running' ||
+          status.phase === 'stopped' ||
+          status.phase === 'crashed' ||
+          status.phase === 'idle'
+        ) {
           void refreshInstances()
         }
       }),

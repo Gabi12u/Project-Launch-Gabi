@@ -451,7 +451,11 @@ export async function downloadAll(
   options: DownloadAllOptions = {}
 ): Promise<void> {
   const { task, label = 'Lade Dateien', onFile, onError } = options
-  const concurrency = Math.max(1, options.concurrency ?? getSettings().concurrentDownloads)
+  // `Math.max(1, NaN)` is NaN, and a NaN worker count builds an empty pool:
+  // the batch resolved immediately, reporting every download as done without a
+  // single byte transferred.
+  const wanted = options.concurrency ?? getSettings().concurrentDownloads
+  const concurrency = Number.isFinite(wanted) ? Math.max(1, wanted) : 8
 
   // Asset indexes map several names onto one hash, so the same destination can
   // appear more than once in a batch. Two workers writing one path is exactly

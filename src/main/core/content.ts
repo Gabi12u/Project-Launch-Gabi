@@ -526,8 +526,45 @@ export async function updateAll(instanceId: string): Promise<number> {
  * Automatic fixes
  * ------------------------------------------------------------------ */
 
+/**
+ * Instances whose mod folder is being rewritten by an automatic fix.
+ *
+ * The IPC layer checks that the game is stopped before it calls in here, but
+ * that is a single check at the door: applying a fix downloads a mod, removes
+ * another and can run for a while, and a Play click during that window passed
+ * every guard and started a JVM against a mods folder mid-edit. `launchInstance`
+ * asks this the same way it asks `isRepairing`.
+ */
+const fixing = new Map<string, number>()
+
+export function isFixing(instanceId: string): boolean {
+  return (fixing.get(instanceId) ?? 0) > 0
+}
+
+/**
+ * Holds the marker for as long as `run` takes.
+ *
+ * Counted rather than a plain set, because `fixAll` holds it across the whole
+ * batch and each `applyFix` inside takes it again. With a set the inner release
+ * would clear the outer one and leave the rest of the batch unprotected.
+ */
+async function withFixLock<T>(instanceId: string, run: () => Promise<T>): Promise<T> {
+  fixing.set(instanceId, (fixing.get(instanceId) ?? 0) + 1)
+  try {
+    return await run()
+  } finally {
+    const left = (fixing.get(instanceId) ?? 1) - 1
+    if (left > 0) fixing.set(instanceId, left)
+    else fixing.delete(instanceId)
+  }
+}
+
 /** Applies the `fix` attached to a compatibility issue. */
 export async function applyFix(instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>): Promise<void> {
+  await withFixLock(instanceId, () => runFix(instanceId, fix))
+}
+
+async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>): Promise<void> {
   switch (fix.kind) {
     case 'install-dependency': {
       if (!fix.projectId || !fix.provider) return
@@ -590,15 +627,18 @@ export async function fixAll(instanceId: string, issues: CompatibilityIssue[]): 
   const fixable = issues.filter((i) => i.fix)
   let applied = 0
 
-  for (const issue of fixable) {
-    try {
-      await applyFix(instanceId, issue.fix as NonNullable<CompatibilityIssue['fix']>)
-      applied++
-    } catch (err) {
-      logger.warn(`Fix für "${issue.title}" fehlgeschlagen:`, err)
+  // One lock for the whole batch, so the gap between two fixes is covered too.
+  return withFixLock(instanceId, async () => {
+    for (const issue of fixable) {
+      try {
+        await applyFix(instanceId, issue.fix as NonNullable<CompatibilityIssue['fix']>)
+        applied++
+      } catch (err) {
+        logger.warn(`Fix für "${issue.title}" fehlgeschlagen:`, err)
+      }
     }
-  }
-  return applied
+    return applied
+  })
 }
 
 /* ------------------------------------------------------------------ *

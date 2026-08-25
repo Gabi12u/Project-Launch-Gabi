@@ -131,6 +131,27 @@ export function adoptRunningFromDisk(): void {
   persist()
 }
 
+/**
+ * Drops adopted records whose instance is gone.
+ *
+ * An instance deleted while its game was still running left an entry nothing
+ * could reach: no card in the library, so no stop button, and the record sat
+ * there for the full 18 hours holding a version's shared files in use. The
+ * check lives here rather than inside `adoptRunningFromDisk` because that runs
+ * before the instances are read, and the caller passes the lookup in to keep
+ * this module free of an import back into the instance store.
+ */
+export function pruneAdopted(exists: (instanceId: string) => boolean): void {
+  let removed = 0
+  for (const instanceId of [...adopted.keys()]) {
+    if (exists(instanceId)) continue
+    adopted.delete(instanceId)
+    removed++
+    logger.info(`Übernommener Eintrag für gelöschte Instanz ${instanceId} verworfen`)
+  }
+  if (removed > 0) persist()
+}
+
 export function setRunning(instanceId: string, game: RunningGame): void {
   // This process owns it now, so any record from the previous session is stale.
   adopted.delete(instanceId)
