@@ -14,6 +14,7 @@ import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
 import { disposeRecording, flushRecording, getRecordingState, initRecording } from './core/recording'
+import { reportError } from './core/reports'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
 const isDev = !app.isPackaged
@@ -202,9 +203,11 @@ function bootstrap(): void {
   // for a desktop app the user has work open in.
   process.on('uncaughtException', (err) => {
     logger.error('Unbehandelter Fehler im Hauptprozess:', err)
+    reportError('main:uncaught', err)
   })
   process.on('unhandledRejection', (reason) => {
     logger.error('Unbehandelte Promise-Ablehnung im Hauptprozess:', reason)
+    reportError('main:rejection', reason)
   })
 
   app.on('open-url', (event, url) => {

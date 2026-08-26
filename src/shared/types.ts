@@ -18,6 +18,15 @@ export type LaunchBehaviour = 'keep' | 'hide' | 'close'
 
 export type RecordingQuality = 'low' | 'medium' | 'high'
 
+/**
+ * Whether error reports may be sent.
+ *
+ * Three states rather than a boolean, because "has not been asked yet" is a
+ * real and different thing from "said no". Without it the launcher could not
+ * tell a fresh install from someone who declined, and would keep asking.
+ */
+export type ReportConsent = 'unset' | 'on' | 'off'
+
 /** What the recorder is doing right now, mirrored into the interface. */
 export interface RecordingState {
   active: boolean
@@ -536,6 +545,8 @@ export interface LauncherSettings {
    * Empty on a fresh install, which is how a first start is told apart from
    * an update.
    */
+  /** Whether error reports may be sent to the developers. */
+  crashReports: ReportConsent
   lastRunVersion: string
   /**
    * The version whose changelog the user has already seen.

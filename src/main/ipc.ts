@@ -60,6 +60,13 @@ import {
 } from './core/content'
 import { checkCompatibility } from './core/compat'
 import {
+  clearReports,
+  listReports,
+  reportError,
+  reportingConfigured,
+  reportsFolder
+} from './core/reports'
+import {
   appendChunk,
   deleteRecording,
   failRecording,
@@ -117,7 +124,9 @@ function handle<T extends unknown[], R>(
  */
 function openLauncherPath(target: string): Promise<string> {
   const resolved = resolve(target)
-  const roots = [paths.root(), getLogDirectory()].map((dir) => resolve(dir))
+  // The reports folder sits in userData next to the logs, not under the data
+  // directory, so it needs naming here or the button to open it is refused.
+  const roots = [paths.root(), getLogDirectory(), reportsFolder()].map((dir) => resolve(dir))
 
   const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir + sep))
   if (!inside) {
@@ -375,7 +384,23 @@ export function registerIpc(): void {
    * Recording
    * ---------------------------------------------------------------- */
 
+  /* ---------------------------------------------------------------- *
+   * Error reports
+   * ---------------------------------------------------------------- */
+
+  handle(IPC.reportsList, () => listReports())
+  handle(IPC.reportsClear, () => clearReports())
+  handle(IPC.reportsOpenFolder, () => openLauncherPath(reportsFolder()))
+  handle(IPC.reportsStatus, () => ({ configured: reportingConfigured() }))
   handle(IPC.recordingState, () => getRecordingState())
+
+  handle(IPC.reportsFromRenderer, (area: string, message: string, detail: string) => {
+    // Rebuilt as an Error so the renderer's stack survives the crossing and
+    // the scrubbing treats it exactly like a main-process fault.
+    const error = new Error(String(message))
+    error.stack = String(detail || '')
+    reportError(`renderer:${String(area)}`, error)
+  })
   handle(IPC.recordingToggle, (instanceId?: string) => toggleRecording(instanceId))
   handle(IPC.recordingChunk, (sessionId: number, data: ArrayBuffer) => appendChunk(sessionId, data))
   handle(IPC.recordingPoster, (sessionId: number, data: ArrayBuffer) => savePoster(sessionId, data))

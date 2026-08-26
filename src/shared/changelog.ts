@@ -34,6 +34,33 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.13',
+    date: '2026-08-26',
+    headline: 'Fehler melden sich jetzt selbst, und Aufnahmen ruckeln weniger.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Fehlerberichte: geht etwas schief, wird der Fehler festgehalten und auf Wunsch an die Entwicklung geschickt. Gefragt wird einmal, entschieden wird von dir, abschaltbar unter Einstellungen, Fehlerberichte.'
+      },
+      {
+        kind: 'new',
+        text: 'Jeder Bericht liegt auch bei dir auf der Platte. Du kannst nachlesen, was drinsteht, ihn kopieren oder alles löschen.'
+      },
+      {
+        kind: 'improved',
+        text: 'Name, UUID, Zugangsdaten und dein Windows-Benutzername werden vorher entfernt, auch aus Dateipfaden. Eine IP-Adresse wird nicht gespeichert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Aufnahmen ruckelten. Das Launcher-Fenster wurde vom System gedrosselt, während es hinter dem Spiel lag, also genau während jeder Aufnahme.'
+      },
+      {
+        kind: 'improved',
+        text: 'Aufnahmen laufen mit 30 Bildern statt 60 und in einem sparsameren Verfahren. Wer die Leistung hat, stellt in den Einstellungen auf Scharf.'
+      }
+    ]
+  },
+  {
     version: '1.0.12',
     date: '2026-08-26',
     headline: 'Aufnehmen im Spiel und diese Seite hier.',

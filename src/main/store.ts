@@ -100,6 +100,11 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   if (!['low', 'medium', 'high'].includes(next.recordingQuality)) {
     next.recordingQuality = fallback.recordingQuality
   }
+  if (!['unset', 'on', 'off'].includes(next.crashReports)) {
+    // Falls back to "not asked" rather than to "yes": a file we cannot read
+    // must never be taken as consent.
+    next.crashReports = fallback.crashReports
+  }
   next.lastRunVersion = textOr(next.lastRunVersion, fallback.lastRunVersion)
   next.lastSeenVersion = textOr(next.lastSeenVersion, fallback.lastSeenVersion)
 

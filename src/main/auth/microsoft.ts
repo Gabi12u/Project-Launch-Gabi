@@ -6,6 +6,7 @@ import { emit } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
 import { fetchJson, httpRequest, HttpError } from '../core/net'
 import { log } from '../logger'
+import { reportError } from '../core/reports'
 
 const logger = log('auth')
 
@@ -232,6 +233,19 @@ export async function loginWithMicrosoft(): Promise<Account> {
       )
     } else if (err instanceof Error && err.message !== 'Anmeldung abgebrochen') {
       logger.error('Anmeldung fehlgeschlagen:', err)
+    }
+
+    // Reported as well, not only logged. This is the exact fault we have had
+    // described to us from the outside and never once been able to look at.
+    // A cancellation is the user's own doing and no fault at all.
+    if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
+      const detail =
+        err instanceof HttpError
+          ? `HTTP ${err.status} von ${err.url}
+Code: ${err.code ?? '(keiner)'}
+Rumpf: ${(err.body || '(leer)').slice(0, 800)}`
+          : ''
+      reportError('login', err, detail)
     }
     throw err
   } finally {

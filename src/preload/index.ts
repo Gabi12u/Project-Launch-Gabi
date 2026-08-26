@@ -61,6 +61,14 @@ const api = {
     deleteRecording: call(IPC.instanceDeleteRecording)
   },
 
+  reports: {
+    list: call(IPC.reportsList),
+    clear: call(IPC.reportsClear),
+    openFolder: call(IPC.reportsOpenFolder),
+    status: call(IPC.reportsStatus),
+    record: call(IPC.reportsFromRenderer)
+  },
+
   recording: {
     state: call(IPC.recordingState),
     toggle: call(IPC.recordingToggle),

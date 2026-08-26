@@ -6,11 +6,11 @@ import type {
   ThemeId,
   UpdateStatus
 } from '@shared/types'
-import type { AppInfo } from '@shared/api'
+import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
-import { formatBytes, formatDate, formatMemory } from '../lib/format'
+import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
 import {
@@ -32,6 +32,7 @@ type Section =
   | 'recording'
   | 'updates'
   | 'changelog'
+  | 'reports'
   | 'advanced'
   | 'about'
 
@@ -44,6 +45,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'recording', label: 'Aufnahmen' },
   { id: 'updates', label: 'Updates' },
   { id: 'changelog', label: 'Neuerungen' },
+  { id: 'reports', label: 'Fehlerberichte' },
   { id: 'advanced', label: 'Erweitert' },
   { id: 'about', label: 'Über' }
 ]
@@ -662,6 +664,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
           {section === 'changelog' && <ChangelogPanel currentVersion={info?.version ?? ''} />}
 
+          {section === 'reports' && <ReportsPanel />}
+
           {section === 'advanced' && (
             <>
               <section className="setting-group">
@@ -957,5 +961,131 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
         ))}
       </div>
     </section>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Error reports
+ * ------------------------------------------------------------------ */
+
+function ReportsPanel(): JSX.Element {
+  const { settings } = useStore()
+  const [reports, setReports] = useState<ErrorReport[] | null>(null)
+  const [configured, setConfigured] = useState(false)
+  const [open, setOpen] = useState<string | null>(null)
+
+  const load = async (): Promise<void> => {
+    const [list, status] = await Promise.all([
+      window.gabi.reports.list().catch(() => [] as ErrorReport[]),
+      window.gabi.reports.status().catch(() => ({ configured: false }))
+    ])
+    setReports(list)
+    setConfigured(status.configured)
+  }
+
+  useEffect(() => {
+    void load()
+  }, [])
+
+  return (
+    <>
+      <section className="setting-group">
+        <h3>Fehler melden</h3>
+        <p className="hint">
+          Geht im Launcher etwas schief, wird der Fehler hier festgehalten. Auf Wunsch geht er
+          zusätzlich an die Entwicklung, damit Fehler auffallen, von denen sonst niemand erfährt.
+        </p>
+
+        <SettingToggle
+          label="Fehler automatisch senden"
+          hint={
+            configured
+              ? 'Ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.'
+              : 'In dieser Version ist kein Empfänger hinterlegt, es wird nichts gesendet. Berichte werden nur bei dir gespeichert.'
+          }
+          checked={settings.crashReports === 'on'}
+          onChange={(value) => void saveSettings({ crashReports: value ? 'on' : 'off' })}
+        />
+      </section>
+
+      <section className="setting-group">
+        <h3>Was bei dir liegt</h3>
+        <p className="hint">
+          Jeder Bericht wird auch lokal abgelegt, unabhängig davon, ob gesendet wird. So kannst du
+          jederzeit nachlesen, was ein Bericht enthält, und ihn selbst weitergeben.
+        </p>
+
+        {reports === null ? (
+          <div className="skeleton" style={{ height: 80 }} />
+        ) : reports.length === 0 ? (
+          <p className="hint">Bisher wurde nichts festgehalten. Das ist die gute Nachricht.</p>
+        ) : (
+          <div className="col gap-8 mt-8">
+            {reports.map((report) => (
+              <div key={report.id} className="content-row">
+                <div className="grow" style={{ overflow: 'hidden' }}>
+                  <div className="row gap-8">
+                    <span className="badge">{report.area}</span>
+                    <span className="content-name truncate">{report.message}</span>
+                  </div>
+                  <div className="content-meta">
+                    <span>{formatDateTime(report.at)}</span>
+                    <span>Version {report.version}</span>
+                    <span className="truncate">{report.platform}</span>
+                  </div>
+                  {open === report.id && (
+                    <pre className="report-detail">{report.detail || 'Keine weiteren Angaben.'}</pre>
+                  )}
+                </div>
+                <div className="content-actions">
+                  <button
+                    className="btn sm ghost"
+                    onClick={() => setOpen(open === report.id ? null : report.id)}
+                  >
+                    {open === report.id ? 'Zuklappen' : 'Ansehen'}
+                  </button>
+                  <button
+                    className="btn sm ghost"
+                    title="Als Text kopieren, zum Weitergeben"
+                    onClick={() => {
+                      void navigator.clipboard
+                        .writeText(
+                          `${report.area} | ${report.version} | ${report.platform}\n` +
+                            `${report.message}\n\n${report.detail}`
+                        )
+                        .then(() => toast('success', 'Bericht kopiert'))
+                        .catch(() => toastError(new Error('Zwischenablage nicht verfügbar')))
+                    }}
+                  >
+                    Kopieren
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="row gap-8 mt-16">
+          <button className="btn ghost" onClick={() => void window.gabi.reports.openFolder()}>
+            <IconFolder size={14} />
+            Ordner öffnen
+          </button>
+          <button
+            className="btn ghost danger"
+            disabled={!reports || reports.length === 0}
+            onClick={() => {
+              void window.gabi.reports
+                .clear()
+                .then(load)
+                .then(() => toast('success', 'Fehlerberichte gelöscht'))
+                .catch((err: unknown) => toastError(err, 'Löschen fehlgeschlagen'))
+            }}
+          >
+            <IconTrash size={14} />
+            Alle löschen
+          </button>
+        </div>
+      </section>
+    </>
   )
 }

@@ -18,6 +18,7 @@ import { Ambient } from './components/Ambient'
 import { CommandPalette } from './components/CommandPalette'
 import { Logo } from './components/Logo'
 import { CompatibilityGate } from './components/CompatibilityPanel'
+import { ReportConsent } from './components/ReportConsent'
 import { CreateInstanceWizard } from './views/CreateInstanceWizard'
 import { Onboarding } from './views/Onboarding'
 import { HomeView } from './views/Home'
@@ -127,6 +128,55 @@ export function App(): JSX.Element {
     return () => unsubscribe.forEach((off) => off())
   }, [])
 
+  /* --- Faults in the interface ------------------------------------ */
+  /*
+   * A crash in the renderer leaves no trace anywhere by itself: the window
+   * either goes blank or a button quietly stops working, and the user has
+   * nothing to report but "es geht nicht". These two handlers are the only
+   * place that can see it happen.
+   */
+  useEffect(() => {
+    // Reporting a fault must not be able to cause one. The call below is a
+    // promise, and an uncaught rejection from it would fire the very handler
+    // that made it: reject, handle, call again, reject again, forever, with
+    // the window frozen. The catch closes that loop and the flag closes the
+    // one the browser can still open between the two handlers.
+    let reporting = false
+    const record = (area: string, message: string, detail: string): void => {
+      if (reporting) return
+      reporting = true
+      void window.gabi.reports
+        .record(area, message, detail)
+        .catch(() => undefined)
+        .finally(() => {
+          reporting = false
+        })
+    }
+
+    const onError = (event: ErrorEvent): void => {
+      record(
+        'ui',
+        event.message || 'Unbekannter Fehler',
+        event.error instanceof Error ? (event.error.stack ?? '') : String(event.filename ?? '')
+      )
+    }
+    const onRejection = (event: PromiseRejectionEvent): void => {
+      const reason = event.reason
+      record(
+        'ui:promise',
+        reason instanceof Error ? reason.message : String(reason),
+        reason instanceof Error ? (reason.stack ?? '') : ''
+      )
+    }
+
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => {
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
+  }, [])
+
   /* --- Idle when unfocused --------------------------------------- */
   /*
    * Marks the document idle whenever the launcher is in the background. The
@@ -226,6 +276,7 @@ export function App(): JSX.Element {
       </div>
 
       <TaskDock />
+      <ReportConsent />
       <Toasts />
       <CommandPalette />
       <CompatibilityGate />

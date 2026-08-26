@@ -48,6 +48,13 @@ export const IPC = {
   recordingFailed: 'recording:failed',
   recordingPoster: 'recording:poster',
 
+  // error reports
+  reportsList: 'reports:list',
+  reportsClear: 'reports:clear',
+  reportsOpenFolder: 'reports:open-folder',
+  reportsStatus: 'reports:status',
+  reportsFromRenderer: 'reports:from-renderer',
+
   // launching
   launchPreflight: 'launch:preflight',
   launchStart: 'launch:start',

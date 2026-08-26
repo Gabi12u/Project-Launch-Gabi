@@ -109,6 +109,17 @@ export interface RecordingRequest {
   maxDurationMs: number
 }
 
+/** One recorded fault, already stripped of anything personal. */
+export interface ErrorReport {
+  id: string
+  at: number
+  version: string
+  platform: string
+  area: string
+  message: string
+  detail: string
+}
+
 export interface RepairReport {
   instanceId: string
   checkedFiles: number
@@ -177,6 +188,15 @@ export interface GabiApi {
     screenshots(id: string): Promise<ScreenshotInfo[]>
     recordings(id: string): Promise<RecordingInfo[]>
     deleteRecording(id: string, file: string): Promise<void>
+  }
+  reports: {
+    list(): Promise<ErrorReport[]>
+    clear(): Promise<void>
+    openFolder(): Promise<string>
+    /** Whether a destination is configured at all. */
+    status(): Promise<{ configured: boolean }>
+    /** The renderer hands its own uncaught errors over here. */
+    record(area: string, message: string, detail: string): Promise<void>
   }
   recording: {
     /** Current state, for painting the indicator on first render. */
