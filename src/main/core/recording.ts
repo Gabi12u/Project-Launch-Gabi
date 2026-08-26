@@ -18,6 +18,7 @@ import { paths } from '../paths'
 import { getSettings } from '../store'
 import { emit, getMainWindow, notify } from '../events'
 import { log } from '../logger'
+import { tryGetInstance } from './instances'
 import { listAdopted, listRunning, onRunningChanged } from './running'
 
 const logger = log('recording')
@@ -36,13 +37,22 @@ const BITRATE: Record<RecordingQuality, number> = {
 }
 
 interface Session {
+  /**
+   * Generation counter, sent to the renderer and returned with every message.
+   *
+   * Without it the main process only knew "some recording is running", not
+   * "the one these bytes belong to". A slice still in flight from a recording
+   * that just ended would be written into whatever file happened to be open,
+   * corrupting a perfectly good new recording with the tail of an old one.
+   */
+  id: number
   instanceId: string
   startedAt: number
   file: string
   base: string
   stream: WriteStream
   bytes: number
-  /** Fires if the renderer never reports a finish, see `GRACE_MS`. */
+  /** Fires if the renderer never reports back, see `armGuard`. */
   guard: NodeJS.Timeout | null
   /** Set once a stop has been asked for, so a second press does nothing. */
   stopping: boolean
@@ -51,16 +61,44 @@ interface Session {
 let session: Session | null = null
 
 /**
- * How long the main process waits past the agreed maximum before it gives up.
+ * True from the moment a start is requested until the session exists.
  *
- * The renderer owns the actual timer, but a renderer that crashed or was
- * reloaded mid-recording would leave the file handle open and the indicator on
- * forever. This is the backstop, not the normal path.
+ * `startRecording` has to await the source lookup before it can create the
+ * session, and a second hotkey press during that gap used to sail past the
+ * "already recording?" check and start a whole second recording. The first was
+ * then orphaned: its file handle stayed open and its guard timer later fired
+ * into an unrelated recording and cut that one short.
+ */
+let starting = false
+
+/** A stop that arrived while the start was still in flight. */
+let stopWanted = false
+
+let counter = 0
+
+/**
+ * How long the main process waits past the agreed maximum before giving up.
+ *
+ * The renderer owns the actual timer; this is the backstop for a renderer that
+ * crashed or was reloaded mid-recording.
  */
 const GRACE_MS = 30_000
 
+/**
+ * The much shorter deadline once a stop has actually been asked for.
+ *
+ * Flushing the last slice takes a moment, not minutes. Leaving the original
+ * deadline in place meant a renderer that died right after the stop press kept
+ * the recording wedged for the entire configured maximum: the hotkey did
+ * nothing, the indicator stayed on, and the file handle stayed open.
+ */
+const STOP_GRACE_MS = 12_000
+
 /** Hotkey currently handed to the OS, so it can be released again. */
 let registered: string | null = null
+
+/** The key we last complained about, so the warning is not repeated endlessly. */
+let warned: string | null = null
 
 export function getRecordingState(): RecordingState {
   return {
@@ -75,9 +113,38 @@ function publish(): void {
   emit(EVENTS.recordingState, getRecordingState())
 }
 
+/** (Re)schedules the backstop that closes a session nobody else closed. */
+function armGuard(current: Session, afterMs: number): void {
+  if (current.guard) clearTimeout(current.guard)
+  current.guard = setTimeout(() => {
+    // Only ever acts on the session that armed it. The timer used to call
+    // through to whatever `session` happened to be by then, which after a
+    // restart meant ending someone else's recording.
+    if (session !== current) return
+    logger.warn('Aufnahme wurde nicht sauber beendet, wird selbst geschlossen')
+    // Measured rather than assumed: reporting the configured maximum labelled
+    // a clip that broke off after ten seconds as half an hour long.
+    void finishRecording(Math.max(0, Date.now() - current.startedAt), current.id)
+  }, afterMs)
+}
+
 /* ------------------------------------------------------------------ *
  * Hotkey
  * ------------------------------------------------------------------ */
+
+/**
+ * Instance ids with a game up, whoever started it.
+ *
+ * Adopted games count. The launcher can be restarted while Minecraft keeps
+ * playing, and refusing to record then would be a dead spot with no reason a
+ * user could see: the game is right there on screen.
+ */
+function playing(): string[] {
+  return [
+    ...listRunning().map((game) => game.instanceId),
+    ...listAdopted().map((game) => game.instanceId)
+  ]
+}
 
 /**
  * Holds the hotkey only while a game is actually up.
@@ -88,17 +155,6 @@ function publish(): void {
  * Registering on launch and releasing on exit keeps the key free the rest of
  * the time.
  */
-/**
- * Instance ids with a game up, whoever started it.
- *
- * Adopted games count. The launcher can be restarted while Minecraft keeps
- * playing, and refusing to record then would be a dead spot with no reason a
- * user could see: the game is right there on screen.
- */
-function playing(): string[] {
-  return [...listRunning().map((game) => game.instanceId), ...listAdopted().map((game) => game.instanceId)]
-}
-
 export function syncRecordingHotkey(): void {
   const settings = getSettings()
   const wanted =
@@ -119,15 +175,22 @@ export function syncRecordingHotkey(): void {
       // Another application already holds it. Nothing is broken, but the key
       // will do nothing, and silence here would look like the feature failing.
       logger.warn(`Aufnahmetaste ${wanted} ist bereits von einem anderen Programm belegt`)
-      notify(
-        'warning',
-        'Aufnahmetaste belegt',
-        `${wanted} wird bereits von einem anderen Programm verwendet. Wähle in den Einstellungen eine andere Taste.`,
-        { route: '/settings?section=recording' }
-      )
+      // Once per key. This runs again on every launch and every exit, and a
+      // conflict that stays put would otherwise produce a fresh popup every
+      // time the user starts a game.
+      if (warned !== wanted) {
+        warned = wanted
+        notify(
+          'warning',
+          'Aufnahmetaste belegt',
+          `${wanted} wird bereits von einem anderen Programm verwendet. Wähle in den Einstellungen eine andere Taste.`,
+          { route: '/settings?section=recording' }
+        )
+      }
       return
     }
     registered = wanted
+    warned = null
     logger.info(`Aufnahmetaste ${wanted} aktiv`)
   } catch (err) {
     // `register` throws on an accelerator Electron cannot parse, which a
@@ -169,6 +232,24 @@ function timestampName(): string {
   )
 }
 
+/**
+ * A file name nothing else holds.
+ *
+ * The stamp only resolves to the second, so two recordings begun within the
+ * same second produced the same path and two write streams truncated each
+ * other.
+ */
+function freeFile(dir: string): { file: string; base: string } {
+  const stamp = timestampName()
+  let base = stamp
+  let attempt = 2
+  while (existsSync(join(dir, `${base}.webm`))) {
+    base = `${stamp}_${attempt}`
+    attempt++
+  }
+  return { file: join(dir, `${base}.webm`), base }
+}
+
 async function startRecording(instanceId: string): Promise<void> {
   const window = getMainWindow()
   if (!window) {
@@ -193,32 +274,33 @@ async function startRecording(instanceId: string): Promise<void> {
   const dir = paths.recordings(instanceId)
   mkdirSync(dir, { recursive: true })
 
-  const base = timestampName()
-  const file = join(dir, `${base}.webm`)
+  const { file, base } = freeFile(dir)
+  const id = ++counter
 
   const stream = createWriteStream(file)
   stream.on('error', (err) => {
     logger.error('Aufnahme konnte nicht geschrieben werden:', err)
-    void failRecording('Die Datei konnte nicht geschrieben werden.')
+    void failRecording('Die Datei konnte nicht geschrieben werden.', id)
   })
 
   const maxDurationMs = Math.max(1, settings.recordingMaxMinutes) * 60_000
 
-  session = {
+  const current: Session = {
+    id,
     instanceId,
     startedAt: Date.now(),
     file,
     base,
     stream,
     bytes: 0,
-    guard: setTimeout(() => {
-      logger.warn('Aufnahme wurde nicht sauber beendet, wird selbst geschlossen')
-      void finishRecording(maxDurationMs)
-    }, maxDurationMs + GRACE_MS),
+    guard: null,
     stopping: false
   }
+  session = current
+  armGuard(current, maxDurationMs + GRACE_MS)
 
   const request: RecordingRequest = {
+    sessionId: id,
     instanceId,
     sourceId: source.id,
     sourceKind: source.kind,
@@ -227,7 +309,7 @@ async function startRecording(instanceId: string): Promise<void> {
     maxDurationMs
   }
 
-  logger.info(`Aufnahme gestartet (${source.kind}) für ${instanceId}`)
+  logger.info(`Aufnahme ${id} gestartet (${source.kind}) für ${instanceId}`)
   emit(EVENTS.recordingStart, request)
   publish()
   notify('info', 'Aufnahme läuft', `Nochmal ${settings.recordingHotkey} drücken beendet sie.`)
@@ -236,8 +318,10 @@ async function startRecording(instanceId: string): Promise<void> {
 function stopRecording(): void {
   if (!session || session.stopping) return
   session.stopping = true
-  logger.info('Aufnahme wird beendet')
-  emit(EVENTS.recordingStop, null)
+  // Shortened now that someone is actually waiting for it to end.
+  armGuard(session, STOP_GRACE_MS)
+  logger.info(`Aufnahme ${session.id} wird beendet`)
+  emit(EVENTS.recordingStop, session.id)
   publish()
 }
 
@@ -254,6 +338,13 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
     return getRecordingState()
   }
 
+  // A press during the gap before the session exists means "never mind", not
+  // "start a second one".
+  if (starting) {
+    stopWanted = true
+    return getRecordingState()
+  }
+
   if (!getSettings().recordingEnabled) return getRecordingState()
 
   const target = instanceId ?? playing()[0]
@@ -262,7 +353,19 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
     return getRecordingState()
   }
 
-  await startRecording(target)
+  starting = true
+  stopWanted = false
+  try {
+    await startRecording(target)
+  } finally {
+    starting = false
+  }
+
+  // Honoured as soon as there is something to stop.
+  if (stopWanted) {
+    stopWanted = false
+    stopRecording()
+  }
   return getRecordingState()
 }
 
@@ -270,39 +373,67 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
  * Data coming back from the renderer
  * ------------------------------------------------------------------ */
 
-export function appendChunk(data: ArrayBuffer | Uint8Array): void {
-  if (!session) return
-  const buffer = data instanceof Uint8Array ? Buffer.from(data) : Buffer.from(new Uint8Array(data))
-  session.bytes += buffer.byteLength
-  session.stream.write(buffer)
+function toBuffer(data: ArrayBuffer | Uint8Array): Buffer {
+  return data instanceof Uint8Array ? Buffer.from(data) : Buffer.from(new Uint8Array(data))
+}
+
+/**
+ * Writes one encoded slice.
+ *
+ * Resolves only once the stream has room again. The renderer awaits this, so a
+ * data directory slower than the encoder slows the sender down instead of
+ * letting Node buffer an entire recording in memory.
+ */
+export async function appendChunk(sessionId: number, data: ArrayBuffer | Uint8Array): Promise<void> {
+  const current = session
+  if (!current || current.id !== sessionId) return
+
+  const buffer = toBuffer(data)
+  current.bytes += buffer.byteLength
+  const room = current.stream.write(buffer)
   publish()
+  if (room) return
+
+  await new Promise<void>((done) => {
+    // `once` rather than `on`: this listener belongs to a single write, and the
+    // stream outlives many of them.
+    current.stream.once('drain', done)
+  })
 }
 
 /** Stores the still frame the grid shows in place of the video itself. */
-export function savePoster(data: ArrayBuffer | Uint8Array): void {
-  if (!session) return
-  const buffer = data instanceof Uint8Array ? Buffer.from(data) : Buffer.from(new Uint8Array(data))
+export function savePoster(sessionId: number, data: ArrayBuffer | Uint8Array): void {
+  const current = session
+  if (!current || current.id !== sessionId) return
   try {
-    writeFileSync(join(paths.recordings(session.instanceId), `${session.base}.jpg`), buffer)
+    writeFileSync(join(paths.recordings(current.instanceId), `${current.base}.jpg`), toBuffer(data))
   } catch (err) {
     // Only costs the preview picture, never the recording.
     logger.warn('Vorschaubild konnte nicht gespeichert werden:', err)
   }
 }
 
-function closeSession(): Session | null {
+/** Ends the stream and resolves once the bytes are really on disk. */
+async function closeSession(): Promise<Session | null> {
   const current = session
   if (!current) return null
   if (current.guard) clearTimeout(current.guard)
-  current.stream.end()
   session = null
+  publish()
+
+  await new Promise<void>((done) => {
+    // Waited for, not fired and forgotten. Everything below touches the same
+    // file, and on Windows reading or deleting a path whose handle is still
+    // closing fails outright.
+    current.stream.end(() => done())
+  })
   return current
 }
 
-export async function finishRecording(durationMs: number): Promise<void> {
-  const current = closeSession()
+export async function finishRecording(durationMs: number, sessionId?: number): Promise<void> {
+  if (sessionId !== undefined && session?.id !== sessionId) return
+  const current = await closeSession()
   if (!current) return
-  publish()
 
   // Nothing was ever written: a capture that failed before the first slice
   // would otherwise leave a zero-byte file in the folder for the user to find.
@@ -316,20 +447,29 @@ export async function finishRecording(durationMs: number): Promise<void> {
     return
   }
 
+  // Clamped, because a clock that moves backwards mid-recording (an NTP
+  // resync, a manual change) produced a negative length that rendered as
+  // nonsense like "-1:-5 Min" under the thumbnail.
+  const length = Math.max(0, durationMs)
+
   // The length is written beside the file. A webm from MediaRecorder carries
   // no duration in its header, so reading it back later would mean decoding
   // the whole video just to put a number under a thumbnail.
   try {
     writeFileSync(
       `${current.file}.json`,
-      JSON.stringify({ durationMs, recordedAt: current.startedAt, instanceId: current.instanceId }, null, 2)
+      JSON.stringify(
+        { durationMs: length, recordedAt: current.startedAt, instanceId: current.instanceId },
+        null,
+        2
+      )
     )
   } catch (err) {
     logger.warn('Begleitdaten der Aufnahme konnten nicht geschrieben werden:', err)
   }
 
   const mb = (current.bytes / 1024 / 1024).toFixed(1)
-  const seconds = Math.round(durationMs / 1000)
+  const seconds = Math.round(length / 1000)
   logger.info(`Aufnahme fertig: ${current.file} (${mb} MB, ${seconds}s)`)
   notify(
     'success',
@@ -339,15 +479,18 @@ export async function finishRecording(durationMs: number): Promise<void> {
   )
 }
 
-export async function failRecording(message: string): Promise<void> {
-  const current = closeSession()
+export async function failRecording(message: string, sessionId?: number): Promise<void> {
+  if (sessionId !== undefined && session?.id !== sessionId) return
+  const current = await closeSession()
   if (!current) return
-  publish()
 
   try {
     rmSync(current.file, { force: true })
-  } catch {
-    // best effort, the message below matters more
+  } catch (err) {
+    // Reported rather than swallowed. The message below says the recording was
+    // discarded, and it should not claim that while the broken file is still
+    // sitting in the folder.
+    logger.warn(`Fehlgeschlagene Aufnahme ${current.file} konnte nicht entfernt werden:`, err)
   }
   logger.warn(`Aufnahme fehlgeschlagen: ${message}`)
   notify('error', 'Aufnahme fehlgeschlagen', message)
@@ -370,10 +513,12 @@ export function listRecordings(instanceId: string, limit = 40): StoredRecording[
   const dir = paths.recordings(instanceId)
   if (!existsSync(dir)) return []
 
-  return readdirSync(dir)
-    .filter((name) => name.toLowerCase().endsWith('.webm'))
-    .map((name) => {
-      const file = join(dir, name)
+  const found: StoredRecording[] = []
+  for (const name of readdirSync(dir)) {
+    if (!name.toLowerCase().endsWith('.webm')) continue
+    const file = join(dir, name)
+
+    try {
       const stats = statSync(file)
       let durationMs = 0
       let recordedAt = stats.mtimeMs
@@ -383,7 +528,7 @@ export function listRecordings(instanceId: string, limit = 40): StoredRecording[
           recordedAt?: number
         }
         if (typeof meta.durationMs === 'number' && Number.isFinite(meta.durationMs)) {
-          durationMs = meta.durationMs
+          durationMs = Math.max(0, meta.durationMs)
         }
         if (typeof meta.recordedAt === 'number' && Number.isFinite(meta.recordedAt)) {
           recordedAt = meta.recordedAt
@@ -393,26 +538,40 @@ export function listRecordings(instanceId: string, limit = 40): StoredRecording[
       }
 
       const poster = join(dir, `${name.replace(/\.webm$/i, '')}.jpg`)
-      return {
+      found.push({
         file,
         fileName: name,
         recordedAt,
         sizeBytes: stats.size,
         durationMs,
         posterFile: existsSync(poster) ? poster : null
-      }
-    })
-    .sort((a, b) => b.recordedAt - a.recordedAt)
-    .slice(0, limit)
+      })
+    } catch (err) {
+      // One unreadable file used to reject the whole request, so a single clip
+      // deleted between the listing and the stat, or momentarily locked by a
+      // virus scanner, emptied the entire tab.
+      logger.debug(`Aufnahme ${name} konnte nicht gelesen werden:`, err)
+    }
+  }
+
+  return found.sort((a, b) => b.recordedAt - a.recordedAt).slice(0, limit)
 }
 
 /** Removes a recording together with its sidecar and preview picture. */
 export function deleteRecording(instanceId: string, file: string): void {
-  const dir = paths.recordings(instanceId)
+  // The instance has to exist. Both arguments come from the renderer, and
+  // checking only the file was not enough: the folder the check compares
+  // against is itself built from the id, so an id carrying path segments moved
+  // the permitted folder anywhere on disk and the comparison then passed.
+  // `deleteBackup` and `removeContent` guard the same way.
+  if (!tryGetInstance(instanceId)) {
+    throw new Error('Diese Instanz existiert nicht.')
+  }
+
+  const dir = resolve(paths.recordings(instanceId))
   const target = resolve(file)
 
-  // The path comes from the renderer, so it is only trustworthy after this.
-  if (!target.startsWith(resolve(dir) + sep) || !target.toLowerCase().endsWith('.webm')) {
+  if (!target.startsWith(dir + sep) || !target.toLowerCase().endsWith('.webm')) {
     throw new Error('Diese Datei gehört nicht zu den Aufnahmen dieser Instanz.')
   }
 
@@ -431,18 +590,42 @@ export function initRecording(): void {
   // handed back the moment the last one exits.
   onRunningChanged(() => {
     syncRecordingHotkey()
-    // A game that closes mid-recording ends it rather than carrying on
-    // filming an empty desktop.
-    if (session && playing().length === 0) stopRecording()
+    // Tied to the instance being recorded, not to the machine going quiet. A
+    // screen capture has no window handle to die with it, so recording one
+    // instance while a second stayed open kept filming the empty desktop long
+    // after the game in the picture had closed.
+    if (session && !playing().includes(session.instanceId)) stopRecording()
   })
   syncRecordingHotkey()
 }
 
-export function disposeRecording(): void {
+/**
+ * Asks a running recording to finish, and waits a moment for it.
+ *
+ * Called while the app is quitting. Ending the stream outright would throw
+ * away whatever the encoder still had buffered, which is the last few seconds
+ * of what the user was recording.
+ */
+export async function flushRecording(): Promise<void> {
+  if (!session) return
+  stopRecording()
+
+  await new Promise<void>((done) => {
+    const deadline = Date.now() + 4000
+    const poll = setInterval(() => {
+      if (!session || Date.now() > deadline) {
+        clearInterval(poll)
+        done()
+      }
+    }, 100)
+  })
+}
+
+export async function disposeRecording(): Promise<void> {
   if (registered) {
     globalShortcut.unregister(registered)
     registered = null
   }
-  const current = closeSession()
+  const current = await closeSession()
   if (current) logger.info('Laufende Aufnahme beim Beenden geschlossen')
 }

@@ -1000,6 +1000,17 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
     void load()
   }, [load])
 
+  // A recording that finishes while this tab is open used to leave no trace
+  // until the user navigated away and back. The list refreshes on the edge
+  // from recording to not recording, which is exactly when a new file exists.
+  useEffect(() => {
+    let wasActive = false
+    return window.gabi.events.onRecordingState((state) => {
+      if (wasActive && !state.active) void load()
+      wasActive = state.active
+    })
+  }, [load])
+
   if (!shots || !clips) return <div className="skeleton" style={{ height: 200 }} />
 
   const moments: Moment[] = [

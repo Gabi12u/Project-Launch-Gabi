@@ -1355,9 +1355,12 @@
 
 /* The whole app pauses animation while unfocused, and this one has to keep
    going: the launcher is behind the game for the entire recording, and a
-   frozen dot on returning would read as a recording that already stopped. */
+   frozen dot on returning would read as a recording that already stopped.
+   The `!important` is not optional. The global pause rule in base.css carries
+   one, and an important declaration beats a normal one whatever the
+   specificity, so without it this rule did precisely nothing. */
 :root[data-idle='true'] .rec-dot {
-  animation-play-state: running;
+  animation-play-state: running !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

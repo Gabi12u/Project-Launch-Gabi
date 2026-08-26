@@ -57,6 +57,30 @@ function setStatus(patch: Partial<UpdateStatus>): void {
  * Deliberately quiet on a first install. `lastRunVersion` is empty then, and
  * greeting a brand new user with "update finished" would be nonsense.
  */
+/**
+ * True when `next` is a later release than `previous`.
+ *
+ * Reinstalling an older build is a perfectly ordinary thing to do after a bad
+ * release, and comparing only for inequality greeted that with "Update
+ * abgeschlossen auf 1.0.11" while the launcher had in fact gone backwards.
+ */
+function isNewer(next: string, previous: string): boolean {
+  const parts = (value: string): number[] =>
+    value.split('.').map((piece) => {
+      const num = Number.parseInt(piece, 10)
+      return Number.isFinite(num) ? num : 0
+    })
+
+  const a = parts(next)
+  const b = parts(previous)
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const left = a[i] ?? 0
+    const right = b[i] ?? 0
+    if (left !== right) return left > right
+  }
+  return false
+}
+
 export function announceUpdate(): void {
   const version = app.getVersion()
   const settings = getSettings()
@@ -68,6 +92,10 @@ export function announceUpdate(): void {
     saveSettings({ lastRunVersion: version })
   }
   if (!previous || previous === version) return
+  if (!isNewer(version, previous)) {
+    logger.info(`Version gewechselt von ${previous} auf ${version}, kein Update nach vorn`)
+    return
+  }
 
   logger.info(`Update abgeschlossen: ${previous} -> ${version}`)
   const entry = changelogFor(version)

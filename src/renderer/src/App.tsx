@@ -113,7 +113,7 @@ export function App(): JSX.Element {
       window.gabi.events.onRecordingStart((request) => {
         void startCapture(request).catch((err: unknown) => {
           const message = err instanceof Error ? err.message : String(err)
-          void window.gabi.recording.failed(message)
+          void window.gabi.recording.failed(request.sessionId, message)
         })
       }),
 

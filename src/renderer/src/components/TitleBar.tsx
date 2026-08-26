@@ -47,6 +47,10 @@ export function TitleBar(): JSX.Element {
           <button
             className="rec-pill"
             title="Aufnahme beenden"
+            // The visible text is only the elapsed time, and that is what a
+            // screen reader would otherwise announce: a bare timestamp with no
+            // hint that pressing it stops the recording.
+            aria-label={`Aufnahme beenden, läuft seit ${elapsed(recording.startedAt)}`}
             onClick={() => void window.gabi.recording.toggle()}
           >
             <span className="rec-dot" />

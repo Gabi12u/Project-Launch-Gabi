@@ -149,7 +149,13 @@ export function pruneAdopted(exists: (instanceId: string) => boolean): void {
     removed++
     logger.info(`Übernommener Eintrag für gelöschte Instanz ${instanceId} verworfen`)
   }
-  if (removed > 0) persist()
+  if (removed > 0) {
+    persist()
+    // The set of playing games just changed, and the recorder decides whether
+    // to hold the hotkey from exactly that. Skipping this left the key claimed
+    // with nothing running behind it.
+    announce()
+  }
 }
 
 /**

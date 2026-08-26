@@ -10,8 +10,7 @@ import type { RecordingRequest } from '@shared/api'
  * IPC rather than holding a whole video in memory.
  *
  * It keeps running while the launcher window is hidden behind the game. A
- * hidden window still executes JavaScript, which is what makes this work at
- * all.
+ * hidden window still executes JavaScript, which is what makes this work.
  */
 
 /** Container and codec, best first. Chromium always has at least one of these. */
@@ -30,6 +29,7 @@ const SLICE_MS = 2000
 const POSTER_DELAY_MS = 1500
 
 interface Active {
+  sessionId: number
   recorder: MediaRecorder
   stream: MediaStream
   video: HTMLVideoElement
@@ -37,9 +37,32 @@ interface Active {
   timers: number[]
   /** Set once a stop is under way, so the two stop paths cannot both fire. */
   ending: boolean
+  /**
+   * Serialises the slice handovers.
+   *
+   * Each slice is converted with `Blob.arrayBuffer()`, which is asynchronous
+   * and carries no ordering guarantee between separate calls. Sending them as
+   * they happened to resolve could interleave the WebM byte stream and produce
+   * a file that will not play, with nothing anywhere reporting a problem.
+   * Chaining keeps them in the order the encoder produced them, and because
+   * the main process only resolves once the bytes are written, it doubles as
+   * backpressure.
+   */
+  queue: Promise<void>
 }
 
 let active: Active | null = null
+
+/**
+ * True while a start is in flight but `active` does not exist yet.
+ *
+ * Opening the capture stream is asynchronous, and a stop arriving during that
+ * window used to find `active` still null and quietly do nothing. The main
+ * process meanwhile treated the stop as delivered, so the recording could not
+ * be stopped at all afterwards.
+ */
+let opening = false
+let stopWanted = false
 
 function pickMimeType(): string | null {
   for (const type of CANDIDATE_TYPES) {
@@ -96,39 +119,56 @@ function frameIsBlank(video: HTMLVideoElement): boolean {
   const context = canvas.getContext('2d', { willReadFrequently: true })
   if (!context) return false
 
-  context.drawImage(video, 0, 0, canvas.width, canvas.height)
-  const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] > 12 || data[i + 1] > 12 || data[i + 2] > 12) return false
+  try {
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 12 || data[i + 1] > 12 || data[i + 2] > 12) return false
+    }
+    return true
+  } catch {
+    // A frame that cannot be drawn tells us nothing either way, and claiming
+    // "blank" here would throw away a recording that is probably fine.
+    return false
   }
-  return true
 }
 
-function grabPoster(video: HTMLVideoElement): void {
-  const canvas = document.createElement('canvas')
-  // Wide enough to look sharp in the grid without turning a thumbnail into a
-  // megabyte of its own.
-  const width = 480
-  const ratio = video.videoHeight > 0 ? video.videoHeight / video.videoWidth : 9 / 16
-  canvas.width = width
-  canvas.height = Math.round(width * ratio)
+function grabPoster(sessionId: number, video: HTMLVideoElement): void {
+  // Both dimensions, not just one. A height with a zero width made the ratio
+  // infinite and the canvas degenerate, and `drawImage` then threw.
+  if (video.videoWidth <= 0 || video.videoHeight <= 0) return
 
-  const context = canvas.getContext('2d')
-  if (!context) return
-  context.drawImage(video, 0, 0, canvas.width, canvas.height)
+  try {
+    const canvas = document.createElement('canvas')
+    // Wide enough to look sharp in the grid without turning a thumbnail into a
+    // megabyte of its own.
+    const width = 480
+    canvas.width = width
+    canvas.height = Math.round((width * video.videoHeight) / video.videoWidth)
 
-  canvas.toBlob(
-    (blob) => {
-      if (!blob) return
-      void blob.arrayBuffer().then((buffer) => window.gabi.recording.poster(buffer))
-    },
-    'image/jpeg',
-    0.72
-  )
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return
+        void blob
+          .arrayBuffer()
+          .then((buffer) => window.gabi.recording.poster(sessionId, buffer))
+          .catch(() => undefined)
+      },
+      'image/jpeg',
+      0.72
+    )
+  } catch {
+    // The preview picture is a nicety; losing it must never affect the video.
+  }
 }
 
 function cleanUp(current: Active): void {
   for (const timer of current.timers) window.clearTimeout(timer)
+  current.timers.length = 0
   for (const track of current.stream.getTracks()) track.stop()
   current.video.srcObject = null
   current.video.remove()
@@ -136,20 +176,27 @@ function cleanUp(current: Active): void {
 
 /** Starts capturing what the main process picked. */
 export async function startCapture(request: RecordingRequest): Promise<void> {
-  if (active) return
+  if (active || opening) return
 
   const mimeType = pickMimeType()
   if (!mimeType) {
-    await window.gabi.recording.failed('Dieses System kann kein WebM aufnehmen.')
+    await window.gabi.recording.failed(request.sessionId, 'Dieses System kann kein WebM aufnehmen.')
     return
   }
+
+  opening = true
+  stopWanted = false
 
   let stream: MediaStream
   try {
     stream = await openStream(request)
   } catch (err) {
+    opening = false
     const message = err instanceof Error ? err.message : String(err)
-    await window.gabi.recording.failed(`Der Bildschirm konnte nicht erfasst werden: ${message}`)
+    await window.gabi.recording.failed(
+      request.sessionId,
+      `Der Bildschirm konnte nicht erfasst werden: ${message}`
+    )
     return
   }
 
@@ -172,35 +219,72 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     // recorder below still works, only the poster frame is lost.
   }
 
-  const recorder = new MediaRecorder(stream, {
-    mimeType,
-    videoBitsPerSecond: request.videoBitsPerSecond
-  })
+  // Everything from here to `recorder.start()` can throw, and an escape used
+  // to leave `active` pointing at a recorder that never ran: the stream stayed
+  // open, the OS kept showing its capture indicator, and every later start
+  // silently returned at the guard above. The feature was dead until restart.
+  const abandon = async (message: string): Promise<void> => {
+    opening = false
+    for (const track of stream.getTracks()) track.stop()
+    video.srcObject = null
+    video.remove()
+    active = null
+    await window.gabi.recording.failed(request.sessionId, message)
+  }
+
+  let recorder: MediaRecorder
+  try {
+    recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: request.videoBitsPerSecond
+    })
+  } catch (err) {
+    await abandon(
+      `Die Aufnahme konnte nicht vorbereitet werden: ${err instanceof Error ? err.message : String(err)}`
+    )
+    return
+  }
 
   const current: Active = {
+    sessionId: request.sessionId,
     recorder,
     stream,
     video,
     startedAt: Date.now(),
     timers: [],
-    ending: false
+    ending: false,
+    queue: Promise.resolve()
   }
-  active = current
 
   recorder.ondataavailable = (event) => {
     if (event.data.size === 0) return
-    void event.data.arrayBuffer().then((buffer) => window.gabi.recording.chunk(buffer))
+    // Queued, so slices reach the file in the order they were encoded.
+    current.queue = current.queue
+      .then(async () => {
+        const buffer = await event.data.arrayBuffer()
+        await window.gabi.recording.chunk(current.sessionId, buffer)
+      })
+      .catch(() => undefined)
   }
 
   recorder.onerror = () => {
-    void stopCapture()
+    // Reported as the failure it is. Routing this through the normal stop made
+    // the main process announce "Aufnahme gespeichert" for a file the encoder
+    // had just given up on, which is very likely truncated or unplayable.
+    void stopCapture(true).then(() =>
+      window.gabi.recording.failed(current.sessionId, 'Die Aufnahme ist beim Kodieren gescheitert.')
+    )
   }
 
   recorder.onstop = () => {
-    const durationMs = Date.now() - current.startedAt
+    const durationMs = Math.max(0, Date.now() - current.startedAt)
     cleanUp(current)
     if (active === current) active = null
-    void window.gabi.recording.finished(durationMs)
+    // After the queue, so the last slice is written before the length is
+    // recorded and the file is closed.
+    void current.queue
+      .then(() => window.gabi.recording.finished(current.sessionId, durationMs))
+      .catch(() => undefined)
   }
 
   // The user pulling the plug in the system's own screen-sharing bar ends the
@@ -210,7 +294,17 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     track.addEventListener('ended', () => void stopCapture())
   }
 
-  recorder.start(SLICE_MS)
+  try {
+    recorder.start(SLICE_MS)
+  } catch (err) {
+    await abandon(
+      `Die Aufnahme konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`
+    )
+    return
+  }
+
+  active = current
+  opening = false
 
   current.timers.push(
     window.setTimeout(() => {
@@ -219,14 +313,15 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
       // looks like success: the file grows, the timer runs, and the result is
       // unwatchable. Better to say so than to hand over a black video.
       if (frameIsBlank(video)) {
-        void window.gabi.recording
-          .failed(
+        void stopCapture(true).then(() =>
+          window.gabi.recording.failed(
+            current.sessionId,
             'Das Spielfenster liefert kein Bild. Spiele im Fenstermodus oder randlosen Vollbild, dann klappt die Aufnahme.'
           )
-          .then(() => stopCapture(true))
+        )
         return
       }
-      grabPoster(video)
+      grabPoster(current.sessionId, video)
     }, POSTER_DELAY_MS)
   )
 
@@ -235,17 +330,30 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
       if (active === current) void stopCapture()
     }, request.maxDurationMs)
   )
+
+  // A stop that arrived while the stream was opening is honoured now rather
+  // than lost.
+  if (stopWanted) {
+    stopWanted = false
+    void stopCapture()
+  }
 }
 
 /**
  * Ends the current capture.
  *
- * `silent` skips the finish report, used when the failure has already been
- * reported and a second message would only contradict the first.
+ * `silent` skips the finish report, used when the caller sends its own
+ * outcome and a second message would only contradict the first.
  */
 export async function stopCapture(silent = false): Promise<void> {
   const current = active
-  if (!current || current.ending) return
+  if (!current) {
+    // Remembered rather than dropped. The start is probably still opening the
+    // stream, and it checks this the moment it has something to stop.
+    if (opening) stopWanted = true
+    return
+  }
+  if (current.ending) return
   current.ending = true
 
   if (silent) {
@@ -267,7 +375,11 @@ export async function stopCapture(silent = false): Promise<void> {
   } catch {
     cleanUp(current)
     active = null
-    await window.gabi.recording.finished(Date.now() - current.startedAt)
+    await current.queue.catch(() => undefined)
+    await window.gabi.recording.finished(
+      current.sessionId,
+      Math.max(0, Date.now() - current.startedAt)
+    )
   }
 }
 

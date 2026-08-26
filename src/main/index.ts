@@ -13,7 +13,7 @@ import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
-import { disposeRecording, initRecording } from './core/recording'
+import { disposeRecording, flushRecording, getRecordingState, initRecording } from './core/recording'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
 const isDev = !app.isPackaged
@@ -48,6 +48,9 @@ let pendingRoute: string | null = null
  * Minecraft started behind it. Anything aimed at the renderer waits for this.
  */
 let bootSettled = false
+
+/** Set once a pending recording has been given its chance to finish. */
+let quitFlushed = false
 
 /** True once the renderer can be expected to receive what it is sent. */
 function rendererReachable(): boolean {
@@ -248,10 +251,25 @@ function bootstrap(): void {
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
       bootSettled = true
-      announceUpdate()
-      // Claims the recording hotkey if a game from the previous session is
-      // still up, and wires the listener that follows every later launch.
-      initRecording()
+
+      // Each step stands alone. These write files and talk to the OS, so any
+      // of them can throw on a machine with a locked config or a hostile
+      // virus scanner, and an escaping error used to abandon everything
+      // scheduled after it for the rest of the session: no recording hotkey,
+      // no cleanup, a shortcut launch silently dropped, and nothing on screen
+      // to say so.
+      try {
+        announceUpdate()
+      } catch (err) {
+        logger.error('Update-Hinweis fehlgeschlagen:', err)
+      }
+      try {
+        // Claims the recording hotkey if a game from the previous session is
+        // still up, and wires the listener that follows every later launch.
+        initRecording()
+      } catch (err) {
+        logger.error('Aufnahmefunktion konnte nicht eingerichtet werden:', err)
+      }
 
       // A quit or crash during a download strands its `.part` file, and nothing
       // else ever sweeps the shared library/asset trees where most of them land.
@@ -272,9 +290,22 @@ function bootstrap(): void {
     if (process.platform !== 'darwin') app.quit()
   })
 
-  app.on('before-quit', () => {
+  app.on('before-quit', (event) => {
+    // A recording still has a slice buffered in the renderer's encoder, and
+    // closing the file outright threw away the last seconds of it. The quit is
+    // held back once, just long enough to ask for that slice.
+    if (!quitFlushed && getRecordingState().active) {
+      event.preventDefault()
+      logger.info('Beenden wartet kurz auf die laufende Aufnahme')
+      void flushRecording().finally(() => {
+        quitFlushed = true
+        app.quit()
+      })
+      return
+    }
+
     disposeUpdater()
-    disposeRecording()
+    void disposeRecording()
     // Minecraft keeps running on its own; only stop it if the user asked us to.
     // Killed outright rather than gracefully: the escalation timer inside
     // `stopInstance` would die with this process before it could ever fire.

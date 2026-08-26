@@ -94,6 +94,9 @@ export interface RecordingInfo {
 
 /** What the renderer needs to start capturing, decided in the main process. */
 export interface RecordingRequest {
+  /** Generation counter, returned with every message so late slices from a
+   *  finished recording cannot be written into the next one. */
+  sessionId: number
   instanceId: string
   /** desktopCapturer source id of the window or screen to capture. */
   sourceId: string
@@ -178,14 +181,14 @@ export interface GabiApi {
     state(): Promise<RecordingState>
     /** Starts or stops, the same thing the hotkey does. */
     toggle(instanceId?: string): Promise<RecordingState>
-    /** Renderer reports a slice of encoded video. */
-    chunk(data: ArrayBuffer): Promise<void>
+    /** Renderer reports a slice of encoded video. Resolves once written. */
+    chunk(sessionId: number, data: ArrayBuffer): Promise<void>
     /** Renderer reports the still frame for the grid. */
-    poster(data: ArrayBuffer): Promise<void>
+    poster(sessionId: number, data: ArrayBuffer): Promise<void>
     /** Renderer reports a clean finish, with the length it measured. */
-    finished(durationMs: number): Promise<void>
+    finished(sessionId: number, durationMs: number): Promise<void>
     /** Renderer reports that capturing failed and why. */
-    failed(message: string): Promise<void>
+    failed(sessionId: number, message: string): Promise<void>
   }
   launch: {
     preflight(id: string): Promise<LaunchPreflight>
@@ -285,7 +288,7 @@ export interface GabiApi {
     onWindowState(fn: (state: { maximized: boolean }) => void): Unsubscribe
     onUpdateStatus(fn: (status: UpdateStatus) => void): Unsubscribe
     onRecordingStart(fn: (request: RecordingRequest) => void): Unsubscribe
-    onRecordingStop(fn: () => void): Unsubscribe
+    onRecordingStop(fn: (sessionId: number) => void): Unsubscribe
     onRecordingState(fn: (state: RecordingState) => void): Unsubscribe
   }
 }

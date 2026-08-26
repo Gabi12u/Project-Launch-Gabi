@@ -377,10 +377,10 @@ export function registerIpc(): void {
 
   handle(IPC.recordingState, () => getRecordingState())
   handle(IPC.recordingToggle, (instanceId?: string) => toggleRecording(instanceId))
-  handle(IPC.recordingChunk, (data: ArrayBuffer) => appendChunk(data))
-  handle(IPC.recordingPoster, (data: ArrayBuffer) => savePoster(data))
-  handle(IPC.recordingFinished, (durationMs: number) => finishRecording(durationMs))
-  handle(IPC.recordingFailed, (message: string) => failRecording(message))
+  handle(IPC.recordingChunk, (sessionId: number, data: ArrayBuffer) => appendChunk(sessionId, data))
+  handle(IPC.recordingPoster, (sessionId: number, data: ArrayBuffer) => savePoster(sessionId, data))
+  handle(IPC.recordingFinished, (sessionId: number, durationMs: number) => finishRecording(durationMs, sessionId))
+  handle(IPC.recordingFailed, (sessionId: number, message: string) => failRecording(message, sessionId))
 
   handle(IPC.instanceScreenshots, async (id: string) => {
     const shots = listScreenshots(id)
