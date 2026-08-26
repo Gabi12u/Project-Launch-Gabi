@@ -59,6 +59,17 @@ import {
   updateAll
 } from './core/content'
 import { checkCompatibility } from './core/compat'
+import {
+  appendChunk,
+  deleteRecording,
+  failRecording,
+  finishRecording,
+  getRecordingState,
+  listRecordings,
+  savePoster,
+  syncRecordingHotkey,
+  toggleRecording
+} from './core/recording'
 import { createBackup, deleteBackup, listBackups, restoreBackup, backupFolder } from './core/backups'
 import { repairInstance } from './core/repair'
 import { exportMrpack, importModpack, installModpackFromProvider } from './core/modpack'
@@ -224,10 +235,23 @@ export function registerIpc(): void {
       invalidateInstanceCache()
       logger.info(`Datenverzeichnis gewechselt zu ${next.dataDirectory}`)
     }
+
+    // A new key or a switched-off recorder has to reach the OS right away,
+    // otherwise the change only takes effect at the next launch.
+    if (
+      next.recordingHotkey !== previous.recordingHotkey ||
+      next.recordingEnabled !== previous.recordingEnabled
+    ) {
+      syncRecordingHotkey()
+    }
     return next
   })
 
-  handle(IPC.settingsReset, () => resetSettings())
+  handle(IPC.settingsReset, () => {
+    const next = resetSettings()
+    syncRecordingHotkey()
+    return next
+  })
 
   /* ---------------------------------------------------------------- *
    * Instances
@@ -325,6 +349,38 @@ export function registerIpc(): void {
   })
 
   handle(IPC.instanceWorlds, (id: string) => listWorlds(id))
+
+  handle(IPC.instanceRecordings, async (id: string) => {
+    const clips = listRecordings(id)
+    // Only the preview picture is inlined. A video is tens of megabytes and
+    // goes to the system player through `openPath` instead.
+    return Promise.all(
+      clips.map(async ({ posterFile, ...clip }) => {
+        if (!posterFile) return { ...clip, posterDataUrl: null }
+        try {
+          const buffer = await readFile(posterFile)
+          return { ...clip, posterDataUrl: `data:image/jpeg;base64,${buffer.toString('base64')}` }
+        } catch {
+          return { ...clip, posterDataUrl: null }
+        }
+      })
+    )
+  })
+
+  handle(IPC.instanceDeleteRecording, (id: string, file: string) => {
+    deleteRecording(id, file)
+  })
+
+  /* ---------------------------------------------------------------- *
+   * Recording
+   * ---------------------------------------------------------------- */
+
+  handle(IPC.recordingState, () => getRecordingState())
+  handle(IPC.recordingToggle, (instanceId?: string) => toggleRecording(instanceId))
+  handle(IPC.recordingChunk, (data: ArrayBuffer) => appendChunk(data))
+  handle(IPC.recordingPoster, (data: ArrayBuffer) => savePoster(data))
+  handle(IPC.recordingFinished, (durationMs: number) => finishRecording(durationMs))
+  handle(IPC.recordingFailed, (message: string) => failRecording(message))
 
   handle(IPC.instanceScreenshots, async (id: string) => {
     const shots = listScreenshots(id)

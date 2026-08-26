@@ -28,6 +28,7 @@ import type {
   NewsItem,
   ProjectDetails,
   ProjectVersion,
+  RecordingState,
   SearchQuery,
   SearchResponse,
   TaskProgress,
@@ -72,6 +73,35 @@ export interface ScreenshotInfo {
   takenAt: number
   /** Inlined image data so the renderer needs no file access. */
   dataUrl: string | null
+}
+
+/** A finished recording sitting in the instance's `recordings` folder. */
+export interface RecordingInfo {
+  file: string
+  fileName: string
+  recordedAt: number
+  sizeBytes: number
+  /** Milliseconds, taken from the length the recorder reported. */
+  durationMs: number
+  /**
+   * Inlined still frame grabbed shortly after the recording started.
+   *
+   * Videos are far too large to hand to the renderer whole, so the grid shows
+   * this and opens the real file in the system player on click.
+   */
+  posterDataUrl: string | null
+}
+
+/** What the renderer needs to start capturing, decided in the main process. */
+export interface RecordingRequest {
+  instanceId: string
+  /** desktopCapturer source id of the window or screen to capture. */
+  sourceId: string
+  /** Whether the source is a single window or a whole screen. */
+  sourceKind: 'window' | 'screen'
+  audio: boolean
+  videoBitsPerSecond: number
+  maxDurationMs: number
 }
 
 export interface RepairReport {
@@ -140,6 +170,22 @@ export interface GabiApi {
     setBackground(id: string): Promise<string | null>
     worlds(id: string): Promise<WorldInfo[]>
     screenshots(id: string): Promise<ScreenshotInfo[]>
+    recordings(id: string): Promise<RecordingInfo[]>
+    deleteRecording(id: string, file: string): Promise<void>
+  }
+  recording: {
+    /** Current state, for painting the indicator on first render. */
+    state(): Promise<RecordingState>
+    /** Starts or stops, the same thing the hotkey does. */
+    toggle(instanceId?: string): Promise<RecordingState>
+    /** Renderer reports a slice of encoded video. */
+    chunk(data: ArrayBuffer): Promise<void>
+    /** Renderer reports the still frame for the grid. */
+    poster(data: ArrayBuffer): Promise<void>
+    /** Renderer reports a clean finish, with the length it measured. */
+    finished(durationMs: number): Promise<void>
+    /** Renderer reports that capturing failed and why. */
+    failed(message: string): Promise<void>
   }
   launch: {
     preflight(id: string): Promise<LaunchPreflight>
@@ -238,6 +284,9 @@ export interface GabiApi {
     onNavigate(fn: (route: string) => void): Unsubscribe
     onWindowState(fn: (state: { maximized: boolean }) => void): Unsubscribe
     onUpdateStatus(fn: (status: UpdateStatus) => void): Unsubscribe
+    onRecordingStart(fn: (request: RecordingRequest) => void): Unsubscribe
+    onRecordingStop(fn: () => void): Unsubscribe
+    onRecordingState(fn: (state: RecordingState) => void): Unsubscribe
   }
 }
 

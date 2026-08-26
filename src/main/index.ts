@@ -13,6 +13,7 @@ import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { disposeUpdater, initUpdater } from './core/updater'
+import { disposeRecording, initRecording } from './core/recording'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
 const isDev = !app.isPackaged
@@ -247,6 +248,9 @@ function bootstrap(): void {
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
       bootSettled = true
+      // Claims the recording hotkey if a game from the previous session is
+      // still up, and wires the listener that follows every later launch.
+      initRecording()
 
       // A quit or crash during a download strands its `.part` file, and nothing
       // else ever sweeps the shared library/asset trees where most of them land.
@@ -269,6 +273,7 @@ function bootstrap(): void {
 
   app.on('before-quit', () => {
     disposeUpdater()
+    disposeRecording()
     // Minecraft keeps running on its own; only stop it if the user asked us to.
     // Killed outright rather than gracefully: the escalation timer inside
     // `stopInstance` would die with this process before it could ever fire.

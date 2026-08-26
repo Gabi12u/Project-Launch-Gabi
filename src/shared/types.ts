@@ -16,6 +16,19 @@ export type ProviderId = 'modrinth' | 'curseforge' | 'local'
 /** How the launcher window behaves once the game starts. */
 export type LaunchBehaviour = 'keep' | 'hide' | 'close'
 
+export type RecordingQuality = 'low' | 'medium' | 'high'
+
+/** What the recorder is doing right now, mirrored into the interface. */
+export interface RecordingState {
+  active: boolean
+  /** The instance being recorded, null while nothing is running. */
+  instanceId: string | null
+  /** Epoch milliseconds the current recording started at. */
+  startedAt: number | null
+  /** Bytes written so far, so the interface can show it growing. */
+  bytes: number
+}
+
 export interface InstanceSettings {
   /** Absolute path to a java executable. Empty means "managed automatically". */
   javaPath: string
@@ -504,6 +517,22 @@ export interface LauncherSettings {
   notifyOnGameExit: boolean
   automaticBackups: boolean
   automaticBackupKeep: number
+  /** Recording is offered at all. Off means the hotkey is never registered. */
+  recordingEnabled: boolean
+  /** Accelerator in Electron's notation, for instance `F9` or `Ctrl+Shift+R`. */
+  recordingHotkey: string
+  recordingQuality: RecordingQuality
+  /** Record the system's sound output alongside the picture. */
+  recordingAudio: boolean
+  /** Safety net: a forgotten recording stops itself after this many minutes. */
+  recordingMaxMinutes: number
+  /**
+   * The version whose changelog the user has already seen.
+   *
+   * Compared against the running version to put a marker on the changelog
+   * entry after an update, so a release does not pass unnoticed.
+   */
+  lastSeenVersion: string
   curseForgeApiKey: string
   /** Azure application (client) id used for the Microsoft login. */
   microsoftClientId: string

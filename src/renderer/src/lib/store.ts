@@ -7,6 +7,7 @@ import type {
   InstanceSummary,
   LauncherSettings,
   LaunchStatus,
+  RecordingState,
   TaskProgress
 } from '@shared/types'
 
@@ -33,6 +34,8 @@ export interface AppState {
   compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
   /** Instances whose launch is currently being prepared in the UI. */
   starting: string[]
+  /** What the screen recorder is doing, for the indicator in the title bar. */
+  recording: RecordingState
 }
 
 const initial: AppState = {
@@ -48,7 +51,8 @@ const initial: AppState = {
   createOpen: false,
   paletteOpen: false,
   compatGate: null,
-  starting: []
+  starting: [],
+  recording: { active: false, instanceId: null, startedAt: null, bytes: 0 }
 }
 
 let state: AppState = initial

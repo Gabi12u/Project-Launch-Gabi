@@ -6,7 +6,7 @@ import type {
   LaunchPreflight,
   LogLine
 } from '@shared/types'
-import type { InstanceDetail, ScreenshotInfo, WorldInfo } from '@shared/api'
+import type { InstanceDetail, RecordingInfo, ScreenshotInfo, WorldInfo } from '@shared/api'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { createShortcut, startInstance, stopInstance } from '../lib/actions'
 import { clickable } from '../lib/a11y'
@@ -14,6 +14,7 @@ import {
   LOADER_LABELS,
   formatBytes,
   formatDateTime,
+  formatDuration,
   formatMemory,
   formatPlayTime,
   formatRelative,
@@ -31,7 +32,6 @@ import {
   IconDownload,
   IconExternal,
   IconFolder,
-  IconImage,
   IconLink,
   IconPackage,
   IconPlay,
@@ -44,18 +44,19 @@ import {
   IconWrench,
   IconLayers,
   IconCheck,
+  IconFilm,
   IconX} from '../components/Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from '../components/ContextMenu'
 import { VersionPicker } from '../components/VersionPicker'
 
-type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'screenshots' | 'logs' | 'settings'
+type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'recordings' | 'logs' | 'settings'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Übersicht' },
   { id: 'content', label: 'Installiert' },
   { id: 'browse', label: 'Inhalte finden' },
   { id: 'worlds', label: 'Welten' },
-  { id: 'screenshots', label: 'Screenshots' },
+  { id: 'recordings', label: 'Aufnahmen' },
   { id: 'logs', label: 'Log' },
   { id: 'settings', label: 'Einstellungen' }
 ]
@@ -373,7 +374,7 @@ export function InstanceDetailView({
       )}
 
       {tab === 'worlds' && <WorldsTab instanceId={instanceId} />}
-      {tab === 'screenshots' && <ScreenshotsTab instanceId={instanceId} />}
+      {tab === 'recordings' && <RecordingsTab instanceId={instanceId} />}
       {tab === 'logs' && <LogsTab instanceId={instanceId} />}
       {tab === 'settings' && (
         <InstanceSettingsPanel instance={instance} onChanged={load} />
@@ -962,43 +963,141 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
 }
 
 /* ------------------------------------------------------------------ *
- * Screenshots
+ * Recordings
+ *
+ * Screenshots and clips share one tab. They are the same thing to the person
+ * looking for them: a moment from a session they want back. Minecraft writes
+ * the pictures itself on F2, the launcher writes the videos on the recording
+ * hotkey, and both land here sorted by when they happened.
  * ------------------------------------------------------------------ */
 
-function ScreenshotsTab({ instanceId }: { instanceId: string }): JSX.Element {
-  const [shots, setShots] = useState<ScreenshotInfo[] | null>(null)
+interface Moment {
+  key: string
+  at: number
+  kind: 'shot' | 'clip'
+  file: string
+  preview: string | null
+  /** Only clips carry these. */
+  durationMs?: number
+  sizeBytes?: number
+}
 
-  useEffect(() => {
-    void window.gabi.instances.screenshots(instanceId).then(setShots).catch(() => setShots([]))
+function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
+  const [shots, setShots] = useState<ScreenshotInfo[] | null>(null)
+  const [clips, setClips] = useState<RecordingInfo[] | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<RecordingInfo | null>(null)
+
+  const load = useCallback(async (): Promise<void> => {
+    const [nextShots, nextClips] = await Promise.all([
+      window.gabi.instances.screenshots(instanceId).catch(() => [] as ScreenshotInfo[]),
+      window.gabi.instances.recordings(instanceId).catch(() => [] as RecordingInfo[])
+    ])
+    setShots(nextShots)
+    setClips(nextClips)
   }, [instanceId])
 
-  if (!shots) return <div className="skeleton" style={{ height: 200 }} />
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  if (shots.length === 0) {
+  if (!shots || !clips) return <div className="skeleton" style={{ height: 200 }} />
+
+  const moments: Moment[] = [
+    ...clips.map((clip) => ({
+      key: clip.file,
+      at: clip.recordedAt,
+      kind: 'clip' as const,
+      file: clip.file,
+      preview: clip.posterDataUrl,
+      durationMs: clip.durationMs,
+      sizeBytes: clip.sizeBytes
+    })),
+    ...shots.map((shot) => ({
+      key: shot.file,
+      at: shot.takenAt,
+      kind: 'shot' as const,
+      file: shot.file,
+      preview: shot.dataUrl
+    }))
+  ].sort((a, b) => b.at - a.at)
+
+  const remove = async (clip: RecordingInfo): Promise<void> => {
+    try {
+      await window.gabi.instances.deleteRecording(instanceId, clip.file)
+      toast('success', 'Aufnahme gelöscht')
+      await load()
+    } catch (err) {
+      toastError(err, 'Aufnahme konnte nicht gelöscht werden')
+    } finally {
+      setConfirmDelete(null)
+    }
+  }
+
+  if (moments.length === 0) {
     return (
       <EmptyState
-        icon={<IconImage size={26} />}
-        title="Keine Screenshots"
-        message="Drücke im Spiel F2, um einen Screenshot aufzunehmen. Er taucht dann automatisch hier auf."
+        icon={<IconFilm size={26} />}
+        title="Noch nichts aufgenommen"
+        message="Drücke im Spiel F2 für einen Screenshot oder die Aufnahmetaste für ein Video. Beides taucht dann hier auf."
       />
     )
   }
 
   return (
-    <div className="shot-grid">
-      {shots.map((shot) => (
-        <div
-          key={shot.file}
-          className="shot"
-          // The image itself is decorative (alt=""), so without a label here a
-          // screen reader would announce this tile as an unnamed button.
-          aria-label={`Screenshot ${formatDateTime(shot.takenAt)} öffnen`}
-          {...clickable(() => void window.gabi.app.openPath(shot.file))}
-        >
-          {shot.dataUrl && <img src={shot.dataUrl} alt="" loading="lazy" />}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="shot-grid">
+        {moments.map((moment) => (
+          <div
+            key={moment.key}
+            className={`shot${moment.kind === 'clip' ? ' is-clip' : ''}`}
+            aria-label={`${moment.kind === 'clip' ? 'Aufnahme' : 'Screenshot'} ${formatDateTime(moment.at)} öffnen`}
+            {...clickable(() => void window.gabi.app.openPath(moment.file))}
+          >
+            {moment.preview && <img src={moment.preview} alt="" loading="lazy" />}
+
+            {moment.kind === 'clip' && (
+              <>
+                {/* A clip with no poster would otherwise be an empty tile. */}
+                {!moment.preview && (
+                  <div className="shot-fallback">
+                    <IconFilm size={26} />
+                  </div>
+                )}
+                <span className="shot-badge">
+                  <IconFilm size={11} />
+                  {moment.durationMs ? formatDuration(moment.durationMs) : 'Video'}
+                </span>
+                <span className="shot-size">{formatBytes(moment.sizeBytes ?? 0)}</span>
+                <button
+                  className="shot-remove"
+                  title="Aufnahme löschen"
+                  aria-label="Aufnahme löschen"
+                  onClick={(event) => {
+                    // Without this the tile's own click handler fires too and
+                    // opens the very video the user is trying to delete.
+                    event.stopPropagation()
+                    const clip = clips.find((c) => c.file === moment.file)
+                    if (clip) setConfirmDelete(clip)
+                  }}
+                >
+                  <IconTrash size={13} />
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Confirm
+        open={confirmDelete !== null}
+        title="Aufnahme löschen"
+        message={`${confirmDelete?.fileName ?? ''} wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.`}
+        confirmLabel="Löschen"
+        danger
+        onConfirm={() => (confirmDelete ? remove(confirmDelete) : Promise.resolve())}
+        onCancel={() => setConfirmDelete(null)}
+      />
+    </>
   )
 }
 

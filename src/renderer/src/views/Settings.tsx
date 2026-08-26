@@ -1,9 +1,16 @@
 import { useEffect, useState, type JSX } from 'react'
-import type { JavaRuntime, LaunchBehaviour, ThemeId, UpdateStatus } from '@shared/types'
+import type {
+  JavaRuntime,
+  LaunchBehaviour,
+  RecordingQuality,
+  ThemeId,
+  UpdateStatus
+} from '@shared/types'
 import type { AppInfo } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
+import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
-import { formatMemory } from '../lib/format'
+import { formatBytes, formatDate, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
 import {
@@ -11,6 +18,7 @@ import {
   IconExternal,
   IconFolder,
   IconRefresh,
+  IconRecord,
   IconShield,
   IconTrash
 } from '../components/Icons'
@@ -21,7 +29,9 @@ type Section =
   | 'content'
   | 'accounts'
   | 'appearance'
+  | 'recording'
   | 'updates'
+  | 'changelog'
   | 'advanced'
   | 'about'
 
@@ -31,7 +41,9 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'java', label: 'Java & Leistung' },
   { id: 'content', label: 'Inhalte' },
   { id: 'accounts', label: 'Accounts' },
+  { id: 'recording', label: 'Aufnahmen' },
   { id: 'updates', label: 'Updates' },
+  { id: 'changelog', label: 'Neuerungen' },
   { id: 'advanced', label: 'Erweitert' },
   { id: 'about', label: 'Über' }
 ]
@@ -185,6 +197,9 @@ export function SettingsView(): JSX.Element {
   const [installingJava, setInstallingJava] = useState<number | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [apiKey, setApiKey] = useState(settings.curseForgeApiKey)
+  // Only claims to be unread once the version is actually known: before the
+  // app info arrives both sides are empty strings and the dot would flicker.
+  const changelogUnread = Boolean(info?.version) && settings.lastSeenVersion !== info?.version
   const [clientId, setClientId] = useState(settings.microsoftClientId)
 
   useEffect(() => {
@@ -213,6 +228,9 @@ export function SettingsView(): JSX.Element {
               onClick={() => setSection(entry.id)}
             >
               {entry.label}
+              {/* A dot on the changelog until this version's entry has been
+                  read, so an update does not pass by unnoticed. */}
+              {entry.id === 'changelog' && changelogUnread && <span className="nav-new" />}
             </button>
           ))}
         </nav>
@@ -624,7 +642,11 @@ export function SettingsView(): JSX.Element {
             </section>
           )}
 
+          {section === 'recording' && <RecordingPanel />}
+
           {section === 'updates' && <UpdatePanel />}
+
+          {section === 'changelog' && <ChangelogPanel currentVersion={info?.version ?? ''} />}
 
           {section === 'advanced' && (
             <>
@@ -712,5 +734,210 @@ export function SettingsView(): JSX.Element {
         onCancel={() => setConfirmReset(false)}
       />
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Recording
+ * ------------------------------------------------------------------ */
+
+/** Keys offered for the recording hotkey, in Electron's accelerator notation. */
+const HOTKEYS = ['F6', 'F7', 'F8', 'F9', 'F10', 'Ctrl+Shift+R', 'Alt+R', 'Ctrl+Alt+R']
+
+const QUALITIES: { id: RecordingQuality; label: string; hint: string }[] = [
+  { id: 'low', label: 'Sparsam', hint: 'Kleine Dateien, gut für lange Sitzungen.' },
+  { id: 'medium', label: 'Ausgewogen', hint: 'Sieht gut aus und bleibt handlich.' },
+  { id: 'high', label: 'Scharf', hint: 'Beste Qualität, braucht deutlich mehr Platz.' }
+]
+
+function RecordingPanel(): JSX.Element {
+  const { settings, recording } = useStore()
+
+  return (
+    <>
+      <section className="setting-group">
+        <h3>Aufnehmen im Spiel</h3>
+        <p className="hint">
+          Eine Taste startet die Aufnahme, dieselbe Taste beendet sie wieder. Die fertigen Videos
+          findest du bei der Instanz im Reiter Aufnahmen, zusammen mit deinen Screenshots.
+        </p>
+
+        <SettingToggle
+          label="Aufnahmen erlauben"
+          hint="Ist das aus, wird die Taste gar nicht erst belegt und steht anderen Programmen zur Verfügung."
+          checked={settings.recordingEnabled}
+          onChange={(value) => void saveSettings({ recordingEnabled: value })}
+        />
+
+        <div className="field mt-16">
+          <label className="label" htmlFor="st-aufnahmetaste">
+            Aufnahmetaste
+          </label>
+          <select
+            id="st-aufnahmetaste"
+            className="select"
+            value={settings.recordingHotkey}
+            disabled={!settings.recordingEnabled}
+            onChange={(event) => void saveSettings({ recordingHotkey: event.target.value })}
+          >
+            {/* A hand-edited settings file can hold something not in this list,
+                and without this the select would silently jump to the first
+                entry while the launcher kept using the stored one. */}
+            {!HOTKEYS.includes(settings.recordingHotkey) && (
+              <option value={settings.recordingHotkey}>{settings.recordingHotkey}</option>
+            )}
+            {HOTKEYS.map((key) => (
+              <option key={key} value={key}>
+                {key}
+              </option>
+            ))}
+          </select>
+          <span className="hint">
+            Die Taste gilt systemweit, aber nur solange eine Instanz läuft. Danach ist sie wieder
+            frei für andere Programme.
+          </span>
+        </div>
+      </section>
+
+      <section className="setting-group">
+        <h3>Qualität</h3>
+        <div className="field">
+          <label className="label" htmlFor="st-aufnahmequalitaet">
+            Bildqualität
+          </label>
+          <select
+            id="st-aufnahmequalitaet"
+            className="select"
+            value={settings.recordingQuality}
+            disabled={!settings.recordingEnabled}
+            onChange={(event) =>
+              void saveSettings({ recordingQuality: event.target.value as RecordingQuality })
+            }
+          >
+            {QUALITIES.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+          <span className="hint">
+            {QUALITIES.find((entry) => entry.id === settings.recordingQuality)?.hint}
+          </span>
+        </div>
+
+        <SettingToggle
+          label="Ton mit aufnehmen"
+          hint="Nimmt auf, was aus den Lautsprechern kommt. Klappt nicht auf jedem System, dann läuft die Aufnahme ohne Ton weiter."
+          checked={settings.recordingAudio}
+          onChange={(value) => void saveSettings({ recordingAudio: value })}
+        />
+
+        <div className="field mt-16">
+          <label className="label" htmlFor="st-aufnahmedauer">
+            Höchstdauer: {settings.recordingMaxMinutes} Minuten
+          </label>
+          <input
+            id="st-aufnahmedauer"
+            className="range"
+            type="range"
+            min={1}
+            max={120}
+            step={1}
+            value={settings.recordingMaxMinutes}
+            disabled={!settings.recordingEnabled}
+            onChange={(event) =>
+              void saveSettings({ recordingMaxMinutes: Number(event.target.value) })
+            }
+          />
+          <span className="hint">
+            Danach hört die Aufnahme von selbst auf. Die Bremse für den Fall, dass du das Beenden
+            vergisst.
+          </span>
+        </div>
+      </section>
+
+      {recording.active && (
+        <section className="setting-group">
+          <h3>Läuft gerade</h3>
+          <p className="hint">
+            Es wird aufgenommen, bereits {formatBytes(recording.bytes)} geschrieben.
+          </p>
+          <button className="btn danger mt-8" onClick={() => void window.gabi.recording.toggle()}>
+            <IconRecord size={13} />
+            Aufnahme beenden
+          </button>
+        </section>
+      )}
+
+      <section className="setting-group">
+        <h3>Gut zu wissen</h3>
+        <ul className="hint bullet-list">
+          <li>
+            Das Launcher-Fenster muss offen bleiben. Steht bei der Instanz das Verhalten auf
+            Schließen, kann nicht aufgenommen werden.
+          </li>
+          <li>
+            Im echten Vollbild liefert Minecraft manchmal kein Bild. Der randlose Fenstermodus
+            funktioniert immer.
+          </li>
+          <li>Videos brauchen viel Platz. Die Höchstdauer oben hält das im Rahmen.</li>
+        </ul>
+      </section>
+    </>
+  )
+}
+
+/* ------------------------------------------------------------------ *
+ * Changelog
+ *
+ * The public record of what each version changed, kept inside the app rather
+ * than only on a release page nobody opens. Old entries stay.
+ * ------------------------------------------------------------------ */
+
+function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Element {
+  const { settings } = useStore()
+
+  // Marks this version as read, which is what clears the marker on the nav
+  // entry. Written once per version rather than on every visit.
+  useEffect(() => {
+    if (!currentVersion || settings.lastSeenVersion === currentVersion) return
+    void saveSettings({ lastSeenVersion: currentVersion })
+  }, [currentVersion, settings.lastSeenVersion])
+
+  return (
+    <section className="setting-group">
+      <h3>Was sich geändert hat</h3>
+      <p className="hint">
+        Nach jedem Update steht hier, was dazugekommen ist und was repariert wurde. Ältere Einträge
+        bleiben stehen.
+      </p>
+
+      <div className="changelog">
+        {CHANGELOG.map((release) => (
+          <article key={release.version} className="changelog-entry">
+            <header className="changelog-head">
+              <span className="changelog-version">{release.version}</span>
+              {release.version === currentVersion && (
+                <span className="badge ok dot">Deine Version</span>
+              )}
+              <span className="changelog-date">{formatDate(release.date)}</span>
+            </header>
+
+            <p className="changelog-headline">{release.headline}</p>
+
+            <ul className="changelog-list">
+              {release.changes.map((change, index) => (
+                <li key={index}>
+                  <span className={`changelog-kind ${change.kind}`}>
+                    {CHANGE_KIND_LABEL[change.kind]}
+                  </span>
+                  <span>{change.text}</span>
+                </li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }

@@ -36,6 +36,17 @@ export const IPC = {
   instanceSetBackground: 'instance:set-background',
   instanceWorlds: 'instance:worlds',
   instanceScreenshots: 'instance:screenshots',
+  instanceRecordings: 'instance:recordings',
+  instanceDeleteRecording: 'instance:delete-recording',
+
+  // recording
+  recordingState: 'recording:state',
+  recordingToggle: 'recording:toggle',
+  recordingSource: 'recording:source',
+  recordingChunk: 'recording:chunk',
+  recordingFinished: 'recording:finished',
+  recordingFailed: 'recording:failed',
+  recordingPoster: 'recording:poster',
 
   // launching
   launchPreflight: 'launch:preflight',
@@ -116,7 +127,13 @@ export const EVENTS = {
   notification: 'evt:notification',
   navigate: 'evt:navigate',
   windowState: 'evt:window-state',
-  updateStatus: 'evt:update-status'
+  updateStatus: 'evt:update-status',
+  /** Main asks the renderer to start capturing, carrying the chosen source. */
+  recordingStart: 'evt:recording-start',
+  /** Main asks the renderer to stop capturing. */
+  recordingStop: 'evt:recording-stop',
+  /** Recorder state changed, for the indicator in the interface. */
+  recordingState: 'evt:recording-state'
 } as const
 
 export type NotificationKind = 'info' | 'success' | 'warning' | 'error'

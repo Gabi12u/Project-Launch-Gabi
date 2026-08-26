@@ -56,7 +56,18 @@ const api = {
     setIconImage: call(IPC.instanceSetIconImage),
     setBackground: call(IPC.instanceSetBackground),
     worlds: call(IPC.instanceWorlds),
-    screenshots: call(IPC.instanceScreenshots)
+    screenshots: call(IPC.instanceScreenshots),
+    recordings: call(IPC.instanceRecordings),
+    deleteRecording: call(IPC.instanceDeleteRecording)
+  },
+
+  recording: {
+    state: call(IPC.recordingState),
+    toggle: call(IPC.recordingToggle),
+    chunk: call(IPC.recordingChunk),
+    poster: call(IPC.recordingPoster),
+    finished: call(IPC.recordingFinished),
+    failed: call(IPC.recordingFailed)
   },
 
   launch: {
@@ -147,7 +158,10 @@ const api = {
     onNotification: (fn: (payload: never) => void) => on(EVENTS.notification, fn),
     onNavigate: (fn: (payload: never) => void) => on(EVENTS.navigate, fn),
     onWindowState: (fn: (payload: never) => void) => on(EVENTS.windowState, fn),
-    onUpdateStatus: (fn: (payload: never) => void) => on(EVENTS.updateStatus, fn)
+    onUpdateStatus: (fn: (payload: never) => void) => on(EVENTS.updateStatus, fn),
+    onRecordingStart: (fn: (payload: never) => void) => on(EVENTS.recordingStart, fn),
+    onRecordingStop: (fn: (payload: never) => void) => on(EVENTS.recordingStop, fn),
+    onRecordingState: (fn: (payload: never) => void) => on(EVENTS.recordingState, fn)
   }
 }
 

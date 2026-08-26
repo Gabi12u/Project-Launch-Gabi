@@ -27,6 +27,7 @@ import { ModsView } from './views/Mods'
 import { DiscoverView } from './views/Discover'
 import { BackupsView } from './views/Backups'
 import { SettingsView } from './views/Settings'
+import { startCapture, stopCapture } from './lib/recorder'
 
 export function App(): JSX.Element {
   const { route, ready, settings, createOpen } = useStore()
@@ -46,6 +47,12 @@ export function App(): JSX.Element {
         setState({ tasks: await window.gabi.tasks.list() })
       } catch {
         // tasks are optional at boot
+      }
+
+      try {
+        setState({ recording: await window.gabi.recording.state() })
+      } catch {
+        // the indicator simply stays off
       }
 
       setState({ ready: true })
@@ -97,7 +104,24 @@ export function App(): JSX.Element {
       // account switch, and the preload has always exposed it — but nothing
       // ever listened, so the event went nowhere and every view except the one
       // that caused the change kept its stale list.
-      window.gabi.events.onAccountsChanged((accounts) => setState({ accounts }))
+      window.gabi.events.onAccountsChanged((accounts) => setState({ accounts })),
+
+      // The capture itself has to run here: `MediaRecorder` and screen access
+      // are browser APIs, so the main process can only decide what to record
+      // and where it goes. It keeps working while this window sits hidden
+      // behind the game.
+      window.gabi.events.onRecordingStart((request) => {
+        void startCapture(request).catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err)
+          void window.gabi.recording.failed(message)
+        })
+      }),
+
+      window.gabi.events.onRecordingStop(() => {
+        void stopCapture()
+      }),
+
+      window.gabi.events.onRecordingState((recording) => setState({ recording }))
     ]
 
     return () => unsubscribe.forEach((off) => off())

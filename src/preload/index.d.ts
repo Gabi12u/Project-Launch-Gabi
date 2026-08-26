@@ -8,6 +8,8 @@ export type {
   GabiApi,
   InstallContentRequest,
   InstanceDetail,
+  RecordingInfo,
+  RecordingRequest,
   RepairReport,
   ScreenshotInfo,
   Unsubscribe,

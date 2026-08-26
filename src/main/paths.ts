@@ -33,6 +33,14 @@ export const paths = {
   shaderPacks: (id: string) => join(paths.gameDir(id), 'shaderpacks'),
   saves: (id: string) => join(paths.gameDir(id), 'saves'),
   screenshots: (id: string) => join(paths.gameDir(id), 'screenshots'),
+  /**
+   * Where the launcher's own clips land.
+   *
+   * Inside the game directory rather than beside it, so a recording travels
+   * with the instance: backups, exports and deletion all already cover this
+   * tree, and nothing had to learn about a new folder.
+   */
+  recordings: (id: string) => join(paths.gameDir(id), 'recordings'),
   config: (id: string) => join(paths.gameDir(id), 'config'),
   backups: () => join(root(), 'backups'),
   instanceBackups: (id: string) => join(root(), 'backups', id),

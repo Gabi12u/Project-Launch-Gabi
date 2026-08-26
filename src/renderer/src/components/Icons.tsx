@@ -284,6 +284,23 @@ export const IconClock = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+/** Film strip, for recordings as opposed to screenshots. */
+export const IconFilm = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <g>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.2" />
+      <path d="M7 5v14M17 5v14M2.5 12h19M2.5 8.5h4.5M2.5 15.5h4.5M17 8.5h4.5M17 15.5h4.5" />
+    </g>
+  </Icon>
+)
+
+/** Filled dot, the universal "recording" marker. */
+export const IconRecord = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="6" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
 export const IconImage = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <g>

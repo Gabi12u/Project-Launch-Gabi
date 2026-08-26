@@ -86,11 +86,21 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   next.concurrentDownloads = clampNumber(next.concurrentDownloads, fallback.concurrentDownloads, 1, 32)
   next.downloadThrottleKbps = clampNumber(next.downloadThrottleKbps, fallback.downloadThrottleKbps, 0, 1_000_000)
   next.automaticBackupKeep = clampNumber(next.automaticBackupKeep, fallback.automaticBackupKeep, 1, 200)
+  // A non-numeric value here reached `setTimeout` as NaN, which Chromium reads
+  // as zero: the recording would have ended the instant it began.
+  next.recordingMaxMinutes = clampNumber(next.recordingMaxMinutes, fallback.recordingMaxMinutes, 1, 240)
 
   next.defaultJvmArgs = textOr(next.defaultJvmArgs, fallback.defaultJvmArgs)
   next.accentColor = textOr(next.accentColor, fallback.accentColor)
   next.curseForgeApiKey = textOr(next.curseForgeApiKey, fallback.curseForgeApiKey)
   next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId)
+  // Not merely cosmetic: registering the hotkey calls `.trim()` on this, so a
+  // number in the file threw before a game could ever start.
+  next.recordingHotkey = textOr(next.recordingHotkey, fallback.recordingHotkey).trim() || fallback.recordingHotkey
+  if (!['low', 'medium', 'high'].includes(next.recordingQuality)) {
+    next.recordingQuality = fallback.recordingQuality
+  }
+  next.lastSeenVersion = textOr(next.lastSeenVersion, fallback.lastSeenVersion)
 
   if (typeof next.dataDirectory !== 'string' || !next.dataDirectory.trim()) {
     next.dataDirectory = join(app.getPath('userData'), 'data')

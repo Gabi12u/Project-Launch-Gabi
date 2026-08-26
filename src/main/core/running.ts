@@ -152,21 +152,55 @@ export function pruneAdopted(exists: (instanceId: string) => boolean): void {
   if (removed > 0) persist()
 }
 
+/**
+ * Called whenever the set of running games changes.
+ *
+ * A plain callback list rather than an import the other way round: the
+ * recording module needs to know when a game comes up so it can claim its
+ * hotkey, but this module has to stay at the bottom of the dependency graph
+ * where the instance store and the launch engine can both reach it.
+ */
+type RunningListener = () => void
+const listeners = new Set<RunningListener>()
+
+export function onRunningChanged(listener: RunningListener): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+function announce(): void {
+  for (const listener of listeners) {
+    try {
+      listener()
+    } catch (err) {
+      // A listener that throws must not take a launch or an exit down with it.
+      logger.warn('Melder für laufende Spiele ist gescheitert:', err)
+    }
+  }
+}
+
 export function setRunning(instanceId: string, game: RunningGame): void {
   // This process owns it now, so any record from the previous session is stale.
   adopted.delete(instanceId)
   running.set(instanceId, game)
   persist()
+  announce()
 }
 
 export function clearRunning(instanceId: string): void {
   running.delete(instanceId)
   adopted.delete(instanceId)
   persist()
+  announce()
 }
 
 export function getRunning(instanceId: string): RunningGame | undefined {
   return running.get(instanceId)
+}
+
+/** Instances left running by an earlier session and still alive. */
+export function listAdopted(): AdoptedGame[] {
+  return [...adopted.values()].filter((game) => alive(game.pid))
 }
 
 /** An instance left running by an earlier session, if any. */

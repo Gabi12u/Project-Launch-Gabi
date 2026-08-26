@@ -44,6 +44,14 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   notifyOnGameExit: false,
   automaticBackups: false,
   automaticBackupKeep: 5,
+  recordingEnabled: true,
+  // F9 is free in vanilla Minecraft, unlike F3 (debug), F5 (view) and F11
+  // (fullscreen). Anyone whose mods use it can change it in the settings.
+  recordingHotkey: 'F9',
+  recordingQuality: 'medium',
+  recordingAudio: true,
+  recordingMaxMinutes: 15,
+  lastSeenVersion: '',
   curseForgeApiKey: '',
   // Client id of the official Minecraft launcher application. Replace it with
   // your own Azure application id before shipping Launch Gabi publicly.
