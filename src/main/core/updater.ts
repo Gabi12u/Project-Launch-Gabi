@@ -2,9 +2,10 @@ import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { EVENTS } from '@shared/ipc'
 import type { UpdateStatus } from '@shared/types'
+import { changelogFor } from '@shared/changelog'
 import { emit, notify } from '../events'
 import { log } from '../logger'
-import { getSettings } from '../store'
+import { getSettings, saveSettings } from '../store'
 import { runningCount } from './running'
 import { startingCount } from './launch'
 
@@ -43,6 +44,43 @@ function setStatus(patch: Partial<UpdateStatus>): void {
   }
 
   emit(EVENTS.updateStatus, status)
+}
+
+/**
+ * Says so when the launcher has come back up on a new version.
+ *
+ * An update installs itself and relaunches, which from the outside looks like
+ * an ordinary restart: nothing tells the user it happened, and the notes about
+ * what changed sit in a settings page nobody has a reason to open. This closes
+ * that gap once per version, and the toast leads straight to the entry.
+ *
+ * Deliberately quiet on a first install. `lastRunVersion` is empty then, and
+ * greeting a brand new user with "update finished" would be nonsense.
+ */
+export function announceUpdate(): void {
+  const version = app.getVersion()
+  const settings = getSettings()
+  const previous = settings.lastRunVersion
+
+  if (previous !== version) {
+    // Written before the notification rather than after, so a crash while the
+    // window paints cannot turn this into a message that returns every start.
+    saveSettings({ lastRunVersion: version })
+  }
+  if (!previous || previous === version) return
+
+  logger.info(`Update abgeschlossen: ${previous} -> ${version}`)
+  const entry = changelogFor(version)
+  notify(
+    'success',
+    `Update abgeschlossen auf ${version}`,
+    entry
+      ? `${entry.headline} Hier klicken, um alle Neuerungen zu sehen.`
+      : 'Hier klicken, um die Neuerungen zu sehen.',
+    // No timeout: this is the one message worth still being there when the
+    // user looks back at the window a minute after starting.
+    { route: '/settings?section=changelog', timeout: 0 }
+  )
 }
 
 export function getUpdateStatus(): UpdateStatus {

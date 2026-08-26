@@ -51,6 +51,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   recordingQuality: 'medium',
   recordingAudio: true,
   recordingMaxMinutes: 15,
+  lastRunVersion: '',
   lastSeenVersion: '',
   curseForgeApiKey: '',
   // Client id of the official Minecraft launcher application. Replace it with

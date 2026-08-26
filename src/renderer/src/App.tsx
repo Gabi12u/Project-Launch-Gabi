@@ -253,7 +253,7 @@ function RouteView({
     case 'backups':
       return <BackupsView />
     case 'settings':
-      return <SettingsView />
+      return <SettingsView query={query} />
     case 'home':
     default:
       return <HomeView />

@@ -100,6 +100,7 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   if (!['low', 'medium', 'high'].includes(next.recordingQuality)) {
     next.recordingQuality = fallback.recordingQuality
   }
+  next.lastRunVersion = textOr(next.lastRunVersion, fallback.lastRunVersion)
   next.lastSeenVersion = textOr(next.lastSeenVersion, fallback.lastSeenVersion)
 
   if (typeof next.dataDirectory !== 'string' || !next.dataDirectory.trim()) {

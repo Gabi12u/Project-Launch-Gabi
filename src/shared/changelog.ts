@@ -48,6 +48,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         kind: 'new',
+        text: 'Nach einem Update meldet sich der Launcher unten rechts mit der neuen Versionsnummer. Ein Klick darauf führt direkt hierher.'
+      },
+      {
+        kind: 'new',
         text: 'Einstellungen für die Aufnahme: Taste, Qualität, Ton und eine Höchstdauer, damit eine vergessene Aufnahme nicht die Festplatte füllt.'
       },
       {

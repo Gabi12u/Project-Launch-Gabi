@@ -12,7 +12,7 @@ import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
-import { disposeUpdater, initUpdater } from './core/updater'
+import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
 import { disposeRecording, initRecording } from './core/recording'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
@@ -248,6 +248,7 @@ function bootstrap(): void {
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
       bootSettled = true
+      announceUpdate()
       // Claims the recording hotkey if a game from the previous session is
       // still up, and wires the listener that follows every later launch.
       initRecording()

@@ -188,9 +188,15 @@ const THEMES: { id: ThemeId; label: string; colors: [string, string] }[] = [
   { id: 'slate', label: 'Slate', colors: ['#7d93c8', '#3f4d6b'] }
 ]
 
-export function SettingsView(): JSX.Element {
+/** Every id that may arrive through `?section=`, so a stray one is ignored. */
+const SECTION_IDS = new Set<string>(SECTIONS.map((entry) => entry.id))
+
+export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Element {
   const { settings } = useStore()
-  const [section, setSection] = useState<Section>('general')
+  const wanted = query?.get('section')
+  const [section, setSection] = useState<Section>(
+    wanted && SECTION_IDS.has(wanted) ? (wanted as Section) : 'general'
+  )
   const [info, setInfo] = useState<AppInfo | null>(null)
   const [runtimes, setRuntimes] = useState<JavaRuntime[]>([])
   const [detecting, setDetecting] = useState(false)
@@ -201,6 +207,14 @@ export function SettingsView(): JSX.Element {
   // app info arrives both sides are empty strings and the dot would flicker.
   const changelogUnread = Boolean(info?.version) && settings.lastSeenVersion !== info?.version
   const [clientId, setClientId] = useState(settings.microsoftClientId)
+
+  // A notification that points here can arrive while this view is already
+  // open, and then the initial state above has long since been decided. Both
+  // routes matter: the toast after an update lands on the changelog, and the
+  // one about a taken hotkey lands on the recording settings.
+  useEffect(() => {
+    if (wanted && SECTION_IDS.has(wanted)) setSection(wanted as Section)
+  }, [wanted])
 
   useEffect(() => {
     void window.gabi.app.info().then(setInfo).catch(() => undefined)

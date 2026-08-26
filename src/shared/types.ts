@@ -527,6 +527,17 @@ export interface LauncherSettings {
   /** Safety net: a forgotten recording stops itself after this many minutes. */
   recordingMaxMinutes: number
   /**
+   * The version the launcher last actually ran as.
+   *
+   * Separate from `lastSeenVersion` on purpose: this one answers "did an
+   * update just happen", the other answers "has the entry been read". Folding
+   * them together would mean announcing the update marks it as read, and the
+   * announcement would point at an entry the marker says is already seen.
+   * Empty on a fresh install, which is how a first start is told apart from
+   * an update.
+   */
+  lastRunVersion: string
+  /**
    * The version whose changelog the user has already seen.
    *
    * Compared against the running version to put a marker on the changelog
