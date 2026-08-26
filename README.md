@@ -20,11 +20,11 @@ unter **„Assets"**:
 | Dein System | Datei | Danach |
 |---|---|---|
 | **Windows** | `launch-gabi-…-setup.exe` | Doppelklick, Installer folgen |
-| **Mac** mit Apple-Chip (M1–M4) | `launch-gabi-…-mac-arm64.dmg` | Öffnen, App in „Programme" ziehen |
+| **Mac** mit Apple-Chip (M1-M4) | `launch-gabi-…-mac-arm64.dmg` | Öffnen, App in „Programme" ziehen |
 | **Mac** mit Intel-Chip | `launch-gabi-…-mac-x64.dmg` | Öffnen, App in „Programme" ziehen |
 | **Linux** | `launch-gabi-…-linux-x86_64.AppImage` | Ausführbar machen, dann starten |
 
-Der Launcher aktualisiert sich danach selbst — herunterladen musst du also nur einmal.
+Der Launcher aktualisiert sich danach selbst ,  herunterladen musst du also nur einmal.
 
 <details>
 <summary><b>Welchen Chip hat mein Mac?</b></summary>
@@ -60,7 +60,7 @@ vor einem unbekannten Entwickler. Die Warnung betrifft nur den ersten Start.
 - **Windows:** *Weitere Informationen* → *Trotzdem ausführen*
 - **macOS:** Rechtsklick auf die App → *Öffnen* → im Dialog nochmals *Öffnen*
 
-Auf macOS funktioniert aus demselben Grund die automatische Aktualisierung nicht — dort musst du
+Auf macOS funktioniert aus demselben Grund die automatische Aktualisierung nicht ,  dort musst du
 neue Versionen von Hand herunterladen. Windows und Linux aktualisieren sich selbst.
 </details>
 
@@ -68,46 +68,46 @@ neue Versionen von Hand herunterladen. Windows und Linux aktualisieren sich selb
 
 ## Was der Launcher kann
 
-**Instanzen** — Beliebig viele getrennte Installationen, jede mit eigener Minecraft-Version, eigenem
+**Instanzen** ,  Beliebig viele getrennte Installationen, jede mit eigener Minecraft-Version, eigenem
 Mod Loader, eigenen Mods, Welten, Resourcepacks, Shadern, Java-Version und RAM-Einstellung. Assets
 und Bibliotheken werden geteilt, damit nicht jede Instanz Gigabytes doppelt belegt.
 
-**Mod Loader** — Fabric, NeoForge, Forge und Quilt werden vollständig automatisch installiert. Bei
+**Mod Loader** ,  Fabric, NeoForge, Forge und Quilt werden vollständig automatisch installiert. Bei
 Forge und NeoForge führt Launch Gabi die Installer-Prozessoren selbst aus (Binary-Patching des
 Client-Jars), es wird kein externer Installer benötigt.
 
-**Java-Verwaltung** — Vorhandene JDKs werden auf dem System gefunden (Registry-Pfade, JAVA_HOME,
+**Java-Verwaltung** ,  Vorhandene JDKs werden auf dem System gefunden (Registry-Pfade, JAVA_HOME,
 PATH, andere Launcher). Fehlt die passende Version, lädt Launch Gabi ein Temurin-Runtime von
 Adoptium und verwaltet es selbst. Pro Instanz überschreibbar.
 
-**Modrinth & CurseForge** — Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks,
+**Modrinth & CurseForge** ,  Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks,
 Shader und Data Packs. Installieren, entfernen, aktivieren, deaktivieren, Version wählen.
 Abhängigkeiten werden automatisch mitinstalliert.
 
-**Kompatibilitätsprüfung** — Vor dem Start prüft Launch Gabi Loader-Konflikte, Versions-Mismatches,
+**Kompatibilitätsprüfung** ,  Vor dem Start prüft Launch Gabi Loader-Konflikte, Versions-Mismatches,
 fehlende Abhängigkeiten, doppelte Mods und Shader ohne Shader-Loader. Für jedes lösbare Problem gibt
 es einen Knopf, der es automatisch behebt.
 
-**Updates** — Update-Prüfung pro Instanz oder für alle auf einmal, einzeln oder gesammelt
+**Updates** ,  Update-Prüfung pro Instanz oder für alle auf einmal, einzeln oder gesammelt
 installierbar, optional automatisch beim Start.
 
-**Backups** — Sicherungen von Welten, Konfiguration, Mods und mehr. Wiederherstellen legt vorher
+**Backups** ,  Sicherungen von Welten, Konfiguration, Mods und mehr. Wiederherstellen legt vorher
 automatisch eine Sicherheitskopie an. Vor Mod-Updates wird optional automatisch gesichert.
 
-**Repair Instance** — Prüft Ordnerstruktur, Mod Loader, Client-Jar, Bibliotheken, Assets, Natives,
+**Repair Instance** ,  Prüft Ordnerstruktur, Mod Loader, Client-Jar, Bibliotheken, Assets, Natives,
 Mod-Dateien (per SHA1) und Java-Konfiguration und repariert, was defekt ist.
 
-**Modpacks** — Import von `.mrpack` (Modrinth) und CurseForge-Zips, Export einer Instanz als
+**Modpacks** ,  Import von `.mrpack` (Modrinth) und CurseForge-Zips, Export einer Instanz als
 `.mrpack`. Modpacks lassen sich auch direkt aus der Suche installieren.
 
-**Desktop-Verknüpfungen & Deep Links** — Jede Instanz kann eine eigene Verknüpfung bekommen. Ein
+**Desktop-Verknüpfungen & Deep Links** ,  Jede Instanz kann eine eigene Verknüpfung bekommen. Ein
 Doppelklick startet den Launcher und die Instanz direkt. Zusätzlich gibt es das Protokoll
 `launchgabi://`.
 
-**Accounts** — Microsoft-Login über den Geräte-Code-Ablauf (Xbox Live → XSTS → Minecraft) sowie
+**Accounts** ,  Microsoft-Login über den Geräte-Code-Ablauf (Xbox Live → XSTS → Minecraft) sowie
 Offline-Profile zum Testen. Tokens liegen verschlüsselt im Benutzerprofil.
 
-**Launcher-Updates** — Der Launcher aktualisiert sich selbst. Beim Start und danach alle sechs
+**Launcher-Updates** ,  Der Launcher aktualisiert sich selbst. Beim Start und danach alle sechs
 Stunden prüft er auf neue Versionen, lädt sie im Hintergrund und installiert sie beim Beenden.
 Läuft gerade Minecraft, wird der Neustart verschoben. Steuerbar unter *Einstellungen → Updates*.
 
@@ -185,7 +185,7 @@ src/
       └─ views/             Home, Instanzen, Mods, Entdecken, Backups, Einstellungen
 ```
 
-Der Renderer hat keinen direkten Zugriff auf Node — `contextIsolation` ist aktiv, alles läuft über
+Der Renderer hat keinen direkten Zugriff auf Node ,  `contextIsolation` ist aktiv, alles läuft über
 den typisierten Vertrag in `src/shared/api.ts`.
 
 ### Datenverzeichnis
@@ -227,7 +227,7 @@ publish:
     repo: dein-repository
 ```
 
-Dieser Wert wird beim Bauen fest in die installierte App geschrieben — er muss also **vor**
+Dieser Wert wird beim Bauen fest in die installierte App geschrieben ,  er muss also **vor**
 `npm run dist` stimmen, sonst sucht der fertige Installer an der falschen Stelle.
 
 ### Eine neue Version veröffentlichen
@@ -244,12 +244,12 @@ Das genügt. Der Workflow in `.github/workflows/release.yml` baut daraufhin auf 
 Rechnern alle Installer, legt das Release an und hängt sie samt Update-Feeds (`latest.yml`,
 `latest-mac.yml`, `latest-linux.yml`) an. Bestehende Installationen holen sich das Update von selbst.
 
-macOS und Linux lassen sich **nicht** auf einem Windows-Rechner bauen — ein `.dmg` braucht
+macOS und Linux lassen sich **nicht** auf einem Windows-Rechner bauen ,  ein `.dmg` braucht
 macOS-Werkzeuge, Linux-Builds offiziell Docker. Deshalb der Umweg über die Runner. Lokal bauen geht
 weiterhin mit `npm run dist`, das erzeugt nur den Windows-Installer in `dist/`.
 
 > Ohne Code-Signatur zeigt Windows SmartScreen beim ersten Start eine Warnung. Das betrifft die
-> Installation, nicht den Update-Vorgang — der läuft danach still durch. Auf macOS verhindert die
+> Installation, nicht den Update-Vorgang ,  der läuft danach still durch. Auf macOS verhindert die
 > fehlende Signatur zusätzlich die automatische Aktualisierung.
 
 ---

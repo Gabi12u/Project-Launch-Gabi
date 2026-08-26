@@ -36,6 +36,25 @@ const BITRATE: Record<RecordingQuality, number> = {
   high: 12_000_000
 }
 
+/**
+ * Frames per second per quality.
+ *
+ * This was fixed at 60, which is the most expensive thing the feature could
+ * ask for: every frame is encoded in software, so halving the rate halves the
+ * work on a machine that is already busy running Minecraft.
+ *
+ * A ceiling on the picture size belongs here too and was tried, but a
+ * `maxWidth`/`maxHeight` on a desktop-capture track stops it delivering frames
+ * altogether in this Electron build: the stream opens and reports the rate it
+ * was asked for, then the encoder receives nothing at all and the recording
+ * comes out empty. Measured, not assumed, so the ceiling stays out.
+ */
+const SHAPE: Record<RecordingQuality, { fps: number }> = {
+  low: { fps: 30 },
+  medium: { fps: 30 },
+  high: { fps: 60 }
+}
+
 interface Session {
   /**
    * Generation counter, sent to the renderer and returned with every message.
@@ -284,6 +303,7 @@ async function startRecording(instanceId: string): Promise<void> {
   })
 
   const maxDurationMs = Math.max(1, settings.recordingMaxMinutes) * 60_000
+  const shape = SHAPE[settings.recordingQuality] ?? SHAPE.medium
 
   const current: Session = {
     id,
@@ -306,6 +326,7 @@ async function startRecording(instanceId: string): Promise<void> {
     sourceKind: source.kind,
     audio: settings.recordingAudio,
     videoBitsPerSecond: BITRATE[settings.recordingQuality] ?? BITRATE.medium,
+    fps: shape.fps,
     maxDurationMs
   }
 

@@ -759,9 +759,13 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 const HOTKEYS = ['F6', 'F7', 'F8', 'F9', 'F10', 'Ctrl+Shift+R', 'Alt+R', 'Ctrl+Alt+R']
 
 const QUALITIES: { id: RecordingQuality; label: string; hint: string }[] = [
-  { id: 'low', label: 'Sparsam', hint: 'Kleine Dateien, gut für lange Sitzungen.' },
-  { id: 'medium', label: 'Ausgewogen', hint: 'Sieht gut aus und bleibt handlich.' },
-  { id: 'high', label: 'Scharf', hint: 'Beste Qualität, braucht deutlich mehr Platz.' }
+  { id: 'low', label: 'Sparsam', hint: '30 Bilder, kleine Dateien. Schont den Rechner am meisten.' },
+  { id: 'medium', label: 'Ausgewogen', hint: '30 Bilder in guter Qualität. Kostet wenig Leistung.' },
+  {
+    id: 'high',
+    label: 'Scharf',
+    hint: '60 Bilder. Nur wenn dein Rechner Luft hat, sonst ruckelt die Aufnahme.'
+  }
 ]
 
 function RecordingPanel(): JSX.Element {

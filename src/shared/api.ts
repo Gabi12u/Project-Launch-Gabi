@@ -104,6 +104,8 @@ export interface RecordingRequest {
   sourceKind: 'window' | 'screen'
   audio: boolean
   videoBitsPerSecond: number
+  /** Frames per second to ask the capture for. */
+  fps: number
   maxDurationMs: number
 }
 

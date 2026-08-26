@@ -122,7 +122,13 @@ function createWindow(): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       // The renderer loads mod icons straight from Modrinth/CurseForge CDNs.
-      webSecurity: true
+      webSecurity: true,
+      // Chromium throttles timers and rendering in a window the user cannot
+      // see, and this window is behind a fullscreen game for the entire length
+      // of every recording. The capture, the encoder's slice timer and the
+      // handover to the main process all live in that renderer, so the default
+      // turned exactly the case this feature exists for into the slowest one.
+      backgroundThrottling: false
     }
   })
 

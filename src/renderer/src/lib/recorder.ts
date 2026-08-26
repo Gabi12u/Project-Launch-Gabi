@@ -13,12 +13,20 @@ import type { RecordingRequest } from '@shared/api'
  * hidden window still executes JavaScript, which is what makes this work.
  */
 
-/** Container and codec, best first. Chromium always has at least one of these. */
+/**
+ * Container and codec, cheapest first.
+ *
+ * VP9 used to lead this list, which was the wrong way round for a live
+ * capture: both it and VP8 are encoded in software here, and VP9 costs
+ * markedly more processor time per frame for a quality gain nobody watching a
+ * gameplay clip is looking for. The machine is already running Minecraft.
+ * VP9 stays at the back as a fallback rather than being dropped.
+ */
 const CANDIDATE_TYPES = [
-  'video/webm;codecs=vp9,opus',
   'video/webm;codecs=vp8,opus',
-  'video/webm;codecs=vp9',
   'video/webm;codecs=vp8',
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp9',
   'video/webm'
 ]
 
@@ -78,11 +86,15 @@ function pickMimeType(): string | null {
  * desktop-capture extension, which is why it has to be cast past the DOM types.
  */
 function constraintsFor(request: RecordingRequest, withAudio: boolean): MediaStreamConstraints {
+  // Only the frame rate. A `maxWidth`/`maxHeight` alongside these makes the
+  // desktop-capture track stop delivering frames entirely, which was measured
+  // rather than guessed: the stream opens and reports the requested rate, and
+  // the encoder then receives nothing at all.
   const video = {
     mandatory: {
       chromeMediaSource: 'desktop',
       chromeMediaSourceId: request.sourceId,
-      maxFrameRate: 60
+      maxFrameRate: request.fps
     }
   }
   const audio = {
@@ -322,6 +334,13 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
         return
       }
       grabPoster(current.sessionId, video)
+
+      // Released the moment it has done its one job. This element exists only
+      // to draw a still frame from, but attaching the stream to it made
+      // Chromium decode and composite the whole capture for as long as the
+      // recording ran, on top of encoding it. Nobody was ever looking at it.
+      video.srcObject = null
+      video.remove()
     }, POSTER_DELAY_MS)
   )
 
