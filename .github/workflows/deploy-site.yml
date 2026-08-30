@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - 'status/**'
       - '.github/workflows/deploy-site.yml'
   # Erlaubt ein Deployment von Hand ueber den Actions-Tab.
   workflow_dispatch:
@@ -27,9 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Zielpfad pruefen
+      - name: Zielpfade pruefen
         env:
           WEB_ROOT: ${{ secrets.WEB_ROOT }}
+          STATUS_ROOT: ${{ secrets.STATUS_ROOT }}
         run: |
           # rsync --delete raeumt im Zielordner auf. Ein leeres oder zu weit
           # oben liegendes Ziel wuerde damit den halben Server loeschen, also
@@ -44,7 +46,26 @@ jobs:
               exit 1
               ;;
           esac
-          echo "Ziel: $WEB_ROOT"
+          echo "Ziel Website: $WEB_ROOT"
+
+          # Die Statusseite ist freiwillig: ist STATUS_ROOT nicht gesetzt, wird
+          # sie einfach nicht ausgerollt, statt den ganzen Lauf scheitern zu
+          # lassen. Gesetzt muss sie dieselbe Pruefung bestehen.
+          if [ -n "$STATUS_ROOT" ]; then
+            case "$STATUS_ROOT" in
+              /|/root|/home|/etc|/usr|/var|/var/www)
+                echo "STATUS_ROOT '$STATUS_ROOT' ist zu weit oben und wird abgelehnt." >&2
+                exit 1
+                ;;
+            esac
+            if [ "$STATUS_ROOT" = "$WEB_ROOT" ]; then
+              echo "STATUS_ROOT darf nicht derselbe Ordner wie WEB_ROOT sein: rsync --delete wuerde die jeweils andere Seite loeschen." >&2
+              exit 1
+            fi
+            echo "Ziel Statusseite: $STATUS_ROOT"
+          else
+            echo "STATUS_ROOT ist nicht gesetzt, die Statusseite wird uebersprungen."
+          fi
 
       - name: SSH einrichten
         env:
@@ -65,10 +86,18 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           WEB_ROOT: ${{ secrets.WEB_ROOT }}
+          STATUS_ROOT: ${{ secrets.STATUS_ROOT }}
         run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_deploy -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes" \
-            docs/ "$SSH_USER@$SSH_HOST:$WEB_ROOT/"
+          SSH_CMD="ssh -i ~/.ssh/id_deploy -p ${SSH_PORT:-22} -o StrictHostKeyChecking=yes"
+
+          rsync -avz --delete -e "$SSH_CMD" docs/ "$SSH_USER@$SSH_HOST:$WEB_ROOT/"
+
+          # Its own root, and only if one was configured. The two sites are
+          # separate directories on the server, and `--delete` means pointing
+          # both at the same one would have each rollout wipe the other.
+          if [ -n "$STATUS_ROOT" ]; then
+            rsync -avz --delete -e "$SSH_CMD" status/ "$SSH_USER@$SSH_HOST:$STATUS_ROOT/"
+          fi
 
       - name: Schluessel entfernen
         if: always()
