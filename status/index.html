@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status: Launch Gabi</title>
+<meta name="description" content="Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen von Launch Gabi.">
+<meta name="theme-color" content="#0a0512">
+<link rel="canonical" href="https://status.launchgabi.com/">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Launch Gabi">
+<meta property="og:title" content="Status: Launch Gabi">
+<meta property="og:description" content="Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen.">
+<meta property="og:url" content="https://status.launchgabi.com/">
+<meta property="og:image" content="https://launchgabi.com/assets/og.jpg">
+
+<link rel="icon" href="https://launchgabi.com/assets/favicon.ico" sizes="any">
+
+<style>
+:root {
+  --void:       #0a0512;
+  --ink:        #f4ecff;
+  --muted:      #bcaddb;
+  --muted-dim:  #8f80ab;
+  --accent:     #c74dff;
+  --accent-warm:#ff5cc8;
+  --accent-deep:#7c2ae8;
+  --glass:      rgba(255, 255, 255, 0.06);
+  --glass-hi:   rgba(255, 255, 255, 0.10);
+  --glass-line: rgba(255, 255, 255, 0.14);
+  --glass-lit:  rgba(255, 255, 255, 0.26);
+  --r:    18px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --nav-h: 66px;
+
+  /* Categorical series, in fixed order: Windows, macOS, Linux.
+     Checked rather than chosen by eye — worst pair across all three, under
+     every simulated colour-vision deficiency, keeps a separation of 11.3,
+     and every step sits inside the lightness band for a dark surface. */
+  --s-win:   #2a6fb0;
+  --s-mac:   #c05cf5;
+  --s-linux: #cf7c2e;
+
+  --ok:   #3ddc97;
+  --warn: #ffb547;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* The same aurora wash the main site uses, so the two read as one place. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 40rem at 15% -10%, rgba(124, 42, 232, 0.30), transparent 60%),
+    radial-gradient(50rem 35rem at 90% 5%, rgba(255, 92, 200, 0.18), transparent 62%),
+    radial-gradient(40rem 30rem at 50% 110%, rgba(199, 77, 255, 0.14), transparent 60%);
+  pointer-events: none;
+}
+
+.inner { width: min(1120px, 100% - 40px); margin-inline: auto; }
+
+a { color: inherit; }
+
+/* ---------------------------------------------------------------- Nav */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: min(1120px, 100% - 40px);
+  margin-inline: auto;
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.brand small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+  font-weight: 600;
+}
+
+.nav-links { margin-left: auto; display: flex; gap: 22px; font-size: 14.5px; }
+.nav-links a { color: var(--muted); text-decoration: none; transition: color 0.2s var(--ease); }
+.nav-links a:hover { color: var(--ink); }
+
+.nav-cta {
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent-deep), var(--accent-warm));
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- Layout */
+
+.head { padding: 46px 0 10px; }
+
+.head h1 {
+  margin: 0 0 8px;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.head p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+section { padding: 26px 0; }
+
+h2 {
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--r);
+  padding: 22px;
+}
+
+.grid { display: grid; gap: 16px; }
+.grid.tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.grid.charts { grid-template-columns: minmax(280px, 0.85fr) minmax(320px, 1.15fr); }
+
+@media (max-width: 860px) {
+  .grid.charts { grid-template-columns: 1fr; }
+}
+
+/* --------------------------------------------------------- Stat tiles */
+
+.tile-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-dim);
+  font-weight: 600;
+}
+
+/* The hero number carries the weight; the label above it stays quiet. */
+.tile-value {
+  margin-top: 6px;
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.tile-note { margin-top: 4px; font-size: 13px; color: var(--muted); }
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.state.ok   { color: var(--ok);   background: rgba(61, 220, 151, 0.12); border-color: rgba(61, 220, 151, 0.35); }
+.state.warn { color: var(--warn); background: rgba(255, 181, 71, 0.12); border-color: rgba(255, 181, 71, 0.35); }
+
+.state .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+/* ------------------------------------------------------------- Charts */
+
+.chart-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.chart-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.chart-sub { font-size: 13px; color: var(--muted-dim); margin-left: auto; }
+
+.donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+
+.donut-centre-value {
+  font-size: 26px;
+  font-weight: 700;
+  fill: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-centre-label { font-size: 11px; fill: var(--muted-dim); letter-spacing: 0.1em; }
+
+/* Identity is never colour alone: every series is named in the legend and
+   again on its own row, so a reader who cannot separate the hues still can. */
+.legend { display: flex; flex-direction: column; gap: 10px; min-width: 190px; }
+
+.legend-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+  /* A 2px ring in the surface colour, so touching marks never bleed together. */
+  box-shadow: 0 0 0 2px var(--void);
+}
+
+.legend-name { color: var(--muted); }
+.legend-value { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.bars { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+
+.bar-row { display: grid; grid-template-columns: 78px 1fr auto; align-items: center; gap: 12px; }
+
+.bar-label { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.bar-track {
+  display: block;
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.bar-fill {
+  /* Block, not inline. A span is inline by default, and width and height are
+     simply ignored on an inline box: the bars rendered as empty tracks. */
+  display: block;
+  height: 100%;
+  /* Rounded only at the data end, anchored flat to the baseline. */
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+  transition: width 0.6s var(--ease);
+}
+
+.bar-value { font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right; }
+
+/* Tooltip, shared by the donut and the bars. */
+.tip {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: rgba(12, 6, 22, 0.94);
+  border: 1px solid var(--glass-line);
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+  white-space: nowrap;
+}
+
+.tip.show { opacity: 1; }
+.tip b { font-variant-numeric: tabular-nums; }
+
+.donut-seg { cursor: default; transition: opacity 0.15s var(--ease); }
+.donut-seg:hover { opacity: 0.82; }
+
+/* ------------------------------------------------------------ Changes */
+
+.change { display: flex; gap: 12px; align-items: baseline; padding: 11px 0; }
+.change + .change { border-top: 1px solid rgba(255, 255, 255, 0.07); }
+
+.kind {
+  flex: none;
+  width: 76px;
+  padding: 3px 0;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.kind.new      { background: rgba(199, 77, 255, 0.20); color: #d98cff; }
+.kind.improved { background: rgba(42, 111, 176, 0.28); color: #74b3e8; }
+.kind.fixed    { background: rgba(61, 220, 151, 0.16); color: var(--ok); }
+
+.change p { margin: 0; font-size: 14.5px; }
+
+.older {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px dashed var(--glass-line);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.older p { margin: 0; color: var(--muted); font-size: 14.5px; flex: 1 1 320px; }
+
+/* --------------------------------------------------- Table & footer */
+
+details.table { margin-top: 14px; }
+
+details.table summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted-dim);
+  padding: 6px 0;
+}
+
+details.table summary:hover { color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+th { color: var(--muted-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--glass) 25%, var(--glass-hi) 50%, var(--glass) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.note { color: var(--muted-dim); font-size: 13.5px; }
+
+footer {
+  margin-top: 40px;
+  padding: 28px 0 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--muted-dim);
+  font-size: 13.5px;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+
+<body data-palette="#2a6fb0,#c05cf5,#cf7c2e">
+
+<nav class="nav">
+  <a class="brand" href="https://launchgabi.com/">
+    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="lg" x1="6" y1="58" x2="58" y2="6" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7c2ae8"/><stop offset="1" stop-color="#ff5cc8"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#lg)"/>
+      <path d="M22 20v24h20" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>Launch Gabi<small>Status</small></span>
+  </a>
+
+  <div class="nav-links">
+    <a href="https://launchgabi.com/">Startseite</a>
+    <a href="https://launchgabi.com/#hilfe">Hilfe</a>
+    <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a>
+  </div>
+
+  <a class="nav-cta" href="https://launchgabi.com/#download">Herunterladen</a>
+</nav>
+
+<main class="inner">
+
+  <div class="head">
+    <h1>Status</h1>
+    <p>
+      Aktuelle Version, wie oft Launch Gabi heruntergeladen wurde und was zuletzt
+      behoben wurde. Die Zahlen kommen direkt von GitHub und werden bei jedem
+      Aufruf frisch geladen.
+    </p>
+  </div>
+
+  <!-- ============================ TILES ============================ -->
+  <section aria-labelledby="h-ueberblick">
+    <h2 id="h-ueberblick">Überblick</h2>
+    <div class="grid tiles">
+      <div class="card">
+        <div class="tile-label">Aktuelle Version</div>
+        <div class="tile-value" id="t-version"><span class="skeleton" style="display:block;height:34px"></span></div>
+        <div class="tile-note" id="t-version-note">wird geladen…</div>
+      </div>
+
+      <div class="card">
+        <div class="tile-label">Downloads gesamt</div>
+        <div class="tile-value" id="t-downloads"><span class="skeleton" style="display:block;height:34px"></span></div>
+        <div class="tile-note" id="t-downloads-note">über alle Versionen</div>
+      </div>
+
+      <div class="card">
+        <div class="tile-label">Veröffentlichungen</div>
+        <div class="tile-value" id="t-releases"><span class="skeleton" style="display:block;height:34px"></span></div>
+        <div class="tile-note" id="t-releases-note">seit dem ersten Release</div>
+      </div>
+
+      <div class="card">
+        <div class="tile-label">Verfügbarkeit</div>
+        <div class="tile-value" style="font-size:20px;padding-top:6px">
+          <span class="state ok" id="t-state"><span class="dot"></span>wird geprüft</span>
+        </div>
+        <div class="tile-note" id="t-state-note">Windows, macOS und Linux</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== CHARTS ============================ -->
+  <section aria-labelledby="h-zahlen">
+    <h2 id="h-zahlen">Downloads</h2>
+
+    <div class="grid charts">
+
+      <!-- Part of a whole, three parts: a ring is the honest form here. -->
+      <div class="card">
+        <div class="chart-head">
+          <span class="chart-title">Nach Plattform</span>
+        </div>
+
+        <div class="donut-wrap">
+          <svg width="180" height="180" viewBox="0 0 180 180" id="donut" role="img"
+               aria-labelledby="donut-title">
+            <title id="donut-title">Anteil der Downloads je Plattform</title>
+            <circle cx="90" cy="90" r="66" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="22"></circle>
+            <g id="donut-segs"></g>
+            <text x="90" y="86" text-anchor="middle" class="donut-centre-value" id="donut-total">–</text>
+            <text x="90" y="104" text-anchor="middle" class="donut-centre-label">GESAMT</text>
+          </svg>
+
+          <div class="legend" id="donut-legend"></div>
+        </div>
+
+        <details class="table">
+          <summary>Als Tabelle anzeigen</summary>
+          <table id="platform-table">
+            <thead><tr><th>Plattform</th><th class="num">Downloads</th><th class="num">Anteil</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </details>
+      </div>
+
+      <!-- Magnitude across versions: bars, one axis, sorted newest first. -->
+      <div class="card">
+        <div class="chart-head">
+          <span class="chart-title">Nach Version</span>
+          <span class="chart-sub" id="bars-sub"></span>
+        </div>
+
+        <div class="bars" id="bars" role="img" aria-label="Downloads je Version"></div>
+
+        <details class="table">
+          <summary>Als Tabelle anzeigen</summary>
+          <table id="version-table">
+            <thead><tr><th>Version</th><th>Veröffentlicht</th><th class="num">Downloads</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </details>
+      </div>
+
+    </div>
+
+    <p class="note" id="data-note" style="margin-top:14px"></p>
+  </section>
+
+  <!-- ========================== CHANGES ============================ -->
+  <section aria-labelledby="h-neu">
+    <h2 id="h-neu">Zuletzt behoben</h2>
+
+    <div class="card">
+      <div class="chart-head">
+        <span class="chart-title" id="fix-version">–</span>
+        <span class="chart-sub" id="fix-date"></span>
+      </div>
+      <p class="note" id="fix-headline" style="margin:2px 0 10px"></p>
+
+      <div id="fix-list"></div>
+
+      <div class="older">
+        <p>
+          Ältere Einträge stehen vollständig im Launcher selbst, unter
+          <strong>Einstellungen &rarr; Neuerungen</strong>. Dort bleibt jede Version
+          stehen, auch die von früher.
+        </p>
+        <a class="nav-cta" href="https://launchgabi.com/#download">Launcher herunterladen</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Launch Gabi</span>
+    <a href="https://launchgabi.com/impressum.html">Impressum</a>
+    <a href="https://launchgabi.com/datenschutz.html">Datenschutz</a>
+    <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases" target="_blank" rel="noopener noreferrer">Alle Releases</a>
+  </footer>
+
+</main>
+
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var REPO = 'Gabi12u/Project-Launch-Gabi';
+
+  // Fixed order, never cycled: a platform keeps its colour whatever the
+  // download numbers do, so the ring cannot repaint itself between visits.
+  var PLATFORMS = [
+    { key: 'win',   name: 'Windows', colour: '#2a6fb0', test: function (n) { return /\.exe$/i.test(n); } },
+    { key: 'mac',   name: 'macOS',   colour: '#c05cf5', test: function (n) { return /\.dmg$/i.test(n); } },
+    { key: 'linux', name: 'Linux',   colour: '#cf7c2e', test: function (n) { return /\.appimage$/i.test(n); } }
+  ];
+
+  var tip = document.getElementById('tip');
+
+  function showTip(html, event) {
+    tip.innerHTML = html;
+    tip.classList.add('show');
+    moveTip(event);
+  }
+
+  function moveTip(event) {
+    // Kept inside the viewport, so a mark near the right edge does not push
+    // its own tooltip off screen.
+    var pad = 14;
+    var x = event.clientX + pad;
+    var y = event.clientY + pad;
+    var box = tip.getBoundingClientRect();
+    if (x + box.width > window.innerWidth - 8) x = event.clientX - box.width - pad;
+    if (y + box.height > window.innerHeight - 8) y = event.clientY - box.height - pad;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+
+  function hideTip() { tip.classList.remove('show'); }
+
+  function num(value) { return value.toLocaleString('de-DE'); }
+
+  function date(iso) {
+    try {
+      return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch (err) { return ''; }
+  }
+
+  function set(id, text) { document.getElementById(id).textContent = text; }
+
+  /* ------------------------------------------------------- Donut ---- */
+
+  function drawDonut(parts, total) {
+    var segs = document.getElementById('donut-segs');
+    var legend = document.getElementById('donut-legend');
+    var body = document.querySelector('#platform-table tbody');
+    segs.innerHTML = '';
+    legend.innerHTML = '';
+    body.innerHTML = '';
+
+    document.getElementById('donut-total').textContent = total > 0 ? num(total) : '0';
+
+    var radius = 66;
+    var circumference = 2 * Math.PI * radius;
+    var offset = 0;
+
+    parts.forEach(function (part) {
+      var share = total > 0 ? part.value / total : 0;
+      var length = share * circumference;
+
+      if (length > 0) {
+        var arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        arc.setAttribute('cx', '90');
+        arc.setAttribute('cy', '90');
+        arc.setAttribute('r', String(radius));
+        arc.setAttribute('fill', 'none');
+        arc.setAttribute('stroke', part.colour);
+        arc.setAttribute('stroke-width', '22');
+        // A 2px gap in the surface colour between neighbouring segments, so two
+        // fills never touch and read as one.
+        arc.setAttribute('stroke-dasharray', Math.max(length - 2, 0.5) + ' ' + circumference);
+        arc.setAttribute('stroke-dashoffset', String(-offset));
+        arc.setAttribute('transform', 'rotate(-90 90 90)');
+        arc.setAttribute('class', 'donut-seg');
+        segs.appendChild(arc);
+
+        arc.addEventListener('mouseenter', function (event) {
+          showTip('<b>' + part.name + '</b><br>' + num(part.value) + ' Downloads · ' +
+                  (share * 100).toFixed(1).replace('.', ',') + ' %', event);
+        });
+        arc.addEventListener('mousemove', moveTip);
+        arc.addEventListener('mouseleave', hideTip);
+      }
+      offset += length;
+
+      var row = document.createElement('div');
+      row.className = 'legend-row';
+      row.innerHTML =
+        '<span class="legend-swatch" style="background:' + part.colour + '"></span>' +
+        '<span class="legend-name">' + part.name + '</span>' +
+        '<span class="legend-value">' + num(part.value) + '</span>';
+      legend.appendChild(row);
+
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + part.name + '</td><td class="num">' + num(part.value) +
+        '</td><td class="num">' + (share * 100).toFixed(1).replace('.', ',') + ' %</td>';
+      body.appendChild(tr);
+    });
+  }
+
+  /* -------------------------------------------------------- Bars ---- */
+
+  function drawBars(versions) {
+    var host = document.getElementById('bars');
+    var body = document.querySelector('#version-table tbody');
+    host.innerHTML = '';
+    body.innerHTML = '';
+
+    var max = 0;
+    versions.forEach(function (v) { if (v.total > max) max = v.total; });
+
+    versions.forEach(function (v) {
+      var row = document.createElement('div');
+      row.className = 'bar-row';
+
+      var width = max > 0 ? Math.max((v.total / max) * 100, 1.5) : 0;
+      row.innerHTML =
+        '<span class="bar-label">' + v.tag + '</span>' +
+        '<span class="bar-track"><span class="bar-fill" style="width:' + width + '%"></span></span>' +
+        '<span class="bar-value">' + num(v.total) + '</span>';
+
+      row.addEventListener('mouseenter', function (event) {
+        showTip('<b>' + v.tag + '</b><br>' + num(v.total) + ' Downloads<br>' + date(v.published), event);
+      });
+      row.addEventListener('mousemove', moveTip);
+      row.addEventListener('mouseleave', hideTip);
+
+      host.appendChild(row);
+
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + v.tag + '</td><td>' + date(v.published) + '</td><td class="num">' + num(v.total) + '</td>';
+      body.appendChild(tr);
+    });
+
+    document.getElementById('bars-sub').textContent =
+      versions.length + (versions.length === 1 ? ' Version' : ' Versionen');
+  }
+
+  /* -------------------------------------------------------- Load ---- */
+
+  function failed(message) {
+    ['t-version', 't-downloads', 't-releases'].forEach(function (id) {
+      document.getElementById(id).textContent = '–';
+    });
+    set('t-version-note', 'nicht erreichbar');
+    var state = document.getElementById('t-state');
+    state.className = 'state warn';
+    state.innerHTML = '<span class="dot"></span>unbekannt';
+    set('t-state-note', 'Die Zahlen konnten nicht geladen werden.');
+    document.getElementById('data-note').textContent = message;
+  }
+
+  fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=100', {
+    headers: { Accept: 'application/vnd.github+json' },
+    // Same reasoning as on the main site: a cached answer would keep showing
+    // a version that is no longer the current one.
+    cache: 'no-store'
+  })
+    .then(function (response) {
+      if (response.status === 403) {
+        throw new Error('GitHub hat die Anfrage vorerst abgelehnt (zu viele Aufrufe von dieser Leitung). In einer Stunde geht es wieder.');
+      }
+      if (!response.ok) throw new Error('GitHub antwortete mit HTTP ' + response.status + '.');
+      return response.json();
+    })
+    .then(function (releases) {
+      releases = (releases || []).filter(function (r) { return !r.draft; });
+      if (releases.length === 0) {
+        failed('Es sind noch keine Veröffentlichungen vorhanden.');
+        return;
+      }
+
+      var totals = { win: 0, mac: 0, linux: 0 };
+      var grand = 0;
+      var perVersion = [];
+
+      releases.forEach(function (release) {
+        var sum = 0;
+        (release.assets || []).forEach(function (asset) {
+          var count = asset.download_count || 0;
+          // Only real installers are counted. The update feeds (latest.yml and
+          // friends) are fetched by the launcher itself on every check, so
+          // counting them would drown the human downloads entirely.
+          PLATFORMS.forEach(function (p) {
+            if (p.test(asset.name)) { totals[p.key] += count; sum += count; }
+          });
+        });
+        grand += sum;
+        perVersion.push({ tag: release.tag_name, total: sum, published: release.published_at });
+      });
+
+      var latest = releases[0];
+
+      set('t-version', latest.tag_name);
+      set('t-version-note', 'veröffentlicht am ' + date(latest.published_at));
+      set('t-downloads', num(grand));
+      set('t-releases', String(releases.length));
+      set('t-releases-note', 'seit ' + date(releases[releases.length - 1].published_at));
+
+      // "Available" here means one thing only, and the page says which: does
+      // the newest release actually carry an installer for all three systems.
+      var missing = PLATFORMS.filter(function (p) {
+        return !(latest.assets || []).some(function (a) { return p.test(a.name); });
+      });
+
+      var state = document.getElementById('t-state');
+      if (missing.length === 0) {
+        state.className = 'state ok';
+        state.innerHTML = '<span class="dot"></span>alle Plattformen';
+        set('t-state-note', 'Windows, macOS und Linux verfügbar');
+      } else {
+        state.className = 'state warn';
+        state.innerHTML = '<span class="dot"></span>unvollständig';
+        set('t-state-note', 'Es fehlt: ' + missing.map(function (p) { return p.name; }).join(', '));
+      }
+
+      drawDonut(PLATFORMS.map(function (p) {
+        return { name: p.name, colour: p.colour, value: totals[p.key] };
+      }), grand);
+
+      drawBars(perVersion.slice(0, 8));
+
+      document.getElementById('data-note').textContent =
+        'Gezählt werden nur die Installationsdateien, nicht die Update-Dateien, die der Launcher ' +
+        'selbst im Hintergrund abruft. Stand: ' + new Date().toLocaleString('de-DE') + '.';
+    })
+    .catch(function (err) {
+      failed(err && err.message ? err.message : 'Die Zahlen konnten nicht geladen werden.');
+    });
+
+  /* ------------------------------------------------------ Changes --- */
+
+  // Mirrors the newest entry from the launcher's own list. Older versions are
+  // deliberately not repeated here: the launcher keeps the full history, and
+  // that is the one place it can never drift out of date.
+  // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
+  var LATEST = {
+    "version": "1.0.13",
+    "date": "2026-08-26",
+    "headline": "Fehler melden sich jetzt selbst, und Aufnahmen ruckeln weniger.",
+    "changes": [
+      {
+        "kind": "new",
+        "text": "Fehlerberichte: geht etwas schief, wird der Fehler festgehalten und auf Wunsch an die Entwicklung geschickt. Gefragt wird einmal, entschieden wird von dir, abschaltbar unter Einstellungen, Fehlerberichte."
+      },
+      {
+        "kind": "new",
+        "text": "Jeder Bericht liegt auch bei dir auf der Platte. Du kannst nachlesen, was drinsteht, ihn kopieren oder alles löschen."
+      },
+      {
+        "kind": "improved",
+        "text": "Name, UUID, Zugangsdaten und dein Windows-Benutzername werden vorher entfernt, auch aus Dateipfaden. Eine IP-Adresse wird nicht gespeichert."
+      },
+      {
+        "kind": "fixed",
+        "text": "Aufnahmen ruckelten. Das Launcher-Fenster wurde vom System gedrosselt, während es hinter dem Spiel lag, also genau während jeder Aufnahme."
+      },
+      {
+        "kind": "improved",
+        "text": "Aufnahmen laufen mit 30 Bildern statt 60 und in einem sparsameren Verfahren. Wer die Leistung hat, stellt in den Einstellungen auf Scharf."
+      }
+    ]
+  };
+  // AUTO-ENDE
+
+  var KIND_LABEL = { new: 'Neu', improved: 'Besser', fixed: 'Behoben' };
+
+  set('fix-version', 'Version ' + LATEST.version);
+  set('fix-date', date(LATEST.date));
+  set('fix-headline', LATEST.headline);
+
+  var list = document.getElementById('fix-list');
+  LATEST.changes.forEach(function (change) {
+    var row = document.createElement('div');
+    row.className = 'change';
+    row.innerHTML = '<span class="kind ' + change.kind + '">' + KIND_LABEL[change.kind] + '</span><p></p>';
+    row.querySelector('p').textContent = change.text;
+    list.appendChild(row);
+  });
+})();
+</script>
+
+</body>
+</html>
