@@ -45,6 +45,14 @@
 
   --ok:   #3ddc97;
   --warn: #ffb547;
+
+  /* Status colours are reserved: they say what state something is in and are
+     never reused as a fourth series. Each one ships with an icon and a word,
+     so the state is never carried by the colour alone. */
+  --st-investigating: #ffb547;
+  --st-fixing:        #6aa9ff;
+  --st-fixed:         #3ddc97;
+  --st-limitation:    #a99cc4;
 }
 
 * { box-sizing: border-box; }
@@ -287,6 +295,50 @@ h2 {
 .donut-seg { cursor: default; transition: opacity 0.15s var(--ease); }
 .donut-seg:hover { opacity: 0.82; }
 
+/* ------------------------------------------------------------- Issues */
+
+.issue { padding: 16px 0; }
+.issue + .issue { border-top: 1px solid rgba(255, 255, 255, 0.07); }
+
+.issue-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.issue h3 { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+
+.issue p { margin: 8px 0 0; font-size: 14.5px; color: var(--muted); max-width: 78ch; }
+
+.issue-meta { margin-left: auto; font-size: 12.5px; color: var(--muted-dim); white-space: nowrap; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid currentColor;
+  /* The border and the icon carry as much as the fill does, so the badge is
+     still legible in forced-colours mode and in print. */
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.badge svg { flex: none; }
+
+.badge.investigating { color: var(--st-investigating); }
+.badge.fixing        { color: var(--st-fixing); }
+.badge.fixed         { color: var(--st-fixed); }
+.badge.limitation    { color: var(--st-limitation); }
+
+.issues-none {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ok);
+  font-size: 15px;
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------ Changes */
 
 .change { display: flex; gap: 12px; align-items: baseline; padding: 11px 0; }
@@ -496,6 +548,20 @@ footer a:hover { color: var(--ink); }
     </div>
 
     <p class="note" id="data-note" style="margin-top:14px"></p>
+  </section>
+
+  <!-- ========================== ISSUES ============================= -->
+  <section aria-labelledby="h-offen">
+    <h2 id="h-offen">Bekannte Probleme</h2>
+
+    <div class="card">
+      <div class="chart-head">
+        <span class="chart-title" id="issues-count">wird geladen…</span>
+        <span class="chart-sub">Erledigtes verschwindet hier, sobald die Version draußen ist</span>
+      </div>
+
+      <div id="issues-list"></div>
+    </div>
   </section>
 
   <!-- ========================== CHANGES ============================ -->
@@ -732,6 +798,10 @@ footer a:hover { color: var(--ink); }
       });
 
       var latest = releases[0];
+      releasedVersion = latest.tag_name;
+      // Now that the current version is known, the fix badges can tell
+      // "already out" from "waiting for the next release".
+      renderIssues();
 
       set('t-version', latest.tag_name);
       set('t-version-note', 'veröffentlicht am ' + date(latest.published_at));
@@ -805,7 +875,137 @@ footer a:hover { color: var(--ink); }
   };
   // AUTO-ENDE
 
+  // AUTO-ISSUES-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
+  var ISSUES = [
+    {
+      "id": "login-http-400",
+      "title": "Anmeldung endet mit Fehler 400",
+      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung ganz am Ende mit einem Fehler 400 ab. Die Ursache ist noch nicht gefunden: zwei Verdachtsfälle wurden geprüft und haben sich als falsch herausgestellt. Seit Version 1.0.11 wird ein solcher Fehlschlag protokolliert, vorher verschwand er spurlos. Wer das erlebt, hilft uns mit einem Screenshot sehr weiter.",
+      "state": "investigating",
+      "since": "2026-08-25"
+    },
+    {
+      "id": "mods-doppelt",
+      "title": "Mods erscheinen doppelt in der Liste",
+      "detail": "Beim Aktualisieren konnte derselbe Mod zweimal in der Liste auftauchen. Grund war ein Zeitfenster: die neue Datei lag bereits auf der Platte, war aber noch nicht eingetragen, und ein Abgleich in genau diesem Moment hielt sie für einen unbekannten zweiten Mod. Ausgelöst wurde das von ganz gewöhnlichen Handlungen wie dem Öffnen der Instanzseite.",
+      "state": "fixed",
+      "since": "2026-08-30",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "einfrieren-linux",
+      "title": "Der Launcher friert zeitweise komplett ein",
+      "detail": "Mehrere Vorgänge durchsuchten Ordner blockierend und liefen dabei von selbst, etwa die Speicherplatzanzeige nach jeder Sitzung und das Aufräumen bei jedem Start. Solange das lief, reagierte das Fenster gar nicht. Betroffen sind alle Systeme, unter Linux fällt es stärker auf, weil dort häufiger verschlüsselte oder über Netzwerk eingebundene Benutzerordner im Spiel sind.",
+      "state": "fixed",
+      "since": "2026-08-30",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "wrapper-exec",
+      "title": "Wrapper-Befehl kann das Spiel aus der Verfolgung nehmen",
+      "detail": "Startet ein eigener Wrapper-Befehl Java im Hintergrund, statt sich per exec davon ersetzen zu lassen, hält der Launcher das Spiel für beendet, sobald der Wrapper fertig ist. Mod-Änderungen sind dann nicht mehr gesperrt. Reparieren lässt sich das nicht: es gibt keinen verlässlichen Weg zu einem abgekoppelten Prozess. Der Fall wird ab 1.0.14 erkannt und gemeldet, und das Feld in den Einstellungen nennt die Bedingung.",
+      "state": "limitation",
+      "since": "2026-08-30",
+      "platforms": [
+        "Linux"
+      ]
+    },
+    {
+      "id": "mac-linux-ungetestet",
+      "title": "macOS und Linux sind kaum erprobt",
+      "detail": "Es gibt Installationsdateien für beide Systeme, und sie werden bei jeder Version gebaut. Ob Anmeldung und Spielstart dort durchgehend funktionieren, hat aber noch niemand systematisch geprüft. Unter macOS fehlt zusätzlich eine Signatur, deshalb erscheint beim ersten Start eine Warnung des Systems und die automatische Aktualisierung greift dort nicht.",
+      "state": "limitation",
+      "since": "2026-08-17",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    }
+  ];
+  var ISSUE_LABEL = {
+    "investigating": "Wird untersucht",
+    "fixing": "Wird behoben",
+    "fixed": "Behoben",
+    "limitation": "Bekannte Grenze"
+  };
+  // AUTO-ISSUES-ENDE
+
   var KIND_LABEL = { new: 'Neu', improved: 'Besser', fixed: 'Behoben' };
+
+  // Small, distinct shapes, so the state is readable without relying on the
+  // colour at all.
+  var ICONS = {
+    investigating: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>',
+    fixing:        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3a5 5 0 0 0-4.6 7L3 17.4V21h3.6l7.4-7.4A5 5 0 1 0 15 3z"/></svg>',
+    fixed:         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 6.5"/></svg>',
+    limitation:    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>'
+  };
+
+  // Filled once the release list arrives, so a fix can say whether it is
+  // actually out yet or still waiting for the next version.
+  var releasedVersion = null;
+
+  function isNewerThanReleased(version) {
+    if (!releasedVersion) return false;
+    var a = String(version).split('.').map(Number);
+    var b = String(releasedVersion).replace(/^v/, '').split('.').map(Number);
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+      var left = a[i] || 0;
+      var right = b[i] || 0;
+      if (left !== right) return left > right;
+    }
+    return false;
+  }
+
+  function renderIssues() {
+    var host = document.getElementById('issues-list');
+    // Cleared first: this runs a second time once the versions are known.
+    host.innerHTML = '';
+    var open = ISSUES.filter(function (i) { return i.state !== 'fixed'; });
+
+    document.getElementById('issues-count').textContent =
+      open.length === 0
+        ? 'Nichts Offenes'
+        : open.length + (open.length === 1 ? ' offener Punkt' : ' offene Punkte');
+
+    if (ISSUES.length === 0) {
+      host.innerHTML = '<div class="issues-none">' + ICONS.fixed +
+        '<span>Zurzeit sind keine Probleme bekannt.</span></div>';
+      return;
+    }
+
+    // Open items first, and within those the ones actively being worked on.
+    var order = { fixing: 0, investigating: 1, limitation: 2, fixed: 3 };
+    ISSUES.slice()
+      .sort(function (a, b) { return order[a.state] - order[b.state]; })
+      .forEach(function (issue) {
+        var meta = ['seit ' + date(issue.since)];
+        if (issue.platforms && issue.platforms.length) meta.push(issue.platforms.join(', '));
+
+        var label = ISSUE_LABEL[issue.state];
+        if (issue.state === 'fixed' && issue.fixedIn) {
+          // "Behoben in 1.0.14" reads as though that version were available.
+          // Until it actually is, the badge says so plainly instead.
+          label += isNewerThanReleased(issue.fixedIn)
+            ? ', kommt mit ' + issue.fixedIn
+            : ' in ' + issue.fixedIn;
+        }
+
+        var article = document.createElement('article');
+        article.className = 'issue';
+        article.innerHTML =
+          '<div class="issue-head">' +
+            '<span class="badge ' + issue.state + '">' + ICONS[issue.state] + label + '</span>' +
+            '<h3></h3>' +
+            '<span class="issue-meta">' + meta.join(' · ') + '</span>' +
+          '</div><p></p>';
+        article.querySelector('h3').textContent = issue.title;
+        article.querySelector('p').textContent = issue.detail;
+        host.appendChild(article);
+      });
+  }
+
+  renderIssues();
 
   set('fix-version', 'Version ' + LATEST.version);
   set('fix-date', date(LATEST.date));
