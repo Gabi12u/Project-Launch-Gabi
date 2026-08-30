@@ -32,6 +32,14 @@ const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
 interface Props {
   /** When set, results can be installed straight into this instance. */
   instanceId?: string
+  /**
+   * Why installing is impossible right now, or null when it is fine.
+   *
+   * This component had no notion that a game could be running at all: its
+   * install button stayed bright and clickable while the backend refused
+   * every single click.
+   */
+  blockedReason?: string | null
   mcVersion?: string
   loader?: LoaderId
   /** Content types the user may switch between. */
@@ -44,6 +52,7 @@ interface Props {
 
 export function ContentBrowser({
   instanceId,
+  blockedReason,
   mcVersion,
   loader,
   types = ['mod', 'resourcepack', 'shaderpack', 'datapack'],
@@ -304,7 +313,7 @@ export function ContentBrowser({
                 // carry the same id.
                 installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
                 installing={installing.has(item.projectId)}
-                canInstall={Boolean(instanceId)}
+                canInstall={Boolean(instanceId) && !blockedReason}
                 onInstall={() => void install(item)}
                 onOpen={() => setDetail(item)}
               />

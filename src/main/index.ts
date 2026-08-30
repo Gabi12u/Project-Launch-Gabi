@@ -282,12 +282,15 @@ function bootstrap(): void {
 
       // A quit or crash during a download strands its `.part` file, and nothing
       // else ever sweeps the shared library/asset trees where most of them land.
-      try {
-        const removed = cleanTempFiles()
-        if (removed > 0) logger.info(`${removed} unterbrochene Downloads aufgeräumt`)
-      } catch (err) {
-        logger.warn('Aufräumen unterbrochener Downloads fehlgeschlagen:', err)
-      }
+      // Not awaited: this sweeps the shared library and asset trees, and the
+      // launcher has no reason to hold anything up for it.
+      void cleanTempFiles()
+        .then((removed) => {
+          if (removed > 0) logger.info(`${removed} unterbrochene Downloads aufgeräumt`)
+        })
+        .catch((err: unknown) => {
+          logger.warn('Aufräumen unterbrochener Downloads fehlgeschlagen:', err)
+        })
 
       void runStartupChecks()
       void consumePendingLaunch()

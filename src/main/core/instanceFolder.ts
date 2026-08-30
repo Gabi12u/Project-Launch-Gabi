@@ -7,9 +7,10 @@
  * The file picker cannot even select a folder, so this is its own entry point.
  */
 
-import { cpSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'node:fs'
+import { copyFile, mkdir, readdir } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
-import { basename, join, relative, sep } from 'node:path'
+import { basename, join } from 'node:path'
 import type { Instance, LoaderId } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { log } from '../logger'
@@ -698,27 +699,57 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
  * Import
  * ------------------------------------------------------------------ */
 
-function copyGameFiles(from: string, to: string): number {
+/**
+ * Copies a foreign instance folder across, a file at a time.
+ *
+ * This used `cpSync`, which copies a whole tree in one blocking call. The
+ * folders it is pointed at are exactly the large ones — an existing
+ * `.minecraft` or Prism instance, world saves and all — so importing a
+ * long-played setup froze the entire launcher for as long as the copy took,
+ * with no window, no progress and nothing to cancel. Awaiting per file gives
+ * the interface room to breathe and lets the task report as it goes.
+ */
+async function copyGameFiles(from: string, to: string, onFile?: (count: number) => void): Promise<number> {
   let files = 0
-  cpSync(from, to, {
-    recursive: true,
-    force: true,
-    filter: (source) => {
-      const rel = relative(from, source)
-      // The root itself, always copied.
-      if (!rel) return true
+  const stack: string[] = ['']
 
-      const top = rel.split(sep)[0].toLowerCase()
-      if (SKIP_DIRS.has(top)) return false
+  while (stack.length > 0) {
+    const rel = stack.pop()
+    if (rel === undefined) continue
+
+    const source = rel ? join(from, rel) : from
+    let entries: Dirent[]
+    try {
+      entries = await readdir(source, { withFileTypes: true })
+    } catch {
+      continue
+    }
+
+    for (const entry of entries) {
+      const childRel = rel ? join(rel, entry.name) : entry.name
+      // Only the top level is filtered, exactly as before: these are the
+      // directories the launcher manages centrally and shares between
+      // instances, so bringing a second copy across would waste gigabytes.
+      if (!rel && SKIP_DIRS.has(entry.name.toLowerCase())) continue
+
+      const target = join(to, childRel)
+      if (entry.isDirectory()) {
+        await mkdir(target, { recursive: true })
+        stack.push(childRel)
+        continue
+      }
 
       try {
-        if (!statSync(source).isDirectory()) files++
+        await mkdir(join(target, '..'), { recursive: true })
+        await copyFile(join(from, childRel), target)
+        files++
+        if (files % 200 === 0) onFile?.(files)
       } catch {
-        // A file that vanished mid-copy is not worth failing over.
+        // A file that vanished mid-copy, or one the OS will not hand over, is
+        // not worth failing the whole import over.
       }
-      return true
     }
-  })
+  }
   return files
 }
 
@@ -762,7 +793,9 @@ export async function importInstanceFolder(
     const target = paths.gameDir(instance.id)
 
     task.update('Welten, Mods und Konfigurationen werden kopiert…', null)
-    const copied = copyGameFiles(detected.gameDir, target)
+    const copied = await copyGameFiles(detected.gameDir, target, (n) =>
+      task.update(`${n} Dateien kopiert…`, null)
+    )
     logger.info(`${copied} Dateien nach ${instance.id} kopiert`)
 
     task.update('Mods werden erfasst…', 0.9)

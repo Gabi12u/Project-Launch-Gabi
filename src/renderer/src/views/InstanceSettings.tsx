@@ -386,7 +386,12 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
               value={wrapper}
               onChange={(e) => setWrapper(e.target.value)}
             />
-            <span className="hint">Wird dem Java-Aufruf vorangestellt.</span>
+            <span className="hint">
+              Wird dem Java-Aufruf vorangestellt. Der Befehl muss Java selbst übernehmen, also per
+              exec ersetzen, und darf es nicht im Hintergrund starten. Sonst hält der Launcher das
+              Spiel für beendet, sobald der Wrapper fertig ist, und Mod-Änderungen sind dann nicht
+              mehr gesperrt.
+            </span>
           </div>
         </div>
       </section>

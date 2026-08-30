@@ -171,6 +171,17 @@ export interface InstanceSummary {
   installing: boolean
   installed: boolean
   running: boolean
+  /**
+   * True from the moment Play is accepted until the game process exists.
+   *
+   * Separate from `running`, and the interface needs both: preparing a launch
+   * can take minutes (Java, assets, loader), and during all of it the backend
+   * already refuses every change to the mods, while the buttons stayed
+   * enabled because nothing told the interface a launch was under way.
+   */
+  starting: boolean
+  /** True while mods are being installed, updated, removed or imported. */
+  contentBusy: boolean
   updateCount: number
 }
 

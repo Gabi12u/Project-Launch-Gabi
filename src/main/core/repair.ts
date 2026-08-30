@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
+import { readdir, stat } from 'node:fs/promises'
 import { log } from '../logger'
 import { withTask } from '../tasks'
 import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } from './net'
@@ -368,7 +369,7 @@ async function runRepair(
     // report only ever listed seven, so the user never learned whether
     // anything was swept up or whether the sweep itself failed.
     try {
-      const swept = cleanTempFiles(instanceId)
+      const swept = await cleanTempFiles(instanceId)
       step(
         'Aufräumen',
         swept > 0 ? 'repaired' : 'ok',
@@ -407,7 +408,7 @@ async function runRepair(
  */
 const TEMP_MIN_AGE_MS = 30 * 60 * 1000
 
-export function cleanTempFiles(instanceId?: string): number {
+export async function cleanTempFiles(instanceId?: string): Promise<number> {
   const roots = [paths.libraries(), paths.assets(), paths.versions(), paths.cache()]
   if (instanceId) roots.unshift(paths.gameDir(instanceId))
   const cutoff = Date.now() - TEMP_MIN_AGE_MS
@@ -415,12 +416,17 @@ export function cleanTempFiles(instanceId?: string): number {
   let removed = 0
   const stack = [...roots]
 
+  // Same reasoning as `totalDiskUsage`: this walks the shared library, asset
+  // and version trees, and it runs unprompted about a second after every
+  // single start of the launcher. Synchronously, that was a freeze on the way
+  // in for anyone with a well-used data folder.
   while (stack.length > 0) {
     const dir = stack.pop()
-    if (!dir || !existsSync(dir)) continue
+    if (!dir) continue
 
     try {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const entries = await readdir(dir, { withFileTypes: true })
+      for (const entry of entries) {
         const full = join(dir, entry.name)
         if (entry.isDirectory()) {
           stack.push(full)
@@ -428,7 +434,7 @@ export function cleanTempFiles(instanceId?: string): number {
         }
         if (entry.name.endsWith('.part') || entry.name.endsWith('.tmp')) {
           try {
-            if (statSync(full).mtimeMs > cutoff) continue
+            if ((await stat(full)).mtimeMs > cutoff) continue
             rmSync(full, { force: true })
             removed++
           } catch {
@@ -437,36 +443,44 @@ export function cleanTempFiles(instanceId?: string): number {
         }
       }
     } catch {
-      // unreadable directory
+      // unreadable or missing directory
     }
   }
   return removed
 }
 
 /** Disk usage of the whole launcher data folder, for the settings screen. */
-export function totalDiskUsage(): number {
+export async function totalDiskUsage(): Promise<number> {
   let total = 0
   const stack = [paths.root()]
 
   while (stack.length > 0) {
     const dir = stack.pop()
-    if (!dir || !existsSync(dir)) continue
+    if (!dir) continue
 
     try {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      // Asynchronous on purpose, and the difference is not cosmetic. The
+      // synchronous version walked every instance, every shared library and
+      // the whole asset tree — tens of thousands of files for one Minecraft
+      // version alone — without letting the event loop breathe once. The whole
+      // window froze, and this runs on the home screen after every session, so
+      // it was not a rare event. Each await here is a chance for the interface
+      // to stay alive.
+      const entries = await readdir(dir, { withFileTypes: true })
+      for (const entry of entries) {
         const full = join(dir, entry.name)
         if (entry.isDirectory()) {
           stack.push(full)
         } else {
           try {
-            total += statSync(full).size
+            total += (await stat(full)).size
           } catch {
             // file vanished mid-walk
           }
         }
       }
     } catch {
-      // unreadable directory
+      // unreadable or missing directory
     }
   }
   return total

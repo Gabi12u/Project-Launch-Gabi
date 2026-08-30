@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { ContentItem, InstanceSummary } from '@shared/types'
 import { getState, navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
-import { LOADER_LABELS, formatBytes, formatRelative, loaderColor, pluralise } from '../lib/format'
+import {
+  LOADER_LABELS,
+  contentBlockedReason as blockedReason,
+  formatBytes,
+  formatRelative,
+  loaderColor,
+  pluralise
+} from '../lib/format'
 import { EmptyState } from '../components/ui'
 import {
   IconChevronRight,
@@ -105,6 +112,12 @@ export function ModsView(): JSX.Element {
     }
   }
 
+  // Instances that actually could be updated right now, so the bulk button can
+  // grey itself out instead of promising work it will skip.
+  const updatableInstances = instances.filter(
+    (i) => i.updateCount > 0 && blockedReason(i) === null
+  )
+
   const updateEverything = async (): Promise<void> => {
     setChecking(true)
     try {
@@ -112,21 +125,44 @@ export function ModsView(): JSX.Element {
       // Same reasoning as the check above: one broken instance must not stop
       // the others from being updated.
       const failed: string[] = []
+      // The reason is kept, not just the name. This used to report only which
+      // instances failed, so "läuft gerade" and "Server nicht erreichbar"
+      // looked identical and the one thing the user could act on was lost.
+      const reasons: string[] = []
+      const skipped: string[] = []
+
       for (const instance of instances) {
         if (instance.updateCount === 0) continue
+        // Not even attempted while blocked: the backend would refuse anyway,
+        // and asking is how a batch turned into a list of mystery failures.
+        const blocked = blockedReason(instance)
+        if (blocked) {
+          skipped.push(instance.name)
+          continue
+        }
         try {
           total += await window.gabi.content.updateAll(instance.id)
-        } catch {
+        } catch (err) {
           failed.push(instance.name)
+          const message = err instanceof Error ? err.message : String(err)
+          if (!reasons.includes(message)) reasons.push(message)
         }
       }
 
-      if (failed.length > 0) {
+      if (skipped.length > 0 && failed.length === 0) {
+        toast(
+          'warning',
+          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`,
+          `Übersprungen, weil gerade in Benutzung: ${skipped.join(', ')}`,
+          8000
+        )
+      } else if (failed.length > 0) {
         toast(
           'warning',
           `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert, ${failed.length} fehlgeschlagen`,
-          `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
-          8000
+          `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}. ` +
+            `Grund: ${reasons[0] ?? 'unbekannt'}`,
+          9000
         )
       } else {
         toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
@@ -179,7 +215,16 @@ export function ModsView(): JSX.Element {
             Auf Updates prüfen
           </button>
           {totalUpdates > 0 && (
-            <button className="btn primary" onClick={updateEverything} disabled={checking}>
+            <button
+              className="btn primary"
+              onClick={updateEverything}
+              disabled={checking || updatableInstances.length === 0}
+              title={
+                updatableInstances.length === 0
+                  ? 'Alle betroffenen Instanzen laufen gerade oder werden bearbeitet.'
+                  : undefined
+              }
+            >
               <IconSparkle size={16} />
               {totalUpdates} {pluralise(totalUpdates, 'Update', 'Updates')} installieren
             </button>
@@ -314,7 +359,8 @@ export function ModsView(): JSX.Element {
                     {row.item.update && (
                       <button
                         className="btn sm primary"
-                        disabled={updating === row.item.id}
+                        disabled={updating === row.item.id || blockedReason(row.instance) !== null}
+                        title={blockedReason(row.instance) ?? undefined}
                         onClick={async () => {
                           setUpdating(row.item.id)
                           try {

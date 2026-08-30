@@ -33,16 +33,20 @@ import {
   syncContentWithDisk
 } from './instances'
 import { checkCompatibility } from './compat'
-import { isFixing } from './content'
+import { isContentBusy } from './contentLock'
 import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
 import {
   activeVersionIds,
   clearRunning,
+  clearStarting,
   getAdopted,
   getRunning,
   isRunning,
+  isStarting,
   listRunning,
-  setRunning
+  markStarting,
+  setRunning,
+  startingCount
 } from './running'
 import { isRepairing } from './repair'
 
@@ -320,25 +324,7 @@ export interface LaunchOptions {
  */
 const stopRequested = new Set<string>()
 
-const starting = new Set<string>()
-
-/**
- * How many launches are underway but have not spawned a process yet.
- *
- * The updater needs this on top of `runningCount()`: everything before the
- * spawn — the compatibility check, file downloads, a Java install — can take
- * minutes, during which the running registry is still empty. Restarting for an
- * update in that window throws the user's Play click away with nothing to show
- * for it.
- */
-export function startingCount(): number {
-  return starting.size
-}
-
-/** True while this instance is assembling files but has no process yet. */
-export function isStarting(instanceId: string): boolean {
-  return starting.has(instanceId)
-}
+export { isStarting, startingCount }
 
 export async function launchInstance(options: LaunchOptions): Promise<void> {
   const { instanceId } = options
@@ -351,14 +337,18 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
   }
 
-  // Same reasoning for the compatibility window's automatic fix: it installs,
-  // disables and removes mods one after another, and a launch into that half
-  // of the work loads a mods folder that does not match itself.
-  if (isFixing(instanceId)) {
-    throw new Error('Die Mods dieser Instanz werden gerade repariert. Warte, bis das abgeschlossen ist.')
+  // Any content work at all, not just the compatibility window's automatic
+  // fix. Installing, updating, removing and importing all rewrite the same
+  // folder over several seconds of downloading, and only the automatic fix was
+  // ever guarded here. Pressing Play while an update was running walked
+  // straight into a mods folder that did not match itself.
+  if (isContentBusy(instanceId)) {
+    throw new Error(
+      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+    )
   }
 
-  if (isRunning(instanceId) || starting.has(instanceId)) {
+  if (isRunning(instanceId) || isStarting(instanceId)) {
     // A game left over from a previous launcher session needs a different
     // message: the user cannot stop it from here, and starting a second JVM on
     // the same world is exactly what this guard exists to prevent.
@@ -370,7 +360,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         : 'Diese Instanz läuft bereits.'
     )
   }
-  starting.add(instanceId)
+  markStarting(instanceId)
   // A stop that never produced an exit (an orphaned record, a taskkill that
   // failed) would otherwise leave its marker behind and excuse the next
   // genuine crash of this instance as intentional.
@@ -694,6 +684,33 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       const crashed = !requested && code !== 0 && code !== null
       clearRunning(instanceId)
 
+      // A wrapper that hands Minecraft off instead of becoming it.
+      //
+      // The launcher only ever sees the process it spawned. With a wrapper
+      // command set, that is the wrapper — and if the wrapper starts Java in
+      // the background rather than replacing itself with it (`exec`), it exits
+      // within moments while the game is very much still on screen. Everything
+      // downstream then believes nothing is running: the mods unlock, a second
+      // Play click is allowed, and two JVMs end up on the same world.
+      //
+      // It cannot be fixed from here, because there is no reliable way to find
+      // "the java process that wrapper started". Saying so plainly is worth
+      // more than a silent wrong state.
+      const wrapper = userText(instance.settings.wrapperCommand).trim()
+      if (wrapper && !requested && !crashed && endedAt - startedAt < 5000) {
+        logger.warn(
+          `Wrapper-Befehl "${wrapper}" endete nach ${endedAt - startedAt} ms mit Code ${code}. ` +
+            'Läuft Minecraft weiter, kann der Launcher es nicht mehr verfolgen.'
+        )
+        notify(
+          'warning',
+          'Wrapper-Befehl gibt das Spiel nicht weiter',
+          `"${wrapper}" hat sich sofort beendet. Läuft Minecraft trotzdem, weiß der Launcher nichts davon, ` +
+            'und Mod-Änderungen sind dann nicht mehr gesperrt. Der Befehl muss Java per exec übernehmen.',
+          { route: `/instances/${instanceId}?tab=settings` }
+        )
+      }
+
       recordSession(instanceId, { startedAt, endedAt, crashed, exitCode: code })
 
       pushLog({
@@ -786,7 +803,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     throw err
   } finally {
-    starting.delete(instanceId)
+    clearStarting(instanceId)
   }
 }
 

@@ -12,6 +12,7 @@ import {
 } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
+import { safeJoin } from '../paths'
 import { log } from '../logger'
 
 const logger = log('archive')
@@ -55,6 +56,49 @@ export async function readEntryJson<T>(archivePath: string, entryName: string): 
 export function extractAll(archivePath: string, targetDir: string, overwrite = true): void {
   mkdirSync(targetDir, { recursive: true })
   new AdmZip(archivePath).extractAllTo(targetDir, overwrite)
+}
+
+/**
+ * Unpacks an archive entry by entry, yielding between them.
+ *
+ * `extractAll` inflates and writes the whole thing in one blocking call, which
+ * for a backup that includes world saves means the launcher stops answering
+ * for as long as it takes — no window, no progress, nothing to cancel. This
+ * does the same work in slices, so the interface stays alive and the caller
+ * can report how far along it is.
+ */
+export async function extractAllSlowly(
+  archivePath: string,
+  targetDir: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<number> {
+  mkdirSync(targetDir, { recursive: true })
+  const zip = new AdmZip(archivePath)
+  const entries = zip.getEntries()
+
+  let done = 0
+  for (const entry of entries) {
+    // The entry name comes out of the archive, so it decides where this
+    // writes. `safeJoin` refuses anything that climbs out of the target.
+    const target = safeJoin(targetDir, entry.entryName)
+
+    if (entry.isDirectory) {
+      mkdirSync(target, { recursive: true })
+    } else {
+      mkdirSync(join(target, '..'), { recursive: true })
+      writeFileSync(target, entry.getData())
+    }
+
+    done++
+    // Every so often, hand the event loop back. Doing it per entry would cost
+    // more in scheduling than it saves on a archive of many small files.
+    if (done % 40 === 0) {
+      onProgress?.(done, entries.length)
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+  }
+  onProgress?.(done, entries.length)
+  return done
 }
 
 /** Extracts only entries under `prefix`, stripping the prefix from the output path. */

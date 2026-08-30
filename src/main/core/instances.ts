@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { DEFAULT_INSTANCE_SETTINGS } from '@shared/defaults'
 import { EVENTS } from '@shared/ipc'
@@ -19,7 +19,8 @@ import { withTask } from '../tasks'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
-import { isRunning } from './running'
+import { isRunning, isStarting } from './running'
+import { isContentBusy } from './contentLock'
 
 const logger = log('instances')
 
@@ -159,6 +160,8 @@ export function toSummary(instance: Instance): InstanceSummary {
     installing: instance.installing,
     installed: instance.installed,
     running: isRunning(instance.id),
+    starting: isStarting(instance.id),
+    contentBusy: isContentBusy(instance.id),
     updateCount: content.filter((c) => c?.update).length
   }
 }
@@ -517,49 +520,63 @@ export interface WorldInfo {
   lastPlayed: number
 }
 
-function folderSize(dir: string): number {
+/**
+ * Adds up every file below a folder, without blocking the interface.
+ *
+ * A well-played world is thousands of region files, and a whole instance adds
+ * mods, resource packs and recordings on top. Walking that synchronously froze
+ * the entire window until it finished, which on a slow or network-backed home
+ * directory is not a hitch but a hang.
+ */
+async function folderSize(dir: string): Promise<number> {
   let total = 0
   const stack = [dir]
   while (stack.length > 0) {
     const current = stack.pop()
-    if (!current || !existsSync(current)) continue
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const full = join(current, entry.name)
-      if (entry.isDirectory()) stack.push(full)
-      else {
-        try {
-          total += statSync(full).size
-        } catch {
-          // file disappeared mid-walk
+    if (!current) continue
+    try {
+      const entries = await readdir(current, { withFileTypes: true })
+      for (const entry of entries) {
+        const full = join(current, entry.name)
+        if (entry.isDirectory()) stack.push(full)
+        else {
+          try {
+            total += (await stat(full)).size
+          } catch {
+            // file disappeared mid-walk
+          }
         }
       }
+    } catch {
+      // unreadable or missing directory
     }
   }
   return total
 }
 
-export function listWorlds(id: string): WorldInfo[] {
+export async function listWorlds(id: string): Promise<WorldInfo[]> {
   const dir = paths.saves(id)
   if (!existsSync(dir)) return []
 
-  return readdirSync(dir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((entry) => {
-      const folder = join(dir, entry.name)
-      let lastPlayed = 0
+  const worlds: WorldInfo[] = []
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const folder = join(dir, entry.name)
+    let lastPlayed = 0
+    try {
+      lastPlayed = statSync(join(folder, 'level.dat')).mtimeMs
+    } catch {
       try {
-        lastPlayed = statSync(join(folder, 'level.dat')).mtimeMs
-      } catch {
         lastPlayed = statSync(folder).mtimeMs
+      } catch {
+        // A world that vanished between listing and stat is simply skipped
+        // rather than taking the whole list down with it.
+        continue
       }
-      return {
-        name: entry.name,
-        folder,
-        sizeBytes: folderSize(folder),
-        lastPlayed
-      }
-    })
-    .sort((a, b) => b.lastPlayed - a.lastPlayed)
+    }
+    worlds.push({ name: entry.name, folder, sizeBytes: await folderSize(folder), lastPlayed })
+  }
+  return worlds.sort((a, b) => b.lastPlayed - a.lastPlayed)
 }
 
 export function listScreenshots(id: string, limit = 40): { file: string; takenAt: number }[] {
@@ -619,6 +636,19 @@ function sameContent(a: ContentItem[], b: ContentItem[]): boolean {
  */
 export async function syncContentWithDisk(id: string): Promise<Instance> {
   const instance = getInstance(id)
+
+  // Never while the folder is being rewritten. An update writes the new jar
+  // first and records it a moment later, and a scan landing in between saw a
+  // file it did not recognise and registered it as a second, separate mod —
+  // the duplicate entries users reported. The scan is only ever a
+  // reconciliation, so skipping one is free: the next one sees the finished
+  // state. Ordinary actions reach this, not just unlucky ones: opening the
+  // instance page, pressing the compatibility check, or clicking Play all
+  // land here.
+  if (isContentBusy(id)) {
+    logger.debug(`Abgleich für ${id} übersprungen, es wird gerade geschrieben`)
+    return instance
+  }
   // Keyed by the name with any `.disabled` suffix stripped, so an item is
   // found regardless of which of the two states it was last recorded in.
   // Keying on the stored name alone broke re-enabling a mod outside the app:
@@ -737,7 +767,7 @@ export function markPlayed(id: string): void {
  * Misc helpers
  * ------------------------------------------------------------------ */
 
-export function instanceDiskUsage(id: string): number {
+export async function instanceDiskUsage(id: string): Promise<number> {
   return folderSize(paths.instance(id))
 }
 

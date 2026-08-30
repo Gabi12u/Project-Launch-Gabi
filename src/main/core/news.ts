@@ -43,7 +43,7 @@ export async function getNews(limit = 12): Promise<NewsItem[]> {
   }
 }
 
-export function getStats(): LauncherStats {
+export async function getStats(): Promise<LauncherStats> {
   const instances = loadInstances()
 
   const mostPlayed = instances
@@ -67,7 +67,7 @@ export function getStats(): LauncherStats {
     totalInstances: instances.length,
     totalPlayMs: instances.reduce((sum, i) => sum + i.totalPlayMs, 0),
     totalMods: instances.reduce((sum, i) => sum + i.content.filter((c) => c.type === 'mod').length, 0),
-    diskUsageBytes: totalDiskUsage(),
+    diskUsageBytes: await totalDiskUsage(),
     mostPlayed,
     recentSessions
   }

@@ -24,6 +24,7 @@ import {
 } from './instances'
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
+import { isContentBusy, withContentLock } from './contentLock'
 
 const logger = log('content')
 
@@ -155,7 +156,7 @@ export async function installContent(options: InstallContentOptions): Promise<Co
   const running = inFlight.get(lockKey)
   if (running) return running
 
-  const run = installContentOnce(options, visited).finally(() => {
+  const run = withContentLock(instanceId, () => installContentOnce(options, visited)).finally(() => {
     inFlight.delete(lockKey)
   })
   inFlight.set(lockKey, run)
@@ -205,8 +206,22 @@ async function installContentOnce(
   })
 
   // Replace an older file of the same project ------------------------
+  //
+  // Matched on the project first, and on the file name as a fallback. The
+  // project match alone missed anything imported by hand: a jar dropped into
+  // the folder is registered as local content with no project id at all, so
+  // installing the tracked version of that same mod later found nothing to
+  // replace and left both side by side. Comparing the bare file name catches
+  // that case, since a hand-imported jar and the release it came from
+  // normally carry the same name.
+  const bare = (name: string): string =>
+    (name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name).toLowerCase()
+  const wanted = bare(version.fileName)
+
   const previous = getInstance(instanceId).content.find(
-    (c) => c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName
+    (c) =>
+      (c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName) ||
+      (!c.projectId && bare(c.fileName) === wanted)
   )
   if (previous) {
     const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
@@ -294,6 +309,14 @@ export function removeContent(instanceId: string, contentId: string): Instance {
  * still participates in update checks.
  */
 export async function importContentFile(
+  instanceId: string,
+  sourceFile: string,
+  type: ContentType
+): Promise<ContentItem> {
+  return withContentLock(instanceId, () => importContentFileOnce(instanceId, sourceFile, type))
+}
+
+async function importContentFileOnce(
   instanceId: string,
   sourceFile: string,
   type: ContentType
@@ -426,6 +449,10 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
 }
 
 export async function applyUpdate(instanceId: string, contentId: string): Promise<ContentItem | null> {
+  return withContentLock(instanceId, () => applyUpdateOnce(instanceId, contentId))
+}
+
+async function applyUpdateOnce(instanceId: string, contentId: string): Promise<ContentItem | null> {
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
   if (!item?.update) return null
@@ -447,9 +474,7 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
   if (!current) return null
 
   const oldPath = contentPath(dir, current.fileName)
-  if (!samePath(oldPath, destination)) {
-    rmSync(oldPath, { force: true })
-  }
+  const stale = samePath(oldPath, destination) ? null : oldPath
 
   const next: ContentItem = {
     ...current,
@@ -483,14 +508,59 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
     // keep the old metadata
   }
 
-  const content = getInstance(instanceId).content.map((c) => (c.id === contentId ? next : c))
+  // The record is written before the old file is deleted, not after. Deleting
+  // first meant a delete that threw (a virus scanner, a cloud-sync client, the
+  // game itself holding the jar) aborted the whole function with the new file
+  // already on disk and the list still describing the old one. The next folder
+  // scan then found the new file, did not recognise it, and registered it as a
+  // second, separate mod.
+  //
+  // The filter is the other half. `addContent` has always dropped any entry
+  // that collides on file name before pushing; this hand-rolled write never
+  // did, so a stray record from an earlier mishap survived the update instead
+  // of being absorbed by it.
+  const content = getInstance(instanceId)
+    .content.filter((c) => c.id === contentId || c.fileName !== next.fileName)
+    .map((c) => (c.id === contentId ? next : c))
   persist({ ...getInstance(instanceId), content })
+
+  if (stale) removeStaleFile(stale)
 
   logger.info(`${item.name} auf ${next.version} aktualisiert`)
   return next
 }
 
+/**
+ * Deletes the file an update replaced, without ever failing the update.
+ *
+ * Tried twice: the usual reason a delete fails is a scanner or indexer holding
+ * the file open for a moment, and by the time the record has been written that
+ * has often passed. If it still refuses, the update itself already succeeded
+ * and is recorded correctly, so this is logged and left alone rather than
+ * unwinding work that is done.
+ */
+function removeStaleFile(path: string): void {
+  try {
+    rmSync(path, { force: true })
+    return
+  } catch {
+    // fall through to the second attempt
+  }
+  try {
+    rmSync(path, { force: true })
+  } catch (err) {
+    logger.warn(`Alte Datei ${path} konnte nicht entfernt werden:`, err)
+  }
+}
+
 export async function updateAll(instanceId: string): Promise<number> {
+  // Held across the whole batch, not just per mod. Between two mods the folder
+  // is momentarily consistent, but the batch as a whole is not, and a launch
+  // slipping into one of those gaps would load a half-updated mod set.
+  return withContentLock(instanceId, () => updateAllOnce(instanceId))
+}
+
+async function updateAllOnce(instanceId: string): Promise<number> {
   const instance = getInstance(instanceId)
 
   return withTask(`Updates für ${instance.name}`, 'Vorbereitung…', instanceId, async (task) => {
@@ -535,33 +605,14 @@ export async function updateAll(instanceId: string): Promise<number> {
  * every guard and started a JVM against a mods folder mid-edit. `launchInstance`
  * asks this the same way it asks `isRepairing`.
  */
-const fixing = new Map<string, number>()
-
+/** Kept under the old name so the compatibility gate reads as it always did. */
 export function isFixing(instanceId: string): boolean {
-  return (fixing.get(instanceId) ?? 0) > 0
-}
-
-/**
- * Holds the marker for as long as `run` takes.
- *
- * Counted rather than a plain set, because `fixAll` holds it across the whole
- * batch and each `applyFix` inside takes it again. With a set the inner release
- * would clear the outer one and leave the rest of the batch unprotected.
- */
-async function withFixLock<T>(instanceId: string, run: () => Promise<T>): Promise<T> {
-  fixing.set(instanceId, (fixing.get(instanceId) ?? 0) + 1)
-  try {
-    return await run()
-  } finally {
-    const left = (fixing.get(instanceId) ?? 1) - 1
-    if (left > 0) fixing.set(instanceId, left)
-    else fixing.delete(instanceId)
-  }
+  return isContentBusy(instanceId)
 }
 
 /** Applies the `fix` attached to a compatibility issue. */
 export async function applyFix(instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>): Promise<void> {
-  await withFixLock(instanceId, () => runFix(instanceId, fix))
+  await withContentLock(instanceId, () => runFix(instanceId, fix))
 }
 
 async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>): Promise<void> {
@@ -628,7 +679,7 @@ export async function fixAll(instanceId: string, issues: CompatibilityIssue[]): 
   let applied = 0
 
   // One lock for the whole batch, so the gap between two fixes is covered too.
-  return withFixLock(instanceId, async () => {
+  return withContentLock(instanceId, async () => {
     for (const issue of fixable) {
       try {
         await applyFix(instanceId, issue.fix as NonNullable<CompatibilityIssue['fix']>)

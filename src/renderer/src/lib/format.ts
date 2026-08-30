@@ -167,3 +167,23 @@ export function skinHeadStyle(skinUrl: string | undefined): CSSProperties | null
   // Quoted, so a URL containing brackets or spaces cannot break out of url().
   return { ['--skin' as string]: `url("${encodeURI(secure)}")` }
 }
+
+/**
+ * Why mods cannot be changed on this instance right now, or null if they can.
+ *
+ * One place, because the answer was previously re-derived at every button and
+ * they disagreed: some checked only `running`, some checked nothing at all,
+ * and none knew about the minutes-long preparation phase after Play or about
+ * an update already in flight. The backend refuses in all three cases, so a
+ * button that stays bright and clickable is simply lying about it.
+ */
+export function contentBlockedReason(instance: {
+  running?: boolean
+  starting?: boolean
+  contentBusy?: boolean
+}): string | null {
+  if (instance.running) return 'Nicht möglich, solange Minecraft läuft.'
+  if (instance.starting) return 'Nicht möglich, die Instanz wird gerade gestartet.'
+  if (instance.contentBusy) return 'An den Mods wird gerade gearbeitet. Warte, bis das fertig ist.'
+  return null
+}

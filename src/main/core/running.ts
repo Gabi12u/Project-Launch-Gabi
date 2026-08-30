@@ -185,6 +185,41 @@ function announce(): void {
   }
 }
 
+/**
+ * Instances whose launch has been accepted but has no process yet.
+ *
+ * Lives here rather than in `launch.ts` because both the launch engine and the
+ * instance store need to read it, and those two already import each other in
+ * one direction. Putting it in the engine closed that loop, and a circular
+ * import is the kind of thing that works in the type checker and then hands
+ * you an undefined function at runtime.
+ */
+const starting = new Set<string>()
+
+export function markStarting(instanceId: string): void {
+  starting.add(instanceId)
+  announce()
+}
+
+export function clearStarting(instanceId: string): void {
+  if (starting.delete(instanceId)) announce()
+}
+
+/** True while this instance is assembling files but has no process yet. */
+export function isStarting(instanceId: string): boolean {
+  return starting.has(instanceId)
+}
+
+/**
+ * How many launches are underway but have not spawned a process yet.
+ *
+ * The updater needs this on top of `runningCount()`: everything before the
+ * spawn can take minutes, during which the running registry is still empty.
+ */
+export function startingCount(): number {
+  return starting.size
+}
+
 export function setRunning(instanceId: string, game: RunningGame): void {
   // This process owns it now, so any record from the previous session is stale.
   adopted.delete(instanceId)

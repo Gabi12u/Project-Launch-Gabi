@@ -6,7 +6,7 @@ import { paths } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { withTask } from '../tasks'
-import { extractAll, listEntries, zipFolder } from './archive'
+import { extractAllSlowly, listEntries, zipFolder } from './archive'
 import { getInstance } from './instances'
 import { isRunning } from './running'
 
@@ -335,7 +335,9 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             moved.push({ key, from, to })
           }
 
-          extractAll(archive, gameDir, true)
+          await extractAllSlowly(archive, gameDir, (done, total) => {
+            task.update(`Wird entpackt… ${done} von ${total}`, total > 0 ? done / total : null)
+          })
         } catch (err) {
           // Put everything back exactly as it was.
           for (const item of moved) {

@@ -130,6 +130,11 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
           title={item.disabled ? item.disabledReason : undefined}
           onMouseEnter={() => !item.disabled && setCursor(index)}
           onClick={() => {
+            // Checked here too, not only through the `disabled` attribute. The
+            // keyboard path already re-checks; leaving the mouse path relying
+            // purely on the browser means one stray `pointer-events` rule in
+            // the stylesheet would silently re-arm "Entfernen".
+            if (item.disabled) return
             onClose()
             item.onSelect()
           }}

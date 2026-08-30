@@ -15,6 +15,7 @@ import {
   formatBytes,
   formatDateTime,
   formatDuration,
+  contentBlockedReason,
   formatMemory,
   formatPlayTime,
   formatRelative,
@@ -100,6 +101,11 @@ export function InstanceDetailView({
 
   const status = launchStatus[instanceId]
   const running = summary?.running ?? false
+  // What the mod controls actually have to obey. `running` alone missed the
+  // whole preparation phase after Play, which can last minutes, and missed an
+  // update already in flight — the backend refuses in both cases, so the
+  // buttons have to know about them too.
+  const contentBlocked = summary ? contentBlockedReason(summary) : null
   const busy = starting.includes(instanceId)
 
   // Set on unmount, so a request still in flight cannot act on a view the
@@ -355,12 +361,17 @@ export function InstanceDetailView({
       )}
 
       {tab === 'content' && (
-        <ContentTab instance={instance} running={running} onChanged={async () => { await load(); await runChecks() }} />
+        <ContentTab
+          instance={instance}
+          blockedReason={contentBlocked}
+          onChanged={async () => { await load(); await runChecks() }}
+        />
       )}
 
       {tab === 'browse' && (
         <ContentBrowser
           instanceId={instanceId}
+          blockedReason={contentBlocked}
           mcVersion={instance.mcVersion}
           loader={instance.loader}
           installedProjectIds={instance.content
@@ -539,11 +550,12 @@ const CONTENT_TABS: { id: ContentType; label: string }[] = [
 function ContentTab({
   instance,
   onChanged,
-  running
+  blockedReason
 }: {
   instance: InstanceDetail
   onChanged: () => Promise<void>
-  running: boolean
+  /** Why mods cannot be changed right now, or null when they can. */
+  blockedReason: string | null
 }): JSX.Element {
   const [type, setType] = useState<ContentType>('mod')
   const [search, setSearch] = useState('')
@@ -630,7 +642,12 @@ function ContentTab({
         </button>
 
         {updates > 0 && (
-          <button className="btn sm primary" onClick={updateAll} disabled={checking}>
+          <button
+            className="btn sm primary"
+            onClick={updateAll}
+            disabled={checking || blockedReason !== null}
+            title={blockedReason ?? undefined}
+          >
             <IconDownload size={14} />
             {updates} {pluralise(updates, 'Update', 'Updates')} installieren
           </button>
@@ -667,7 +684,7 @@ function ContentTab({
               key={item.id}
               item={item}
               instanceId={instance.id}
-              running={running}
+              blockedReason={blockedReason}
               updating={updating === item.id}
               onContextMenu={(event) => menu.onContextMenu(event, item)}
               onUpdate={async () => {
@@ -702,7 +719,7 @@ function ContentTab({
           y={menu.open.y}
           onClose={menu.close}
           items={contentMenuItems(menu.open.target, {
-            running,
+            blockedReason,
             onToggle: async (item, enabled) => {
               try {
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
@@ -761,7 +778,7 @@ function ContentTab({
 function contentMenuItems(
   item: ContentItem,
   handlers: {
-    running: boolean
+    blockedReason: string | null
     onToggle: (item: ContentItem, enabled: boolean) => void
     onUpdate: (item: ContentItem) => void
     onPickVersion: (item: ContentItem) => void
@@ -769,8 +786,8 @@ function contentMenuItems(
     onRemove: (item: ContentItem) => void
   }
 ): MenuItem[] {
-  const blocked = handlers.running
-  const reason = 'Nicht möglich, solange Minecraft läuft.'
+  const blocked = handlers.blockedReason !== null
+  const reason = handlers.blockedReason ?? ''
   const local = item.provider === 'local' || !item.projectId
 
   return [
@@ -819,7 +836,7 @@ function contentMenuItems(
 function ContentRow({
   item,
   updating,
-  running,
+  blockedReason,
   onUpdate,
   onToggle,
   onRemove,
@@ -828,7 +845,7 @@ function ContentRow({
   item: ContentItem
   instanceId: string
   updating: boolean
-  running: boolean
+  blockedReason: string | null
   onUpdate: () => void
   onToggle: (enabled: boolean) => void
   onRemove: () => void
@@ -836,8 +853,8 @@ function ContentRow({
 }): JSX.Element {
   // Every change is refused by the main process while the game is up, so the
   // buttons say so up front instead of letting the click fail.
-  const blocked = running
-  const reason = 'Nicht möglich, solange Minecraft läuft.'
+  const blocked = blockedReason !== null
+  const reason = blockedReason ?? ''
 
   return (
     <div
