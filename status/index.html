@@ -418,6 +418,85 @@ footer {
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--ink); }
 
+/* --------------------------------------------------------- Handy */
+
+/* The bar was built as a single row of brand, links and button, which adds up
+   to far more than a phone is wide: the download button ended up past the
+   right edge, cut off and unreachable, and the brand broke across two lines.
+   Below this width it becomes two rows and stops sticking, because a bar that
+   tall would otherwise sit on a tenth of the screen for the whole page. */
+@media (max-width: 760px) {
+  .inner, .nav { width: min(1120px, 100% - 28px); }
+
+  .nav {
+    position: static;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 12px 0 6px;
+  }
+
+  .brand { font-size: 15px; }
+  .brand svg { width: 26px; height: 26px; }
+
+  .nav-cta { margin-left: auto; padding: 8px 14px; }
+
+  .nav-links {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    gap: 18px;
+    font-size: 14px;
+  }
+
+  /* Big enough to hit. As plain inline links these were 22 to 23 pixels tall,
+     well under what a finger lands on reliably. */
+  .nav-links a,
+  footer a,
+  details.table summary { display: inline-block; padding: 7px 0; }
+
+  .head { padding: 28px 0 6px; }
+  .head p, .issue p { max-width: none; }
+  section { padding: 20px 0; }
+
+  .card { padding: 16px; }
+  .grid { gap: 12px; }
+
+  /* The legend claimed a fixed 190px beside a 180px chart, which does not fit
+     next to each other here. Stacked, both get the full width. */
+  .legend { min-width: 100%; }
+  .donut-wrap { gap: 16px; }
+
+  .chart-head { flex-wrap: wrap; gap: 2px 12px; }
+  .chart-sub { margin-left: 0; }
+
+  /* The date moves under the title instead of being pushed to a right edge
+     that is no longer there. */
+  .issue-meta { margin-left: 0; width: 100%; }
+
+  /* Three columns of numbers do not fit. The table scrolls by itself rather
+     than dragging the whole page sideways with it. */
+  details.table { overflow-x: auto; }
+  th, td { padding: 7px 6px; font-size: 13px; }
+
+  /* A tooltip is placed at the pointer and never wrapped, so a long one ran
+     off a narrow screen. */
+  .tip { max-width: calc(100vw - 20px); white-space: normal; }
+
+  footer { margin-top: 28px; gap: 4px 18px; }
+}
+
+/* Narrow phones, where the fixed columns of the bar chart leave the bar itself
+   almost nothing. */
+@media (max-width: 420px) {
+  .bar-row { grid-template-columns: 60px 1fr auto; gap: 8px; }
+  .bar-label { font-size: 12.5px; }
+  .bar-value { min-width: 42px; font-size: 12.5px; }
+  .kind { width: 66px; }
+  .nav-links { gap: 14px; }
+  .tile-note, .issue p, .change p { font-size: 14px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
