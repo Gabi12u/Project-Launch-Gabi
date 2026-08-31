@@ -36,6 +36,15 @@ export interface AppState {
   starting: string[]
   /** What the screen recorder is doing, for the indicator in the title bar. */
   recording: RecordingState
+  /**
+   * Version of a downloaded update waiting for a restart, else null.
+   *
+   * Global rather than local to the settings view, because the point is to be
+   * visible from anywhere: the one toast announcing it disappears after a few
+   * seconds, and someone who leaves the launcher running in the background
+   * never saw it again.
+   */
+  updateReady: string | null
 }
 
 const initial: AppState = {
@@ -52,7 +61,8 @@ const initial: AppState = {
   paletteOpen: false,
   compatGate: null,
   starting: [],
-  recording: { active: false, instanceId: null, startedAt: null, bytes: 0 }
+  recording: { active: false, instanceId: null, startedAt: null, bytes: 0 },
+  updateReady: null
 }
 
 let state: AppState = initial

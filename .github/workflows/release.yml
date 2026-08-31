@@ -45,6 +45,30 @@ jobs:
 
       - run: npm run typecheck
 
+      # Cheap, and it runs before three platform builds rather than after them.
+      - name: Tag, Version und Changelog vergleichen
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+
+          # The release is assembled from package.json, not from the ref. A tag
+          # that says something else therefore does not create the release it
+          # names: it overwrites the one package.json points at, which is a
+          # version that is already published and already installed by people.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v$VERSION" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} passt nicht zu package.json (v$VERSION)."
+            exit 1
+          fi
+
+          # Without an entry the launcher points its post-update message at a
+          # version that is missing from the list it opens.
+          if ! grep -q "version: '$VERSION'" src/shared/changelog.ts; then
+            echo "::error::In src/shared/changelog.ts fehlt ein Eintrag für $VERSION."
+            exit 1
+          fi
+
+          echo "Version $VERSION, Tag und Changelog passen zusammen."
+
       - name: Build ${{ matrix.platform }}
         env:
           # Without an Apple certificate, auto-discovery would pick up a random
@@ -129,6 +153,23 @@ jobs:
               exit 1
             }
           done
+
+          # Each manifest names the installer it points at. Checking only that
+          # the manifests exist left the actual failure uncovered: a rename in
+          # electron-builder.yml that misses one of them publishes a feed which
+          # sends every existing installation to a file that is not there, and
+          # nothing about that looks wrong until users stop updating.
+          MISSING=0
+          for manifest in out/latest.yml out/latest-mac.yml out/latest-linux.yml; do
+            [ -f "$manifest" ] || continue
+            for file in $(grep -oE 'url: [^[:space:]]+' "$manifest" | sed 's/url: //' | sort -u); do
+              if ! echo "$ASSETS" | grep -qx "$file"; then
+                echo "::error::$manifest verweist auf $file, das nicht im Release liegt"
+                MISSING=1
+              fi
+            done
+          done
+          [ "$MISSING" = "0" ] || exit 1
 
           # The failure this whole layout exists to prevent.
           COUNT=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \

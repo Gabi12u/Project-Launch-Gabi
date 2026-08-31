@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import type { ContentItem } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
 import { readdir, stat } from 'node:fs/promises'
@@ -10,6 +11,7 @@ import { clientJarPath, installVersion, loadVersionJson, resolveLibraries , type
 import { requiredJavaMajor, resolveJava } from './java'
 import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
 import { contentFilePath } from './content'
+import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning } from './running'
@@ -44,6 +46,23 @@ export function isRepairing(instanceId: string): boolean {
   return repairing.has(instanceId)
 }
 
+/**
+ * True when a content entry still looks exactly as it did when the repair
+ * started.
+ *
+ * Only the fields the repair itself would change. A `false` here means
+ * something else rewrote the entry while we were downloading, and the repair
+ * then keeps its hands off that one rather than reverting someone's install.
+ */
+function unchanged(before: ContentItem, now: ContentItem): boolean {
+  return (
+    before.fileName === now.fileName &&
+    before.sha1 === now.sha1 &&
+    before.version === now.version &&
+    before.enabled === now.enabled
+  )
+}
+
 export async function repairInstance(instanceId: string): Promise<RepairReport> {
   if (isRunning(instanceId)) {
     throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie reparierst.')
@@ -51,6 +70,15 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
 
   if (repairing.has(instanceId)) {
     throw new Error('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.')
+  }
+
+  // The mirror of the guard `launch.ts` grew: a repair rebuilds the same mods
+  // folder an install or update is writing into, and both end by persisting
+  // the content list. Whoever finished second used to decide what survived.
+  if (isContentBusy(instanceId)) {
+    throw new Error(
+      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+    )
   }
 
   const instance = getInstance(instanceId)
@@ -240,99 +268,136 @@ async function runRepair(
 
     // 6. Content files -------------------------------------------------
     task.update('Mods werden geprüft…', 0.86)
-    await syncContentWithDisk(instanceId)
-    const current = getInstance(instanceId)
 
     let restored = 0
     let removed = 0
+    let contentCount = 0
     const failed: string[] = []
-    const survivors = [...current.content]
 
-    for (const item of current.content) {
-      const file = contentFilePath(instanceId, item)
-      report.checkedFiles++
+    // Held for the whole step, the same marker `content.ts` takes for its own
+    // work. Repair rewrites the same folder and the same record, and it was
+    // the one path that never announced itself: the disk reconciler counted a
+    // half downloaded replacement as an unknown extra mod, a launch could
+    // start into the folder mid rewrite, and the mod buttons stayed enabled.
+    await withContentLock(instanceId, async () => {
+      await syncContentWithDisk(instanceId)
+      const current = getInstance(instanceId)
+      const survivors = [...current.content]
+      contentCount = current.content.length
+      // What the list looked like before the downloads below, which take
+      // seconds to minutes. Used at the end to tell our own changes apart from
+      // someone else's.
+      const before = new Map(current.content.map((item) => [item.id, item]))
 
-      const missing = !existsSync(file)
-      let corrupt = false
-      if (!missing && item.sha1) {
-        try {
-          corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
-        } catch {
-          corrupt = true
-        }
-      }
 
-      if (!missing && !corrupt) continue
+      for (const item of current.content) {
+        const file = contentFilePath(instanceId, item)
+        report.checkedFiles++
 
-      if (item.provider === 'local' || !item.projectId) {
-        if (missing) {
-          survivors.splice(survivors.indexOf(item), 1)
-          removed++
-        }
-        continue
-      }
-
-      try {
-        const version = await bestVersionFor(
-          item.provider as 'modrinth' | 'curseforge',
-          item.projectId,
-          current.mcVersion,
-          current.loader
-        )
-        if (!version) continue
-
-        const target = contentFilePath(instanceId, { ...item, fileName: version.fileName })
-        const aside = `${file}.repair-${process.pid}`
-        let movedAside = false
-
-        try {
-          // Moved aside instead of deleted. The previous order removed the file
-          // first and only logged on failure, so a network drop between the two
-          // left the mod gone from disk while content.json still listed it as
-          // installed. Now the original is only dropped once its replacement is
-          // safely written, and comes back if anything goes wrong.
-          if (existsSync(file)) {
-            renameSync(file, aside)
-            movedAside = true
+        const missing = !existsSync(file)
+        let corrupt = false
+        if (!missing && item.sha1) {
+          try {
+            corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
+          } catch {
+            corrupt = true
           }
+        }
 
-          await downloadFile({
-            url: version.downloadUrl,
-            path: target,
-            sha1: version.sha1,
-            size: version.size
-          })
+        if (!missing && !corrupt) continue
 
-          if (movedAside) rmSync(aside, { force: true })
-
-          const index = survivors.indexOf(item)
-          survivors[index] = {
-            ...item,
-            fileName: version.fileName,
-            sha1: version.sha1,
-            size: version.size
+        if (item.provider === 'local' || !item.projectId) {
+          if (missing) {
+            survivors.splice(survivors.indexOf(item), 1)
+            removed++
           }
-          restored++
-        } catch (err) {
-          if (movedAside && !existsSync(file)) {
-            try {
-              renameSync(aside, file)
-            } catch (restoreErr) {
-              logger.error(`${item.name} konnte nicht zurueckgelegt werden:`, restoreErr)
+          continue
+        }
+
+        try {
+          const version = await bestVersionFor(
+            item.provider as 'modrinth' | 'curseforge',
+            item.projectId,
+            current.mcVersion,
+            current.loader
+          )
+          if (!version) continue
+
+          const target = contentFilePath(instanceId, { ...item, fileName: version.fileName })
+          const aside = `${file}.repair-${process.pid}`
+          let movedAside = false
+
+          try {
+            // Moved aside instead of deleted. The previous order removed the file
+            // first and only logged on failure, so a network drop between the two
+            // left the mod gone from disk while content.json still listed it as
+            // installed. Now the original is only dropped once its replacement is
+            // safely written, and comes back if anything goes wrong.
+            if (existsSync(file)) {
+              renameSync(file, aside)
+              movedAside = true
             }
-          }
-          throw err
-        }
-      } catch (err) {
-        // Counted, not just logged: a mod the repair could not restore has to
-        // show up in the report, otherwise the user is told everything is fine
-        // while a mod is still broken.
-        failed.push(item.name)
-        logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
-      }
-    }
 
-    persist({ ...getInstance(instanceId), content: survivors })
+            await downloadFile({
+              url: version.downloadUrl,
+              path: target,
+              sha1: version.sha1,
+              size: version.size
+            })
+
+            if (movedAside) rmSync(aside, { force: true })
+
+            const index = survivors.indexOf(item)
+            survivors[index] = {
+              ...item,
+              fileName: version.fileName,
+              sha1: version.sha1,
+              size: version.size
+            }
+            restored++
+          } catch (err) {
+            if (movedAside && !existsSync(file)) {
+              try {
+                renameSync(aside, file)
+              } catch (restoreErr) {
+                logger.error(`${item.name} konnte nicht zurueckgelegt werden:`, restoreErr)
+              }
+            }
+            throw err
+          }
+        } catch (err) {
+          // Counted, not just logged: a mod the repair could not restore has to
+          // show up in the report, otherwise the user is told everything is fine
+          // while a mod is still broken.
+          failed.push(item.name)
+          logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
+        }
+      }
+
+      // Merged into the current list, not written over it. This used to
+      // persist `survivors` wholesale, so a mod installed while the repair was
+      // downloading lost its entry the moment the repair finished: the file
+      // stayed on disk and came back later as an unknown local mod with no
+      // provider and no version. Entries someone else touched in the meantime
+      // are left exactly as they are; only untouched ones follow our decision.
+      const decided = new Map(survivors.map((item) => [item.id, item]))
+      const latest = getInstance(instanceId)
+      const merged: ContentItem[] = []
+
+      for (const item of latest.content) {
+        const original = before.get(item.id)
+        // Added or changed by someone else while we worked: not ours to judge.
+        if (!original || !unchanged(original, item)) {
+          merged.push(item)
+          continue
+        }
+        const decision = decided.get(item.id)
+        // Absent from `survivors` means the repair dropped it as orphaned.
+        if (decision) merged.push(decision)
+      }
+
+      persist({ ...latest, content: merged })
+    })
     report.repairedFiles += restored
 
     const changed = restored > 0 || removed > 0
@@ -345,7 +410,7 @@ async function runRepair(
           (failed.length > 3 ? ' und weitere' : '')
         : changed
           ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt`
-          : `${current.content.length} Dateien in Ordnung`
+          : `${contentCount} Dateien in Ordnung`
     )
 
     // 7. Java ----------------------------------------------------------

@@ -13,7 +13,13 @@ import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
-import { disposeRecording, flushRecording, getRecordingState, initRecording } from './core/recording'
+import {
+  disposeRecording,
+  flushRecording,
+  getRecordingState,
+  initRecording,
+  isFinalisingRecording
+} from './core/recording'
 import { reportError } from './core/reports'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
@@ -52,6 +58,7 @@ let bootSettled = false
 
 /** Set once a pending recording has been given its chance to finish. */
 let quitFlushed = false
+let quitDisposed = false
 
 /** True once the renderer can be expected to receive what it is sent. */
 function rendererReachable(): boolean {
@@ -313,6 +320,18 @@ function bootstrap(): void {
         quitFlushed = true
         app.quit()
       })
+      return
+    }
+
+    // Second pass backstop. The flush above had its window, but if the file
+    // is still open the process must not simply go away: closing the handle is
+    // what actually finishes the recording, and the old code fired it off
+    // without waiting for it.
+    if (!quitDisposed && (getRecordingState().active || isFinalisingRecording())) {
+      event.preventDefault()
+      quitDisposed = true
+      logger.info('Beenden schliesst die Aufnahmedatei noch ab')
+      void disposeRecording().finally(() => app.quit())
       return
     }
 

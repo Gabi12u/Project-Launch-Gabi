@@ -24,7 +24,7 @@ import {
 } from './instances'
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
-import { isContentBusy, withContentLock } from './contentLock'
+import { withContentLock } from './contentLock'
 
 const logger = log('content')
 
@@ -595,20 +595,6 @@ async function updateAllOnce(instanceId: string): Promise<number> {
 /* ------------------------------------------------------------------ *
  * Automatic fixes
  * ------------------------------------------------------------------ */
-
-/**
- * Instances whose mod folder is being rewritten by an automatic fix.
- *
- * The IPC layer checks that the game is stopped before it calls in here, but
- * that is a single check at the door: applying a fix downloads a mod, removes
- * another and can run for a while, and a Play click during that window passed
- * every guard and started a JVM against a mods folder mid-edit. `launchInstance`
- * asks this the same way it asks `isRepairing`.
- */
-/** Kept under the old name so the compatibility gate reads as it always did. */
-export function isFixing(instanceId: string): boolean {
-  return isContentBusy(instanceId)
-}
 
 /** Applies the `fix` attached to a compatibility issue. */
 export async function applyFix(instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>): Promise<void> {

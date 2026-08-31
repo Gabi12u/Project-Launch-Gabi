@@ -3,13 +3,11 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
-  readFileSync,
-  readdirSync,
   rmSync,
-  statSync,
   writeFileSync,
   type WriteStream
 } from 'node:fs'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import type { RecordingQuality, RecordingState } from '@shared/types'
@@ -143,7 +141,11 @@ function armGuard(current: Session, afterMs: number): void {
     logger.warn('Aufnahme wurde nicht sauber beendet, wird selbst geschlossen')
     // Measured rather than assumed: reporting the configured maximum labelled
     // a clip that broke off after ten seconds as half an hour long.
-    void finishRecording(Math.max(0, Date.now() - current.startedAt), current.id)
+    // Flagged as incomplete, because this is the path where a final slice that
+    // was merely slow (a busy disk, a virus scanner) gets dropped by the
+    // session check in `appendChunk`. Reporting that as a plain success was
+    // worse than an error: nothing told the user their clip ends early.
+    void finishRecording(Math.max(0, Date.now() - current.startedAt), current.id, true)
   }, afterMs)
 }
 
@@ -418,7 +420,20 @@ export async function appendChunk(sessionId: number, data: ArrayBuffer | Uint8Ar
   await new Promise<void>((done) => {
     // `once` rather than `on`: this listener belongs to a single write, and the
     // stream outlives many of them.
-    current.stream.once('drain', done)
+    const settle = (): void => {
+      current.stream.off('drain', settle)
+      current.stream.off('close', settle)
+      current.stream.off('error', settle)
+      done()
+    }
+    current.stream.once('drain', settle)
+    // A stream that has errored or closed never emits 'drain' again, and a
+    // full disk is exactly how it errors. Waiting only for 'drain' left this
+    // promise unsettled for good, and because the renderer chains every slice
+    // onto the one before it, the whole queue wedged behind it: the encoder
+    // kept producing into a queue nobody was draining any more.
+    current.stream.once('close', settle)
+    current.stream.once('error', settle)
   })
 }
 
@@ -432,6 +447,21 @@ export function savePoster(sessionId: number, data: ArrayBuffer | Uint8Array): v
     // Only costs the preview picture, never the recording.
     logger.warn('Vorschaubild konnte nicht gespeichert werden:', err)
   }
+}
+
+/**
+ * How many stops are still writing their file out.
+ *
+ * `session` is cleared at the top of `closeSession`, long before the stream is
+ * flushed and well before the sidecar with the duration is written. Anything
+ * that polls on `!session` therefore sees "done" while the file is still open,
+ * which is how quitting the app could cut a recording off mid write.
+ */
+let finalising = 0
+
+/** True while a stop is under way, whether or not a session still exists. */
+export function isFinalisingRecording(): boolean {
+  return finalising > 0
 }
 
 /** Ends the stream and resolves once the bytes are really on disk. */
@@ -451,7 +481,29 @@ async function closeSession(): Promise<Session | null> {
   return current
 }
 
-export async function finishRecording(durationMs: number, sessionId?: number): Promise<void> {
+export async function finishRecording(
+  durationMs: number,
+  sessionId?: number,
+  /** The backstop timer closed this, so the tail may be missing. */
+  incomplete = false
+): Promise<void> {
+  // Counted around the whole sequence rather than around the stream close
+  // alone. The sidecar holding the length is written after the file is shut,
+  // and a quit landing between the two produced a recording the launcher can
+  // no longer say anything about.
+  finalising++
+  try {
+    await finishRecordingInner(durationMs, sessionId, incomplete)
+  } finally {
+    finalising--
+  }
+}
+
+async function finishRecordingInner(
+  durationMs: number,
+  sessionId?: number,
+  incomplete = false
+): Promise<void> {
   if (sessionId !== undefined && session?.id !== sessionId) return
   const current = await closeSession()
   if (!current) return
@@ -493,15 +545,33 @@ export async function finishRecording(durationMs: number, sessionId?: number): P
   const seconds = Math.round(length / 1000)
   logger.info(`Aufnahme fertig: ${current.file} (${mb} MB, ${seconds}s)`)
   notify(
-    'success',
-    'Aufnahme gespeichert',
-    `${seconds} Sekunden, ${mb} MB. Zu finden im Reiter Aufnahmen.`,
+    incomplete ? 'warning' : 'success',
+    incomplete ? 'Aufnahme gespeichert, möglicherweise unvollständig' : 'Aufnahme gespeichert',
+    `${seconds} Sekunden, ${mb} MB. Zu finden im Reiter Aufnahmen.` +
+      (incomplete ? ' Das Ende ließ sich nicht mehr abwarten, die letzten Sekunden können fehlen.' : ''),
     { route: `/instances/${current.instanceId}?tab=recordings` }
   )
 }
 
 export async function failRecording(message: string, sessionId?: number): Promise<void> {
+  finalising++
+  try {
+    await failRecordingInner(message, sessionId)
+  } finally {
+    finalising--
+  }
+}
+
+async function failRecordingInner(message: string, sessionId?: number): Promise<void> {
   if (sessionId !== undefined && session?.id !== sessionId) return
+
+  // The renderer is told to stop before the session goes away. `stopRecording`
+  // does this for every ordinary stop; this path, the one taken when the main
+  // process cannot write any more, did not. The capture then kept encoding
+  // into a queue nobody drains, on a machine that is also running a game,
+  // until its own maximum duration ran out.
+  if (session) emit(EVENTS.recordingStop, session.id)
+
   const current = await closeSession()
   if (!current) return
 
@@ -530,21 +600,30 @@ export interface StoredRecording {
   posterFile: string | null
 }
 
-export function listRecordings(instanceId: string, limit = 40): StoredRecording[] {
+export async function listRecordings(instanceId: string, limit = 40): Promise<StoredRecording[]> {
   const dir = paths.recordings(instanceId)
   if (!existsSync(dir)) return []
 
+  // Asynchronous throughout. This ran `readdirSync` plus a `statSync` and a
+  // `readFileSync` per file on the main thread, the same thread that serves
+  // the running recording's chunks, so opening the tab with a folder full of
+  // clips stalled the recording it was listing.
   const found: StoredRecording[] = []
-  for (const name of readdirSync(dir)) {
+  for (const name of await readdir(dir)) {
     if (!name.toLowerCase().endsWith('.webm')) continue
     const file = join(dir, name)
 
+    // The file being written right now is not a clip yet: it has no length,
+    // its size and timestamp change while you look at them, and deleting it
+    // fails with a raw operating system error because the handle is open.
+    if (session && resolve(file) === resolve(session.file)) continue
+
     try {
-      const stats = statSync(file)
+      const stats = await stat(file)
       let durationMs = 0
       let recordedAt = stats.mtimeMs
       try {
-        const meta = JSON.parse(readFileSync(`${file}.json`, 'utf8')) as {
+        const meta = JSON.parse(await readFile(`${file}.json`, 'utf8')) as {
           durationMs?: number
           recordedAt?: number
         }
@@ -596,6 +675,12 @@ export function deleteRecording(instanceId: string, file: string): void {
     throw new Error('Diese Datei gehört nicht zu den Aufnahmen dieser Instanz.')
   }
 
+  // Said plainly instead of letting the delete fail on an open handle, which
+  // on Windows surfaces as a bare EBUSY nobody can act on.
+  if (session && resolve(session.file) === target) {
+    throw new Error('Diese Aufnahme läuft gerade. Beende sie zuerst.')
+  }
+
   rmSync(target, { force: true })
   rmSync(`${target}.json`, { force: true })
   rmSync(target.replace(/\.webm$/i, '.jpg'), { force: true })
@@ -628,13 +713,19 @@ export function initRecording(): void {
  * of what the user was recording.
  */
 export async function flushRecording(): Promise<void> {
-  if (!session) return
+  if (!session && finalising === 0) return
   stopRecording()
 
   await new Promise<void>((done) => {
-    const deadline = Date.now() + 4000
+    // As long as an ordinary stop gets, not a third of it. The old four
+    // seconds were shorter than `STOP_GRACE_MS`, so quitting gave up while the
+    // recording was still being written out perfectly normally, and the file
+    // lost its tail and its length.
+    const deadline = Date.now() + STOP_GRACE_MS
     const poll = setInterval(() => {
-      if (!session || Date.now() > deadline) {
+      // Both conditions. `session` is cleared before the stream is flushed, so
+      // on its own it reports success while the file is still open.
+      if ((!session && finalising === 0) || Date.now() > deadline) {
         clearInterval(poll)
         done()
       }

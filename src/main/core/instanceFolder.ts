@@ -8,7 +8,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'node:fs'
-import { copyFile, mkdir, readdir } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readlink, symlink } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { basename, join } from 'node:path'
 import type { Instance, LoaderId } from '@shared/types'
@@ -709,8 +709,15 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
  * with no window, no progress and nothing to cancel. Awaiting per file gives
  * the interface room to breathe and lets the task report as it goes.
  */
-async function copyGameFiles(from: string, to: string, onFile?: (count: number) => void): Promise<number> {
+async function copyGameFiles(
+  from: string,
+  to: string,
+  onFile?: (count: number) => void,
+  /** Throws to abort, so the caller can raise its own cancellation error. */
+  checkCancelled?: () => void
+): Promise<number> {
   let files = 0
+  let lastReport = Date.now()
   const stack: string[] = ['']
 
   while (stack.length > 0) {
@@ -726,6 +733,11 @@ async function copyGameFiles(from: string, to: string, onFile?: (count: number) 
     }
 
     for (const entry of entries) {
+      // Checked per entry so a cancel lands within one file instead of after
+      // the whole folder. The button used to go through with nothing reading
+      // it, and the import carried on and reported success.
+      checkCancelled?.()
+
       const childRel = rel ? join(rel, entry.name) : entry.name
       // Only the top level is filtered, exactly as before: these are the
       // directories the launcher manages centrally and shares between
@@ -733,6 +745,31 @@ async function copyGameFiles(from: string, to: string, onFile?: (count: number) 
       if (!rel && SKIP_DIRS.has(entry.name.toLowerCase())) continue
 
       const target = join(to, childRel)
+
+      if (entry.isSymbolicLink()) {
+        // Rebuilt as a link rather than followed. `cpSync`, which this walk
+        // replaced, left links alone by default; copying the contents instead
+        // duplicates whatever they point at, and a link into a shared folder
+        // then silently becomes a second full copy of it.
+        try {
+          const destination = await readlink(join(from, childRel))
+          await mkdir(join(target, '..'), { recursive: true })
+          await symlink(destination, target)
+          files++
+        } catch {
+          // Windows hands out symlink permission sparingly. A plain copy is a
+          // worse import than a link but a far better one than a missing file.
+          try {
+            await mkdir(join(target, '..'), { recursive: true })
+            await copyFile(join(from, childRel), target)
+            files++
+          } catch {
+            // see below
+          }
+        }
+        continue
+      }
+
       if (entry.isDirectory()) {
         await mkdir(target, { recursive: true })
         stack.push(childRel)
@@ -743,10 +780,17 @@ async function copyGameFiles(from: string, to: string, onFile?: (count: number) 
         await mkdir(join(target, '..'), { recursive: true })
         await copyFile(join(from, childRel), target)
         files++
-        if (files % 200 === 0) onFile?.(files)
       } catch {
         // A file that vanished mid-copy, or one the OS will not hand over, is
         // not worth failing the whole import over.
+      }
+
+      // Reported on time rather than every 200th file. An import of a hundred
+      // files finished without ever showing a number, which reads as a frozen
+      // dialog when those hundred files are large.
+      if (Date.now() - lastReport >= 250) {
+        onFile?.(files)
+        lastReport = Date.now()
       }
     }
   }
@@ -793,8 +837,11 @@ export async function importInstanceFolder(
     const target = paths.gameDir(instance.id)
 
     task.update('Welten, Mods und Konfigurationen werden kopiert…', null)
-    const copied = await copyGameFiles(detected.gameDir, target, (n) =>
-      task.update(`${n} Dateien kopiert…`, null)
+    const copied = await copyGameFiles(
+      detected.gameDir,
+      target,
+      (n) => task.update(`${n} Dateien kopiert…`, null),
+      () => task.throwIfCancelled()
     )
     logger.info(`${copied} Dateien nach ${instance.id} kopiert`)
 

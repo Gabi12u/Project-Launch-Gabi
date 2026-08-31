@@ -261,6 +261,18 @@
   to { transform: scale(1); }
 }
 
+/* A waiting launcher update. No number to show, so it is a dot rather than a
+   badge, and it sits in the same place the counters do. */
+.nav-dot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--grad-accent);
+  box-shadow: 0 0 12px -1px var(--accent-glow);
+  animation: badge-pop var(--t-slow) var(--ease-spring);
+}
+
 .nav-sep {
   height: 1px;
   background: var(--line);

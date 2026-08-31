@@ -49,6 +49,7 @@ import {
   startingCount
 } from './running'
 import { isRepairing } from './repair'
+import { isRestoring } from './restoreLock'
 
 const logger = log('launch')
 
@@ -348,6 +349,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     )
   }
 
+  // A restore moves the worlds aside and unpacks an archive over the folder.
+  // Launching into that reads half written saves, and the game holding those
+  // files open is itself a good way to make the restore fail and trigger its
+  // rollback. Only backup-against-backup was guarded before.
+  if (isRestoring(instanceId)) {
+    throw new Error(
+      'Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.'
+    )
+  }
+
   if (isRunning(instanceId) || isStarting(instanceId)) {
     // A game left over from a previous launcher session needs a different
     // message: the user cannot stop it from here, and starting a second JVM on
@@ -360,12 +371,6 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         : 'Diese Instanz läuft bereits.'
     )
   }
-  markStarting(instanceId)
-  // A stop that never produced an exit (an orphaned record, a taskkill that
-  // failed) would otherwise leave its marker behind and excuse the next
-  // genuine crash of this instance as intentional.
-  stopRequested.delete(instanceId)
-
   const settings = getSettings()
   const instance = getInstance(instanceId)
   const task = new Task(`${instance.name} wird gestartet`, 'Vorbereitung…', instanceId)
@@ -384,6 +389,18 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   }
   /** Set once the OS confirms the process actually started. */
   let spawned = false
+
+  // Set last, directly against the block whose `finally` clears it again.
+  // It used to sit further up, with `getInstance` between it and the try.
+  // That call throws for an id that disappeared between the click and here,
+  // and the marker then stayed set for the rest of the session: the instance
+  // could never be started or modded again, gave no reason for it, and a
+  // later instance that inherited the recycled id was dead on arrival too.
+  markStarting(instanceId)
+  // A stop that never produced an exit (an orphaned record, a taskkill that
+  // failed) would otherwise leave its marker behind and excuse the next
+  // genuine crash of this instance as intentional.
+  stopRequested.delete(instanceId)
 
   try {
     setStatus(instanceId, 'preparing', 'Vorbereitung…')

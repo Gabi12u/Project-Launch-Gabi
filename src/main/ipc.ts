@@ -360,7 +360,7 @@ export function registerIpc(): void {
   handle(IPC.instanceWorlds, (id: string) => listWorlds(id))
 
   handle(IPC.instanceRecordings, async (id: string) => {
-    const clips = listRecordings(id)
+    const clips = await listRecordings(id)
     // Only the preview picture is inlined. A video is tens of megabytes and
     // goes to the system player through `openPath` instead.
     return Promise.all(

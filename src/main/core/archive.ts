@@ -70,14 +70,22 @@ export function extractAll(archivePath: string, targetDir: string, overwrite = t
 export async function extractAllSlowly(
   archivePath: string,
   targetDir: string,
-  onProgress?: (done: number, total: number) => void
+  onProgress?: (done: number, total: number) => void,
+  /** Throws to abort. Lets the caller raise its own cancellation error. */
+  checkCancelled?: () => void
 ): Promise<number> {
   mkdirSync(targetDir, { recursive: true })
   const zip = new AdmZip(archivePath)
   const entries = zip.getEntries()
 
   let done = 0
+  let lastBreath = Date.now()
   for (const entry of entries) {
+    // Asked before each entry, so a cancel takes effect within one file
+    // instead of after the whole archive. Without this the button went
+    // through, nothing checked it, and the run still reported success.
+    checkCancelled?.()
+
     // The entry name comes out of the archive, so it decides where this
     // writes. `safeJoin` refuses anything that climbs out of the target.
     const target = safeJoin(targetDir, entry.entryName)
@@ -90,11 +98,15 @@ export async function extractAllSlowly(
     }
 
     done++
-    // Every so often, hand the event loop back. Doing it per entry would cost
-    // more in scheduling than it saves on a archive of many small files.
-    if (done % 40 === 0) {
+    // Measured in time, not in entries. Counting to 40 meant an archive with
+    // fewer than 40 entries never yielded once and blocked the app for its
+    // whole extraction, which is the freeze this function exists to avoid. A
+    // config folder is routinely smaller than that, and a handful of large
+    // files can take longer than a thousand small ones.
+    if (Date.now() - lastBreath >= 16) {
       onProgress?.(done, entries.length)
       await new Promise((resolve) => setImmediate(resolve))
+      lastBreath = Date.now()
     }
   }
   onProgress?.(done, entries.length)

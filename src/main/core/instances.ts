@@ -21,6 +21,7 @@ import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
 import { isContentBusy } from './contentLock'
+import { isRestoring } from './restoreLock'
 
 const logger = log('instances')
 
@@ -421,6 +422,21 @@ function assertInside(root: string, candidate: string, label: string): string {
 
 export function deleteInstance(id: string): void {
   if (isRunning(id)) throw new Error('Die Instanz läuft gerade und kann nicht gelöscht werden.')
+
+  // "Running" was the only state this asked about, and it is the last of the
+  // three to be reached. A launch still gathering libraries, a mod download,
+  // or a restore unpacking an archive all write into the very folders removed
+  // below, and each of them survives the deletion as work against files that
+  // are no longer there.
+  if (isStarting(id)) {
+    throw new Error('Die Instanz wird gerade gestartet und kann nicht gelöscht werden.')
+  }
+  if (isContentBusy(id)) {
+    throw new Error('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das fertig ist.')
+  }
+  if (isRestoring(id)) {
+    throw new Error('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das fertig ist.')
+  }
 
   // Must be a known instance, not just any id the caller made up.
   if (!cache.has(id)) {

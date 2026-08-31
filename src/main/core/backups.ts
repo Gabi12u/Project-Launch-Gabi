@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import type { BackupEntry } from '@shared/types'
 import { paths } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
@@ -8,9 +8,27 @@ import { log } from '../logger'
 import { withTask } from '../tasks'
 import { extractAllSlowly, listEntries, zipFolder } from './archive'
 import { getInstance } from './instances'
+import { withRestoreLock } from './restoreLock'
 import { isRunning } from './running'
 
 const logger = log('backups')
+
+/**
+ * Turns an index entry's file name into a path inside the backup folder.
+ *
+ * The name comes out of `backups.json`, a file on the user's disk that
+ * nothing stops them or a broken write from filling with `../../something`.
+ * Deleting instances and recordings both check their paths this way; the
+ * pruning of old backups was the one deletion that trusted its input.
+ */
+function backupPath(instanceId: string, fileName: string): string {
+  const dir = resolve(paths.instanceBackups(instanceId))
+  const target = resolve(dir, fileName)
+  if (!target.startsWith(dir + sep)) {
+    throw new Error(`Die Sicherung ${fileName} liegt nicht im Sicherungsordner dieser Instanz.`)
+  }
+  return target
+}
 
 /** Folders that make sense to snapshot, in the order shown in the UI. */
 export const BACKUP_TARGETS = [
@@ -241,7 +259,7 @@ function pruneAutomatic(instanceId: string): void {
   if (excess.length === 0) return
 
   for (const entry of excess) {
-    rmSync(join(paths.instanceBackups(instanceId), entry.fileName), { force: true })
+    rmSync(backupPath(instanceId, entry.fileName), { force: true })
   }
   writeIndex(
     instanceId,
@@ -250,7 +268,13 @@ function pruneAutomatic(instanceId: string): void {
 }
 
 export async function restoreBackup(instanceId: string, backupId: string): Promise<void> {
-  return withInstanceLock(instanceId, () => restoreBackupUnlocked(instanceId, backupId))
+  // The marker is what `launch.ts` and `instances.ts` read. The instance lock
+  // below only keeps two backup operations apart; it says nothing to the rest
+  // of the app, so pressing Play mid restore started a game against a folder
+  // that was being unpacked underneath it.
+  return withInstanceLock(instanceId, () =>
+    withRestoreLock(instanceId, () => restoreBackupUnlocked(instanceId, backupId))
+  )
 }
 
 async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
@@ -261,7 +285,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   const entry = readIndex(instanceId).find((e) => e.id === backupId)
   if (!entry) throw new Error('Sicherung nicht gefunden')
 
-  const archive = join(paths.instanceBackups(instanceId), entry.fileName)
+  const archive = backupPath(instanceId, entry.fileName)
   if (!existsSync(archive)) throw new Error('Die Sicherungsdatei fehlt auf der Festplatte.')
 
   const instance = getInstance(instanceId)
@@ -335,17 +359,33 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             moved.push({ key, from, to })
           }
 
-          await extractAllSlowly(archive, gameDir, (done, total) => {
-            task.update(`Wird entpackt… ${done} von ${total}`, total > 0 ? done / total : null)
-          })
+          await extractAllSlowly(
+            archive,
+            gameDir,
+            (done, total) => {
+              task.update(`Wird entpackt… ${done} von ${total}`, total > 0 ? done / total : null)
+            },
+            // Cancelling now actually stops the unpacking. It used to only set
+            // a flag nobody read, so the run carried on over the user's files
+            // and finished with "Fertig". A cancel here lands in the catch
+            // below, which puts the previous state back.
+            () => task.throwIfCancelled()
+          )
         } catch (err) {
           // Put everything back exactly as it was.
+          const stranded: string[] = []
           for (const item of moved) {
             try {
               rmSync(item.from, { recursive: true, force: true })
               renameSync(item.to, item.from)
             } catch (rollbackErr) {
               logger.error(`Rollback von ${item.key} fehlgeschlagen:`, rollbackErr)
+              // Noted, not just logged. Whatever could not be renamed back is
+              // still sitting in the staging folder, and that folder used to be
+              // deleted a few lines below no matter what. A single locked
+              // directory was therefore enough to destroy the user's only
+              // remaining copy while the message below promised the opposite.
+              stranded.push(item.key)
             }
           }
 
@@ -362,12 +402,25 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             }
           }
 
-          // The staging folder is empty now; leaving it would litter one per
-          // failed attempt.
-          try {
-            rmSync(parked, { recursive: true, force: true })
-          } catch {
-            // best effort
+          // Only expendable once every folder is genuinely back. If a rename
+          // failed, the staging folder holds the sole surviving copy of that
+          // data and deleting it here would be the one truly unrecoverable
+          // step in this function.
+          if (stranded.length === 0) {
+            try {
+              rmSync(parked, { recursive: true, force: true })
+            } catch {
+              // best effort
+            }
+          }
+
+          if (stranded.length > 0) {
+            throw new Error(
+              `Die Wiederherstellung ist fehlgeschlagen, und ${stranded.join(', ')} konnte nicht ` +
+                `zurückgeholt werden. Deine Daten sind nicht verloren: sie liegen unverändert in ` +
+                `${parked}. Schließe Minecraft und alles, was auf den Ordner zugreift, und schiebe ` +
+                `ihn von Hand zurück. (${err instanceof Error ? err.message : String(err)})`
+            )
           }
 
           throw new Error(
@@ -406,7 +459,7 @@ export async function deleteBackup(instanceId: string, backupId: string): Promis
       throw new Error('Diese Sicherung wird gerade eingespielt und kann nicht gelöscht werden.')
     }
 
-    rmSync(join(paths.instanceBackups(instanceId), entry.fileName), { force: true })
+    rmSync(backupPath(instanceId, entry.fileName), { force: true })
     writeIndex(
       instanceId,
       entries.filter((e) => e.id !== backupId)

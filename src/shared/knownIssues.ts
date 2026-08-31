@@ -60,8 +60,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'in einen halb entpackten Weltordner hinein, und der Abbrechen-Knopf blieb wirkungslos. ' +
       'Unmittelbar vor jeder Wiederherstellung wird weiterhin automatisch eine vollständige Sicherung ' +
       'des Vorzustands angelegt.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'instanz-startet-nie-wieder',
@@ -71,8 +72,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Danach ließ sich diese Instanz weder starten noch ihre Mods ändern, ohne erkennbaren Grund und ' +
       'ohne Fehlermeldung, bis der Launcher neu gestartet wurde. Weil interne Kennungen gelöschter ' +
       'Instanzen später erneut vergeben werden, konnte eine neu angelegte Instanz das Problem erben.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'reparatur-verwirft-mods',
@@ -82,8 +84,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'zurück. Wurde währenddessen ein Mod installiert oder aktualisiert, und das dauert bei großen ' +
       'Downloads durchaus Minuten, verschwand dessen Eintrag wieder. Die Datei blieb liegen und wurde ' +
       'später als unbekannter lokaler Mod ohne Herkunft und Version neu erfasst.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'aufnahme-abgeschnitten',
@@ -93,8 +96,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Datei fertig geschrieben war. Das letzte Stück fehlte dann, und weil das Fenster bereits zu war, ' +
       'ohne jede Meldung. Läuft die Festplatte während einer Aufnahme voll, blieb die Aufnahme zudem ' +
       'hängen, statt sauber abzubrechen.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'instanz-loeschen-waehrend-arbeit',
@@ -103,8 +107,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Das Löschen einer Instanz prüfte nur, ob das Spiel bereits läuft. Ein gerade laufender Start oder ' +
       'eine laufende Mod-Installation hielten es nicht auf, sodass Ordner verschwanden, während noch ' +
       'hineingeschrieben wurde.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'update-hinweis-einmalig',
@@ -113,8 +118,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein heruntergeladenes Update meldete sich genau einmal mit einer Einblendung, die nach wenigen ' +
       'Sekunden von selbst verschwand, und danach nie wieder. Wer den Launcher im Hintergrund offen ' +
       'lässt, erfuhr davon nur noch, wenn er von sich aus in die Einstellungen sah.',
-    state: 'fixing',
-    since: '2026-08-31'
+    state: 'fixed',
+    since: '2026-08-31',
+    fixedIn: '1.0.14'
   },
   {
     id: 'mods-doppelt',

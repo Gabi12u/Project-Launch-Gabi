@@ -56,6 +56,16 @@ export function App(): JSX.Element {
         // the indicator simply stays off
       }
 
+      try {
+        // Asked once at boot as well as watched. An update can finish
+        // downloading while the window is closed to the tray, and then no
+        // event ever reaches this session.
+        const update = await window.gabi.updates.status()
+        if (update.state === 'ready') setState({ updateReady: update.version ?? '' })
+      } catch {
+        // no marker, the settings page still shows the truth
+      }
+
       setState({ ready: true })
     }
     void boot()
@@ -122,7 +132,11 @@ export function App(): JSX.Element {
         void stopCapture()
       }),
 
-      window.gabi.events.onRecordingState((recording) => setState({ recording }))
+      window.gabi.events.onRecordingState((recording) => setState({ recording })),
+
+      window.gabi.events.onUpdateStatus((status) => {
+        setState({ updateReady: status.state === 'ready' ? (status.version ?? '') : null })
+      })
     ]
 
     return () => unsubscribe.forEach((off) => off())

@@ -22,7 +22,7 @@ interface NavEntry {
 }
 
 export function Sidebar(): JSX.Element {
-  const { route, instances, accounts } = useStore()
+  const { route, instances, accounts, updateReady } = useStore()
   const [accountOpen, setAccountOpen] = useState(false)
 
   const section = parseRoute(route).section
@@ -101,10 +101,15 @@ export function Sidebar(): JSX.Element {
           <button
             data-active={section === 'settings'}
             className={`nav-item ${section === 'settings' ? 'active' : ''}`}
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate(updateReady ? '/settings?section=updates' : '/settings')}
+            title={updateReady ? `Update auf ${updateReady} wartet auf einen Neustart` : undefined}
           >
             <IconSettings />
             <span>Einstellungen</span>
+            {/* A waiting update announced itself once, in a toast that faded
+                after a few seconds, and nowhere else. This is the standing
+                reminder for everyone who was not looking at that moment. */}
+            {updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
           </button>
         </div>
 

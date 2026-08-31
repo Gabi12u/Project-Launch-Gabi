@@ -240,7 +240,11 @@ export function initUpdater(): void {
       'success',
       `Update auf ${info.version} bereit`,
       'Die neue Version wird beim nächsten Start installiert. Jetzt neu starten?',
-      { route: '/settings?section=updates' }
+      // No timeout. This announced itself once, faded after a few seconds, and
+      // never came back: the periodic check skips itself while an update is
+      // already waiting, so someone who was not looking at that moment only
+      // found out by opening the settings of their own accord.
+      { route: '/settings?section=updates', timeout: 0 }
     )
   })
 
