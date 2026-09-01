@@ -34,6 +34,69 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.14',
+    date: '2026-09-01',
+    headline: 'Doppelte Mods, Einfrieren und mehrere Risiken beim Wiederherstellen behoben.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Eine öffentliche Statusseite unter status.launchgabi.com zeigt die aktuelle Version, Downloadzahlen und bekannte, noch offene Probleme.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mods konnten beim Aktualisieren doppelt in der Liste erscheinen, weil ein kurzes Zeitfenster die neue Datei für einen unbekannten zweiten Mod hielt.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Der Launcher konnte komplett einfrieren, weil mehrere Vorgänge Ordner blockierend durchsuchten, etwa die Speicherplatzanzeige nach jeder Sitzung und das Aufräumen bei jedem Start.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Wiederherstellen einer Sicherung konnte im ungünstigsten Fall Daten endgültig verlieren und dabei trotzdem Erfolg melden. Unmittelbar davor wird weiterhin automatisch eine vollständige Sicherung des Vorzustands angelegt.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine Instanz konnte nach einem sehr frühen Fehler beim Starten dauerhaft blockiert bleiben: nicht mehr startbar, nicht reparierbar, Mods nicht mehr änderbar, bis zum Neustart des Launchers.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Löschen, Starten, Reparieren und Wiederherstellen derselben Instanz konnten sich gegenseitig in die Quere kommen, wenn zwei davon gleichzeitig liefen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Die Reparaturfunktion konnte einen währenddessen frisch installierten Mod wieder verwerfen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine laufende Aufnahme konnte beim Beenden des Launchers oder bei voller Festplatte am Ende abgeschnitten werden oder hängen bleiben.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Der Hinweis auf ein fertiges Update ließ sich leicht verpassen, weil er nur einmal für wenige Sekunden erschien. Ein Punkt in der Seitenleiste bleibt jetzt stehen, bis neu gestartet wird.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine Anmeldung konnte nach dem Ändern oder Zurücksetzen der Anwendungs-ID in den Einstellungen dauerhaft mit Fehler 400 scheitern, weil die Erneuerung an das falsche Microsoft-System ging.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ein eigener Befehl vor dem Spielstart konnte die Instanz für immer blockieren, wenn er selbst hängen blieb.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Verknüpfungen beim Import eines fremden Ordners wurden ohne Prüfung übernommen, auch wenn sie aus dem Ordner hinauszeigten.'
+      },
+      {
+        kind: 'improved',
+        text: 'Fehlermeldungen bei der Anmeldung nennen jetzt öfter den tatsächlichen Grund von Microsoft statt nur eine Fehlernummer.'
+      },
+      {
+        kind: 'improved',
+        text: 'Fehlerberichte entfernen jetzt zuverlässiger persönliche Daten, darunter IP-Adressen und Namen mit Umlauten.'
+      }
+    ]
+  },
+  {
     version: '1.0.13',
     date: '2026-08-26',
     headline: 'Fehler melden sich jetzt selbst, und Aufnahmen ruckeln weniger.',
