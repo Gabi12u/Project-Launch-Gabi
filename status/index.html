@@ -959,9 +959,33 @@ footer a:hover { color: var(--ink); }
     {
       "id": "login-http-400",
       "title": "Anmeldung endet mit Fehler 400",
-      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung ganz am Ende mit einem Fehler 400 ab. Die Ursache ist noch nicht gefunden: zwei Verdachtsfälle wurden geprüft und haben sich als falsch herausgestellt. Seit Version 1.0.11 wird ein solcher Fehlschlag protokolliert, vorher verschwand er spurlos. Wer das erlebt, hilft uns mit einem Screenshot sehr weiter.",
+      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung ganz am Ende mit einem Fehler 400 ab. Die Ursache ist noch nicht gefunden: mehrere Verdachtsfälle wurden geprüft und haben sich als falsch herausgestellt oder betrafen nur einen anderen, inzwischen behobenen Fall. Seit Version 1.0.11 wird ein solcher Fehlschlag protokolliert, vorher verschwand er spurlos. Seit 1.0.14 liest der Launcher an der Stelle, an der der Fehler vermutlich auftritt, auch aus, was Microsoft selbst als Grund nennt, statt nur die nichtssagende Zahl 400 zu zeigen. Tritt der Fehler erneut auf, sollte die Meldung jetzt mehr verraten. Wer das erlebt, hilft uns mit einem Screenshot sehr weiter.",
       "state": "investigating",
       "since": "2026-08-25"
+    },
+    {
+      "id": "anmeldung-falsches-system",
+      "title": "Anmeldung konnte nach einer geänderten Einstellung dauerhaft scheitern",
+      "detail": "Beim Erneuern der Anmeldung im Hintergrund nutzte der Launcher die Anwendungs-ID, die gerade in den Einstellungen steht, nicht die, mit der sich das Konto ursprünglich angemeldet hatte. Wurde diese Einstellung geändert oder über \"Einstellungen zurücksetzen\" zurückgesetzt, ging jede weitere Erneuerung an das falsche System und scheiterte von da an immer mit Fehler 400, nur bei diesem einen Konto und ohne ersichtlichen Grund.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "vorstart-befehl-haengt",
+      "title": "Ein hängender Vorstart-Befehl blockierte die Instanz dauerhaft",
+      "detail": "Wer in den Einstellungen einen eigenen Befehl vor dem Spielstart hinterlegt, dessen Instanz blieb auf unbestimmte Zeit auf \"startet gerade\" stehen, falls dieser Befehl selbst hängen blieb, etwa weil er auf eine Netzwerkantwort wartete. Weder eine Zeitgrenze noch der Abbrechen-Knopf griffen dabei, und die Instanz ließ sich bis zum Neustart des Launchers weder starten noch reparieren noch an ihren Mods ändern.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "fehlerbericht-datenschutz-luecken",
+      "title": "Einzelne Daten in Fehlerberichten wurden nicht zuverlässig entfernt",
+      "detail": "Beim Säubern eines Fehlerberichts vor dem Versenden fehlte eine Regel gegen IP-Adressen, obwohl der Zustimmungsdialog genau das verspricht. Dazu blieb ein Windows-Benutzername mit Umlaut oder ähnlichen Zeichen am Rand unerkannt, eine E-Mail-Adresse konnte durch die Reihenfolge der Regeln unvollständig entfernt werden statt ganz zu verschwinden, und ein großgeschriebener Pfad wie C:\\USERS\\... rutschte durch.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
     },
     {
       "id": "wiederherstellung-riskant",

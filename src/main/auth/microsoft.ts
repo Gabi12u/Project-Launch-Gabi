@@ -215,7 +215,7 @@ export async function loginWithMicrosoft(): Promise<Account> {
     // account file. A login retired during those seconds must not touch the
     // UI of the one that replaced it.
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
-    const account = await completeMinecraftLogin(token, session)
+    const account = await completeMinecraftLogin(token, session, clientId)
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
 
     emit(EVENTS.deviceCode, null)
@@ -340,18 +340,90 @@ async function pollForToken(
   throw new Error('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.')
 }
 
+/**
+ * Reads Xbox's own explanation for a failure out of its response body.
+ *
+ * Xbox states the actual reason in an `XErr` number and a `Message` string,
+ * both PascalCase, which the generic HTTP error reader does not look at: it
+ * only recognises `error_description`/`message`/`error.message`. Every one of
+ * these calls used to collapse into a bare "HTTP 400" or "HTTP 401" with
+ * nothing to act on, whatever Xbox actually said. Tried on any failing status
+ * rather than only 401, which is what this used to assume: nothing here
+ * confirms every one of these endpoints always answers a rejection with 401,
+ * only that XSTS is documented to.
+ */
+function describeXboxFailure(err: HttpError): string | null {
+  let body: { XErr?: number | string; Message?: string }
+  try {
+    body = JSON.parse(err.body || '{}') as { XErr?: number | string; Message?: string }
+  } catch {
+    return null
+  }
+  const xerr = body.XErr === undefined ? undefined : Number(body.XErr)
+
+  switch (xerr) {
+    case 2148916233:
+      return (
+        'Zu diesem Microsoft-Konto gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
+        'xbox.com an, lege dort ein Profil an, und versuche es danach erneut.'
+      )
+    case 2148916235:
+      return (
+        'Xbox Live ist im Land dieses Kontos nicht verfügbar. Die Anmeldung ist damit ' +
+        'leider nicht möglich.'
+      )
+    case 2148916236:
+    case 2148916237:
+      return (
+        'Dieses Konto benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
+        'durch und versuche es danach erneut.'
+      )
+    case 2148916238:
+      return (
+        'Dieses Konto gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
+        'sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen ' +
+        'freigeben, danach ist die Anmeldung möglich.'
+      )
+    default:
+      if (xerr) {
+        return (
+          `Xbox Live hat die Anmeldung abgelehnt (Code ${xerr}). Melde dich einmal auf ` +
+          'xbox.com an und versuche es danach erneut.'
+        )
+      }
+      // No numeric code, but Xbox still named the reason in plain text.
+      if (body.Message) return `Xbox Live hat die Anmeldung abgelehnt: ${body.Message}`
+      return null
+  }
+}
+
+/** Runs an Xbox-facing call, translating whatever it rejects with. */
+async function callXbox<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (err) {
+    if (err instanceof HttpError) {
+      const readable = describeXboxFailure(err)
+      if (readable) throw new Error(readable)
+    }
+    throw err
+  }
+}
+
 async function xboxLogin(microsoftAccessToken: string): Promise<{ token: string; uhs: string }> {
-  const xbl = await fetchJson<XboxResponse>(
-    XBL_URL,
-    json({
-      Properties: {
-        AuthMethod: 'RPS',
-        SiteName: 'user.auth.xboxlive.com',
-        RpsTicket: `d=${microsoftAccessToken}`
-      },
-      RelyingParty: 'http://auth.xboxlive.com',
-      TokenType: 'JWT'
-    })
+  const xbl = await callXbox(() =>
+    fetchJson<XboxResponse>(
+      XBL_URL,
+      json({
+        Properties: {
+          AuthMethod: 'RPS',
+          SiteName: 'user.auth.xboxlive.com',
+          RpsTicket: `d=${microsoftAccessToken}`
+        },
+        RelyingParty: 'http://auth.xboxlive.com',
+        TokenType: 'JWT'
+      })
+    )
   )
 
   const uhs = xbl.DisplayClaims?.xui?.[0]?.uhs
@@ -364,8 +436,8 @@ async function xboxLogin(microsoftAccessToken: string): Promise<{ token: string;
 }
 
 async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: string }> {
-  try {
-    const xsts = await fetchJson<XboxResponse>(
+  const xsts = await callXbox(() =>
+    fetchJson<XboxResponse>(
       XSTS_URL,
       json({
         Properties: { SandboxId: 'RETAIL', UserTokens: [xblToken] },
@@ -373,65 +445,20 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
         TokenType: 'JWT'
       })
     )
-    const uhs = xsts.DisplayClaims?.xui?.[0]?.uhs
-    // Same guard as `xboxLogin`: a 200 with an unexpected body shape would
-    // otherwise surface as a raw TypeError instead of a readable message.
-    if (!uhs) throw new Error('XSTS hat keine Benutzerkennung geliefert')
-    if (!xsts.Token) throw new Error('XSTS hat kein Token geliefert')
-    return { token: xsts.Token, uhs }
-  } catch (err) {
-    if (err instanceof HttpError && err.status === 401) {
-      // Xbox states the actual reason in an `XErr` number, which the generic
-      // error parser does not look at because it only knows the `error` field.
-      // All of these used to collapse into one message telling the user to
-      // sign in at minecraft.net, which for a child account or a regional
-      // block is not the fix and simply fails again the same way.
-      let xerr: number | undefined
-      try {
-        const parsed = JSON.parse(err.body || '{}') as { XErr?: number | string }
-        xerr = parsed.XErr === undefined ? undefined : Number(parsed.XErr)
-      } catch {
-        // no readable body; fall through to the general message
-      }
-
-      switch (xerr) {
-        case 2148916233:
-          throw new Error(
-            'Zu diesem Microsoft-Konto gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
-              'xbox.com an, lege dort ein Profil an, und versuche es danach erneut.'
-          )
-        case 2148916235:
-          throw new Error(
-            'Xbox Live ist im Land dieses Kontos nicht verfügbar. Die Anmeldung ist damit ' +
-              'leider nicht möglich.'
-          )
-        case 2148916236:
-        case 2148916237:
-          throw new Error(
-            'Dieses Konto benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
-              'durch und versuche es danach erneut.'
-          )
-        case 2148916238:
-          throw new Error(
-            'Dieses Konto gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
-              'sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen ' +
-              'freigeben, danach ist die Anmeldung möglich.'
-          )
-        default:
-          throw new Error(
-            'Xbox Live hat die Anmeldung abgelehnt' +
-              (xerr ? ` (Code ${xerr})` : '') +
-              '. Melde dich einmal auf xbox.com an und versuche es danach erneut.'
-          )
-      }
-    }
-    throw err
-  }
+  )
+  const uhs = xsts.DisplayClaims?.xui?.[0]?.uhs
+  // Same guard as `xboxLogin`: a 200 with an unexpected body shape would
+  // otherwise surface as a raw TypeError instead of a readable message.
+  if (!uhs) throw new Error('XSTS hat keine Benutzerkennung geliefert')
+  if (!xsts.Token) throw new Error('XSTS hat kein Token geliefert')
+  return { token: xsts.Token, uhs }
 }
 
 async function completeMinecraftLogin(
   token: TokenResponse,
-  session: { cancelled: boolean }
+  session: { cancelled: boolean },
+  /** Recorded on the account, so a later refresh knows which system to ask. */
+  clientId: string
 ): Promise<Account> {
   /**
    * Checked between the steps, and once more right before anything is written.
@@ -531,7 +558,8 @@ async function completeMinecraftLogin(
     // always return a fresh refresh_token, and overwriting a still-valid one
     // with undefined forced a full re-login at the next expiry.
     refreshToken: refreshEnc?.value ?? (existingIndex >= 0 ? accounts[existingIndex].refreshToken : undefined),
-    secure: accessEnc.secure
+    secure: accessEnc.secure,
+    issuerClientId: clientId
   }
 
   const next = accounts.map((a) => ({ ...a, active: false }))
@@ -620,7 +648,13 @@ async function refreshAccessToken(accountId: string): Promise<string> {
 
   logger.info(`Erneuere Token für ${account.username}`)
 
-  const clientId = getSettings().microsoftClientId
+  // Pinned to whichever system actually issued this refresh token, not to
+  // whatever the settings say right now. The two OAuth systems reject each
+  // other's tokens outright, so an account signed in before the setting was
+  // last changed (or before "Einstellungen zurücksetzen" put it back to the
+  // default) would otherwise send a perfectly valid token to the wrong place
+  // and fail every time with nothing but an unexplained HTTP 400.
+  const clientId = account.issuerClientId ?? getSettings().microsoftClientId
   const token = await fetchJson<TokenResponse>(
     endpointsFor(clientId).token,
     form({
@@ -672,7 +706,12 @@ async function refreshAccessToken(accountId: string): Promise<string> {
               refreshToken: refreshEnc?.value ?? a.refreshToken,
               secure: accessEnc.secure,
               expiresAt: Date.now() + mc.expires_in * 1000,
-              skinUrl: skinUrl ?? a.skinUrl
+              skinUrl: skinUrl ?? a.skinUrl,
+              // Backfilled once, from whichever id this refresh actually used
+              // successfully. An account stored before this field existed
+              // then locks to its real system from here on, the same as a
+              // fresh login already does.
+              issuerClientId: a.issuerClientId ?? clientId
             }
           : a
       )

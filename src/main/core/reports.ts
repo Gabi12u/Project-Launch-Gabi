@@ -64,6 +64,21 @@ function literal(value: string): string {
 }
 
 /**
+ * Same job as wrapping a pattern in `\b...\b`, but works for names `\b` does
+ * not recognise.
+ *
+ * `\b` is only ever defined over `[A-Za-z0-9_]`. A Windows account name with
+ * an accented or non-Latin first or last letter sat outside that set, so the
+ * boundary could not match at either edge and the whole name went through
+ * unredacted, everywhere in the text, not just at the edges. This checks the
+ * same thing — not glued to a longer word — using Unicode letter and number
+ * categories instead, which needs the `u` flag on whatever pattern uses it.
+ */
+function boundary(value: string): string {
+  return `(?<![\\p{L}\\p{N}_])${literal(value)}(?![\\p{L}\\p{N}_])`
+}
+
+/**
  * Removes everything personal before a report goes anywhere.
  *
  * A stack trace is full of it without looking like it, and an error body from
@@ -79,30 +94,52 @@ function literal(value: string): string {
 export function scrub(text: string): string {
   let out = text
 
-  // Windows, macOS and Linux home directories, whatever the account is called.
-  out = out.replace(/([A-Za-z]:\\Users\\)[^\\\r\n"']+/g, '$1<Nutzer>')
-  out = out.replace(/(\/Users\/)[^/\r\n"']+/g, '$1<Nutzer>')
+  // Windows, macOS and Linux home directories, whatever the account is
+  // called. Case-insensitive on the folder name itself: tools that write
+  // paths in their own case (installers, robocopy) produced `C:\USERS\...`,
+  // which this used to walk straight past.
+  out = out.replace(/([A-Za-z]:\\Users\\)[^\\\r\n"']+/gi, '$1<Nutzer>')
+  out = out.replace(/(\/Users\/)[^/\r\n"']+/gi, '$1<Nutzer>')
   out = out.replace(/(\/home\/)[^/\r\n"']+/g, '$1<Nutzer>')
 
-  // And the account name itself, wherever else it turns up. The rules above
-  // only catch it directly after a home directory, but people name folders
-  // after themselves and then put the data directory there.
+  // Email addresses, ahead of the name rules below rather than after them.
+  // An address whose local part happened to equal the account name used to
+  // have that part replaced first — "<Nutzer>@outlook.com" no longer starts
+  // with a character this rule's own charset accepts, so it stopped matching
+  // and the domain, which for a personal domain still identifies someone,
+  // stayed in the clear. Nothing later in this function depends on an email
+  // address still being intact, so there is no equivalent risk moving it up.
+  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<E-Mail>')
+  // The same address, percent-encoded, as it appears inside a redirect or
+  // login-hint URL rather than written out directly.
+  out = out.replace(/[A-Za-z0-9._%+-]+%40[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gi, '<E-Mail>')
+
+  // The account name itself, wherever else it turns up. The rules above only
+  // catch it directly after a home directory, but people name folders after
+  // themselves and then put the data directory there. `boundary()` rather
+  // than `\b`: this is a Windows account name, and `\b` does not recognise a
+  // letter outside `[A-Za-z0-9_]` as a word character at all, so a name
+  // starting or ending in an accented or non-Latin letter went through
+  // completely unredacted.
   try {
     const name = userInfo().username
     if (name && name.length >= 3) {
-      out = out.replace(new RegExp(`\\b${literal(name)}\\b`, 'g'), '<Nutzer>')
+      out = out.replace(new RegExp(boundary(name), 'gu'), '<Nutzer>')
     }
   } catch {
     // No account name available is not a reason to abandon the rest.
   }
 
-  // The account names and ids actually stored on this machine. Bounded by word
-  // edges and a minimum length, because a player may legitimately be called
-  // "Max" or "der", and a blind replacement turned "MaxHeapSize" into
-  // "<Spieler>HeapSize" and shredded the diagnosis along with the name.
+  // The account names and ids actually stored on this machine. Bounded by
+  // word edges and a minimum length, because a player may legitimately be
+  // called "Max" or "der", and a blind replacement turned "MaxHeapSize" into
+  // "<Spieler>HeapSize" and shredded the diagnosis along with the name. Real
+  // Minecraft usernames sit entirely inside `[A-Za-z0-9_]`, so plain `\b`
+  // matches them correctly regardless; `boundary()` is used anyway so a
+  // future non-Latin display name is not a second copy of the same gap.
   for (const account of readAccounts()) {
     if (account.username && account.username.length >= 3) {
-      out = out.replace(new RegExp(`\\b${literal(account.username)}\\b`, 'g'), '<Spieler>')
+      out = out.replace(new RegExp(boundary(account.username), 'gu'), '<Spieler>')
     }
     if (account.uuid && account.uuid.length >= 8) {
       out = out.split(account.uuid).join('<UUID>')
@@ -125,20 +162,28 @@ export function scrub(text: string): string {
   // The bare numeric form, which is how an XUID appears outside quotes.
   out = out.replace(/\b\d{15,20}\b/g, '<Kennung>')
 
-  // Email addresses. Microsoft echoes them back in more than one error text,
-  // and there was no rule for them at all.
-  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<E-Mail>')
+  // The reporter's own network address. Nothing about the webhook keeps an
+  // address that shows up *inside* an error's own text from travelling with
+  // it, and the consent dialog promises none is kept — this is that promise
+  // actually enforced rather than relying only on where the report is sent.
+  out = out.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<IP>')
+  // At least three colons, so an HH:MM:SS timestamp (two colons) elsewhere in
+  // the same stack trace is never mistaken for one.
+  out = out.replace(/\b(?:[0-9a-fA-F]{1,4}:){3,7}[0-9a-fA-F]{0,4}\b/g, '<IP>')
 
   // Anything token-shaped, whether or not we know where it came from.
   out = out.replace(/\b(ey[A-Za-z0-9_-]{10,})/g, '<Token>')
   out = out.replace(/("?(?:access_?|refresh_?|id_?)token"?\s*[:=]\s*"?)[^"'\s,}]+/gi, '$1<Token>')
   // Microsoft account refresh tokens, which start neither with "ey" nor under
-  // a key we recognise: M.C534_BAY.2.U.AbCd...
-  out = out.replace(/\bM\.[A-Z]\w*_[A-Z]{3}\.[^\s"',}]+/g, '<Token>')
+  // a key we recognise: M.C534_BAY.2.U.AbCd... The region code after the
+  // underscore is not always three letters, so this no longer assumes it is.
+  out = out.replace(/\bM\.[A-Z]\w*_[A-Z]{2,6}\.[^\s"',}]+/g, '<Token>')
   out = out.replace(/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{20,}/gi, '$1<Token>')
   out = out.replace(/([?&](?:code|access_token|id_token)=)[^&\s"']+/gi, '$1<Token>')
   // The opaque blobs the Xbox endpoints hand back under their own key names.
-  out = out.replace(/("(?:Token|X-Token|Signature)"\s*:\s*")[^"]*/g, '$1<Token>')
+  // Case-insensitive like every other field-name rule above: Xbox's own APIs
+  // answer in PascalCase, but nothing guarantees every caller matches that.
+  out = out.replace(/("(?:Token|X-Token|Signature)"\s*:\s*")[^"]*/gi, '$1<Token>')
 
   // Dashed ids first, then the bare 32-hex form Mojang's API actually returns.
   out = out.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '<UUID>')
@@ -244,6 +289,18 @@ function shouldSend(): boolean {
   return sentThisSession < MAX_PER_SESSION
 }
 
+/**
+ * Stands in for a backtick inside the fenced code block below.
+ *
+ * Markdown has no escape that works inside a fence, so three of the real
+ * character in the error text would close it early and let whatever follows
+ * render as ordinary Discord markdown, links included. Swapped for a
+ * lookalike that cannot, rather than only handling a run of exactly three.
+ */
+function fenceSafe(text: string): string {
+  return text.replace(/`/g, 'ˋ')
+}
+
 async function send(report: ErrorReport): Promise<void> {
   if (!shouldSend()) return
 
@@ -253,7 +310,7 @@ async function send(report: ErrorReport): Promise<void> {
     content: [
       `**${report.area}** in ${report.version} auf ${report.platform}`,
       '```',
-      `${report.message}\n\n${report.detail}`.slice(0, MAX_MESSAGE),
+      fenceSafe(`${report.message}\n\n${report.detail}`).slice(0, MAX_MESSAGE),
       '```'
     ].join('\n')
   })

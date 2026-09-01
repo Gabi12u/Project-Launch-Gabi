@@ -164,6 +164,20 @@ export interface StoredAccount extends Account {
   refreshToken?: string
   accessToken?: string
   secure?: boolean
+  /**
+   * The Microsoft application id that issued `refreshToken`.
+   *
+   * Missing on an account stored before this field existed, in which case a
+   * refresh falls back to whatever is currently configured — exactly the
+   * old behaviour, and correct for the common case where nobody ever
+   * touches that setting. Once present, a refresh keeps using this value
+   * instead of the live setting, because the two describe different Microsoft
+   * systems (login.live.com vs. Azure AD) and a refresh token from one is
+   * rejected outright by the other. Changing the setting, or resetting it,
+   * used to send every later refresh to the wrong one and fail forever with
+   * an unexplained HTTP 400, for this account only.
+   */
+  issuerClientId?: string
 }
 
 function accountsFile(): string {

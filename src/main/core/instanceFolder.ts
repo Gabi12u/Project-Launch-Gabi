@@ -8,9 +8,9 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'node:fs'
-import { copyFile, mkdir, readdir, readlink, symlink } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readlink, stat, symlink } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
-import { basename, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { Instance, LoaderId } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { log } from '../logger'
@@ -715,8 +715,9 @@ async function copyGameFiles(
   onFile?: (count: number) => void,
   /** Throws to abort, so the caller can raise its own cancellation error. */
   checkCancelled?: () => void
-): Promise<number> {
+): Promise<{ files: number; skippedLinks: number }> {
   let files = 0
+  let skippedLinks = 0
   let lastReport = Date.now()
   const stack: string[] = ['']
 
@@ -747,24 +748,63 @@ async function copyGameFiles(
       const target = join(to, childRel)
 
       if (entry.isSymbolicLink()) {
-        // Rebuilt as a link rather than followed. `cpSync`, which this walk
-        // replaced, left links alone by default; copying the contents instead
-        // duplicates whatever they point at, and a link into a shared folder
-        // then silently becomes a second full copy of it.
+        const linkSource = join(from, childRel)
+        let raw: string | null = null
         try {
-          const destination = await readlink(join(from, childRel))
+          raw = await readlink(linkSource)
+        } catch {
+          continue
+        }
+
+        // Resolved the same way the OS would follow it: relative to the
+        // link's own folder, or as-is if absolute. `extractLink` in
+        // archive.ts already does this for tar.gz entries; this walk skipped
+        // it entirely and recreated whatever a source folder's links pointed
+        // to, no matter where that was. A folder import is exactly the
+        // untrusted-input case that check exists for: a link to `/etc/shadow`
+        // or an SSH key would otherwise land inside the instance unchanged,
+        // and `zipFolder` follows links when it later backs the instance up.
+        const sourceRoot = resolve(from)
+        const resolvedTarget = isAbsolute(raw) ? resolve(raw) : resolve(dirname(linkSource), raw)
+        const contained = resolvedTarget === sourceRoot || resolvedTarget.startsWith(sourceRoot + sep)
+
+        if (!contained) {
+          skippedLinks++
+          continue
+        }
+
+        // Re-expressed for the new location rather than reused verbatim: `to`
+        // sits at a different depth than `from`, so a relative target that
+        // was correct in the source folder can point somewhere else entirely
+        // once copied straight across.
+        const newTarget = join(to, relative(sourceRoot, resolvedTarget))
+        const newRelative = relative(dirname(target), newTarget)
+
+        try {
           await mkdir(join(target, '..'), { recursive: true })
-          await symlink(destination, target)
+          await symlink(newRelative, target)
           files++
         } catch {
-          // Windows hands out symlink permission sparingly. A plain copy is a
-          // worse import than a link but a far better one than a missing file.
+          // Windows hands out symlink permission sparingly. The target already
+          // passed the containment check above, so recreating its actual
+          // content here is exactly as safe as the link would have been.
           try {
-            await mkdir(join(target, '..'), { recursive: true })
-            await copyFile(join(from, childRel), target)
-            files++
+            const kind = await stat(linkSource)
+            if (kind.isDirectory()) {
+              // Handed to the main loop as an ordinary folder instead of
+              // copied here directly: copying a symlinked directory's target
+              // through `copyFile` throws EISDIR, which the old fallback
+              // caught and discarded, dropping the whole subtree with no
+              // error and no log entry.
+              await mkdir(target, { recursive: true })
+              stack.push(childRel)
+            } else {
+              await mkdir(join(target, '..'), { recursive: true })
+              await copyFile(linkSource, target)
+              files++
+            }
           } catch {
-            // see below
+            // A broken link, or a target that vanished mid-import.
           }
         }
         continue
@@ -794,7 +834,7 @@ async function copyGameFiles(
       }
     }
   }
-  return files
+  return { files, skippedLinks }
 }
 
 const FLAVOUR_LABELS: Record<SourceFlavour, string> = {
@@ -837,19 +877,29 @@ export async function importInstanceFolder(
     const target = paths.gameDir(instance.id)
 
     task.update('Welten, Mods und Konfigurationen werden kopiert…', null)
-    const copied = await copyGameFiles(
+    const { files: copied, skippedLinks } = await copyGameFiles(
       detected.gameDir,
       target,
       (n) => task.update(`${n} Dateien kopiert…`, null),
       () => task.throwIfCancelled()
     )
-    logger.info(`${copied} Dateien nach ${instance.id} kopiert`)
+    logger.info(
+      `${copied} Dateien nach ${instance.id} kopiert` +
+        (skippedLinks > 0 ? `, ${skippedLinks} Verknüpfung(en) außerhalb des Ordners übersprungen` : '')
+    )
 
     task.update('Mods werden erfasst…', 0.9)
     await syncContentWithDisk(instance.id)
 
     persist({ ...getInstance(instance.id), installing: false, installed: true })
-    task.update(`Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})`, 1)
+    task.update(
+      `Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})` +
+        (skippedLinks > 0
+          ? `, ${skippedLinks} ${skippedLinks === 1 ? 'Verknüpfung zeigte' : 'Verknüpfungen zeigten'} nach ` +
+            `außerhalb des Ordners und wurde${skippedLinks === 1 ? '' : 'n'} übersprungen`
+          : ''),
+      1
+    )
   }).catch((err) => {
     logger.error(`Ordner-Import von ${name} fehlgeschlagen:`, err)
     try {

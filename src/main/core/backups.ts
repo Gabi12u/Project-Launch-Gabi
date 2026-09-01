@@ -9,7 +9,7 @@ import { withTask } from '../tasks'
 import { extractAllSlowly, listEntries, zipFolder } from './archive'
 import { getInstance } from './instances'
 import { withRestoreLock } from './restoreLock'
-import { isRunning } from './running'
+import { isRunning, isStarting } from './running'
 
 const logger = log('backups')
 
@@ -280,6 +280,16 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
 async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
   if (isRunning(instanceId)) {
     throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du eine Sicherung einspielst.')
+  }
+  // `launchInstance` refuses to start while a restore is in progress
+  // (`isRestoring`), but this was never the other half of that: between
+  // `markStarting` and the game actually appearing as running, a launch can
+  // spend minutes downloading missing files or a whole Java runtime.
+  // `isRunning` is false for that entire window, so a restore begun during it
+  // moved the worlds aside and unpacked an archive over a folder the launch
+  // was about to write into.
+  if (isStarting(instanceId)) {
+    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
   }
 
   const entry = readIndex(instanceId).find((e) => e.id === backupId)

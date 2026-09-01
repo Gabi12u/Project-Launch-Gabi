@@ -41,11 +41,14 @@ function errorMessageOf(status: number, url: string, body: string): string {
     const parsed = JSON.parse(body) as {
       error_description?: string
       message?: string
+      /** Mojang's own APIs answer with this key instead of `message`. */
+      errorMessage?: string
       error?: string | { message?: string }
     }
     const detail =
       parsed.error_description ??
       parsed.message ??
+      parsed.errorMessage ??
       (typeof parsed.error === 'object' ? parsed.error?.message : undefined)
     if (detail) return `HTTP ${status}: ${detail}`
   } catch {

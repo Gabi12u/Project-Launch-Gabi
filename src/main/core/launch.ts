@@ -10,7 +10,7 @@ import { paths } from '../paths'
 import { getSettings } from '../store'
 import { emit, getMainWindow, notify } from '../events'
 import { log } from '../logger'
-import { Task } from '../tasks'
+import { Task, TaskCancelledError } from '../tasks'
 import {
   buildVirtualAssets,
   clientJarPath,
@@ -616,7 +616,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // 9. Spawn -------------------------------------------------------
     if (userText(instance.settings.preLaunchCommand).trim()) {
       task.update('Pre-Launch-Befehl läuft…', null)
-      await runPreLaunch(instance, gameDir)
+      await runPreLaunch(instance, gameDir, task)
     }
 
     const env = { ...process.env, ...parseEnv(instance.settings.envVars) }
@@ -682,6 +682,12 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       if (!spawned) {
         clearRunning(instanceId)
         setStatus(instanceId, 'idle', `Java konnte nicht gestartet werden: ${err.message}`)
+        // The exit handler below is the only other place this runs, and a
+        // failed spawn never reaches it. Left uncalled, the claim on this
+        // version's natives never clears, so the "wipe and re-extract if
+        // nobody else needs them" self-heal silently stops working for that
+        // version until the whole app restarts.
+        dropNativesClaim()
       }
     })
 
@@ -886,15 +892,55 @@ function parseEnv(raw: string): Record<string, string> {
   return env
 }
 
-async function runPreLaunch(instance: Instance, cwd: string): Promise<void> {
+/**
+ * How long a pre-launch command gets before it is killed outright.
+ *
+ * Every other slow step in this file is bounded (downloads via `net.ts`'s own
+ * timeouts, Java installs via `resolveJava`'s `task.signal`) except this one:
+ * a command that waits on the network, sits behind a swallowed prompt, or
+ * simply loops, ran forever. `isStarting` only clears in this function's
+ * caller's `finally`, so a hang here left the instance permanently unable to
+ * start, repair, or have its mods touched, with no way out but restarting the
+ * whole launcher.
+ */
+const PRE_LAUNCH_TIMEOUT_MS = 5 * 60_000
+
+async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promise<void> {
   const parts = splitUserArgs(instance.settings.preLaunchCommand)
   if (parts.length === 0) return
 
   await new Promise<void>((resolve, reject) => {
     const child = spawn(parts[0], parts.slice(1), { cwd, windowsHide: true })
-    child.on('error', reject)
+
+    const timeout = setTimeout(() => {
+      child.kill()
+      reject(
+        new Error(
+          `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`
+        )
+      )
+    }, PRE_LAUNCH_TIMEOUT_MS)
+
+    // The cancel button reaches every other step in this file through
+    // `task.signal`; this was the one spawn that never listened for it.
+    const onAbort = (): void => {
+      child.kill()
+    }
+    task.signal.addEventListener('abort', onAbort)
+
+    const settle = (fn: () => void): void => {
+      clearTimeout(timeout)
+      task.signal.removeEventListener('abort', onAbort)
+      fn()
+    }
+
+    child.on('error', (err) => settle(() => reject(err)))
     child.on('exit', (code) =>
-      code === 0 ? resolve() : reject(new Error(`Pre-Launch-Befehl endete mit Code ${code}`))
+      settle(() => {
+        if (task.cancelled) return reject(new TaskCancelledError())
+        if (code === 0) return resolve()
+        reject(new Error(`Pre-Launch-Befehl endete mit Code ${code}`))
+      })
     )
   })
 }

@@ -14,7 +14,7 @@ import { contentFilePath } from './content'
 import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
-import { activeVersionIds, isRunning } from './running'
+import { activeVersionIds, isRunning, isStarting } from './running'
 
 const logger = log('repair')
 
@@ -66,6 +66,12 @@ function unchanged(before: ContentItem, now: ContentItem): boolean {
 export async function repairInstance(instanceId: string): Promise<RepairReport> {
   if (isRunning(instanceId)) {
     throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie reparierst.')
+  }
+  // Mirrors the guard `launchInstance` has against `isRepairing`: a launch can
+  // still be downloading files or installing Java when `isRunning` is false,
+  // and repairing the same folder underneath it is what this closes.
+  if (isStarting(instanceId)) {
+    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
   }
 
   if (repairing.has(instanceId)) {
