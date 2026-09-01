@@ -547,6 +547,13 @@ export interface LauncherSettings {
   /** Safety net: a forgotten recording stops itself after this many minutes. */
   recordingMaxMinutes: number
   /**
+   * Swaps Minecraft's own title screen background for a Launch Gabi one, via
+   * a resource pack applied at launch. `unset` is what the one-time beta
+   * prompt reacts to; `off` also means "asked, declined", same as
+   * `crashReports`.
+   */
+  customStartScreen: ReportConsent
+  /**
    * The version the launcher last actually ran as.
    *
    * Separate from `lastSeenVersion` on purpose: this one answers "did an

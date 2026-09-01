@@ -24,7 +24,7 @@ export interface AppState {
   accounts: Account[]
   tasks: TaskProgress[]
   launchStatus: Record<string, LaunchStatus>
-  toasts: AppNotification[]
+  toasts: LocalToast[]
   maximized: boolean
   /** Set while the modal for creating an instance is open. */
   createOpen: boolean
@@ -125,6 +125,22 @@ export function parseRoute(route: string): ParsedRoute {
  * Toasts
  * ------------------------------------------------------------------ */
 
+export interface ToastAction {
+  label: string
+  primary?: boolean
+  onClick: () => void
+}
+
+/**
+ * A toast with buttons, for the rare case that needs a real answer rather
+ * than a click-through link. Renderer-only: `onClick` is a closure and could
+ * never survive the IPC boundary, which is why this lives beside `toast()`
+ * instead of on `AppNotification` itself.
+ */
+export interface LocalToast extends AppNotification {
+  actions?: ToastAction[]
+}
+
 let toastCounter = 0
 
 export function toast(
@@ -134,6 +150,22 @@ export function toast(
   timeout = 5200
 ): void {
   const item: AppNotification = { id: `t${++toastCounter}`, kind, title, message, timeout }
+  setState((current) => ({ toasts: [...current.toasts, item].slice(-4) }))
+
+  if (timeout > 0) {
+    setTimeout(() => dismissToast(item.id), timeout)
+  }
+}
+
+/** Like `toast()`, but with one or two buttons instead of a dismiss-only card. */
+export function promptToast(
+  kind: AppNotification['kind'],
+  title: string,
+  message: string,
+  actions: ToastAction[],
+  timeout = 60000
+): void {
+  const item: LocalToast = { id: `t${++toastCounter}`, kind, title, message, timeout, actions }
   setState((current) => ({ toasts: [...current.toasts, item].slice(-4) }))
 
   if (timeout > 0) {

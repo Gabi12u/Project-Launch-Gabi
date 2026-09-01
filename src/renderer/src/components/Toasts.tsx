@@ -17,25 +17,44 @@ export function Toasts(): JSX.Element {
     <div className="toasts">
       {toasts.map((item) => {
         const Icon = ICONS[item.kind]
+        const hasActions = Boolean(item.actions && item.actions.length > 0)
         return (
           <div
             key={item.id}
-            className={`toast ${item.kind}`}
+            className={`toast ${item.kind}${hasActions ? ' with-actions' : ''}`}
             // Only the ones that navigate somewhere become a control; a plain
             // notification stays a passive region rather than an empty button
-            // in the tab order.
-            {...(item.route
+            // in the tab order. One with its own buttons is not a link either,
+            // clicking the card itself should do nothing.
+            {...(item.route && !hasActions
               ? clickable(() => {
                   navigate(item.route as string)
                   dismissToast(item.id)
                 })
               : {})}
-            style={item.route ? { cursor: 'pointer' } : undefined}
+            style={item.route && !hasActions ? { cursor: 'pointer' } : undefined}
           >
             <Icon className="toast-icon" size={20} />
             <div className="grow">
               <div className="toast-title">{item.title}</div>
               {item.message && <div className="toast-msg">{item.message}</div>}
+              {hasActions && (
+                <div className="toast-actions">
+                  {item.actions?.map((action, index) => (
+                    <button
+                      key={index}
+                      className={`btn sm ${action.primary ? 'primary' : 'ghost'}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        action.onClick()
+                        dismissToast(item.id)
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               className="btn ghost icon sm"

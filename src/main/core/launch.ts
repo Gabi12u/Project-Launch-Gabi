@@ -50,6 +50,7 @@ import {
 } from './running'
 import { isRepairing } from './repair'
 import { isRestoring } from './restoreLock'
+import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
 
 const logger = log('launch')
 
@@ -612,6 +613,20 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     }
 
     const args = [...jvmArgs, versionJson.mainClass, ...gameArgs]
+
+    // Read fresh on every launch rather than only when the setting changes,
+    // the same as the wrapper and pre-launch command below: turning the beta
+    // off takes effect on the next launch, with nothing extra to invalidate.
+    try {
+      if (settings.customStartScreen === 'on') {
+        applyCustomStartScreen(instanceId, instance.mcVersion)
+      } else {
+        removeCustomStartScreen(instanceId)
+      }
+    } catch (err) {
+      // A cosmetic beta feature must never be the reason a launch fails.
+      logger.warn(`Eigene Startseite für ${instanceId} übersprungen:`, err)
+    }
 
     // 9. Spawn -------------------------------------------------------
     if (userText(instance.settings.preLaunchCommand).trim()) {

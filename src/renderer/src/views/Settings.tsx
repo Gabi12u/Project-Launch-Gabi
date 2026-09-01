@@ -395,6 +395,21 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   onChange={(value) => void saveSettings({ reduceMotion: value })}
                 />
               </section>
+
+              <section className="setting-group">
+                <h3>Eigene Startseite (Beta)</h3>
+                <p className="hint">
+                  Tauscht den Hintergrund im Minecraft-Hauptmenü gegen einen von Launch Gabi, per
+                  Ressourcenpaket, ohne das Spiel selbst zu verändern. Wirkt ab dem nächsten Start
+                  einer Instanz. Noch in Arbeit: bisher nur der Hintergrund, keine eigenen Knöpfe.
+                </p>
+                <SettingToggle
+                  label="Eigene Startseite verwenden"
+                  hint="Gilt für alle Instanzen und jede Minecraft-Version."
+                  checked={settings.customStartScreen === 'on'}
+                  onChange={(value) => void saveSettings({ customStartScreen: value ? 'on' : 'off' })}
+                />
+              </section>
             </>
           )}
 

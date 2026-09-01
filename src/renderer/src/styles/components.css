@@ -1097,6 +1097,24 @@
   line-height: 1.45;
 }
 
+.toast-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* A soft pulse rather than a literal blink: it draws the eye the same way,
+   but still respects reduced-motion (the OS setting and the in-app one,
+   both handled in tokens.css) and does not read as an ad. */
+.toast.with-actions {
+  animation: slide-in-right var(--t) var(--ease), toast-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes toast-pulse {
+  0%, 100% { box-shadow: var(--shadow-lg); }
+  50% { box-shadow: var(--shadow-lg), 0 0 0 3px var(--accent-glow); }
+}
+
 /* --- Task dock ----------------------------------------------------- */
 
 .task-dock {
