@@ -245,9 +245,7 @@ function bootstrap(): void {
   // fault) is a different process than the two handlers above cover, and
   // Electron does not recover from it on its own: the window keeps existing
   // but shows only its bare background colour, dark enough to read as "gone
-  // black", forever, since nothing ever told it to reload. Recording a full
-  // game session alongside a fullscreen 3D game is exactly the kind of GPU
-  // load where this shows up.
+  // black", forever, since nothing ever told it to reload.
   app.on('render-process-gone', (_event, webContents, details) => {
     if (details.reason === 'clean-exit') return
     logger.error(`Oberflächenprozess beendet (${details.reason}, Exitcode ${details.exitCode}), lade neu`)
