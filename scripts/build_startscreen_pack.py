@@ -179,17 +179,27 @@ def main():
         }
     }
 
+    def write(zf, name, data):
+        # A plain string name makes zipfile stamp the entry with the current
+        # wall-clock time, so the seeded, fully deterministic pixels above
+        # still produced a byte-different .zip on every re-run. A fixed
+        # ZipInfo date means "nothing visually changed" and "no git diff"
+        # actually agree with each other.
+        info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        zf.writestr(info, data)
+
     with zipfile.ZipFile(OUT_ZIP, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-        zf.writestr("pack.mcmeta", json.dumps(mcmeta, ensure_ascii=False, indent=2))
+        write(zf, "pack.mcmeta", json.dumps(mcmeta, ensure_ascii=False, indent=2))
 
         icon_bytes = io.BytesIO()
         icon.save(icon_bytes, format="PNG")
-        zf.writestr("pack.png", icon_bytes.getvalue())
+        write(zf, "pack.png", icon_bytes.getvalue())
 
         for i in range(6):
             buf = io.BytesIO()
             faces[i].convert("RGB").save(buf, format="PNG", optimize=True)
-            zf.writestr(f"assets/minecraft/textures/gui/title/background/panorama_{i}.png", buf.getvalue())
+            write(zf, f"assets/minecraft/textures/gui/title/background/panorama_{i}.png", buf.getvalue())
 
     print(f"Geschrieben: {OUT_ZIP} ({OUT_ZIP.stat().st_size // 1024} KB)")
 

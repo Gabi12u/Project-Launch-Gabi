@@ -18,7 +18,15 @@ import { log } from '../logger'
 
 const logger = log('startscreen')
 
-const PACK_FILENAME = 'LaunchGabi-Startbildschirm.zip'
+/**
+ * Exported so `instances.ts` can recognise and skip this exact file. It is
+ * rewritten by this module on every launch, not something a user installed,
+ * and once `syncContentWithDisk` picked it up as ordinary content it could be
+ * "removed" or "disabled" through the normal Mods UI while this module kept
+ * silently reapplying it, and a disabled copy sitting next to a freshly
+ * reapplied active one produced two content-list entries sharing one id.
+ */
+export const PACK_FILENAME = 'LaunchGabi-Startbildschirm.zip'
 /** How Minecraft's own resource-pack list refers to a file in resourcepacks/. */
 const PACK_ID = `file/${PACK_FILENAME}`
 
@@ -70,11 +78,12 @@ const PACK_FORMATS: [minVersion: string, format: number][] = [
   ['1.21.6', 63],
   ['1.21.7', 64],
   ['1.21.9', 69],
+  ['1.21.11', 75],
   ['26.1', 84],
   ['26.2', 88]
 ]
 
-/** `false` when `a` is older than `b`; equal segments compare as not-older. */
+/** `true` when `a` is older than `b`; equal versions compare as not-older. */
 function isOlder(a: string, b: string): boolean {
   const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0)
   const pb = b.split('.').map((n) => Number.parseInt(n, 10) || 0)
@@ -110,7 +119,17 @@ function optionsFile(instanceId: string): string {
  */
 function setPackActive(instanceId: string, packId: string, active: boolean): void {
   const file = optionsFile(instanceId)
-  const lines = existsSync(file) ? readFileSync(file, 'utf8').split(/\r?\n/) : []
+  const raw = existsSync(file) ? readFileSync(file, 'utf8') : ''
+  // Kept rather than normalised: Minecraft on Windows writes `\r\n`, and
+  // rewriting every line to `\n` the first time this ever touched the file
+  // made the whole file look changed against a game-written one, not just
+  // the one line this is actually meant to change.
+  const eol = raw.includes('\r\n') ? '\r\n' : '\n'
+  const lines = raw.length > 0 ? raw.split(/\r?\n/) : []
+  // `split` turns a trailing newline into one synthetic empty element at the
+  // end; dropped so it is not written back doubled. Any *other* blank line
+  // in the file is left alone, unlike the previous version of this function.
+  if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
 
   const lineIndex = lines.findIndex((line) => line.startsWith('resourcePacks:'))
   let packs: string[] = []
@@ -125,11 +144,20 @@ function setPackActive(instanceId: string, packId: string, active: boolean): voi
     }
   }
 
-  const withoutOurs = packs.filter((p) => p !== packId)
-  // Appended at the end when turning on, since a pack later in the list wins
-  // over one earlier in it. Anywhere else and the user's own packs could
-  // silently cover ours back up.
-  const next = active ? [...withoutOurs, packId] : withoutOurs
+  let next: string[]
+  if (!active) {
+    next = packs.filter((p) => p !== packId)
+  } else if (packs.includes(packId)) {
+    // Left exactly where it already is. Moving it to the end unconditionally
+    // used to discard a reorder the user made inside Minecraft's own
+    // resource pack screen on every single later launch, restore or not.
+    next = packs
+  } else {
+    // Appended at the end only the first time it is turned on, since a pack
+    // later in the list wins over one earlier in it, and the user's own
+    // packs could otherwise silently cover a newly added one back up.
+    next = [...packs, packId]
+  }
 
   // Nothing to do: already in the wanted state, and never having launched
   // this instance with the feature off must not create an empty options.txt.
@@ -144,9 +172,7 @@ function setPackActive(instanceId: string, packId: string, active: boolean): voi
   }
 
   mkdirSync(paths.gameDir(instanceId), { recursive: true })
-  // Minecraft's own writer ends the file the same way; matched so a diff
-  // against a game-written options.txt shows only the one changed line.
-  writeFileSync(file, lines.filter((l) => l !== '').join('\n') + '\n', 'utf8')
+  writeFileSync(file, lines.join(eol) + eol, 'utf8')
 }
 
 /* ------------------------------------------------------------------ *
@@ -173,17 +199,37 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
   try {
     const zip = new AdmZip(bundled)
     const format = packFormatFor(mcVersion)
-    zip.updateFile(
-      'pack.mcmeta',
-      Buffer.from(
-        JSON.stringify(
-          { pack: { pack_format: format, description: 'Launch Gabi, eigene Startseite (Beta)' } },
-          null,
-          2
-        ),
-        'utf8'
-      )
+    const mcmetaJson = JSON.stringify(
+      {
+        pack: {
+          pack_format: format,
+          // Since 25w31a resource packs also carry a min/max range rather
+          // than a single number; both fields are written, since the plain
+          // `pack_format` is documented as staying supported for backward
+          // compatibility, and a version-current client is only guaranteed
+          // to look at whichever pair it actually understands. Both are set
+          // to the same value because this is rewritten per instance for its
+          // exact version, not built to span several versions.
+          min_format: format,
+          max_format: format,
+          description: 'Launch Gabi, eigene Startseite (Beta)'
+        }
+      },
+      null,
+      2
     )
+    zip.updateFile('pack.mcmeta', Buffer.from(mcmetaJson, 'utf8'))
+
+    // adm-zip's updateFile() no-ops without warning if the entry name ever
+    // stops matching (a future regeneration of the template, for instance).
+    // Checked here rather than trusted, since that failure mode ships the
+    // template's placeholder format for every instance on every version,
+    // forever, with nothing anywhere to notice it.
+    const rewritten = zip.getEntry('pack.mcmeta')?.getData().toString('utf8')
+    if (rewritten !== mcmetaJson) {
+      throw new Error('pack.mcmeta wurde nicht wie erwartet aktualisiert')
+    }
+
     zip.writeZip(target)
   } catch (err) {
     logger.warn(`Startbildschirm-Paket für ${instanceId} konnte nicht geschrieben werden:`, err)

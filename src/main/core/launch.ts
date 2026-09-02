@@ -33,7 +33,7 @@ import {
   syncContentWithDisk
 } from './instances'
 import { checkCompatibility } from './compat'
-import { isContentBusy } from './contentLock'
+import { isContentBusy, withContentLock } from './contentLock'
 import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
 import {
   activeVersionIds,
@@ -617,12 +617,17 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // Read fresh on every launch rather than only when the setting changes,
     // the same as the wrapper and pre-launch command below: turning the beta
     // off takes effect on the next launch, with nothing extra to invalidate.
+    // Taken under the same lock a real mod install or update holds while it
+    // rewrites this instance's content folder, so the two can never run
+    // against resourcepacks/ at the same moment.
     try {
-      if (settings.customStartScreen === 'on') {
-        applyCustomStartScreen(instanceId, instance.mcVersion)
-      } else {
-        removeCustomStartScreen(instanceId)
-      }
+      await withContentLock(instanceId, async () => {
+        if (settings.customStartScreen === 'on') {
+          applyCustomStartScreen(instanceId, instance.mcVersion)
+        } else {
+          removeCustomStartScreen(instanceId)
+        }
+      })
     } catch (err) {
       // A cosmetic beta feature must never be the reason a launch fails.
       logger.warn(`Eigene Startseite für ${instanceId} übersprungen:`, err)

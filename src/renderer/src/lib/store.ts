@@ -143,6 +143,30 @@ export interface LocalToast extends AppNotification {
 
 let toastCounter = 0
 
+/**
+ * Appends a toast, keeping at most 4, but never evicting one that is still
+ * waiting on an answer (one with `actions`). Without this, a card asking a
+ * real question could be pushed out by four ordinary notifications arriving
+ * around the same time, disappearing before anyone had a chance to answer
+ * it, with no error and nothing to show it ever happened.
+ */
+function appendToast(current: LocalToast[], item: LocalToast): LocalToast[] {
+  const withNew = [...current, item]
+  if (withNew.length <= 4) return withNew
+
+  const pinned = withNew.filter((t) => t.actions && t.actions.length > 0)
+  const plain = withNew.filter((t) => !t.actions || t.actions.length === 0)
+  const room = 4 - pinned.length
+  // `slice(-0)` behaves like `slice(0)` in JS (returns everything), so a
+  // room of exactly 0 has to be handled separately rather than falling
+  // through to a negative-index slice.
+  const keptPlain = room > 0 ? plain.slice(-room) : []
+  const keepIds = new Set([...pinned, ...keptPlain].map((t) => t.id))
+  // Filtered from `withNew` rather than concatenated, so the original
+  // arrival order is preserved instead of moving every pinned card to front.
+  return withNew.filter((t) => keepIds.has(t.id))
+}
+
 export function toast(
   kind: AppNotification['kind'],
   title: string,
@@ -150,7 +174,7 @@ export function toast(
   timeout = 5200
 ): void {
   const item: AppNotification = { id: `t${++toastCounter}`, kind, title, message, timeout }
-  setState((current) => ({ toasts: [...current.toasts, item].slice(-4) }))
+  setState((current) => ({ toasts: appendToast(current.toasts, item) }))
 
   if (timeout > 0) {
     setTimeout(() => dismissToast(item.id), timeout)
@@ -166,7 +190,7 @@ export function promptToast(
   timeout = 60000
 ): void {
   const item: LocalToast = { id: `t${++toastCounter}`, kind, title, message, timeout, actions }
-  setState((current) => ({ toasts: [...current.toasts, item].slice(-4) }))
+  setState((current) => ({ toasts: appendToast(current.toasts, item) }))
 
   if (timeout > 0) {
     setTimeout(() => dismissToast(item.id), timeout)
@@ -174,7 +198,7 @@ export function promptToast(
 }
 
 export function pushNotification(notification: AppNotification): void {
-  setState((current) => ({ toasts: [...current.toasts, notification].slice(-4) }))
+  setState((current) => ({ toasts: appendToast(current.toasts, notification) }))
   const timeout = notification.timeout ?? 6500
   if (timeout > 0) setTimeout(() => dismissToast(notification.id), timeout)
 }

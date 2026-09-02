@@ -1,4 +1,4 @@
-import type { JSX } from 'react'
+import { useRef, type JSX } from 'react'
 import { dismissToast, navigate, useStore } from '../lib/store'
 import { clickable } from '../lib/a11y'
 import { IconCheckCircle, IconInfo, IconWarning, IconX } from './Icons'
@@ -12,9 +12,14 @@ const ICONS = {
 
 export function Toasts(): JSX.Element {
   const { toasts } = useStore()
+  // A fast double-click lands both browser click events before React removes
+  // the button, so `action.onClick` alone does not stop a second call. Kept
+  // outside React state since it only ever needs to block a duplicate click
+  // within the same tick, never trigger a re-render.
+  const handled = useRef(new Set<string>())
 
   return (
-    <div className="toasts">
+    <div className="toasts" role="status" aria-live="polite">
       {toasts.map((item) => {
         const Icon = ICONS[item.kind]
         const hasActions = Boolean(item.actions && item.actions.length > 0)
@@ -46,6 +51,8 @@ export function Toasts(): JSX.Element {
                       className={`btn sm ${action.primary ? 'primary' : 'ghost'}`}
                       onClick={(event) => {
                         event.stopPropagation()
+                        if (handled.current.has(item.id)) return
+                        handled.current.add(item.id)
                         action.onClick()
                         dismissToast(item.id)
                       }}

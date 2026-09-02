@@ -22,6 +22,7 @@ import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
 import { isContentBusy } from './contentLock'
 import { isRestoring } from './restoreLock'
+import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
 
 const logger = log('instances')
 
@@ -691,6 +692,17 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
       const enabled = !fileName.endsWith('.disabled')
       const bare = enabled ? fileName : fileName.slice(0, -'.disabled'.length)
       if (!folder.extensions.includes(extname(bare).toLowerCase())) continue
+
+      // Launch Gabi's own "eigene Startseite" pack (see startScreen.ts), not
+      // something a user installed. It is rewritten by that module on every
+      // launch; letting it become tracked content here meant it could be
+      // "removed" or "disabled" through the ordinary Mods UI while
+      // startScreen.ts kept silently reapplying it, and a disabled copy
+      // sitting next to a freshly reapplied active one produced two
+      // content-list entries sharing one id.
+      if (folder.type === 'resourcepack' && bare.toLowerCase() === START_SCREEN_PACK.toLowerCase()) {
+        continue
+      }
 
       const existing = known.get(bare.toLowerCase())
       if (existing) {
