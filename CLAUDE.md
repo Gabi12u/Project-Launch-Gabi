@@ -38,6 +38,16 @@ als bekannt ausgegebene Vermutung ist schlimmer als Schweigen.
 Version noch nicht veröffentlicht ist, schreibt die Seite von selbst "Behoben,
 kommt mit x.y.z".
 
+## Wann überhaupt eine Version getaggt wird
+
+Committen und Pushen auf `main` ist jederzeit normal und braucht keine
+Rückfrage. Ein echtes Release, Version hochzählen und taggen, nicht von
+selbst für jede kleine Erweiterung vorschlagen. Erst wenn ein Stück Arbeit
+für sich genommen wirklich groß und abgeschlossen ist, oder wenn
+ausdrücklich danach gefragt wird ("release es" oder Gleichwertiges).
+Gehört eine Erweiterung erkennbar zu einem größeren, noch laufenden
+Vorhaben, damit warten oder nachfragen, statt anzunehmen.
+
 ## Bevor eine Version getaggt wird
 
 1. Eintrag in `src/shared/changelog.ts`, `version` exakt wie `package.json`
