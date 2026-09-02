@@ -8,9 +8,14 @@ Mod-Knöpfen umgehen kann. Das ist etwas grundlegend anderes als das
 Ressourcenpaket: nicht nur Bilder, sondern echter Code, der ins Spiel
 eingreift.
 
-**Stand:** ganz früh. Bisher nur der Nachweis, dass Fabric, die Mojang-
-Mappings und Mixin zusammen wie erwartet funktionieren, noch keine
-sichtbare Änderung im Spiel.
+**Stand:** erste sichtbare Stufe. Knöpfe tragen die eigene Glas-Optik aus
+der "eigenen Startseite" (als Mod-eigene Textur, nicht über das separate
+Ressourcenpaket), jeder Knopf leuchtet beim Überfahren weich auf und blitzt
+kurz bei Klick, Tooltips haben denselben Glas-Rahmen statt der grauen
+Vanilla-Box, und ein durchscheinendes Panel liegt hinter der Knopf-Spalte
+im Hauptmenü, das automatisch mitwächst, wenn ein anderer Mod dort einen
+zusätzlichen zentrierten Knopf einfügt. Was noch fehlt: Bildschirmübergänge,
+eigene Icons, ein eigenes Navigationselement.
 
 ## Warum ein eigener Ordner, eigenes Projekt
 
@@ -55,3 +60,6 @@ danach unter `build/libs/launchgabi-menu-<version>.jar`.
   sonst wird sie nie geladen.
 - `src/main/resources/fabric.mod.json` — das Mod selbst, Name, Version,
   welche Minecraft-Version und welcher Fabric-Loader vorausgesetzt werden.
+- `src/main/resources/assets/` — die Texturen selbst (Knöpfe, Panel,
+  Tooltip), erzeugt von `scripts/build_menu_mod_assets.py` im Launcher-
+  Repo, nicht von Hand gepflegt. Neu erzeugen nach einer Änderung dort.

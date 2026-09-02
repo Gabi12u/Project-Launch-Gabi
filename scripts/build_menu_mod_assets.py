@@ -16,6 +16,12 @@ Two things happen here:
    panel TitleScreenMixin draws behind the main menu's button column, using
    the same brand palette as the button sprites and the launcher's own UI.
 
+3. New tooltip background and frame sprites replace vanilla's grey box.
+   Minecraft draws tooltips from assets/minecraft/textures/gui/sprites/
+   tooltip/{background,frame}.png the same way it draws buttons (confirmed
+   by reading TooltipRenderUtil's real decompiled source), so this too
+   needs no Mixin, just two more files in the same sprite folder.
+
 Run manually when the artwork should change:
     python scripts/build_menu_mod_assets.py
 
@@ -35,6 +41,7 @@ STARTSCREEN_ZIP = ROOT / "resources" / "startscreen" / "LaunchGabi-Startbildschi
 MOD_RESOURCES = ROOT / "mod" / "src" / "main" / "resources"
 WIDGET_DIR = MOD_RESOURCES / "assets" / "minecraft" / "textures" / "gui" / "sprites" / "widget"
 PANEL_DIR = MOD_RESOURCES / "assets" / "launchgabi_menu" / "textures" / "gui" / "sprites" / "panel"
+TOOLTIP_DIR = MOD_RESOURCES / "assets" / "minecraft" / "textures" / "gui" / "sprites" / "tooltip"
 
 # Same palette as scripts/build_startscreen_pack.py and the launcher's own
 # --accent/--accent-2 tokens, so the mod, the resource pack and the launcher
@@ -48,6 +55,11 @@ PANEL_SIZE = 48
 PANEL_BORDER = 12
 PANEL_STROKE = 2
 PANEL_RADIUS = 16
+
+TOOLTIP_SIZE = 24
+TOOLTIP_BORDER = 6
+TOOLTIP_STROKE = 2
+TOOLTIP_RADIUS = 7
 
 
 def lerp(a, b, t):
@@ -118,11 +130,59 @@ def write_panel_sprite():
     (PANEL_DIR / "main_menu_panel.png.mcmeta").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 
+def rounded_mask(size, radius):
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=255)
+    return mask
+
+
+def write_tooltip_sprites():
+    TOOLTIP_DIR.mkdir(parents=True, exist_ok=True)
+    size = TOOLTIP_SIZE
+    mask = rounded_mask(size, TOOLTIP_RADIUS)
+
+    # Layered the same way vanilla does: background first, then frame drawn
+    # on top at the same position and size, so the two textures only need to
+    # agree on their rounded silhouette, not repeat each other's pixels.
+    background = Image.new("RGBA", (size, size), PANEL_FILL)
+    background_rounded = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    background_rounded.paste(background, (0, 0), mask)
+
+    frame = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    px = frame.load()
+    for y in range(size):
+        for x in range(size):
+            on_stroke = x < TOOLTIP_STROKE or x >= size - TOOLTIP_STROKE or y < TOOLTIP_STROKE or y >= size - TOOLTIP_STROKE
+            if on_stroke:
+                t = y / (size - 1)
+                px[x, y] = lerp_color(ACCENT_DEEP, ACCENT_WARM, t) + (255,)
+    frame_rounded = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    frame_rounded.paste(frame, (0, 0), mask)
+
+    meta = {
+        "gui": {
+            "scaling": {
+                "type": "nine_slice",
+                "width": TOOLTIP_SIZE,
+                "height": TOOLTIP_SIZE,
+                "border": TOOLTIP_BORDER,
+            }
+        }
+    }
+    for name, img in (("background", background_rounded), ("frame", frame_rounded)):
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        (TOOLTIP_DIR / f"{name}.png").write_bytes(buf.getvalue())
+        (TOOLTIP_DIR / f"{name}.png.mcmeta").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+
 def main():
     copy_button_sprites()
     write_panel_sprite()
+    write_tooltip_sprites()
     print(f"Geschrieben: {WIDGET_DIR} (3 Knopf-Sprites)")
     print(f"Geschrieben: {PANEL_DIR / 'main_menu_panel.png'}")
+    print(f"Geschrieben: {TOOLTIP_DIR} (background + frame)")
 
 
 if __name__ == "__main__":
