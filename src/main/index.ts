@@ -196,6 +196,30 @@ function createWindow(): BrowserWindow {
     }
   })
 
+  // A hang is different from a crash: the process is still there, just not
+  // pumping its event loop, so 'render-process-gone' (registered on `app`
+  // below, where its typings actually live) never fires for this case. Given
+  // long enough, a forced reload beats leaving the user stuck with an
+  // unusable window.
+  let unresponsiveTimer: NodeJS.Timeout | null = null
+  window.on('unresponsive', () => {
+    logger.warn('Oberfläche reagiert nicht mehr')
+    unresponsiveTimer ??= setTimeout(() => {
+      unresponsiveTimer = null
+      if (window.isDestroyed()) return
+      logger.error('Oberfläche reagiert seit 10s nicht, lade neu')
+      reportError('renderer:unresponsive', new Error('webContents unresponsive for 10s'))
+      window.webContents.reload()
+    }, 10_000)
+  })
+  window.on('responsive', () => {
+    if (unresponsiveTimer) {
+      clearTimeout(unresponsiveTimer)
+      unresponsiveTimer = null
+      logger.info('Oberfläche reagiert wieder')
+    }
+  })
+
   return window
 }
 
@@ -215,6 +239,20 @@ function bootstrap(): void {
   process.on('unhandledRejection', (reason) => {
     logger.error('Unbehandelte Promise-Ablehnung im Hauptprozess:', reason)
     reportError('main:rejection', reason)
+  })
+
+  // A crash of the renderer itself (GPU trouble, out of memory, a native
+  // fault) is a different process than the two handlers above cover, and
+  // Electron does not recover from it on its own: the window keeps existing
+  // but shows only its bare background colour, dark enough to read as "gone
+  // black", forever, since nothing ever told it to reload. Recording a full
+  // game session alongside a fullscreen 3D game is exactly the kind of GPU
+  // load where this shows up.
+  app.on('render-process-gone', (_event, webContents, details) => {
+    if (details.reason === 'clean-exit') return
+    logger.error(`Oberflächenprozess beendet (${details.reason}, Exitcode ${details.exitCode}), lade neu`)
+    reportError('renderer:gone', new Error(`render-process-gone: ${details.reason} (${details.exitCode})`))
+    if (!webContents.isDestroyed()) webContents.reload()
   })
 
   app.on('open-url', (event, url) => {
