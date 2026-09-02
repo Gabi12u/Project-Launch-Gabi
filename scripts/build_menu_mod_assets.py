@@ -22,6 +22,12 @@ Two things happen here:
    by reading TooltipRenderUtil's real decompiled source), so this too
    needs no Mixin, just two more files in the same sprite folder.
 
+4. New language/accessibility icon sprites (the two small square buttons
+   flanking Options/Quit) replace vanilla's icon/{language,accessibility}.
+   Drawn at 4x and downsampled, since freehand shapes at the native 15x15
+   Minecraft actually blits them at (confirmed in SpriteIconButton's real
+   source) come out ragged without supersampling first.
+
 Run manually when the artwork should change:
     python scripts/build_menu_mod_assets.py
 
@@ -42,6 +48,7 @@ MOD_RESOURCES = ROOT / "mod" / "src" / "main" / "resources"
 WIDGET_DIR = MOD_RESOURCES / "assets" / "minecraft" / "textures" / "gui" / "sprites" / "widget"
 PANEL_DIR = MOD_RESOURCES / "assets" / "launchgabi_menu" / "textures" / "gui" / "sprites" / "panel"
 TOOLTIP_DIR = MOD_RESOURCES / "assets" / "minecraft" / "textures" / "gui" / "sprites" / "tooltip"
+ICON_DIR = MOD_RESOURCES / "assets" / "minecraft" / "textures" / "gui" / "sprites" / "icon"
 
 # Same palette as scripts/build_startscreen_pack.py and the launcher's own
 # --accent/--accent-2 tokens, so the mod, the resource pack and the launcher
@@ -60,6 +67,10 @@ TOOLTIP_SIZE = 24
 TOOLTIP_BORDER = 6
 TOOLTIP_STROKE = 2
 TOOLTIP_RADIUS = 7
+
+ICON_SIZE = 15
+ICON_SUPERSAMPLE = 4
+ICON_COLOR = (235, 225, 255, 255)
 
 
 def lerp(a, b, t):
@@ -176,13 +187,66 @@ def write_tooltip_sprites():
         (TOOLTIP_DIR / f"{name}.png.mcmeta").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 
+def build_language_icon():
+    s = ICON_SIZE * ICON_SUPERSAMPLE
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    line_w = max(1, round(s * 0.07))
+    cx = cy = s / 2
+    r = s / 2 - s * 0.08
+
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline=ICON_COLOR, width=line_w)
+    draw.line([(cx, cy - r), (cx, cy + r)], fill=ICON_COLOR, width=line_w)
+    draw.line([(cx - r, cy), (cx + r, cy)], fill=ICON_COLOR, width=line_w)
+    side_rx = r * 0.45
+    draw.ellipse([cx - side_rx, cy - r, cx + side_rx, cy + r], outline=ICON_COLOR, width=line_w)
+    return img.resize((ICON_SIZE, ICON_SIZE), Image.LANCZOS)
+
+
+def build_accessibility_icon():
+    s = ICON_SIZE * ICON_SUPERSAMPLE
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    line_w = max(1, round(s * 0.09))
+    cx = s / 2
+
+    head_r = s * 0.14
+    head_cy = s * 0.22
+    draw.ellipse([cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r], outline=ICON_COLOR, width=line_w)
+
+    body_top = head_cy + head_r
+    body_bottom = s * 0.62
+    draw.line([(cx, body_top), (cx, body_bottom)], fill=ICON_COLOR, width=line_w)
+
+    arm_y = s * 0.42
+    draw.line([(cx, arm_y), (s * 0.18, s * 0.30)], fill=ICON_COLOR, width=line_w)
+    draw.line([(cx, arm_y), (s * 0.82, s * 0.30)], fill=ICON_COLOR, width=line_w)
+    draw.line([(cx, body_bottom), (s * 0.22, s * 0.92)], fill=ICON_COLOR, width=line_w)
+    draw.line([(cx, body_bottom), (s * 0.78, s * 0.92)], fill=ICON_COLOR, width=line_w)
+    return img.resize((ICON_SIZE, ICON_SIZE), Image.LANCZOS)
+
+
+def write_icon_sprites():
+    ICON_DIR.mkdir(parents=True, exist_ok=True)
+    icons = {
+        "language": build_language_icon(),
+        "accessibility": build_accessibility_icon(),
+    }
+    for name, sprite in icons.items():
+        buf = io.BytesIO()
+        sprite.save(buf, format="PNG")
+        (ICON_DIR / f"{name}.png").write_bytes(buf.getvalue())
+
+
 def main():
     copy_button_sprites()
     write_panel_sprite()
     write_tooltip_sprites()
+    write_icon_sprites()
     print(f"Geschrieben: {WIDGET_DIR} (3 Knopf-Sprites)")
     print(f"Geschrieben: {PANEL_DIR / 'main_menu_panel.png'}")
     print(f"Geschrieben: {TOOLTIP_DIR} (background + frame)")
+    print(f"Geschrieben: {ICON_DIR} (language + accessibility)")
 
 
 if __name__ == "__main__":
