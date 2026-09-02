@@ -34,6 +34,17 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.16',
+    date: '2026-09-02',
+    headline: 'Eigene Startseite: jetzt auch die Minecraft-Knöpfe selbst umgestaltet.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Eigene Startseite (Beta): die normalen Minecraft-Knöpfe im Hauptmenü, inklusive der meisten Mod-Knöpfe, bekommen jetzt ebenfalls den eigenen Stil, als dunkles Glaspanel statt dem grauen Stein-Look. Gilt ab Minecraft 1.20.2, ältere Versionen behalten die normalen Knöpfe.'
+      }
+    ]
+  },
+  {
     version: '1.0.15',
     date: '2026-09-02',
     headline: 'Eigene Startseite im Minecraft-Menü, als Beta-Funktion.',
