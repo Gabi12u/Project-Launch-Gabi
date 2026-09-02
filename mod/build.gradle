@@ -1,0 +1,51 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+repositories {
+	// Launch Gabi's own theme has no third-party dependencies today, so
+	// nothing extra is declared here yet.
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"launchgabi_menu" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	// Without this, Gradle expands ${version} using the platform's default
+	// charset. On Windows that is not UTF-8, so every umlaut in
+	// fabric.mod.json's own name and description came out mangled the
+	// moment this template step touched the file, even though the source
+	// file on disk was correctly encoded to begin with.
+	filteringCharset = 'UTF-8'
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}

@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "launchgabi_menu",
+	"version": "${version}",
+	"name": "Launch Gabi Modernes Hauptmenü",
+	"description": "Modernisiert Minecrafts Hauptmenü: eigene Knöpfe, Panels und Anordnung, im selben Stil wie Launch Gabis eigene Startseite. Frueher Entwicklungsstand.",
+	"authors": [
+		"Launch Gabi"
+	],
+	"contact": {
+		"homepage": "https://launchgabi.com"
+	},
+	"license": "MIT",
+	"icon": "assets/launchgabi_menu/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.launchgabi.menu.client.LaunchGabiMenuClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "launchgabi_menu.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

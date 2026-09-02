@@ -57,3 +57,16 @@ Nicht im PATH, immer mit vollem Pfad aufrufen:
 
 - `gh`: `C:\Program Files\GitHub CLI\gh.exe`
 - `git`: `C:\Program Files\Git\cmd\git.exe`
+
+## Der `mod/`-Ordner ist ein eigenes Projekt
+
+Seit 2026-09-02 liegt unter `mod/` ein echter Fabric-Mod für Minecraft
+selbst, kein Teil des Launchers. Java statt TypeScript, Gradle statt npm,
+eigener `.gitignore`. Zielt auf eine feste Minecraft-Version (aktuell
+1.21.11), anders als das Ressourcenpaket der "eigenen Startseite", das für
+jede Version gleichzeitig funktioniert. Details in `mod/README.md`.
+
+`npm run build`, `npm run typecheck` und alles unter `scripts/` betreffen
+nur den Launcher und lassen `mod/` unberührt. Ein Bau dort läuft über
+`mod/gradlew build`, braucht ein installiertes Java 21 und lädt beim
+ersten Mal Minecraft selbst herunter, dauert also einige Minuten.
