@@ -12,10 +12,14 @@ eingreift.
 der "eigenen Startseite" (als Mod-eigene Textur, nicht über das separate
 Ressourcenpaket), jeder Knopf leuchtet beim Überfahren weich auf und blitzt
 kurz bei Klick, Tooltips haben denselben Glas-Rahmen statt der grauen
-Vanilla-Box, und ein durchscheinendes Panel liegt hinter der Knopf-Spalte
-im Hauptmenü, das automatisch mitwächst, wenn ein anderer Mod dort einen
-zusätzlichen zentrierten Knopf einfügt. Was noch fehlt: Bildschirmübergänge,
-eigene Icons, ein eigenes Navigationselement.
+Vanilla-Box, die Sprach- und Barrierefreiheits-Icons sind eigene Glyphen
+im selben Farbton, und ein durchscheinendes Panel liegt hinter der
+Knopf-Spalte im Hauptmenü, das beim Erscheinen weich einblendet und
+automatisch mitwächst, wenn ein anderer Mod dort einen zusätzlichen
+zentrierten Knopf einfügt. Was noch fehlt: ein eigenes Navigationselement
+(dafür gibt es im echten Hauptmenü keine vanilla Entsprechung, die sich
+bisher gefunden hätte) und ein echter Test im Spiel selbst, über
+verschiedene Fensterauflösungen.
 
 ## Warum ein eigener Ordner, eigenes Projekt
 
