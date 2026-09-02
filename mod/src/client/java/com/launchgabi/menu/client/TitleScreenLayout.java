@@ -33,7 +33,10 @@ public final class TitleScreenLayout {
 	private static final int PANEL_MARGIN = 14;
 	private static final int CENTER_TOLERANCE = 2;
 
-	private static final WeakHashMap<Screen, int[]> PANEL_BOUNDS = new WeakHashMap<>();
+	/** How long the panel takes to fade from transparent to fully visible after the screen appears. */
+	private static final float FADE_IN_SECONDS = 0.4f;
+
+	private static final WeakHashMap<Screen, PanelState> PANEL_STATE = new WeakHashMap<>();
 
 	private TitleScreenLayout() {
 	}
@@ -66,7 +69,7 @@ public final class TitleScreenLayout {
 		}
 
 		if (column.isEmpty()) {
-			PANEL_BOUNDS.remove(screen);
+			PANEL_STATE.remove(screen);
 			return;
 		}
 
@@ -108,11 +111,35 @@ public final class TitleScreenLayout {
 		right = Math.min(scaledWidth, right + PANEL_MARGIN);
 		bottom = Math.min(scaledHeight, bottom + PANEL_MARGIN);
 
-		PANEL_BOUNDS.put(screen, new int[] {left, top, right, bottom});
+		int[] bounds = {left, top, right, bottom};
+		PanelState existing = PANEL_STATE.get(screen);
+		long createdAtNanos = existing != null ? existing.createdAtNanos : System.nanoTime();
+		PANEL_STATE.put(screen, new PanelState(bounds, createdAtNanos));
 	}
 
 	/** The panel rectangle to draw behind {@code screen}'s buttons, or null if none was computed. */
 	public static int[] panelBounds(Screen screen) {
-		return PANEL_BOUNDS.get(screen);
+		PanelState state = PANEL_STATE.get(screen);
+		return state == null ? null : state.bounds;
+	}
+
+	/** 0 right after the screen appears, easing to 1 over {@link #FADE_IN_SECONDS}. */
+	public static float panelFadeAlpha(Screen screen) {
+		PanelState state = PANEL_STATE.get(screen);
+		if (state == null) {
+			return 0f;
+		}
+		float elapsedSeconds = (float) ((System.nanoTime() - state.createdAtNanos) / 1_000_000_000.0);
+		return Math.min(1f, Math.max(0f, elapsedSeconds / FADE_IN_SECONDS));
+	}
+
+	private static final class PanelState {
+		final int[] bounds;
+		final long createdAtNanos;
+
+		PanelState(int[] bounds, long createdAtNanos) {
+			this.bounds = bounds;
+			this.createdAtNanos = createdAtNanos;
+		}
 	}
 }

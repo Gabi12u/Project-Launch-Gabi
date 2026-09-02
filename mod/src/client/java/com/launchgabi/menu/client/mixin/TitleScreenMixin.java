@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -29,11 +30,15 @@ public class TitleScreenMixin {
 		)
 	)
 	private void launchGabiMenu$beforeWidgets(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, CallbackInfo info) {
-		int[] bounds = TitleScreenLayout.panelBounds((TitleScreen) (Object) this);
+		TitleScreen self = (TitleScreen) (Object) this;
+		int[] bounds = TitleScreenLayout.panelBounds(self);
 		if (bounds == null) {
 			return;
 		}
 
-		guiGraphics.blitSprite(RenderPipelines.GUI_TEXTURED, PANEL_SPRITE, bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]);
+		float alpha = TitleScreenLayout.panelFadeAlpha(self);
+		guiGraphics.blitSprite(
+			RenderPipelines.GUI_TEXTURED, PANEL_SPRITE, bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1], ARGB.white(alpha)
+		);
 	}
 }
