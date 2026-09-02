@@ -131,6 +131,39 @@ def build_cap(top_color, bottom_color):
     return img
 
 
+BUTTON_W, BUTTON_H = 200, 20
+
+
+def build_button_sprite(border, fill, edge_left, edge_right, sheen=False):
+    """One of the three vanilla button states, redrawn as a small glass panel.
+
+    `border` must match the real nine_slice border Minecraft ships for this
+    exact state (3 for the normal and hovered art, 1 for disabled) - that
+    number is not just how this looks at 200x20, it is how the game actually
+    slices the corners and edges apart when it stretches a button to whatever
+    width its label needs. Getting it right here is what makes a button 400
+    pixels wide look the same as one that is 60.
+    """
+    img = Image.new("RGBA", (BUTTON_W, BUTTON_H), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(BUTTON_H):
+        for x in range(BUTTON_W):
+            on_border = x < border or x >= BUTTON_W - border or y < border or y >= BUTTON_H - border
+            if on_border:
+                t = x / (BUTTON_W - 1)
+                px[x, y] = lerp_color(edge_left, edge_right, t) + (255,)
+            else:
+                px[x, y] = fill
+    # A single brighter row just inside the top border: the one cheap trick
+    # that still reads as "glass" at 20 pixels tall. Skipped for the 1px
+    # disabled border, where there is no room for it to mean anything.
+    if sheen and border > 1:
+        sheen_color = tuple(min(255, c + 40) for c in fill[:3]) + (fill[3],)
+        for x in range(border, BUTTON_W - border):
+            px[x, border] = sheen_color
+    return img
+
+
 def build_pack_icon():
     """A small rounded gradient tile with an 'L' mark, matching the site logo."""
     size = 128
@@ -170,6 +203,19 @@ def main():
 
     icon = build_pack_icon()
 
+    # Vanilla's own nine_slice borders for these three sprites (3, 3, 1),
+    # confirmed against the game's actual shipped assets rather than guessed,
+    # since a wrong border number would make the corners stretch instead of
+    # the flat middle the moment a button is wider or narrower than 200px.
+    buttons = {
+        "button": (build_button_sprite(3, (26, 14, 40, 215), ACCENT_DEEP, ACCENT_WARM, sheen=True), 3),
+        "button_highlighted": (
+            build_button_sprite(3, (54, 28, 80, 235), ACCENT, ACCENT_WARM, sheen=True),
+            3,
+        ),
+        "button_disabled": (build_button_sprite(1, (24, 22, 28, 170), (70, 60, 78), (70, 60, 78)), 1),
+    }
+
     mcmeta = {
         "pack": {
             # Placeholder. Rewritten per instance at apply time because a
@@ -200,6 +246,26 @@ def main():
             buf = io.BytesIO()
             faces[i].convert("RGB").save(buf, format="PNG", optimize=True)
             write(zf, f"assets/minecraft/textures/gui/title/background/panorama_{i}.png", buf.getvalue())
+
+        # Only from 1.20.2 onward does Minecraft look at this path at all
+        # (older versions use one single gui/widgets.png sheet instead), so
+        # shipping these for every version is harmless: an older client that
+        # never asks for gui/sprites/widget/button.png simply never reads it.
+        for name, (sprite, border) in buttons.items():
+            buf = io.BytesIO()
+            sprite.save(buf, format="PNG")
+            write(zf, f"assets/minecraft/textures/gui/sprites/widget/{name}.png", buf.getvalue())
+            sprite_meta = {
+                "gui": {
+                    "scaling": {
+                        "type": "nine_slice",
+                        "width": BUTTON_W,
+                        "height": BUTTON_H,
+                        "border": border,
+                    }
+                }
+            }
+            write(zf, f"assets/minecraft/textures/gui/sprites/widget/{name}.png.mcmeta", json.dumps(sprite_meta, indent=2))
 
     print(f"Geschrieben: {OUT_ZIP} ({OUT_ZIP.stat().st_size // 1024} KB)")
 

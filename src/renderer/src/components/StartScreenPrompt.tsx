@@ -35,7 +35,7 @@ export function StartScreenPrompt(): JSX.Element | null {
       promptToast(
         'info',
         'Neu: eigene Startseite (Beta)',
-        'Tauscht den Hintergrund im Minecraft-Hauptmenü gegen einen von Launch Gabi. Noch in Arbeit, aber schon zum Testen freigegeben. Änderbar jederzeit unter Einstellungen, Darstellung.',
+        'Tauscht Hintergrund und Knöpfe im Minecraft-Hauptmenü gegen einen eigenen Stil von Launch Gabi. Noch in Arbeit, aber schon zum Testen freigegeben. Änderbar jederzeit unter Einstellungen, Darstellung.',
         [
           { label: 'Nein', onClick: () => {} },
           {

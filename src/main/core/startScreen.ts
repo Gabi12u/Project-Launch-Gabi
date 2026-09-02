@@ -1,13 +1,21 @@
 /**
  * The "eigene Startseite" beta feature: swaps Minecraft's own title screen
- * panorama for a Launch-Gabi-branded one via a resource pack, no game code
- * touched. Works on any instance, vanilla or modded, because a resource pack
- * is a core game feature rather than something a mod loader has to provide.
+ * panorama, and the standard button textures, for a Launch-Gabi-branded look
+ * via a resource pack, no game code touched. Works on any instance, vanilla
+ * or modded, because a resource pack is a core game feature rather than
+ * something a mod loader has to provide, and any mod-added button drawn with
+ * Minecraft's own Button widget picks up the same texture automatically. A
+ * button a mod paints entirely itself is outside what a resource pack can
+ * reach; only a real mod could theme that, which is its own, much larger
+ * undertaking.
  *
  * One file ships for every Minecraft version (see resources/startscreen/ and
  * scripts/build_startscreen_pack.py), and `pack.mcmeta` inside it is rewritten
  * per instance at apply time, because the pack_format number that avoids
  * Minecraft's "made for a different version" prompt changes across versions.
+ * The button textures only exist from Minecraft 1.20.2 onward (the version
+ * that introduced this sprite system); older instances simply never look at
+ * that path and keep vanilla buttons, with no error and no missing texture.
  */
 import AdmZip from 'adm-zip'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
