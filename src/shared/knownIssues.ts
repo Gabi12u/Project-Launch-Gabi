@@ -39,6 +39,15 @@ export const ISSUE_STATE_LABEL: Record<IssueState, string> = {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
+    id: 'launcher-schwarz-bei-spielstart',
+    title: 'Launcher wird beim Spielstart komplett schwarz und reagiert nicht mehr',
+    detail:
+      'Startet man Minecraft aus dem Launcher heraus, wird das Launcher-Fenster vollständig schwarz ' +
+      'und lässt sich danach nicht mehr bedienen. Die Ursache ist noch nicht gefunden.',
+    state: 'investigating',
+    since: '2026-09-02'
+  },
+  {
     id: 'login-http-400',
     title: 'Anmeldung endet mit Fehler 400',
     detail:

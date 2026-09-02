@@ -941,6 +941,13 @@ footer a:hover { color: var(--ink); }
   // AUTO-ISSUES-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var ISSUES = [
     {
+      "id": "launcher-schwarz-bei-spielstart",
+      "title": "Launcher wird beim Spielstart komplett schwarz und reagiert nicht mehr",
+      "detail": "Startet man Minecraft aus dem Launcher heraus, wird das Launcher-Fenster vollständig schwarz und lässt sich danach nicht mehr bedienen. Die Ursache ist noch nicht gefunden.",
+      "state": "investigating",
+      "since": "2026-09-02"
+    },
+    {
       "id": "login-http-400",
       "title": "Anmeldung endet mit Fehler 400",
       "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung ganz am Ende mit einem Fehler 400 ab. Die Ursache ist noch nicht gefunden: mehrere Verdachtsfälle wurden geprüft und haben sich als falsch herausgestellt oder betrafen nur einen anderen, inzwischen behobenen Fall. Seit Version 1.0.11 wird ein solcher Fehlschlag protokolliert, vorher verschwand er spurlos. Seit 1.0.14 liest der Launcher an der Stelle, an der der Fehler vermutlich auftritt, auch aus, was Microsoft selbst als Grund nennt, statt nur die nichtssagende Zahl 400 zu zeigen. Tritt der Fehler erneut auf, sollte die Meldung jetzt mehr verraten. Wer das erlebt, hilft uns mit einem Screenshot sehr weiter.",
