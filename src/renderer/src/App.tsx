@@ -18,6 +18,7 @@ import { Ambient } from './components/Ambient'
 import { CommandPalette } from './components/CommandPalette'
 import { Logo } from './components/Logo'
 import { CompatibilityGate } from './components/CompatibilityPanel'
+import { UpdateGate } from './components/UpdateGate'
 import { ReportConsent } from './components/ReportConsent'
 import { StartScreenPrompt } from './components/StartScreenPrompt'
 import { CreateInstanceWizard } from './views/CreateInstanceWizard'
@@ -296,6 +297,7 @@ export function App(): JSX.Element {
       <Toasts />
       <CommandPalette />
       <CompatibilityGate />
+      <UpdateGate />
       <CreateInstanceWizard open={createOpen} onClose={() => setState({ createOpen: false })} />
     </div>
   )

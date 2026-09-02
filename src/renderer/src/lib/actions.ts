@@ -45,6 +45,28 @@ export async function startInstance(instanceId: string, instanceName: string): P
       return
     }
 
+    // Compatibility only looks at whether the mods work together, not at
+    // whether a newer version of one of them exists. Checked from the list
+    // already in the store rather than a fresh request, so this adds no
+    // delay to an ordinary Play click; it is only as current as the last
+    // update check, exactly like the badge next to this same instance.
+    const summary = getState().instances.find((i) => i.id === instanceId)
+    if (summary && summary.updateCount > 0) {
+      const claimed = getState().modUpdateGate
+      if (claimed && claimed.instanceId !== instanceId) {
+        toast(
+          'warning',
+          `${instanceName} kann nicht starten`,
+          'Es gibt veraltete Mods bei einer anderen Instanz. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          8000
+        )
+        return
+      }
+
+      setState({ modUpdateGate: { instanceId, instanceName, count: summary.updateCount } })
+      return
+    }
+
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {

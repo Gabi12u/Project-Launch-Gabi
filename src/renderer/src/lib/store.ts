@@ -32,6 +32,8 @@ export interface AppState {
   paletteOpen: boolean
   /** Populated when a launch was stopped by compatibility problems. */
   compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
+  /** Populated when a launch is paused to ask about outdated mods first. */
+  modUpdateGate: { instanceId: string; instanceName: string; count: number } | null
   /** Instances whose launch is currently being prepared in the UI. */
   starting: string[]
   /** What the screen recorder is doing, for the indicator in the title bar. */
@@ -60,6 +62,7 @@ const initial: AppState = {
   createOpen: false,
   paletteOpen: false,
   compatGate: null,
+  modUpdateGate: null,
   starting: [],
   recording: { active: false, instanceId: null, startedAt: null, bytes: 0 },
   updateReady: null

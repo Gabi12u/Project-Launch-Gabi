@@ -39,6 +39,21 @@ export const ISSUE_STATE_LABEL: Record<IssueState, string> = {
 
 export const KNOWN_ISSUES: KnownIssue[] = [
   {
+    id: 'mod-entfernen-kommt-zurueck',
+    title: 'Ein entfernter Mod konnte von selbst wieder auftauchen',
+    detail:
+      'Entfernen war die einzige Änderung an den Mods einer Instanz, die nicht mit einem gleichzeitigen ' +
+      'Abgleich der Mod-Liste mit der Festplatte zusammengehalten wurde. Fiel ein Entfernen genau in einen ' +
+      'solchen Abgleich, etwa durch das Öffnen der Instanzseite oder eine Update-Prüfung, konnte der ' +
+      'Abgleich den gerade entfernten Mod anhand seines noch nicht verschwundenen Standes erneut in die ' +
+      'Liste schreiben. Seit 1.0.16 hält das Entfernen den Abgleich zurück, bis es fertig ist, genau wie ' +
+      'es Installieren und Aktualisieren schon immer taten. Die Reparaturfunktion räumt bei dieser ' +
+      'Gelegenheit auch schon vorhandene Dubletten aus früheren Fällen auf.',
+    state: 'fixed',
+    since: '2026-09-02',
+    fixedIn: '1.0.16'
+  },
+  {
     id: 'launcher-schwarz-bei-spielstart',
     title: 'Launcher wird beim Spielstart komplett schwarz und reagiert nicht mehr',
     detail:

@@ -10,7 +10,7 @@ import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } f
 import { clientJarPath, installVersion, loadVersionJson, resolveLibraries , type VersionJson } from './mojang'
 import { requiredJavaMajor, resolveJava } from './java'
 import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
-import { contentFilePath } from './content'
+import { checkUpdates, contentFilePath, removeContent } from './content'
 import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
@@ -61,6 +61,40 @@ function unchanged(before: ContentItem, now: ContentItem): boolean {
     before.version === now.version &&
     before.enabled === now.enabled
   )
+}
+
+/**
+ * Every entry beyond the one to keep, for every project installed more than
+ * once in the same instance.
+ *
+ * Exported on its own because what counts as "the same mod twice" and which
+ * copy survives is exactly the part worth pinning down with a direct test:
+ * this decides which files get deleted from someone's disk, and a mistake
+ * here (keeping the old file, dropping the new one) is not something a
+ * reader would notice from `runRepair` alone.
+ *
+ * Local, hand-added files are left out entirely. Two unrelated jars a user
+ * dropped in by hand can share nothing to key on but a guess, and a wrong
+ * guess there deletes something the automated case never touches.
+ */
+export function findDuplicateContent(content: ContentItem[]): ContentItem[] {
+  const groups = new Map<string, ContentItem[]>()
+  for (const item of content) {
+    if (!item.projectId) continue
+    const key = `${item.type}|${item.provider}|${item.projectId}`
+    const list = groups.get(key) ?? []
+    list.push(item)
+    groups.set(key, list)
+  }
+
+  const stale: ContentItem[] = []
+  for (const group of groups.values()) {
+    if (group.length < 2) continue
+    // Newest install kept, on the assumption that whichever mod update
+    // landed most recently is the one the user actually meant to end up with.
+    stale.push(...[...group].sort((a, b) => b.installedAt - a.installedAt).slice(1))
+  }
+  return stale
 }
 
 export async function repairInstance(instanceId: string): Promise<RepairReport> {
@@ -277,6 +311,7 @@ async function runRepair(
 
     let restored = 0
     let removed = 0
+    let duplicatesRemoved = 0
     let contentCount = 0
     const failed: string[] = []
 
@@ -287,6 +322,26 @@ async function runRepair(
     // start into the folder mid rewrite, and the mod buttons stayed enabled.
     await withContentLock(instanceId, async () => {
       await syncContentWithDisk(instanceId)
+
+      // Two records for the same project, one of them stale. This is the
+      // shape the old race in `removeContent` left behind: an update
+      // downloaded the new file and wrote its record, a disk scan landed in
+      // the gap before the old file was gone and registered it as a second,
+      // unrelated mod. That race is closed now, but a folder it already hit
+      // still carries the leftover, so repair cleans up after it here rather
+      // than leaving it for the user to notice and sort out by hand.
+      // Resolved before anything below takes its own snapshot of the list, so
+      // the rest of this step only ever sees the deduplicated set.
+      for (const item of findDuplicateContent(getInstance(instanceId).content)) {
+        try {
+          await removeContent(instanceId, item.id)
+          duplicatesRemoved++
+          logger.info(`Doppelten Mod ${item.name} (${item.fileName}) entfernt`)
+        } catch (err) {
+          logger.warn(`Doppelter Mod ${item.name} konnte nicht entfernt werden:`, err)
+        }
+      }
+
       const current = getInstance(instanceId)
       const survivors = [...current.content]
       contentCount = current.content.length
@@ -406,17 +461,34 @@ async function runRepair(
     })
     report.repairedFiles += restored
 
-    const changed = restored > 0 || removed > 0
+    // Refreshed after the restoration above has already settled, so this
+    // reads the repaired list rather than racing its own persist against it.
+    let outdated = 0
+    try {
+      const withUpdates = await checkUpdates(instanceId)
+      outdated = withUpdates.content.filter((c) => c.update).length
+    } catch (err) {
+      logger.warn(`Update-Prüfung während der Reparatur übersprungen:`, err)
+    }
+
+    const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
+    const parts = [
+      ...(duplicatesRemoved > 0 ? [`${duplicatesRemoved} doppelt installierte entfernt`] : []),
+      `${restored} neu geladen`,
+      `${removed} verwaiste Einträge entfernt`,
+      ...(outdated > 0 ? [`${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`] : [])
+    ]
     step(
       'Mods & Inhalte',
       failed.length > 0 ? 'failed' : changed ? 'repaired' : 'ok',
       failed.length > 0
-        ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt, ` +
-          `${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
+        ? `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
           (failed.length > 3 ? ' und weitere' : '')
         : changed
-          ? `${restored} neu geladen, ${removed} verwaiste Einträge entfernt`
-          : `${contentCount} Dateien in Ordnung`
+          ? parts.join(', ')
+          : outdated > 0
+            ? `${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`
+            : `${contentCount} Dateien in Ordnung`
     )
 
     // 7. Java ----------------------------------------------------------

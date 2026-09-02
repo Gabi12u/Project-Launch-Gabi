@@ -288,15 +288,49 @@ async function installContentOnce(
  * Removing
  * ------------------------------------------------------------------ */
 
-export function removeContent(instanceId: string, contentId: string): Instance {
+/**
+ * Every other write in this file holds `withContentLock` while it touches the
+ * content folder, specifically so `syncContentWithDisk` skips its scan rather
+ * than reconciling a folder mid-rewrite. This one did not: deleting a mod
+ * while a scan was mid-flight (opening the instance page, a compatibility
+ * check, an update check, all of which trigger one) let the scan's own,
+ * already-in-progress read of the old directory listing win the race and
+ * write the "deleted" mod straight back into the record the moment it
+ * finished, undoing the removal without any error to explain why.
+ */
+export function removeContent(instanceId: string, contentId: string): Promise<Instance> {
+  return withContentLock(instanceId, () => removeContentOnce(instanceId, contentId))
+}
+
+async function removeContentOnce(instanceId: string, contentId: string): Promise<Instance> {
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
   if (!item) return instance
 
   const file = contentPath(contentDir(instanceId, item.type), item.fileName)
-  rmSync(file, { force: true })
-  logger.info(`${item.name} aus ${instanceId} entfernt`)
 
+  // Retried once before giving up, same as the update path: the usual reason
+  // a delete fails is a scanner or indexer holding the file open for a
+  // moment. Unlike that path, a failure here must not drop the record anyway
+  // — doing so would leave the file behind with nothing tracking it, and the
+  // next scan would register it as a "new" mod, which is exactly the
+  // reappearing-after-deletion symptom this is fixing, not something to
+  // reintroduce for the case the retry does not cover.
+  try {
+    rmSync(file, { force: true })
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    try {
+      rmSync(file, { force: true })
+    } catch (err) {
+      throw new Error(
+        `${item.name} konnte nicht gelöscht werden, die Datei wird noch von einem anderen Programm verwendet.`,
+        { cause: err }
+      )
+    }
+  }
+
+  logger.info(`${item.name} aus ${instanceId} entfernt`)
   return removeContentRecord(instanceId, contentId)
 }
 
@@ -622,7 +656,7 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
 
     case 'remove-content': {
       if (!fix.contentId) return
-      removeContent(instanceId, fix.contentId)
+      await removeContent(instanceId, fix.contentId)
       return
     }
 

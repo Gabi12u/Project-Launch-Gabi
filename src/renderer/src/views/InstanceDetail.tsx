@@ -563,6 +563,7 @@ function ContentTab({
   const [updating, setUpdating] = useState<string | null>(null)
   const menu = useContextMenu<ContentItem>()
   const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
+  const [confirmUpdate, setConfirmUpdate] = useState<ContentItem | null>(null)
 
   const items = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -602,6 +603,25 @@ function ContentTab({
       toastError(err, 'Update fehlgeschlagen')
     } finally {
       setChecking(false)
+    }
+  }
+
+  // Shared by the inline row button and the context menu entry, both of which
+  // only ask `setConfirmUpdate` to show the dialog below rather than updating
+  // right away. Updating all at once already asks for confirmation through
+  // its own explicit "N Updates installieren" button; one mod clicked by
+  // itself did not, and a wrong click there quietly replaced a version the
+  // user may have picked on purpose.
+  const runUpdate = async (item: ContentItem): Promise<void> => {
+    setUpdating(item.id)
+    try {
+      await window.gabi.content.update(instance.id, item.id)
+      toast('success', `${item.name} aktualisiert`)
+      await onChanged()
+    } catch (err) {
+      toastError(err, 'Update fehlgeschlagen')
+    } finally {
+      setUpdating(null)
     }
   }
 
@@ -687,18 +707,7 @@ function ContentTab({
               blockedReason={blockedReason}
               updating={updating === item.id}
               onContextMenu={(event) => menu.onContextMenu(event, item)}
-              onUpdate={async () => {
-                setUpdating(item.id)
-                try {
-                  await window.gabi.content.update(instance.id, item.id)
-                  toast('success', `${item.name} aktualisiert`)
-                  await onChanged()
-                } catch (err) {
-                  toastError(err, 'Update fehlgeschlagen')
-                } finally {
-                  setUpdating(null)
-                }
-              }}
+              onUpdate={() => setConfirmUpdate(item)}
               onToggle={async (enabled) => {
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
                 await onChanged()
@@ -728,18 +737,7 @@ function ContentTab({
                 toastError(err, enabled ? 'Aktivieren fehlgeschlagen' : 'Deaktivieren fehlgeschlagen')
               }
             },
-            onUpdate: async (item) => {
-              setUpdating(item.id)
-              try {
-                await window.gabi.content.update(instance.id, item.id)
-                toast('success', `${item.name} aktualisiert`)
-                await onChanged()
-              } catch (err) {
-                toastError(err, 'Update fehlgeschlagen')
-              } finally {
-                setUpdating(null)
-              }
-            },
+            onUpdate: (item) => setConfirmUpdate(item),
             onPickVersion: (item) => setVersionFor(item),
             onOpenPage: (item) => void window.gabi.app.openExternal(item.pageUrl as string),
             onRemove: async (item) => {
@@ -765,6 +763,27 @@ function ContentTab({
           onChanged={onChanged}
         />
       )}
+
+      <Confirm
+        open={confirmUpdate !== null}
+        title="Mod aktualisieren"
+        message={
+          confirmUpdate && (
+            <>
+              Nur „{confirmUpdate.name}" auf {confirmUpdate.update?.versionNumber} aktualisieren? Die
+              bisherige Datei wird dabei entfernt.
+            </>
+          )
+        }
+        confirmLabel="Ja, aktualisieren"
+        cancelLabel="Nein"
+        onConfirm={async () => {
+          const item = confirmUpdate
+          setConfirmUpdate(null)
+          if (item) await runUpdate(item)
+        }}
+        onCancel={() => setConfirmUpdate(null)}
+      />
     </div>
   )
 }

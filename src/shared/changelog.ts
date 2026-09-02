@@ -36,11 +36,27 @@ export const CHANGELOG: ChangelogRelease[] = [
   {
     version: '1.0.16',
     date: '2026-09-02',
-    headline: 'Der Launcher erholt sich jetzt selbst, wenn seine Oberfläche abstürzt.',
+    headline: 'Ein entfernter Mod bleibt jetzt auch entfernt.',
     changes: [
       {
         kind: 'fixed',
         text: 'Der Launcher konnte beim Starten von Minecraft komplett schwarz werden und ließ sich danach nicht mehr bedienen. Grund war ein Absturz oder Hänger der Programmoberfläche selbst, von dem sich der Launcher bisher nicht erholte. Er lädt sich jetzt von selbst neu, sobald das erkannt wird.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ein entfernter Mod konnte von selbst wieder in der Liste auftauchen, wenn das Entfernen mit einem gleichzeitigen Abgleich der Mod-Liste zusammenfiel, etwa durch das Öffnen der Instanzseite direkt danach.'
+      },
+      {
+        kind: 'new',
+        text: 'Die Reparaturfunktion entfernt jetzt doppelt installierte Mods, die aus dem alten Fehler oben stammen können, und zeigt an, wie viele Mods dabei als veraltet erkannt wurden.'
+      },
+      {
+        kind: 'new',
+        text: 'Bevor eine Instanz mit veralteten Mods startet, fragt der Launcher jetzt nach: sofort aktualisieren oder mit den bisherigen Versionen weiterspielen.'
+      },
+      {
+        kind: 'new',
+        text: 'Das Aktualisieren eines einzelnen Mods fragt jetzt vorher nach, statt sofort loszulegen.'
       }
     ]
   },
