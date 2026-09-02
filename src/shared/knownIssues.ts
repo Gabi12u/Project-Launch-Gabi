@@ -47,9 +47,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Programmoberfläche selbst, für den es keine Erholung gab: das Fenster blieb bestehen, zeigte aber ' +
       'nur noch seine leere Hintergrundfarbe und reagierte auf nichts mehr, ohne dass der Launcher das ' +
       'bemerkte oder von selbst behob. Was genau die Oberfläche in diesem Moment zum Absturz brachte, ist ' +
-      'nicht abschließend geklärt.',
-    state: 'fixing',
-    since: '2026-09-02'
+      'nicht abschließend geklärt. Seit 1.0.16 lädt sich der Launcher in diesem Fall von selbst neu.',
+    state: 'fixed',
+    since: '2026-09-02',
+    fixedIn: '1.0.16'
   },
   {
     id: 'login-http-400',

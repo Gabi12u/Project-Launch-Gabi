@@ -34,6 +34,17 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.16',
+    date: '2026-09-02',
+    headline: 'Der Launcher erholt sich jetzt selbst, wenn seine Oberfläche abstürzt.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Der Launcher konnte beim Starten von Minecraft komplett schwarz werden und ließ sich danach nicht mehr bedienen. Grund war ein Absturz oder Hänger der Programmoberfläche selbst, von dem sich der Launcher bisher nicht erholte. Er lädt sich jetzt von selbst neu, sobald das erkannt wird.'
+      }
+    ]
+  },
+  {
     version: '1.0.15',
     date: '2026-09-02',
     headline: 'Eigene Startseite im Minecraft-Menü, als Beta-Funktion.',
