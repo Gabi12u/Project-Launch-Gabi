@@ -34,6 +34,17 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.15',
+    date: '2026-09-02',
+    headline: 'Eigene Startseite im Minecraft-Menü, als Beta-Funktion.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Eigene Startseite (Beta): tauscht den Hintergrund im Minecraft-Hauptmenü gegen einen von Launch Gabi, über ein Ressourcenpaket, ohne das Spiel selbst zu verändern. Funktioniert mit jeder Minecraft-Version und egal ob Vanilla oder mit Mods. Einschaltbar unter Einstellungen, Darstellung, oder direkt über den Hinweis beim ersten Start nach diesem Update.'
+      }
+    ]
+  },
+  {
     version: '1.0.14',
     date: '2026-09-01',
     headline: 'Doppelte Mods, Einfrieren und mehrere Risiken beim Wiederherstellen behoben.',
