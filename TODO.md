@@ -22,19 +22,41 @@ Gebaut und typgeprüft, aber **nie gegen einen echten Fehlerfall gelaufen**:
       Internet, Datei gesperrt, Reparatur mitten drin abgebrochen, Launcher
       während eines Updates geschlossen.
 
-## Oberflächen-Umbau (entschieden, noch nicht begonnen)
+## Oberflächen-Umbau (pausiert, Richtung offen)
 
-Festgelegt am 2026-09-02, wartet auf drei Referenzbilder von Gabriel:
+**Stand 2026-09-03: Gabriel findet das ältere Aussehen besser.** Das Vorhaben
+liegt damit auf Eis, bis die Richtung geklärt ist. Nichts davon ist
+zurückgenommen, der aktuelle Stand auf `main` zeigt den neuen Look.
 
-- [ ] Navigation genau wie im Auftrag: Home, Instanzen, Mods, Resource Packs,
-      Shader, Downloads, News, Einstellungen. "Entdecken" geht dabei in
-      "Mods" auf (dort installiert und verfügbar getrennt), Backups wandert
-      in die Einstellungen.
-- [ ] Resource Packs und Shader zeigen jeweils **nur die aktive Instanz**,
-      der Bezug muss auf der Seite immer sichtbar sein.
-- [ ] Sidebar-Fuß ergänzen: Launcher-Version und Status.
-- [ ] Instanzkarten ergänzen: RAM, Speicherverbrauch, "Duplizieren".
-- [ ] Das Logo bleibt unangetastet.
+Zu klären, bevor hier weitergearbeitet wird:
+
+- [ ] Soll der Umbau zurückgenommen werden, ganz oder teilweise? Der alte
+      Zustand liegt in `d9480c1` und davor, ein Zurücknehmen wäre also
+      unkompliziert.
+- [ ] Falls er bleibt: was genau war am alten besser? Vermutlich der ruhige,
+      aber lebendige Hintergrund und die weicheren Karten, die beim Umbau
+      bewusst flach gemacht wurden.
+
+Schon umgesetzt und auf `main`:
+
+- [x] Navigation als Leiste oben, umschaltbar auf die alte Seitenspalte
+      unter Einstellungen, Darstellung.
+- [x] Neue Seiten Resource Packs, Shader (jeweils nur aktive Instanz),
+      Downloads und News. "Entdecken" ist ein Reiter in "Mods", Backups ein
+      Abschnitt in den Einstellungen.
+- [x] Instanzen als Liste mit Chips, grünem Start-Knopf und Menü, dazu die
+      Panels für aktuelle Instanz und Speicher.
+- [x] "Duplizieren" ist jetzt erreichbar, gab es im Hintergrund längst.
+- [x] Zier-Effekte entfernt: driftende Farbfelder, Würfel, Bodengitter,
+      Zeiger-Beleuchtung, 3D-Neigung, Parallaxe, Verlaufsschrift, Glühen
+      hinter Symbolen, Verlauf auf dem Primärknopf.
+
+Noch nicht angefasst:
+
+- [ ] Sidebar-Fuß: Launcher-Version und Status.
+- [ ] RAM und Speicherverbrauch auf den Instanzkarten selbst.
+- [ ] Instanz-Detailseite und Einstellungen sind noch im alten Aufbau.
+- [ ] Das Logo bleibt unangetastet, in jeder Variante.
 
 ## Eigenes Minecraft-Hauptmenü
 
