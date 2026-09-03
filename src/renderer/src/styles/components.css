@@ -391,30 +391,23 @@
   cursor: not-allowed;
 }
 
+/* Flat, one colour, no glow. The gradient and the shadow underneath it
+   were the two things that made every primary button read as a landing
+   page rather than a desktop app. */
 .btn.primary {
-  background: var(--grad-accent);
+  background: var(--accent);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 6px 20px -8px var(--accent-glow), var(--edge-strong);
 }
 
-/* Light sweeps across primary buttons on hover. */
-.btn.primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 32%, rgba(255, 255, 255, 0.28) 50%, transparent 68%);
-  transform: translateX(-130%);
-  transition: transform 620ms var(--ease);
+.btn.lg {
+  height: 44px;
+  padding: 0 20px;
+  font-size: 14px;
 }
 
 .btn.primary:hover:not(:disabled) {
-  filter: brightness(1.09);
-  box-shadow: 0 12px 30px -8px var(--accent-glow), var(--edge-strong);
-}
-
-.btn.primary:hover:not(:disabled)::after {
-  transform: translateX(130%);
+  filter: brightness(1.1);
 }
 
 .btn.ghost {
