@@ -271,11 +271,8 @@
 /* --- Page headers ---------------------------------------------------- */
 
 .page-title {
-  font-size: 33px;
-  background: linear-gradient(175deg, var(--text), color-mix(in srgb, var(--text) 58%, transparent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 30px;
+  color: var(--text);
 }
 
 /* --- Section headers ------------------------------------------------- */
@@ -401,10 +398,7 @@
 }
 
 .titlebar-title {
-  background: linear-gradient(100deg, var(--text-2), var(--text-4));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-3);
 }
 
 /* The palette trigger sits with the window buttons but is not one of them. */
@@ -429,14 +423,7 @@
   color: var(--accent);
 }
 
-.empty-icon::before {
-  content: '';
-  position: absolute;
-  inset: -18px;
-  border-radius: inherit;
-  background: radial-gradient(circle, var(--accent-glow), transparent 68%);
-  opacity: 0.32;
-}
+
 
 /* --- Modals ------------------------------------------------------------- */
 

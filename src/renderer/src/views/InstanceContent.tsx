@@ -69,7 +69,7 @@ export function InstanceContentView({ type }: Props): JSX.Element {
       <header className="row-between wrap gap-12">
         <div>
           <h1 className="page-title">{copy.title}</h1>
-          <p className="hint">{copy.subtitle}</p>
+          <p className="page-sub">{copy.subtitle}</p>
         </div>
 
         {active && (

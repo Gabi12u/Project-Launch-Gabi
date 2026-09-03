@@ -3,7 +3,7 @@ import type { InstanceSummary, LauncherStats, NewsItem } from '@shared/types'
 import type { AppInfo } from '@shared/api'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance } from '../lib/actions'
-import { useCountUp, useSpotlight } from '../lib/hooks'
+import { useCountUp } from '../lib/hooks'
 import { clickable } from '../lib/a11y'
 import { formatDate, formatPlayTime } from '../lib/format'
 import { InstanceTile } from '../components/InstanceEntry'
@@ -309,14 +309,11 @@ function Stat({
 }
 
 export function NewsCard({ item }: { item: NewsItem }): JSX.Element {
-  const spotlight = useSpotlight<HTMLElement>()
-
   return (
     <article
       className="project-card"
       aria-label={item.title}
       {...clickable(() => void window.gabi.app.openExternal(item.url))}
-      {...spotlight}
     >
       {item.imageUrl ? (
         <img className="project-icon" src={item.imageUrl} alt="" loading="lazy" />

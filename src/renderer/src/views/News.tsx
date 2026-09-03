@@ -22,7 +22,7 @@ export function NewsView(): JSX.Element {
     <div className="col gap-24">
       <header>
         <h1 className="page-title">News</h1>
-        <p className="hint">Neues rund um Minecraft und Launch Gabi</p>
+        <p className="page-sub">Neues rund um Minecraft und Launch Gabi</p>
       </header>
 
       {news === null ? (

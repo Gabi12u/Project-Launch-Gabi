@@ -21,7 +21,7 @@ export function DownloadsView(): JSX.Element {
     <div className="col gap-24">
       <header>
         <h1 className="page-title">Downloads</h1>
-        <p className="hint">Laufende und zuletzt abgeschlossene Vorgänge</p>
+        <p className="page-sub">Laufende und zuletzt abgeschlossene Vorgänge</p>
       </header>
 
       {updateStatus && updateStatus.state !== 'idle' && updateStatus.state !== 'disabled' && (
