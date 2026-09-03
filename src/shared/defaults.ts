@@ -51,7 +51,6 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   recordingQuality: 'medium',
   recordingAudio: true,
   recordingMaxMinutes: 15,
-  customStartScreen: 'unset',
   crashReports: 'unset',
   lastRunVersion: '',
   lastSeenVersion: '',

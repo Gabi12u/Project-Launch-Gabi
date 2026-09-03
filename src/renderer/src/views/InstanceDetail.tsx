@@ -8,7 +8,7 @@ import type {
 } from '@shared/types'
 import type { InstanceDetail, RecordingInfo, ScreenshotInfo, WorldInfo } from '@shared/api'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
-import { createShortcut, startInstance, stopInstance } from '../lib/actions'
+import { createShortcut, repairInstanceWithOverlay, startInstance, stopInstance } from '../lib/actions'
 import { clickable } from '../lib/a11y'
 import {
   LOADER_LABELS,
@@ -153,24 +153,13 @@ export function InstanceDetailView({
 
   const repair = async (): Promise<void> => {
     setRepairing(true)
+    const instanceName = instance?.name ?? summary?.name ?? instanceId
     try {
-      const result = await window.gabi.instances.repair(instanceId)
-      const repaired = result.steps.filter((s) => s.status === 'repaired').length
-      const failed = result.steps.filter((s) => s.status === 'failed').length
-
-      toast(
-        failed > 0 ? 'warning' : 'success',
-        'Reparatur abgeschlossen',
-        `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ` +
-          `${result.repairedFiles} erneuert, ${repaired} ${pluralise(repaired, 'Bereich', 'Bereiche')} korrigiert` +
-          (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
-          '.',
-        9000
-      )
+      // The overlay this drives lives in the global store, not here, so it
+      // stays open even if the user navigates away from this page mid-repair.
+      await repairInstanceWithOverlay(instanceId, instanceName)
       await load()
       await runChecks()
-    } catch (err) {
-      toastError(err, 'Reparatur fehlgeschlagen')
     } finally {
       setRepairing(false)
     }

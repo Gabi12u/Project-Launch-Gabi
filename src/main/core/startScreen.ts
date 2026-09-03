@@ -1,4 +1,12 @@
 /**
+ * Paused as a shipped feature (2026-09-02): pulled from Settings and the
+ * one-time prompt pending a real redesign of the whole approach, not because
+ * anything here is broken. `applyCustomStartScreen` is unused now and no
+ * longer reachable from `launch.ts`; `removeCustomStartScreen` stays wired
+ * in so anyone who opted in before this got pulled still gets cleaned up.
+ * Left in place, including the resource pack build script and its output,
+ * for whatever the next version of this turns out to be.
+ *
  * The "eigene Startseite" beta feature: swaps Minecraft's own title screen
  * panorama, and the standard button textures, for a Launch-Gabi-branded look
  * via a resource pack, no game code touched. Works on any instance, vanilla

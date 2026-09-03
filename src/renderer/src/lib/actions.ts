@@ -1,5 +1,36 @@
 import { getState, refreshInstances, setState, toast, toastError } from './store'
 import { renderInstanceIcon } from './icon'
+import { pluralise } from './format'
+
+/**
+ * Runs a repair and drives the global overlay through it, so the same flow
+ * works from the instance page's own button and from "Mods prüfen &
+ * reparieren" on a crashed launch, without either one reaching into the
+ * other's local component state.
+ */
+export async function repairInstanceWithOverlay(instanceId: string, instanceName: string): Promise<void> {
+  if (getState().repairGate) return
+  setState({ repairGate: { instanceId, instanceName, report: null } })
+  try {
+    const result = await window.gabi.instances.repair(instanceId)
+    setState((current) =>
+      current.repairGate?.instanceId === instanceId ? { repairGate: { ...current.repairGate, report: result } } : {}
+    )
+    const failed = result.steps.filter((s) => s.status === 'failed').length
+    toast(
+      failed > 0 ? 'warning' : 'success',
+      'Reparatur abgeschlossen',
+      `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ${result.repairedFiles} erneuert` +
+        (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
+        '.',
+      9000
+    )
+    await refreshInstances()
+  } catch (err) {
+    setState((current) => (current.repairGate?.instanceId === instanceId ? { repairGate: null } : {}))
+    toastError(err, 'Reparatur fehlgeschlagen')
+  }
+}
 
 /**
  * Starts an instance. The compatibility check runs first so blocking problems
@@ -67,6 +98,7 @@ export async function startInstance(instanceId: string, instanceName: string): P
       return
     }
 
+    setState({ launchOverlay: { instanceId, instanceName } })
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
@@ -79,6 +111,7 @@ export async function startInstance(instanceId: string, instanceName: string): P
 /** Starts without the compatibility gate, used by the "trotzdem starten" path. */
 export async function startInstanceForced(instanceId: string, instanceName: string): Promise<void> {
   setState((current) => ({ starting: [...current.starting, instanceId] }))
+  setState({ launchOverlay: { instanceId, instanceName } })
   try {
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()

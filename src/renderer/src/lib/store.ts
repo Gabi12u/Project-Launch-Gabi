@@ -8,8 +8,10 @@ import type {
   LauncherSettings,
   LaunchStatus,
   RecordingState,
-  TaskProgress
+  TaskProgress,
+  UpdateStatus
 } from '@shared/types'
+import type { RepairReport } from '@shared/api'
 
 /* ------------------------------------------------------------------ *
  * A minimal external store. React subscribes through useSyncExternalStore,
@@ -34,6 +36,10 @@ export interface AppState {
   compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
   /** Populated when a launch is paused to ask about outdated mods first. */
   modUpdateGate: { instanceId: string; instanceName: string; count: number } | null
+  /** Populated while the repair overlay is open for an instance. */
+  repairGate: { instanceId: string; instanceName: string; report: RepairReport | null } | null
+  /** Populated from the moment Play is accepted until the launch overlay is dismissed. */
+  launchOverlay: { instanceId: string; instanceName: string } | null
   /** Instances whose launch is currently being prepared in the UI. */
   starting: string[]
   /** What the screen recorder is doing, for the indicator in the title bar. */
@@ -47,6 +53,8 @@ export interface AppState {
    * never saw it again.
    */
   updateReady: string | null
+  /** Live state of the launcher's own updater, pushed from the main process. */
+  updateStatus: UpdateStatus | null
 }
 
 const initial: AppState = {
@@ -63,9 +71,12 @@ const initial: AppState = {
   paletteOpen: false,
   compatGate: null,
   modUpdateGate: null,
+  repairGate: null,
+  launchOverlay: null,
   starting: [],
   recording: { active: false, instanceId: null, startedAt: null, bytes: 0 },
-  updateReady: null
+  updateReady: null,
+  updateStatus: null
 }
 
 let state: AppState = initial

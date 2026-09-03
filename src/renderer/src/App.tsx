@@ -19,8 +19,10 @@ import { CommandPalette } from './components/CommandPalette'
 import { Logo } from './components/Logo'
 import { CompatibilityGate } from './components/CompatibilityPanel'
 import { UpdateGate } from './components/UpdateGate'
+import { UpdateOverlay } from './components/UpdateOverlay'
+import { RepairOverlay } from './components/RepairOverlay'
+import { LaunchOverlay } from './components/LaunchOverlay'
 import { ReportConsent } from './components/ReportConsent'
-import { StartScreenPrompt } from './components/StartScreenPrompt'
 import { CreateInstanceWizard } from './views/CreateInstanceWizard'
 import { Onboarding } from './views/Onboarding'
 import { HomeView } from './views/Home'
@@ -63,7 +65,10 @@ export function App(): JSX.Element {
         // downloading while the window is closed to the tray, and then no
         // event ever reaches this session.
         const update = await window.gabi.updates.status()
-        if (update.state === 'ready') setState({ updateReady: update.version ?? '' })
+        setState({
+          updateStatus: update,
+          ...(update.state === 'ready' ? { updateReady: update.version ?? '' } : {})
+        })
       } catch {
         // no marker, the settings page still shows the truth
       }
@@ -137,7 +142,10 @@ export function App(): JSX.Element {
       window.gabi.events.onRecordingState((recording) => setState({ recording })),
 
       window.gabi.events.onUpdateStatus((status) => {
-        setState({ updateReady: status.state === 'ready' ? (status.version ?? '') : null })
+        setState({
+          updateReady: status.state === 'ready' ? (status.version ?? '') : null,
+          updateStatus: status
+        })
       })
     ]
 
@@ -293,11 +301,13 @@ export function App(): JSX.Element {
 
       <TaskDock />
       <ReportConsent />
-      <StartScreenPrompt />
       <Toasts />
       <CommandPalette />
       <CompatibilityGate />
       <UpdateGate />
+      <UpdateOverlay />
+      <RepairOverlay />
+      <LaunchOverlay />
       <CreateInstanceWizard open={createOpen} onClose={() => setState({ createOpen: false })} />
     </div>
   )
