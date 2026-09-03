@@ -11,7 +11,14 @@ import { IconCompass, IconPlus } from '../components/Icons'
  * an instance here — the browser then filters by that instance's version and
  * loader automatically.
  */
-export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element {
+export function DiscoverView({
+  query,
+  embedded
+}: {
+  query: URLSearchParams
+  /** Rendered as a tab inside Mods, which supplies the page heading. */
+  embedded?: boolean
+}): JSX.Element {
   const { instances } = useStore()
 
   const [target, setTarget] = useState<string>('')
@@ -61,12 +68,16 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
   return (
     <div className="col gap-24">
       <header className="row-between wrap">
-        <div>
-          <h1 className="page-title">Entdecken</h1>
-          <p className="page-sub">
-            Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.
-          </p>
-        </div>
+        {embedded ? (
+          <div />
+        ) : (
+          <div>
+            <h1 className="page-title">Entdecken</h1>
+            <p className="page-sub">
+              Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.
+            </p>
+          </div>
+        )}
 
         {instances.length > 0 && (
           <div className="row gap-8">

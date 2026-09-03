@@ -27,10 +27,6 @@ interface Row {
 }
 
 /**
- * Cross-instance mod overview: one place to see everything installed and to
- * apply every pending update without walking through each instance.
- */
-/**
  * Mods, both halves of it: what is installed across every instance, and the
  * Modrinth/CurseForge browser that used to be its own "Entdecken" entry in
  * the navigation. One page, two tabs, because looking for a mod and looking
@@ -50,6 +46,13 @@ export function ModsView({ query }: { query?: URLSearchParams }): JSX.Element {
 
   return (
     <div className="col gap-20">
+      <header>
+        <h1 className="page-title">Mods</h1>
+        <p className="page-sub">
+          Was installiert ist, und was es bei Modrinth und CurseForge zu holen gibt.
+        </p>
+      </header>
+
       <div className="segmented" style={{ alignSelf: 'flex-start' }}>
         <button className={tab === 'installed' ? 'active' : ''} onClick={() => setTab('installed')}>
           Installiert
@@ -59,11 +62,19 @@ export function ModsView({ query }: { query?: URLSearchParams }): JSX.Element {
         </button>
       </div>
 
-      {tab === 'installed' ? <InstalledMods /> : <DiscoverView query={query ?? new URLSearchParams()} />}
+      {tab === 'installed' ? (
+        <InstalledMods />
+      ) : (
+        <DiscoverView query={query ?? new URLSearchParams()} embedded />
+      )}
     </div>
   )
 }
 
+/**
+ * Everything installed across every instance, with every pending update
+ * appliable without walking through the instances one by one.
+ */
 function InstalledMods(): JSX.Element {
   const { instances } = useStore()
 
@@ -235,14 +246,10 @@ function InstalledMods(): JSX.Element {
   return (
     <div className="col gap-24">
       <header className="row-between wrap">
-        <div>
-          <h1 className="page-title">Mods</h1>
-          <p className="page-sub">
-            Alle Inhalte über sämtliche Instanzen hinweg, {rows.length}{' '}
-            {pluralise(rows.length, 'Eintrag', 'Einträge')}
-            {totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : ''}.
-          </p>
-        </div>
+        <p className="page-sub" style={{ marginTop: 0 }}>
+          {rows.length} {pluralise(rows.length, 'Eintrag', 'Einträge')} über sämtliche Instanzen
+          {totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : ''}.
+        </p>
 
         <div className="row gap-8">
           <button className="btn" onClick={checkAll} disabled={checking || instances.length === 0}>
