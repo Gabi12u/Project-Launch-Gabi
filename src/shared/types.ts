@@ -485,6 +485,9 @@ export interface LaunchPreflight {
  * Settings
  * ------------------------------------------------------------------ */
 
+/** Navigation layout: a bar across the top, or the original side column. */
+export type NavPosition = 'top' | 'side'
+
 export type ThemeId =
   | 'midnight'
   | 'nebula'
@@ -518,6 +521,11 @@ export interface LauncherSettings {
   theme: ThemeId
   accentColor: string
   reduceMotion: boolean
+  /**
+   * Where the navigation sits: a bar across the top, or the column down the
+   * side the launcher started out with. Both show the same entries.
+   */
+  navPosition: NavPosition
   launchBehaviour: LaunchBehaviour
   startMinimized: boolean
   launchOnStartup: boolean

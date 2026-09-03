@@ -1,25 +1,10 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
+import { NAV_ENTRIES } from '../lib/nav'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
-import {
-  IconCompass,
-  IconGrid,
-  IconHome,
-  IconPackage,
-  IconSave,
-  IconSearch,
-  IconSettings
-} from './Icons'
-
-interface NavEntry {
-  id: string
-  label: string
-  icon: JSX.Element
-  route: string
-  badge?: number
-}
+import { IconSearch, IconSettings } from './Icons'
 
 export function Sidebar(): JSX.Element {
   const { route, instances, accounts, updateReady } = useStore()
@@ -30,13 +15,7 @@ export function Sidebar(): JSX.Element {
   const active = accounts.find((a) => a.active)
   const running = instances.filter((i) => i.running).length
 
-  const entries: NavEntry[] = [
-    { id: 'home', label: 'Home', icon: <IconHome />, route: '/home' },
-    { id: 'instances', label: 'Instanzen', icon: <IconGrid />, route: '/instances' },
-    { id: 'mods', label: 'Mods', icon: <IconPackage />, route: '/mods', badge: updateCount },
-    { id: 'discover', label: 'Entdecken', icon: <IconCompass />, route: '/discover' },
-    { id: 'backups', label: 'Backups', icon: <IconSave />, route: '/backups' }
-  ]
+  const entries = NAV_ENTRIES.filter((entry) => !entry.trailing)
 
   /* --- Sliding active pill ----------------------------------------- */
   const navRef = useRef<HTMLDivElement | null>(null)
@@ -92,7 +71,9 @@ export function Sidebar(): JSX.Element {
             >
               {entry.icon}
               <span>{entry.label}</span>
-              {entry.badge ? <span className="nav-badge">{entry.badge}</span> : null}
+              {entry.id === 'mods' && updateCount > 0 ? (
+                <span className="nav-badge">{updateCount}</span>
+              ) : null}
             </button>
           ))}
 

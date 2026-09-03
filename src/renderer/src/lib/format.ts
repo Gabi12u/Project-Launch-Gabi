@@ -1,5 +1,35 @@
 import type { CSSProperties } from 'react'
-import type { LoaderId } from '@shared/types'
+import type { LoaderId, UpdateStatus } from '@shared/types'
+
+/**
+ * Human readable state line for the launcher's own updater.
+ *
+ * Lives here rather than in the settings view it started in, because the
+ * update overlay and the downloads page say the same thing and had no
+ * business importing a view to do it.
+ */
+export function updateHeadline(status: UpdateStatus): string {
+  switch (status.state) {
+    case 'checking':
+      return 'Suche nach Updates…'
+    case 'available':
+      return `Version ${status.version} verfügbar`
+    case 'downloading':
+      return `Wird geladen… ${Math.round(status.percent ?? 0)}%`
+    case 'ready':
+      return `Version ${status.version} ist bereit`
+    case 'installing':
+      return `Version ${status.version} wird installiert, der Launcher startet gleich neu…`
+    case 'up-to-date':
+      return 'Launch Gabi ist aktuell'
+    case 'error':
+      return 'Update-Prüfung fehlgeschlagen'
+    case 'disabled':
+      return 'Updates nur in der installierten Version'
+    default:
+      return `Version ${status.currentVersion}`
+  }
+}
 
 export function formatBytes(bytes: number, decimals = 1): string {
   if (!bytes || bytes < 0) return '0 B'

@@ -10,6 +10,7 @@ import {
   pluralise
 } from '../lib/format'
 import { EmptyState } from '../components/ui'
+import { DiscoverView } from './Discover'
 import {
   IconChevronRight,
   IconDownload,
@@ -29,7 +30,41 @@ interface Row {
  * Cross-instance mod overview: one place to see everything installed and to
  * apply every pending update without walking through each instance.
  */
-export function ModsView(): JSX.Element {
+/**
+ * Mods, both halves of it: what is installed across every instance, and the
+ * Modrinth/CurseForge browser that used to be its own "Entdecken" entry in
+ * the navigation. One page, two tabs, because looking for a mod and looking
+ * at the ones you have are the same errand.
+ */
+export function ModsView({ query }: { query?: URLSearchParams }): JSX.Element {
+  const wanted = query?.get('tab')
+  const [tab, setTab] = useState<'installed' | 'discover'>(
+    wanted === 'discover' ? 'discover' : 'installed'
+  )
+
+  // A link can land here while the page is already open, so the tab follows
+  // the query rather than only seeding from it once.
+  useEffect(() => {
+    if (wanted === 'discover' || wanted === 'installed') setTab(wanted)
+  }, [wanted])
+
+  return (
+    <div className="col gap-20">
+      <div className="segmented" style={{ alignSelf: 'flex-start' }}>
+        <button className={tab === 'installed' ? 'active' : ''} onClick={() => setTab('installed')}>
+          Installiert
+        </button>
+        <button className={tab === 'discover' ? 'active' : ''} onClick={() => setTab('discover')}>
+          Verfügbar
+        </button>
+      </div>
+
+      {tab === 'installed' ? <InstalledMods /> : <DiscoverView query={query ?? new URLSearchParams()} />}
+    </div>
+  )
+}
+
+function InstalledMods(): JSX.Element {
   const { instances } = useStore()
 
   const [rows, setRows] = useState<Row[]>([])

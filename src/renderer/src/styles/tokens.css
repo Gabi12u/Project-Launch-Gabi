@@ -88,6 +88,8 @@
 
   /* Layout */
   --titlebar-h: 42px;
+  /* Taller than the plain title bar: this one carries the navigation too. */
+  --topbar-h: 52px;
   --sidebar-w: 232px;
   --sidebar-w-collapsed: 76px;
 

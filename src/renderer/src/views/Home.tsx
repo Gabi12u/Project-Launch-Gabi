@@ -380,7 +380,7 @@ function Stat({
   )
 }
 
-function NewsCard({ item }: { item: NewsItem }): JSX.Element {
+export function NewsCard({ item }: { item: NewsItem }): JSX.Element {
   const spotlight = useSpotlight<HTMLElement>()
 
   return (

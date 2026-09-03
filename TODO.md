@@ -22,6 +22,20 @@ Gebaut und typgeprüft, aber **nie gegen einen echten Fehlerfall gelaufen**:
       Internet, Datei gesperrt, Reparatur mitten drin abgebrochen, Launcher
       während eines Updates geschlossen.
 
+## Oberflächen-Umbau (entschieden, noch nicht begonnen)
+
+Festgelegt am 2026-09-02, wartet auf drei Referenzbilder von Gabriel:
+
+- [ ] Navigation genau wie im Auftrag: Home, Instanzen, Mods, Resource Packs,
+      Shader, Downloads, News, Einstellungen. "Entdecken" geht dabei in
+      "Mods" auf (dort installiert und verfügbar getrennt), Backups wandert
+      in die Einstellungen.
+- [ ] Resource Packs und Shader zeigen jeweils **nur die aktive Instanz**,
+      der Bezug muss auf der Seite immer sichtbar sein.
+- [ ] Sidebar-Fuß ergänzen: Launcher-Version und Status.
+- [ ] Instanzkarten ergänzen: RAM, Speicherverbrauch, "Duplizieren".
+- [ ] Das Logo bleibt unangetastet.
+
 ## Eigenes Minecraft-Hauptmenü
 
 - [ ] Neu besprechen. Die Beta "Eigene Startseite" ist aus der Oberfläche

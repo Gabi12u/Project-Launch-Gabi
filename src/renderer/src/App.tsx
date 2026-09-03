@@ -12,6 +12,7 @@ import {
 } from './lib/store'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
+import { TopBar } from './components/TopBar'
 import { Toasts } from './components/Toasts'
 import { TaskDock } from './components/TaskDock'
 import { Ambient } from './components/Ambient'
@@ -31,6 +32,9 @@ import { InstanceDetailView } from './views/InstanceDetail'
 import { ModsView } from './views/Mods'
 import { DiscoverView } from './views/Discover'
 import { BackupsView } from './views/Backups'
+import { InstanceContentView } from './views/InstanceContent'
+import { DownloadsView } from './views/Downloads'
+import { NewsView } from './views/News'
 import { SettingsView } from './views/Settings'
 import { startCapture, stopCapture } from './lib/recorder'
 
@@ -284,12 +288,14 @@ export function App(): JSX.Element {
     return <Onboarding />
   }
 
+  const topNav = settings.navPosition !== 'side'
+
   return (
     <div className="app">
       <Ambient />
-      <TitleBar />
+      {topNav ? <TopBar /> : <TitleBar />}
       <div className="app-body">
-        <Sidebar />
+        {!topNav && <Sidebar />}
         <main className="main">
           <div className="view">
             <div className="view-inner" key={parsed.section + (parsed.param ?? '')}>
@@ -326,7 +332,18 @@ function RouteView({
     case 'instances':
       return param ? <InstanceDetailView instanceId={param} query={query} /> : <InstancesView />
     case 'mods':
-      return <ModsView />
+      return <ModsView query={query} />
+    case 'resourcepacks':
+      return <InstanceContentView type="resourcepack" />
+    case 'shaders':
+      return <InstanceContentView type="shaderpack" />
+    case 'downloads':
+      return <DownloadsView />
+    case 'news':
+      return <NewsView />
+    // Reachable from links and the command palette even though the bar no
+    // longer lists them: "Entdecken" is a tab inside Mods now, backups a
+    // section in the settings.
     case 'discover':
       return <DiscoverView query={query} />
     case 'backups':

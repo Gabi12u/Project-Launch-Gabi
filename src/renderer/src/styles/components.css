@@ -1347,3 +1347,154 @@
   flex: none;
   opacity: 0.75;
 }
+
+/* --- Top bar navigation -------------------------------------------- */
+/*
+ * The alternative to the side column, and the default since the remodel.
+ * It carries what the title bar and the sidebar used to carry between
+ * them, so the window still has exactly one row of chrome above the view.
+ */
+
+.topbar {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-left: 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 40;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+
+.topbar-brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.topbar-brand-accent {
+  color: var(--accent);
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topbar-tab {
+  position: relative;
+  height: 100%;
+  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text-3);
+  white-space: nowrap;
+  transition: color var(--t-fast);
+}
+
+.topbar-tab:hover {
+  color: var(--text-2);
+}
+
+.topbar-tab.active {
+  color: var(--text);
+}
+
+.topbar-tab.trailing {
+  margin-left: 6px;
+}
+
+/* Sits on the bar's own bottom edge, so it reads as the tab underline
+   rather than a floating line. */
+.topbar-underline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.topbar-underline.ready {
+  opacity: 1;
+  transition:
+    transform var(--t) var(--ease),
+    width var(--t) var(--ease);
+}
+
+.topbar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.topbar-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  max-width: 190px;
+  padding: 0 9px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast);
+}
+
+.topbar-account:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.topbar-window {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.topbar-window .win-btn {
+  height: var(--topbar-h);
+  width: 42px;
+}
+
+.avatar.sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.avatar.sm.skin-head {
+  --tile: 22px;
+}

@@ -10,9 +10,10 @@ import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
-import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
+import { formatBytes, formatDate, formatDateTime, formatMemory, updateHeadline } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
+import { BackupsView } from './Backups'
 import {
   IconDownload,
   IconExternal,
@@ -30,6 +31,7 @@ type Section =
   | 'accounts'
   | 'appearance'
   | 'recording'
+  | 'backups'
   | 'updates'
   | 'changelog'
   | 'reports'
@@ -43,6 +45,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'content', label: 'Inhalte' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'recording', label: 'Aufnahmen' },
+  { id: 'backups', label: 'Sicherungen' },
   { id: 'updates', label: 'Updates' },
   { id: 'changelog', label: 'Neuerungen' },
   { id: 'reports', label: 'Fehlerberichte' },
@@ -50,29 +53,6 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'about', label: 'Über' }
 ]
 
-/** Human readable state line for the launcher's own updater. */
-export function updateHeadline(status: UpdateStatus): string {
-  switch (status.state) {
-    case 'checking':
-      return 'Suche nach Updates…'
-    case 'available':
-      return `Version ${status.version} verfügbar`
-    case 'downloading':
-      return `Wird geladen… ${Math.round(status.percent ?? 0)}%`
-    case 'ready':
-      return `Version ${status.version} ist bereit`
-    case 'installing':
-      return `Version ${status.version} wird installiert, der Launcher startet gleich neu…`
-    case 'up-to-date':
-      return 'Launch Gabi ist aktuell'
-    case 'error':
-      return 'Update-Prüfung fehlgeschlagen'
-    case 'disabled':
-      return 'Updates nur in der installierten Version'
-    default:
-      return `Version ${status.currentVersion}`
-  }
-}
 
 function UpdatePanel(): JSX.Element {
   const { settings } = useStore()
@@ -347,6 +327,28 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
           {section === 'appearance' && (
             <>
+              <section className="setting-group">
+                <h3>Navigation</h3>
+                <p className="hint">
+                  Ob die Navigation als Leiste über dem Fenster liegt oder als Spalte an der Seite.
+                  Beide zeigen dieselben Einträge.
+                </p>
+                <div className="segmented" style={{ alignSelf: 'flex-start', marginTop: 10 }}>
+                  <button
+                    className={settings.navPosition !== 'side' ? 'active' : ''}
+                    onClick={() => void saveSettings({ navPosition: 'top' })}
+                  >
+                    Oben
+                  </button>
+                  <button
+                    className={settings.navPosition === 'side' ? 'active' : ''}
+                    onClick={() => void saveSettings({ navPosition: 'side' })}
+                  >
+                    Seitlich
+                  </button>
+                </div>
+              </section>
+
               <section className="setting-group">
                 <h3>Theme</h3>
                 <p className="hint">Bestimmt die Hintergrundstimmung des Launchers.</p>
@@ -660,6 +662,10 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           )}
 
           {section === 'recording' && <RecordingPanel />}
+
+          {/* Its own page before the remodel; the same view, just reached
+              from here now that the navigation no longer lists it. */}
+          {section === 'backups' && <BackupsView />}
 
           {section === 'updates' && <UpdatePanel />}
 

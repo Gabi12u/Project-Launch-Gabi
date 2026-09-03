@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '../lib/store'
-import { updateHeadline } from '../views/Settings'
+import { updateHeadline } from '../lib/format'
 import { Modal, ProgressBar } from './ui'
 
 interface LogEntry {
