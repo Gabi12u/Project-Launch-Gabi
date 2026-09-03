@@ -221,6 +221,17 @@ export const IconStarFilled = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+/** Three dots, for the "more actions" button on a card or row. */
+export const IconMore = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <g fill="currentColor" stroke="none">
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </g>
+  </Icon>
+)
+
 export const IconCopy = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <g>

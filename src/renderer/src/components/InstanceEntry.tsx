@@ -10,6 +10,7 @@ import {
   IconCopy,
   IconCube,
   IconFolder,
+  IconMore,
   IconPackage,
   IconPlay,
   IconStar,
@@ -193,7 +194,7 @@ export function InstanceRow({
         <LaunchButton instance={instance} />
 
         <button className="sq-btn" aria-label="Mehr" onClick={menu.open}>
-          …
+          <IconMore size={16} />
         </button>
       </div>
 
@@ -228,7 +229,7 @@ export function InstanceTile({
             {iconSrc ? <img src={iconSrc} alt="" /> : (instance.appearance.icon ?? <IconCube size={16} />)}
           </div>
           <button className="sq-btn" style={{ width: 28, height: 28 }} aria-label="Mehr" onClick={menu.open}>
-            …
+            <IconMore size={14} />
           </button>
         </div>
 

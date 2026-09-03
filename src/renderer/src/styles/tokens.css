@@ -37,6 +37,8 @@
 
   /* Status */
   --ok: #3ddc97;
+  --play: #46c96a;
+  --play-ink: #06240f;
   --ok-soft: rgba(61, 220, 151, 0.14);
   --warn: #ffc860;
   --warn-soft: rgba(255, 200, 96, 0.14);
