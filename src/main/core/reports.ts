@@ -28,6 +28,26 @@ const logger = log('reports')
 const WEBHOOK_URL =
   'https://discord.com/api/webhooks/1542163323036897300/lDjTzT3Ap5OYz4SBrXCEOm90SD-CGGtkgcO_m0FqdI-KqRwAZOb_HnSi2Rf_iIthJHqr'
 
+/**
+ * Das interne Panel, als zweiter Empfaenger neben Discord.
+ *
+ * Beides, nicht statt: Discord ist der Weg, auf dem ein Bericht auch
+ * dann noch ankommt, wenn der eigene Server gerade das Problem ist.
+ * Das Panel fasst gleiche Fehler zusammen und zeigt, wie oft und in
+ * welchen Versionen sie auftreten.
+ *
+ * Anders als bei Discord terminiert diese Verbindung auf dem eigenen
+ * Server. Die Adresse der meldenden Person ist damit dort sichtbar.
+ * Das ist eine bewusste Entscheidung und kein Versehen.
+ *
+ * Das Berichtswort steckt wie die Webhook-Adresse in jeder
+ * Installation und ist auslesbar. Es oeffnet nichts: damit laesst sich
+ * ausschliesslich schreiben, nichts lesen, und ein Wechsel auf dem
+ * Server entwertet es sofort. Leer heisst: dieser Weg bleibt aus.
+ */
+const PANEL_URL = 'https://admin.launchgabi.com/api/reports'
+const PANEL_TOKEN = 'Xn7FV0mE8-cZjB-Ctwh0bVrFukjC1pLE'
+
 /** Reports per launcher session, so a crash loop cannot flood the channel. */
 const MAX_PER_SESSION = 5
 
@@ -284,7 +304,7 @@ export function reportError(area: string, error: unknown, extra?: string): void 
  * ------------------------------------------------------------------ */
 
 function shouldSend(): boolean {
-  if (!WEBHOOK_URL) return false
+  if (!reportingConfigured()) return false
   if (getSettings().crashReports !== 'on') return false
   return sentThisSession < MAX_PER_SESSION
 }
@@ -301,8 +321,63 @@ function fenceSafe(text: string): string {
   return text.replace(/`/g, 'ˋ')
 }
 
+/**
+ * Schickt einen Bericht an das interne Panel.
+ *
+ * Laeuft neben Discord und ist absichtlich anspruchslos: schlaegt es
+ * fehl, passiert nichts weiter. Ein Launcher, der einen Fehler nicht
+ * melden kann, darf daraus keinen zweiten Fehler machen.
+ */
+async function sendToPanel(report: ErrorReport): Promise<void> {
+  if (!PANEL_URL || !PANEL_TOKEN) return
+
+  const body = JSON.stringify({
+    area: report.area,
+    message: report.message,
+    detail: report.detail,
+    version: report.version,
+    platform: report.platform
+  })
+
+  await new Promise<void>((done) => {
+    try {
+      const req = request(
+        PANEL_URL,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'content-length': Buffer.byteLength(body),
+            'x-report-token': PANEL_TOKEN
+          },
+          timeout: 8000
+        },
+        (res) => {
+          res.resume()
+          if (res.statusCode && res.statusCode >= 400) {
+            logger.warn(`Panel hat den Fehlerbericht abgelehnt (HTTP ${res.statusCode})`)
+          }
+          done()
+        }
+      )
+      req.on('error', () => done())
+      req.on('timeout', () => {
+        req.destroy()
+        done()
+      })
+      req.end(body)
+    } catch {
+      done()
+    }
+  })
+}
+
 async function send(report: ErrorReport): Promise<void> {
   if (!shouldSend()) return
+
+  // Das Panel bekommt denselben Bericht. Getrennt vom Webhook, damit
+  // ein Ausfall der einen Seite die andere nicht mitnimmt.
+  void sendToPanel(report)
 
   const body = JSON.stringify({
     // No mentions, ever: a report should never be able to ping a whole server.
@@ -387,7 +462,7 @@ export function clearReports(): void {
 
 /** True when the webhook is configured, so the interface can be honest. */
 export function reportingConfigured(): boolean {
-  return WEBHOOK_URL.length > 0
+  return WEBHOOK_URL.length > 0 || (PANEL_URL.length > 0 && PANEL_TOKEN.length > 0)
 }
 
 export function reportsFolder(): string {
