@@ -68,6 +68,21 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     fixedIn: '1.0.16'
   },
   {
+    id: 'gamepass-keine-lizenz',
+    title: 'Game Pass wurde als "keine Lizenz" abgewiesen',
+    detail:
+      'Wer Minecraft über den Xbox Game Pass hat, konnte sich nicht anmelden: der Launcher meldete ' +
+      '"Dieses Konto besitzt keine Minecraft-Java-Edition-Lizenz". Der Grund lag nicht am Konto. ' +
+      'Der Launcher fragte bei Microsoft eine Liste der Berechtigungen ab und wertete eine leere ' +
+      'Liste als fehlenden Besitz. Diese Liste kommt bei Game Pass aber nicht verlässlich gefüllt ' +
+      'zurück, auch wenn das Konto spielen darf. Ab jetzt entscheidet das Spielerprofil: liefert ' +
+      'Microsoft einen Spielernamen, kann das Konto spielen. Fehlt der Name noch, steht jetzt auch ' +
+      'der richtige Weg dabei, und der ist bei Game Pass ein anderer als bei einem Kauf.',
+    state: 'fixed',
+    since: '2026-09-04',
+    fixedIn: '1.0.17'
+  },
+  {
     id: 'login-http-400',
     title: 'Anmeldung endet mit Fehler 400',
     detail:
