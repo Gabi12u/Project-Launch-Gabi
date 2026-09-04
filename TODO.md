@@ -28,6 +28,12 @@ Gebaut und typgeprüft, aber **nie gegen einen echten Fehlerfall gelaufen**:
 liegt damit auf Eis, bis die Richtung geklärt ist. Nichts davon ist
 zurückgenommen, der aktuelle Stand auf `main` zeigt den neuen Look.
 
+**2026-09-04: bewusst nicht in 1.0.17.** Diese Version kommt aus einem
+eigenen Zweig, der bei `v1.0.16` beginnt und nur die Anmelde-Fixes
+trägt. Kein Nutzer bekommt die neue Optik, solange hier nicht
+entschieden ist. Solange das so bleibt, muss jede weitere Version
+denselben Weg nehmen oder die Frage vorher klären.
+
 Zu klären, bevor hier weitergearbeitet wird:
 
 - [ ] Soll der Umbau zurückgenommen werden, ganz oder teilweise? Der alte
