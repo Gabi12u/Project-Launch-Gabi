@@ -1,7 +1,12 @@
 /**
- * Prueft die Zuordnung von `invalid_grant` beim Anmelden.
+ * Prueft die Saetze, die eine gescheiterte Anmeldung ausgibt.
  *
- *   node scripts/test-invalid-grant.mjs
+ *   node scripts/test-login-messages.mjs
+ *
+ * Zwei Zuordnungen: warum Microsoft den Geraetecode abgelehnt hat, und
+ * warum ein Konto kein Minecraft-Java-Profil hat. Beide entscheiden,
+ * was jemand als Naechstes tun soll, und eine falsche Anleitung ist an
+ * der Stelle schlimmer als keine.
  *
  * Die beiden ersten Faelle sind keine erdachten Beispiele: der eine ist
  * die echte Antwort von login.live.com auf einen Code, den es nicht
@@ -48,7 +53,7 @@ try {
     logLevel: 'error'
   })
 
-  const { explainInvalidGrant } = await import(pathToFileURL(out).href)
+  const { explainInvalidGrant, explainMissingProfile } = await import(pathToFileURL(out).href)
 
   const cases = [
     {
@@ -89,6 +94,53 @@ try {
   // Unterscheidung keinen Sinn.
   if (explainInvalidGrant(cases[0].body) === explainInvalidGrant(cases[1].body)) {
     problems.push('Beide bekannten Faelle liefern dieselbe Meldung')
+  }
+
+  /* --- Konto ohne Java-Profil ------------------------------------- *
+   * Der Weg zu einem Spielernamen ist je nach Herkunft ein anderer.
+   * Wer Game Pass hat, findet auf minecraft.net keinen Knopf dafuer und
+   * denkt, es liege am Launcher.
+   * ---------------------------------------------------------------- */
+
+  const profileCases = [
+    {
+      name: 'Game Pass',
+      items: ['product_game_pass_ultimate', 'product_game_pass_pc'],
+      expect: /Xbox-App|Game Pass/i,
+      forbid: /minecraft\.net/i
+    },
+    {
+      name: 'gekaufte Java Edition',
+      items: ['product_minecraft', 'game_minecraft'],
+      expect: /minecraft\.net/i,
+      forbid: /Game Pass/i
+    },
+    {
+      name: 'nichts gemeldet',
+      items: [],
+      expect: /Game Pass.*minecraft\.net|minecraft\.net.*Game Pass/is,
+      forbid: null
+    }
+  ]
+
+  for (const c of profileCases) {
+    const message = explainMissingProfile(c.items)
+    if (!c.expect.test(message)) {
+      problems.push(`Profil, ${c.name}: falscher Weg genannt: "${message.slice(0, 80)}"`)
+    } else {
+      notes.push(`Profil, ${c.name} -> "${message.slice(0, 62)}..."`)
+    }
+    if (c.forbid && c.forbid.test(message)) {
+      problems.push(`Profil, ${c.name}: nennt den Weg der anderen Herkunft`)
+    }
+    if (/Lizenz|besitzt keine/i.test(message)) {
+      problems.push(`Profil, ${c.name}: behauptet fehlenden Besitz, obwohl nur das Profil fehlt`)
+    }
+  }
+
+  // Game Pass und Kauf duerfen nicht denselben Satz bekommen.
+  if (explainMissingProfile(['product_game_pass_pc']) === explainMissingProfile(['product_minecraft'])) {
+    problems.push('Game Pass und Kauf bekommen dieselbe Anleitung')
   }
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stderr ? String(err.stderr) : err.message))

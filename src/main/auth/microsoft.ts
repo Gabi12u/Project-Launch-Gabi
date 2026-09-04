@@ -535,6 +535,43 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
   return { token: xsts.Token, uhs }
 }
 
+/**
+ * Der Satz fuer ein Konto ohne Minecraft-Java-Profil.
+ *
+ * Der Weg dorthin ist je nach Herkunft ein anderer, und die falsche
+ * Anleitung ist hier schlimmer als keine: wer Game Pass hat, findet auf
+ * minecraft.net keinen Knopf zum Kauf und denkt, es liege am Launcher.
+ *
+ * Exportiert, damit die Zuordnung geprueft werden kann, ohne einen
+ * ganzen Anmeldevorgang nachzustellen.
+ */
+export function explainMissingProfile(entitlements: string[]): string {
+  const hasGamePass = entitlements.some((name) => /game_pass/i.test(name))
+  const hasJava = entitlements.some((name) => /product_minecraft|game_minecraft/i.test(name))
+
+  if (hasGamePass) {
+    return (
+      'Dieses Konto hat Minecraft über den Game Pass, aber noch keinen Spielernamen für die ' +
+      'Java Edition. Starte Minecraft Java einmal über die Xbox-App oder den offiziellen ' +
+      'Minecraft-Launcher und lege dort einen Namen fest. Danach funktioniert die Anmeldung hier.'
+    )
+  }
+
+  if (hasJava) {
+    return (
+      'Dieses Konto besitzt die Java Edition, hat aber noch keinen Spielernamen. Lege auf ' +
+      'minecraft.net einen fest und melde dich danach erneut an.'
+    )
+  }
+
+  return (
+    'Für dieses Konto gibt es noch kein Minecraft-Java-Profil. Das trifft auf Konten zu, die ' +
+    'Java Edition weder gekauft noch über den Game Pass haben, und auf solche, bei denen noch ' +
+    'kein Spielername festgelegt wurde. Hast du Game Pass, starte Minecraft Java einmal über ' +
+    'die Xbox-App. Hast du gekauft, lege den Namen auf minecraft.net fest.'
+  )
+}
+
 async function completeMinecraftLogin(
   token: TokenResponse,
   session: { cancelled: boolean },
@@ -565,33 +602,35 @@ async function completeMinecraftLogin(
     json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
   )
 
-  // A missing entitlement means the account does not own the game; the profile
-  // request below would fail with a confusing 404 otherwise.
-  // The answer is kept apart from whether we got one at all. Telling the two
-  // cases apart used to rely on the German word "Lizenz" appearing in the
-  // thrown message, so a timeout, a 429 or an edit to that message text would
-  // silently disable the check.
-  let owned: boolean | null = null
+  /*
+   * Die Berechtigungen sind ein Hinweis, kein Tor.
+   *
+   * Hier stand einmal: leere Liste heisst keine Lizenz, Anmeldung
+   * beendet. Das hat Game-Pass-Konten ausgesperrt, denn dieser Endpunkt
+   * meldet fuer sie nicht verlaesslich einen Eintrag, auch wenn das
+   * Konto spielen darf.
+   *
+   * Entschieden wird es eine Zeile weiter unten: gibt das Profil einen
+   * Spielernamen zurueck, kann dieses Konto spielen. Die Liste dient
+   * nur noch dazu, im Fehlerfall den richtigen Satz zu waehlen.
+   */
+  let entitlements: string[] = []
   try {
-    const entitlements = await fetchJson<{ items: { name: string }[] }>(MC_ENTITLEMENTS_URL, {
+    const answer = await fetchJson<{ items?: { name?: string }[] }>(MC_ENTITLEMENTS_URL, {
       headers: { Authorization: `Bearer ${mc.access_token}` }
     })
-    owned = Boolean(entitlements.items?.length)
+    entitlements = (answer.items ?? []).map((i) => i.name ?? '').filter(Boolean)
   } catch (err) {
-    // A transient failure is no evidence either way, so the check is skipped
-    // rather than turned into a false "no licence".
-    logger.warn('Lizenzprüfung übersprungen:', err)
+    logger.warn('Berechtigungen konnten nicht gelesen werden:', err)
   }
+  logger.info(
+    `Berechtigungen: ${entitlements.length ? entitlements.join(', ') : '(keine gemeldet)'}`
+  )
 
-  if (owned === false) {
-    throw new Error('Dieses Konto besitzt keine Minecraft-Java-Edition-Lizenz.')
-  }
-
-  // The last step, and the one that fails for accounts which came this far
-  // without ever having played Java Edition. Everything before it succeeds
-  // for them: Microsoft signs them in, Xbox issues a token, and Game Pass
-  // even reports an entitlement — so the raw status code arriving here was
-  // the first and only sign anything was wrong, with nothing to act on.
+  // Der eigentliche Nachweis. Fuer Konten, die noch nie Java Edition
+  // gespielt haben, ist das der erste Schritt, der scheitert: Microsoft
+  // meldet sie an, Xbox stellt ein Token aus, und erst hier fehlt das
+  // Profil.
   let profile: MinecraftProfile
   try {
     profile = await fetchJson<MinecraftProfile>(MC_PROFILE_URL, {
@@ -599,20 +638,15 @@ async function completeMinecraftLogin(
     })
   } catch (err) {
     if (err instanceof HttpError && (err.status === 404 || err.status === 400)) {
-      throw new Error(
-        'Für dieses Konto gibt es noch kein Minecraft-Java-Profil. ' +
-          'Das passiert bei Game Pass und bei frisch gekauften Konten, solange noch kein ' +
-          'Spielername festgelegt wurde. Melde dich einmal auf minecraft.net an, lege dort ' +
-          'einen Spielernamen fest, und versuche es danach erneut.'
-      )
+      throw new Error(explainMissingProfile(entitlements))
     }
     throw err
   }
 
   if (!profile?.id || !profile.name) {
-    throw new Error(
-      'Das Konto hat keinen Spielernamen. Lege auf minecraft.net einen fest und melde dich danach erneut an.'
-    )
+    // Antwort ohne Fehlerstatus, aber ohne Namen darin. Kommt auf
+    // dasselbe hinaus wie ein 404 und bekommt denselben Satz.
+    throw new Error(explainMissingProfile(entitlements))
   }
   const uuid = formatUuid(profile.id)
   const skin = profile.skins?.find((s) => s.state === 'ACTIVE')?.url
