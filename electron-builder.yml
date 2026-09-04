@@ -15,6 +15,14 @@ files:
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # Websites, Werkzeuge und der Fabric-Mod gehoeren nicht in den Installer.
+  # Ohne diese Zeilen landet die komplette Website in app.asar, in jeder
+  # Installation, obwohl der Launcher zur Laufzeit nichts davon liest.
+  - '!docs/**'
+  - '!status/**'
+  - '!scripts/**'
+  - '!mod/**'
+  - '!TODO.md'
 
 asarUnpack:
   - resources/**
