@@ -190,6 +190,7 @@ export async function loginWithMicrosoft(): Promise<Account> {
   activeLogins.add(session)
 
   const endpoints = endpointsFor(clientId)
+  const attemptStartedAt = Date.now()
   logger.info(`Anmeldung über ${endpoints.kind === 'live' ? 'login.live.com' : 'Azure AD'}`)
 
   try {
@@ -229,7 +230,8 @@ export async function loginWithMicrosoft(): Promise<Account> {
     if (err instanceof HttpError) {
       logger.error(
         `Anmeldung fehlgeschlagen: HTTP ${err.status} von ${err.url}, ` +
-          `Code: ${err.code ?? '(keiner)'}, Rumpf: ${(err.body || '(leer)').slice(0, 300)}`
+          `Code: ${err.code ?? '(keiner)'}, nach ${Math.round((Date.now() - attemptStartedAt) / 1000)} s, ` +
+          `Rumpf: ${(err.body || '(leer)').slice(0, 300)}`
       )
     } else if (err instanceof Error && err.message !== 'Anmeldung abgebrochen') {
       logger.error('Anmeldung fehlgeschlagen:', err)
@@ -243,8 +245,10 @@ export async function loginWithMicrosoft(): Promise<Account> {
         err instanceof HttpError
           ? `HTTP ${err.status} von ${err.url}
 Code: ${err.code ?? '(keiner)'}
+Dauer bis zum Fehlschlag: ${Math.round((Date.now() - attemptStartedAt) / 1000)} s
+System: ${endpoints.kind}
 Rumpf: ${(err.body || '(leer)').slice(0, 800)}`
-          : ''
+          : `Dauer bis zum Fehlschlag: ${Math.round((Date.now() - attemptStartedAt) / 1000)} s`
       reportError('login', err, detail)
     }
     throw err
@@ -253,15 +257,63 @@ Rumpf: ${(err.body || '(leer)').slice(0, 800)}`
   }
 }
 
+/**
+ * Uebersetzt ein `invalid_grant` vom Geraetecode-Endpunkt in einen Satz,
+ * mit dem jemand etwas anfangen kann.
+ *
+ * An login.live.com gemessen, mit einem Konto, das sich nicht angemeldet
+ * hat:
+ *
+ *   gueltiger Code, noch offen  -> authorization_pending
+ *   erfundener Code             -> invalid_grant, "...'device_code' is not valid"
+ *
+ * Aus einem echten Fehlerbericht stammt die zweite Auspraegung:
+ * invalid_grant mit "The user could not be authenticated or user
+ * interaction is required". Beide sind endgueltig, der Code wird danach
+ * nicht mehr angenommen, sie bedeuten aber Verschiedenes.
+ *
+ * Exportiert, damit die Zuordnung geprueft werden kann, ohne einen
+ * ganzen Anmeldevorgang nachzustellen.
+ */
+export function explainInvalidGrant(body: string): string {
+  if (/device_code'? is not valid/i.test(body)) {
+    return 'Der Anmeldecode ist abgelaufen. Bitte erneut versuchen und den Code zügig eingeben.'
+  }
+  if (/user could not be authenticated|user interaction is required/i.test(body)) {
+    return (
+      'Die Anmeldung bei Microsoft wurde nicht abgeschlossen. Bitte erneut versuchen und im ' +
+      'Browser bis zum Ende durchgehen, auch die Nachfrage nach der Berechtigung.'
+    )
+  }
+  return (
+    'Microsoft hat den Anmeldecode abgelehnt. Bitte erneut versuchen. ' +
+    'Bleibt es dabei, hilft ein Screenshot dieser Meldung weiter.'
+  )
+}
+
 async function pollForToken(
   clientId: string,
   device: DeviceCodeResponse,
   session: { cancelled: boolean },
   endpoints: Endpoints
 ): Promise<TokenResponse> {
-  const deadline = Date.now() + device.expires_in * 1000
+  const startedAt = Date.now()
+  const deadline = startedAt + device.expires_in * 1000
   let interval = Math.max(device.interval, 1) * 1000
   let unreadableErrors = 0
+  let polls = 0
+
+  /**
+   * Wie lange dieser Anmeldeversuch schon laeuft.
+   *
+   * Steht in jeder Meldung, die aus dieser Schleife herausgeht. Ein
+   * Fehlschlag nach acht Sekunden und einer nach vierzehn Minuten haben
+   * verschiedene Ursachen und sahen bisher im Bericht gleich aus.
+   */
+  const since = (): string => {
+    const seconds = Math.round((Date.now() - startedAt) / 1000)
+    return seconds < 90 ? `${seconds} s` : `${Math.round(seconds / 60)} min`
+  }
 
   while (Date.now() < deadline) {
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
@@ -269,6 +321,7 @@ async function pollForToken(
     if (session.cancelled) throw new Error('Anmeldung abgebrochen')
 
     try {
+      polls++
       const res = await httpRequest(
         endpoints.token,
         form({
@@ -304,6 +357,32 @@ async function pollForToken(
           throw new Error('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.')
         case 'bad_verification_code':
           throw new Error('Der Anmeldecode wurde nicht akzeptiert. Bitte erneut versuchen.')
+
+        /*
+         * `invalid_grant` heisst hier immer: diesen Code nehme ich nicht
+         * mehr an. Er wird auch beim naechsten Versuch nicht besser,
+         * weiterzufragen waere also sinnlos.
+         *
+         * Gemessen an login.live.com gibt es zwei Auspraegungen, und sie
+         * bedeuten verschiedene Dinge:
+         *
+         *   "...'device_code' is not valid"  der Code ist abgelaufen
+         *   "The user could not be           die Anmeldung im Browser
+         *    authenticated..."               ist nicht fertig geworden
+         *
+         * Bisher fiel beides durch alle Faelle hindurch und der Nutzer
+         * bekam die rohe Zeile "HTTP 400: The user could not be
+         * authenticated or user interaction is required" zu sehen.
+         */
+        case 'invalid_grant': {
+          const body = err.body || ''
+          logger.warn(
+            `Anmeldung: invalid_grant nach ${since()} und ${polls} Abfragen, Rumpf: ` +
+              `${body.slice(0, 200)}`
+          )
+          throw new Error(explainInvalidGrant(body))
+        }
+
         default:
           break
       }
@@ -337,7 +416,9 @@ async function pollForToken(
     }
   }
 
-  throw new Error('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.')
+  throw new Error(
+    `Der Anmeldecode ist nach ${since()} abgelaufen. Bitte erneut versuchen.`
+  )
 }
 
 /**

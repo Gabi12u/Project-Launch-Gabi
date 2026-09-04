@@ -975,8 +975,8 @@ footer a:hover { color: var(--ink); }
     {
       "id": "login-http-400",
       "title": "Anmeldung endet mit Fehler 400",
-      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung ganz am Ende mit einem Fehler 400 ab. Die Ursache ist noch nicht gefunden: mehrere Verdachtsfälle wurden geprüft und haben sich als falsch herausgestellt oder betrafen nur einen anderen, inzwischen behobenen Fall. Seit Version 1.0.11 wird ein solcher Fehlschlag protokolliert, vorher verschwand er spurlos. Seit 1.0.14 liest der Launcher an der Stelle, an der der Fehler vermutlich auftritt, auch aus, was Microsoft selbst als Grund nennt, statt nur die nichtssagende Zahl 400 zu zeigen. Tritt der Fehler erneut auf, sollte die Meldung jetzt mehr verraten. Wer das erlebt, hilft uns mit einem Screenshot sehr weiter.",
-      "state": "investigating",
+      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung mit einem Fehler 400 ab. Aus einem Fehlerbericht aus 1.0.16 ist jetzt bekannt, was dahintersteckt: Microsoft antwortet beim Abfragen des Anmeldecodes mit \"invalid_grant\". Gemessen am echten Anmeldedienst heißt das entweder, dass der Code abgelaufen ist, oder dass die Anmeldung im Browser nicht bis zum Ende durchgelaufen ist. Beides ist endgültig, der Code wird danach nicht mehr angenommen. Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche Meldung, und der Bericht enthält, wie lange der Versuch lief. Warum die Anmeldung im Browser bei manchen Konten nicht durchläuft, ist damit noch nicht abschließend geklärt.",
+      "state": "fixing",
       "since": "2026-08-25"
     },
     {
