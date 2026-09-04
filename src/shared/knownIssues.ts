@@ -94,8 +94,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, ' +
       'statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche ' +
       'Meldung samt technischem Code, und der Bericht enthält, wie lange der Versuch lief. Das ' +
-      'steckt in 1.0.17. Warum die Anmeldung im ' +
-      'Browser bei manchen Konten nicht durchläuft, ist damit noch nicht abschließend geklärt.',
+      'steckt in 1.0.17. Inzwischen liegt auch ein starker Verdacht auf der Ursache vor: der ' +
+      'Launcher meldet sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers an, weil ' +
+      'eine eigene erst von Mojang freigegeben werden muss. Microsoft lässt diese gemeinsame ' +
+      'Anwendung für fremde Programme zunehmend nicht mehr zu, und die Ablehnung kommt genau ' +
+      'dann, wenn jemand die Anmeldung im Browser abgeschlossen hat. Bewiesen ist das erst, ' +
+      'wenn eine eigene, freigegebene Anwendungs-ID läuft.',
     state: 'fixing',
     since: '2026-08-25'
   },

@@ -549,6 +549,35 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
 }
 
 /**
+ * Der Satz fuer ein 403 von api.minecraftservices.com.
+ *
+ * Eine eigene Azure-Anwendung darf die Minecraft-API nicht von selbst
+ * benutzen: Mojang muss sie erst freigeben, sonst kommt an dieser
+ * Stelle ein 403. Das ist kein Fehler im Launcher und keiner im Konto,
+ * und ohne diesen Hinweis sucht man an beiden Stellen vergeblich.
+ *
+ * Mit der alten Anwendungs-ID von Mojang bedeutet dasselbe 403 etwas
+ * anderes: dann hat Microsoft die gemeinsame Anwendung fuer diesen Weg
+ * gesperrt. Deshalb haengt die Antwort daran, welche ID im Spiel ist.
+ */
+export function explainMinecraftForbidden(clientId: string): string {
+  if (GUID.test(clientId.trim())) {
+    return (
+      'Microsoft hat die Anmeldung angenommen, aber Minecraft lässt diese Anwendung nicht an ' +
+      'seine Schnittstelle. Eine eigene Anwendungs-ID muss dafür einmalig von Mojang freigegeben ' +
+      'werden. Das Formular dafür ist https://aka.ms/mce-reviewappid, dort wird die ID ' +
+      'eingetragen. Bis die Freigabe da ist, hilft nur, die ID in den Einstellungen wieder zu ' +
+      'leeren.'
+    )
+  }
+  return (
+    'Minecraft hat die Anmeldung abgelehnt. Die mitgelieferte Anwendungs-ID gehört dem ' +
+    'offiziellen Launcher und wird von Microsoft zunehmend nur noch dort akzeptiert. Eine eigene, ' +
+    'von Mojang freigegebene ID lässt sich in den Einstellungen unter Accounts eintragen.'
+  )
+}
+
+/**
  * Der Satz fuer ein Konto ohne Minecraft-Java-Profil.
  *
  * Der Weg dorthin ist je nach Herkunft ein anderer, und die falsche
@@ -610,10 +639,18 @@ async function completeMinecraftLogin(
   const xsts = await xstsAuthorize(xbl.token)
   abortIfCancelled()
 
-  const mc = await fetchJson<MinecraftLoginResponse>(
-    MC_LOGIN_URL,
-    json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
-  )
+  let mc: MinecraftLoginResponse
+  try {
+    mc = await fetchJson<MinecraftLoginResponse>(
+      MC_LOGIN_URL,
+      json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
+    )
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 403) {
+      throw new Error(explainMinecraftForbidden(clientId) + technicalSuffix(err.status))
+    }
+    throw err
+  }
 
   /*
    * Die Berechtigungen sind ein Hinweis, kein Tor.
@@ -795,10 +832,18 @@ async function refreshAccessToken(accountId: string): Promise<string> {
 
   const xbl = await xboxLogin(token.access_token)
   const xsts = await xstsAuthorize(xbl.token)
-  const mc = await fetchJson<MinecraftLoginResponse>(
-    MC_LOGIN_URL,
-    json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
-  )
+  let mc: MinecraftLoginResponse
+  try {
+    mc = await fetchJson<MinecraftLoginResponse>(
+      MC_LOGIN_URL,
+      json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
+    )
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 403) {
+      throw new Error(explainMinecraftForbidden(clientId) + technicalSuffix(err.status))
+    }
+    throw err
+  }
 
   const accessEnc = encrypt(mc.access_token)
   const refreshEnc = token.refresh_token ? encrypt(token.refresh_token) : undefined

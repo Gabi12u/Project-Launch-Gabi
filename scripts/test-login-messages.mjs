@@ -53,7 +53,7 @@ try {
     logLevel: 'error'
   })
 
-  const { explainInvalidGrant, explainMissingProfile, technicalSuffix } =
+  const { explainInvalidGrant, explainMissingProfile, technicalSuffix, explainMinecraftForbidden } =
     await import(pathToFileURL(out).href)
 
   const cases = [
@@ -138,6 +138,30 @@ try {
       problems.push(`Profil, ${c.name}: behauptet fehlenden Besitz, obwohl nur das Profil fehlt`)
     }
   }
+
+  /* --- 403 von der Minecraft-API ------------------------------------ *
+   * Eine eigene Anwendung muss Mojang erst freigeben. Ohne diesen
+   * Hinweis sucht man den Fehler im Konto oder im Launcher, und beides
+   * waere falsch.
+   * ------------------------------------------------------------------ */
+
+  const ownApp = explainMinecraftForbidden('9cd80435-793b-4f48-844b-6b3000000000')
+  const mojangApp = explainMinecraftForbidden('00000000402b5328')
+
+  if (!/aka\.ms\/mce-reviewappid/.test(ownApp)) {
+    problems.push('Eigene Anwendung: das Formular fuer die Freigabe wird nicht genannt')
+  }
+  if (/aka\.ms\/mce-reviewappid/.test(mojangApp)) {
+    problems.push('Mitgelieferte Anwendung: verweist auf ein Formular, das dort nicht hilft')
+  }
+  if (!/Einstellungen/.test(mojangApp)) {
+    problems.push('Mitgelieferte Anwendung: sagt nicht, wo man eine eigene ID eintraegt')
+  }
+  if (ownApp === mojangApp) {
+    problems.push('Eigene und mitgelieferte Anwendung bekommen dieselbe Erklaerung')
+  }
+  notes.push(`403, eigene ID -> "${ownApp.slice(0, 62)}..."`)
+  notes.push(`403, ID von Mojang -> "${mojangApp.slice(0, 62)}..."`)
 
   // Game Pass und Kauf duerfen nicht denselben Satz bekommen.
   if (explainMissingProfile(['product_game_pass_pc']) === explainMissingProfile(['product_minecraft'])) {

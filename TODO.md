@@ -70,7 +70,36 @@ Noch nicht angefasst:
       entfernt, der Code liegt unangetastet in `src/main/core/startScreen.ts`
       und `mod/`. Offen ist, welche Form das Vorhaben überhaupt bekommen soll.
 
+## Eigene Anwendungs-ID bei Microsoft
+
+Der Launcher benutzt `00000000402b5328`. Das ist die Anwendung des
+offiziellen Minecraft-Launchers, nicht unsere. Microsoft weist sie für
+fremde Programme zunehmend ab, und genau das ist der HTTP-400-Fehler beim
+Anmelden: nach etwa 70 Sekunden, also direkt nachdem der Nutzer im
+Browser fertig ist, verweigert Microsoft das Token mit `invalid_grant`
+und "grant the client application access to the requested scope".
+
+Der Weg dorthin, in dieser Reihenfolge:
+
+- [ ] **Ein Azure-Verzeichnis.** Ein privates Microsoft-Konto hat keins.
+      Über `portal.azure.com`, Mandanten verwalten, Erstellen ist es am
+      2026-09-04 nicht gelungen. Bleibt `azure.microsoft.com/free`, das
+      verlangt eine Karte zur Identitätsprüfung, bucht aber nichts ab.
+- [ ] **Anwendung registrieren.** App registrations, New registration,
+      Name `Launch Gabi`, bei den Kontotypen "Any organizational
+      directory and personal Microsoft accounts", Redirect URI leer.
+      Danach unter Authentication "Allow public client flows" auf Yes.
+- [ ] **Freigabe bei Mojang beantragen**, mit der neuen Anwendungs-ID:
+      https://aka.ms/mce-reviewappid
+      Ohne diese Freigabe antwortet `api.minecraftservices.com` mit 403.
+      Der Launcher erklärt diesen Fall seit 1.0.18 im Klartext.
+- [ ] **Erst danach** die ID als Standard in `src/shared/defaults.ts`
+      eintragen. Vorher wäre sie für alle Nutzer eine Verschlechterung.
+
+Zum Nachlesen: https://minecraft.wiki/w/Microsoft_authentication
+
 ## Länger offen
 
-- [ ] Ursache des HTTP-400-Anmeldefehlers ist weiterhin unbekannt, siehe
-      `src/shared/knownIssues.ts`.
+- [ ] Ursache des HTTP-400-Anmeldefehlers ist damit sehr wahrscheinlich
+      gefunden, aber erst bewiesen, wenn eine eigene, freigegebene
+      Anwendungs-ID läuft. Siehe `src/shared/knownIssues.ts`.
