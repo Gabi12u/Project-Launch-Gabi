@@ -926,29 +926,29 @@ footer a:hover { color: var(--ink); }
   // that is the one place it can never drift out of date.
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.16",
-    "date": "2026-09-02",
-    "headline": "Ein entfernter Mod bleibt jetzt auch entfernt.",
+    "version": "1.0.17",
+    "date": "2026-09-04",
+    "headline": "Minecraft über den Xbox Game Pass funktioniert jetzt.",
     "changes": [
       {
         "kind": "fixed",
-        "text": "Der Launcher konnte beim Starten von Minecraft komplett schwarz werden und ließ sich danach nicht mehr bedienen. Grund war ein Absturz oder Hänger der Programmoberfläche selbst, von dem sich der Launcher bisher nicht erholte. Er lädt sich jetzt von selbst neu, sobald das erkannt wird."
+        "text": "Wer Minecraft über den Xbox Game Pass hat, konnte sich nicht anmelden: der Launcher meldete, das Konto besitze keine Java-Edition-Lizenz. Das stimmte nicht. Der Launcher fragte bei Microsoft eine Liste der Berechtigungen ab und wertete eine leere Liste als fehlenden Besitz, und diese Liste kommt bei Game Pass nicht verlässlich gefüllt zurück. Entschieden wird es jetzt am Spielerprofil."
+      },
+      {
+        "kind": "improved",
+        "text": "Fehlt einem Konto noch der Spielername für die Java Edition, steht jetzt auch der richtige Weg dabei. Der ist bei Game Pass ein anderer als bei einem Kauf, und vorher bekamen alle dieselbe, für Game Pass falsche Anleitung."
+      },
+      {
+        "kind": "improved",
+        "text": "Bricht die Anmeldung bei Microsoft ab, steht jetzt in normalen Worten da, was passiert ist und was zu tun ist, statt einer rohen technischen Zeile. Der technische Code steht weiterhin dahinter, weil er auf einem Bildschirmfoto weiterhilft."
       },
       {
         "kind": "fixed",
-        "text": "Ein entfernter Mod konnte von selbst wieder in der Liste auftauchen, wenn das Entfernen mit einem gleichzeitigen Abgleich der Mod-Liste zusammenfiel, etwa durch das Öffnen der Instanzseite direkt danach."
+        "text": "Der Launcher wartete nach einem endgültig abgelehnten Anmeldecode weiter, statt das zu erkennen und abzubrechen."
       },
       {
-        "kind": "new",
-        "text": "Die Reparaturfunktion entfernt jetzt doppelt installierte Mods, die aus dem alten Fehler oben stammen können, und zeigt an, wie viele Mods dabei als veraltet erkannt wurden."
-      },
-      {
-        "kind": "new",
-        "text": "Bevor eine Instanz mit veralteten Mods startet, fragt der Launcher jetzt nach: sofort aktualisieren oder mit den bisherigen Versionen weiterspielen."
-      },
-      {
-        "kind": "new",
-        "text": "Das Aktualisieren eines einzelnen Mods fragt jetzt vorher nach, statt sofort loszulegen."
+        "kind": "improved",
+        "text": "Die Installationsdateien sind kleiner: die Website, die Werkzeuge und der Fabric-Mod landeten bisher versehentlich mit im Installer, obwohl der Launcher sie nie liest."
       }
     ]
   };
@@ -983,7 +983,7 @@ footer a:hover { color: var(--ink); }
     {
       "id": "login-http-400",
       "title": "Anmeldung endet mit Fehler 400",
-      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung mit einem Fehler 400 ab. Aus einem Fehlerbericht aus 1.0.16 ist jetzt bekannt, was dahintersteckt: Microsoft antwortet beim Abfragen des Anmeldecodes mit \"invalid_grant\". Gemessen am echten Anmeldedienst heißt das entweder, dass der Code abgelaufen ist, oder dass die Anmeldung im Browser nicht bis zum Ende durchgelaufen ist. Beides ist endgültig, der Code wird danach nicht mehr angenommen. Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche Meldung, und der Bericht enthält, wie lange der Versuch lief. Warum die Anmeldung im Browser bei manchen Konten nicht durchläuft, ist damit noch nicht abschließend geklärt.",
+      "detail": "Bei einzelnen Konten bricht die Microsoft-Anmeldung mit einem Fehler 400 ab. Aus einem Fehlerbericht aus 1.0.16 ist jetzt bekannt, was dahintersteckt: Microsoft antwortet beim Abfragen des Anmeldecodes mit \"invalid_grant\". Gemessen am echten Anmeldedienst heißt das entweder, dass der Code abgelaufen ist, oder dass die Anmeldung im Browser nicht bis zum Ende durchgelaufen ist. Beides ist endgültig, der Code wird danach nicht mehr angenommen. Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche Meldung samt technischem Code, und der Bericht enthält, wie lange der Versuch lief. Das steckt in 1.0.17. Warum die Anmeldung im Browser bei manchen Konten nicht durchläuft, ist damit noch nicht abschließend geklärt.",
       "state": "fixing",
       "since": "2026-08-25"
     },

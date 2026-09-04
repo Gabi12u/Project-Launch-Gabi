@@ -258,6 +258,19 @@ Rumpf: ${(err.body || '(leer)').slice(0, 800)}`
 }
 
 /**
+ * Der technische Anhang hinter einer verstaendlichen Meldung.
+ *
+ * Der Satz davor sagt, was zu tun ist. Der Anhang sagt, was Microsoft
+ * geantwortet hat, und das ist der Teil, der auf einem Screenshot
+ * weiterhilft. Frueher stand nur der Anhang da, was niemandem half;
+ * ihn ganz wegzulassen war die andere Uebertreibung.
+ */
+export function technicalSuffix(status?: number, code?: string): string {
+  const bits = [code, status ? `HTTP ${status}` : ''].filter(Boolean)
+  return bits.length ? ` (technisch: ${bits.join(', ')})` : ''
+}
+
+/**
  * Uebersetzt ein `invalid_grant` vom Geraetecode-Endpunkt in einen Satz,
  * mit dem jemand etwas anfangen kann.
  *
@@ -351,12 +364,12 @@ async function pollForToken(
           interval += 5000
           continue
         case 'authorization_declined':
-          throw new Error('Die Anmeldung wurde im Browser abgelehnt.')
+          throw new Error('Die Anmeldung wurde im Browser abgelehnt.' + technicalSuffix(err.status, err.code))
         case 'expired_token':
         case 'code_expired':
           throw new Error('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.')
         case 'bad_verification_code':
-          throw new Error('Der Anmeldecode wurde nicht akzeptiert. Bitte erneut versuchen.')
+          throw new Error('Der Anmeldecode wurde nicht akzeptiert. Bitte erneut versuchen.' + technicalSuffix(err.status, err.code))
 
         /*
          * `invalid_grant` heisst hier immer: diesen Code nehme ich nicht
@@ -380,7 +393,7 @@ async function pollForToken(
             `Anmeldung: invalid_grant nach ${since()} und ${polls} Abfragen, Rumpf: ` +
               `${body.slice(0, 200)}`
           )
-          throw new Error(explainInvalidGrant(body))
+          throw new Error(explainInvalidGrant(body) + technicalSuffix(err.status, err.code))
         }
 
         default:
@@ -638,7 +651,7 @@ async function completeMinecraftLogin(
     })
   } catch (err) {
     if (err instanceof HttpError && (err.status === 404 || err.status === 400)) {
-      throw new Error(explainMissingProfile(entitlements))
+      throw new Error(explainMissingProfile(entitlements) + technicalSuffix(err.status))
     }
     throw err
   }
