@@ -93,7 +93,8 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ende durchgelaufen ist. Beides ist endgültig, der Code wird danach nicht mehr angenommen. ' +
       'Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, ' +
       'statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche ' +
-      'Meldung, und der Bericht enthält, wie lange der Versuch lief. Warum die Anmeldung im ' +
+      'Meldung samt technischem Code, und der Bericht enthält, wie lange der Versuch lief. Das ' +
+      'steckt in 1.0.17. Warum die Anmeldung im ' +
       'Browser bei manchen Konten nicht durchläuft, ist damit noch nicht abschließend geklärt.',
     state: 'fixing',
     since: '2026-08-25'

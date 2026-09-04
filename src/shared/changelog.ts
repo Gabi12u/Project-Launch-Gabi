@@ -34,6 +34,33 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.17',
+    date: '2026-09-04',
+    headline: 'Minecraft über den Xbox Game Pass funktioniert jetzt.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Wer Minecraft über den Xbox Game Pass hat, konnte sich nicht anmelden: der Launcher meldete, das Konto besitze keine Java-Edition-Lizenz. Das stimmte nicht. Der Launcher fragte bei Microsoft eine Liste der Berechtigungen ab und wertete eine leere Liste als fehlenden Besitz, und diese Liste kommt bei Game Pass nicht verlässlich gefüllt zurück. Entschieden wird es jetzt am Spielerprofil.'
+      },
+      {
+        kind: 'improved',
+        text: 'Fehlt einem Konto noch der Spielername für die Java Edition, steht jetzt auch der richtige Weg dabei. Der ist bei Game Pass ein anderer als bei einem Kauf, und vorher bekamen alle dieselbe, für Game Pass falsche Anleitung.'
+      },
+      {
+        kind: 'improved',
+        text: 'Bricht die Anmeldung bei Microsoft ab, steht jetzt in normalen Worten da, was passiert ist und was zu tun ist, statt einer rohen technischen Zeile. Der technische Code steht weiterhin dahinter, weil er auf einem Bildschirmfoto weiterhilft.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Der Launcher wartete nach einem endgültig abgelehnten Anmeldecode weiter, statt das zu erkennen und abzubrechen.'
+      },
+      {
+        kind: 'improved',
+        text: 'Die Installationsdateien sind kleiner: die Website, die Werkzeuge und der Fabric-Mod landeten bisher versehentlich mit im Installer, obwohl der Launcher sie nie liest.'
+      }
+    ]
+  },
+  {
     version: '1.0.16',
     date: '2026-09-02',
     headline: 'Ein entfernter Mod bleibt jetzt auch entfernt.',

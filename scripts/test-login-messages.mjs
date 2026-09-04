@@ -53,7 +53,8 @@ try {
     logLevel: 'error'
   })
 
-  const { explainInvalidGrant, explainMissingProfile } = await import(pathToFileURL(out).href)
+  const { explainInvalidGrant, explainMissingProfile, technicalSuffix } =
+    await import(pathToFileURL(out).href)
 
   const cases = [
     {
@@ -142,6 +143,25 @@ try {
   if (explainMissingProfile(['product_game_pass_pc']) === explainMissingProfile(['product_minecraft'])) {
     problems.push('Game Pass und Kauf bekommen dieselbe Anleitung')
   }
+
+  /* --- Der technische Anhang ---------------------------------------- *
+   * Er soll da sein, aber hinten: der Satz davor sagt, was zu tun ist,
+   * der Anhang hilft auf einem Screenshot weiter.
+   * ------------------------------------------------------------------ */
+
+  const suffix = technicalSuffix(400, 'invalid_grant')
+  if (!/invalid_grant/.test(suffix) || !/400/.test(suffix)) {
+    problems.push(`Anhang nennt Code und Status nicht: "${suffix}"`)
+  }
+  if (technicalSuffix() !== '') {
+    problems.push('Ohne Code und Status wird trotzdem etwas angehaengt')
+  }
+  const full = explainInvalidGrant(cases[1].body) + suffix
+  if (full.indexOf('invalid_grant') < full.indexOf('Anmeldung bei Microsoft')) {
+    problems.push('Der technische Teil steht vor dem verstaendlichen')
+  }
+  notes.push(`Anhang: "${suffix.trim()}"`)
+  notes.push(`Vollstaendig: "${full.slice(0, 78)}..."`)
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stderr ? String(err.stderr) : err.message))
 } finally {
