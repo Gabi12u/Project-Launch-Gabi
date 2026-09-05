@@ -240,13 +240,13 @@ export function CommandPalette(): JSX.Element | null {
         if (event.target === event.currentTarget) close()
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Befehle">
+      <div className="palette" role="dialog" aria-modal="true" aria-label={t('overlays', 'palette.ariaLabel')}>
         <div className="palette-input">
           <IconSearch size={17} />
           <input
             ref={inputRef}
             className="input"
-            placeholder="Instanz starten, Seite öffnen, Aktion ausführen…"
+            placeholder={t('overlays', 'palette.placeholder')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
@@ -256,7 +256,7 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-list" ref={listRef}>
           {results.length === 0 ? (
-            <div className="palette-empty">Nichts gefunden für „{query}“</div>
+            <div className="palette-empty">{t('overlays', 'palette.noResults', { query })}</div>
           ) : (
             results.map((command, index) => {
               const header = command.group !== lastGroup ? command.group : null
@@ -285,13 +285,13 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-foot">
           <span>
-            <span className="kbd">↑</span> <span className="kbd">↓</span> navigieren
+            <span className="kbd">↑</span> <span className="kbd">↓</span> {t('overlays', 'palette.navigate')}
           </span>
           <span>
-            <span className="kbd">↵</span> ausführen
+            <span className="kbd">↵</span> {t('overlays', 'palette.execute')}
           </span>
           <span>
-            <span className="kbd">Esc</span> schließen
+            <span className="kbd">Esc</span> {t('overlays', 'palette.close')}
           </span>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import { useStore } from '../lib/store'
+import { t } from '../lib/i18n'
 import { ProgressBar } from './ui'
 import { IconChevronDown, IconX } from './Icons'
 
@@ -49,12 +50,16 @@ export function TaskDock(): JSX.Element | null {
   // "Fehlgeschlagen" while its own detail line reads "Fertig" is simply wrong.
   const headline =
     running.length > 0
-      ? `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`
+      ? t('overlays', running.length === 1 ? 'taskDock.running.one' : 'taskDock.running.other', {
+          count: running.length
+        })
       : failed.length > 0
-        ? `${failed.length} ${failed.length === 1 ? 'Vorgang fehlgeschlagen' : 'Vorgänge fehlgeschlagen'}`
-        : visible.every((t) => t.state === 'cancelled')
-          ? 'Abgebrochen'
-          : 'Fertig'
+        ? t('overlays', failed.length === 1 ? 'taskDock.failed.one' : 'taskDock.failed.other', {
+            count: failed.length
+          })
+        : visible.every((task) => task.state === 'cancelled')
+          ? t('overlays', 'taskDock.cancelled')
+          : t('common', 'done')
 
   return (
     <div className="task-dock">
@@ -67,7 +72,7 @@ export function TaskDock(): JSX.Element | null {
           className="btn ghost icon sm"
           style={{ width: 24, height: 24 }}
           onClick={() => setCollapsed((value) => !value)}
-          aria-label={collapsed ? 'Ausklappen' : 'Einklappen'}
+          aria-label={collapsed ? t('overlays', 'taskDock.expand') : t('overlays', 'taskDock.collapse')}
         >
           <IconChevronDown
             size={14}
@@ -92,7 +97,7 @@ export function TaskDock(): JSX.Element | null {
                     className="btn ghost icon sm"
                     style={{ width: 22, height: 22 }}
                     onClick={() => void window.gabi.tasks.cancel(task.id)}
-                    aria-label="Abbrechen"
+                    aria-label={t('common', 'cancel')}
                   >
                     <IconX size={12} />
                   </button>
@@ -103,11 +108,11 @@ export function TaskDock(): JSX.Element | null {
             {task.state === 'running' ? (
               <ProgressBar value={task.progress} />
             ) : task.state === 'failed' ? (
-              <div className="badge danger">Fehlgeschlagen</div>
+              <div className="badge danger">{t('overlays', 'taskDock.failedBadge')}</div>
             ) : task.state === 'cancelled' ? (
-              <div className="badge warn">Abgebrochen</div>
+              <div className="badge warn">{t('overlays', 'taskDock.cancelled')}</div>
             ) : (
-              <div className="badge ok">Fertig</div>
+              <div className="badge ok">{t('common', 'done')}</div>
             )}
 
             <div className="task-detail truncate">{task.detail}</div>
