@@ -12,6 +12,7 @@ import type {
   UpdateStatus
 } from '@shared/types'
 import type { RepairReport } from '@shared/api'
+import { t } from './i18n'
 
 /* ------------------------------------------------------------------ *
  * A minimal external store. React subscribes through useSyncExternalStore,
@@ -222,7 +223,7 @@ export function dismissToast(id: string): void {
 }
 
 /** Reports a rejected IPC call without every call site repeating the try/catch. */
-export function toastError(error: unknown, fallback = 'Es ist ein Fehler aufgetreten'): void {
+export function toastError(error: unknown, fallback = t('lib', 'action.genericError')): void {
   const message = error instanceof Error ? error.message : String(error)
   toast('error', fallback, message, 9000)
 }
@@ -235,7 +236,7 @@ export async function refreshInstances(): Promise<void> {
   try {
     setState({ instances: await window.gabi.instances.list() })
   } catch (err) {
-    toastError(err, 'Instanzen konnten nicht geladen werden')
+    toastError(err, t('lib', 'action.instancesLoadFailed'))
   }
 }
 
@@ -243,7 +244,7 @@ export async function refreshAccounts(): Promise<void> {
   try {
     setState({ accounts: await window.gabi.accounts.list() })
   } catch (err) {
-    toastError(err, 'Accounts konnten nicht geladen werden')
+    toastError(err, t('lib', 'action.accountsLoadFailed'))
   }
 }
 
@@ -270,7 +271,7 @@ export async function saveSettings(patch: Partial<LauncherSettings>): Promise<bo
     applyTheme(settings)
     return true
   } catch (err) {
-    toastError(err, 'Einstellung konnte nicht gespeichert werden')
+    toastError(err, t('lib', 'action.settingsSaveFailed'))
     return false
   }
 }

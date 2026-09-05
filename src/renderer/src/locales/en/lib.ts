@@ -16,5 +16,31 @@ export default {
 
   'contentBlocked.running': 'Not possible while Minecraft is running.',
   'contentBlocked.starting': 'Not possible while the instance is starting.',
-  'contentBlocked.busy': 'Mods are currently being worked on. Wait until that finishes.'
+  'contentBlocked.busy': 'Mods are currently being worked on. Wait until that finishes.',
+
+  'action.repairDoneTitle': 'Repair complete',
+  'action.repairSummary': '{checked} {checkedLabel} checked, {repaired} renewed',
+  'action.repairSummaryFailedSuffix': ', {failed} {failedLabel} failed',
+  'action.repairFile': 'file',
+  'action.repairFiles': 'files',
+  'action.repairStep': 'step',
+  'action.repairSteps': 'steps',
+  'action.repairFailed': 'Repair failed',
+  'action.noAccountTitle': 'No account',
+  'action.noAccountMessage': 'Sign in with Microsoft first, or create an offline profile.',
+  'action.cannotStartTitle': '{name} cannot start',
+  'action.modsProblemMessage': 'There are problems with the mods. Close the open notice, then we will show them to you.',
+  'action.outdatedModsMessage': 'There are outdated mods on another instance. Close the open notice, then we will show them to you.',
+  'action.startFailed': '{name} could not be started',
+  'action.stopFailed': 'Minecraft could not be stopped',
+  'action.shortcutFailed': 'Shortcut could not be created',
+  'action.importStartedTitle': 'Import started',
+  'action.modpackImportMessage': '{name} is being set up.',
+  'action.modpackImportFailed': 'Modpack could not be imported',
+  'action.folderImportMessage': '{name} is being taken over. Worlds, mods and settings are being copied.',
+  'action.folderImportFailed': 'Folder could not be imported',
+  'action.genericError': 'An error occurred',
+  'action.instancesLoadFailed': 'Instances could not be loaded',
+  'action.accountsLoadFailed': 'Accounts could not be loaded',
+  'action.settingsSaveFailed': 'Setting could not be saved'
 }
