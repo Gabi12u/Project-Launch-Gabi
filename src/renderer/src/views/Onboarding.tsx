@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { refreshAccounts, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { formatMemory } from '../lib/format'
+import { t } from '../lib/i18n'
 import { LogoLockup } from '../components/Logo'
 import { AccountModal } from '../components/AccountModal'
 import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../components/Icons'
@@ -31,10 +32,14 @@ export function Onboarding(): JSX.Element {
         onboarded: true
       })
       if (saved) {
-        toast('success', 'Willkommen bei Launch Gabi', 'Lege jetzt deine erste Instanz an.')
+        toast(
+          'success',
+          t('wizard', 'onboarding.toast.welcomeTitle'),
+          t('wizard', 'onboarding.toast.welcomeBody')
+        )
       }
     } catch (err) {
-      toastError(err, 'Einrichtung fehlgeschlagen')
+      toastError(err, t('wizard', 'onboarding.toast.setupError'))
     } finally {
       setFinishing(false)
     }
@@ -47,19 +52,16 @@ export function Onboarding(): JSX.Element {
           <div className="col gap-24">
             <LogoLockup />
             <div className="col gap-12">
-              <h2 style={{ fontSize: 22 }}>Schön, dass du da bist.</h2>
+              <h2 style={{ fontSize: 22 }}>{t('wizard', 'onboarding.welcome.title')}</h2>
               <p style={{ color: 'var(--text-2)', lineHeight: 1.7, fontSize: 14 }}>
-                Launch Gabi verwaltet beliebig viele voneinander getrennte Minecraft-Installationen. Jede
-                davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten, nichts kommt sich
-                in die Quere.
+                {t('wizard', 'onboarding.welcome.description1')}
               </p>
               <p style={{ color: 'var(--text-3)', lineHeight: 1.7, fontSize: 13.5 }}>
-                Um Java, Mod Loader und Abhängigkeiten musst du dich nicht kümmern. Das erledigt der Launcher
-                im Hintergrund.
+                {t('wizard', 'onboarding.welcome.description2')}
               </p>
             </div>
             <button className="btn primary lg" onClick={() => setStep(1)}>
-              Einrichtung starten
+              {t('wizard', 'onboarding.welcome.startButton')}
               <IconChevronRight size={16} />
             </button>
           </div>
@@ -68,12 +70,12 @@ export function Onboarding(): JSX.Element {
         {step === 1 && (
           <div className="col gap-24">
             <div className="col gap-6">
-              <h2 style={{ fontSize: 22 }}>Wie soll es aussehen?</h2>
-              <p className="hint">Kannst du später jederzeit ändern.</p>
+              <h2 style={{ fontSize: 22 }}>{t('wizard', 'onboarding.appearance.title')}</h2>
+              <p className="hint">{t('wizard', 'onboarding.appearance.hint')}</p>
             </div>
 
             <div className="field">
-              <label className="label" id="ob-akzentfarbe">Akzentfarbe</label>
+              <label className="label" id="ob-akzentfarbe">{t('wizard', 'onboarding.appearance.accentLabel')}</label>
               <div role="group" aria-labelledby="ob-akzentfarbe" className="swatches">
                 {ACCENT_CHOICES.map((color) => (
                   <button
@@ -92,7 +94,7 @@ export function Onboarding(): JSX.Element {
             </div>
 
             <div className="field">
-              <label className="label" htmlFor="ob-standard-arbeitsspeicher">Standard-Arbeitsspeicher: {formatMemory(memory)}</label>
+              <label className="label" htmlFor="ob-standard-arbeitsspeicher">{t('wizard', 'onboarding.appearance.memoryLabel', { memory: formatMemory(memory) })}</label>
               <input id="ob-standard-arbeitsspeicher"
                 className="range"
                 type="range"
@@ -103,16 +105,16 @@ export function Onboarding(): JSX.Element {
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
-                Für Vanilla reichen 2-4 GB. Große Modpacks laufen mit 6-8 GB am rundesten.
+                {t('wizard', 'onboarding.appearance.memoryHint')}
               </span>
             </div>
 
             <div className="option" style={{ cursor: 'default' }}>
               <div className="row-between">
                 <div className="col gap-4">
-                  <span className="option-name">Java automatisch verwalten</span>
+                  <span className="option-name">{t('wizard', 'onboarding.appearance.javaAutoTitle')}</span>
                   <span className="option-desc">
-                    Launch Gabi lädt die passende Java-Version selbst herunter, du musst nichts installieren.
+                    {t('wizard', 'onboarding.appearance.javaAutoDesc')}
                   </span>
                 </div>
                 <button
@@ -126,11 +128,11 @@ export function Onboarding(): JSX.Element {
 
             <div className="row gap-8">
               <button className="btn ghost" onClick={() => setStep(0)}>
-                Zurück
+                {t('common', 'back')}
               </button>
               <div className="grow" />
               <button className="btn primary" onClick={() => setStep(2)}>
-                Weiter
+                {t('common', 'next')}
                 <IconChevronRight size={15} />
               </button>
             </div>
@@ -140,10 +142,9 @@ export function Onboarding(): JSX.Element {
         {step === 2 && (
           <div className="col gap-24">
             <div className="col gap-6">
-              <h2 style={{ fontSize: 22 }}>Dein Account</h2>
+              <h2 style={{ fontSize: 22 }}>{t('wizard', 'onboarding.account.title')}</h2>
               <p className="hint">
-                Für Online-Server brauchst du einen Microsoft-Account. Zum Ausprobieren reicht ein
-                Offline-Profil.
+                {t('wizard', 'onboarding.account.hint')}
               </p>
             </div>
 
@@ -154,35 +155,39 @@ export function Onboarding(): JSX.Element {
                 </div>
                 <div className="grow">
                   <div className="issue-title">
-                    {accounts.find((a) => a.active)?.username ?? accounts[0].username} ist angemeldet
+                    {t('wizard', 'onboarding.account.signedInAs', {
+                      name: accounts.find((a) => a.active)?.username ?? accounts[0].username
+                    })}
                   </div>
                   <div className="issue-detail">
-                    {accounts.length > 1 ? `${accounts.length} Profile hinterlegt.` : 'Alles bereit.'}
+                    {accounts.length > 1
+                      ? t('wizard', 'onboarding.account.multipleProfiles', { count: accounts.length })
+                      : t('wizard', 'onboarding.account.allReady')}
                   </div>
                 </div>
                 <button className="btn sm" onClick={() => setAccountOpen(true)}>
-                  Verwalten
+                  {t('wizard', 'onboarding.account.manageButton')}
                 </button>
               </div>
             ) : (
               <button className="btn primary lg block" onClick={() => setAccountOpen(true)}>
                 <IconUser size={17} />
-                Account hinzufügen
+                {t('wizard', 'onboarding.account.addButton')}
               </button>
             )}
 
             <p className="hint">
-              Du kannst diesen Schritt überspringen und dich später jederzeit über die Seitenleiste anmelden.
+              {t('wizard', 'onboarding.account.skipHint')}
             </p>
 
             <div className="row gap-8">
               <button className="btn ghost" onClick={() => setStep(1)}>
-                Zurück
+                {t('common', 'back')}
               </button>
               <div className="grow" />
               <button className="btn primary" onClick={finish} disabled={finishing}>
                 {finishing ? <span className="spinner" /> : <IconSparkle size={15} />}
-                Los geht's
+                {t('wizard', 'onboarding.finishButton')}
               </button>
             </div>
           </div>

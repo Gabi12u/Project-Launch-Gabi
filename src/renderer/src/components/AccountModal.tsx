@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX, useRef} from 'react'
 import type { Account, DeviceCodePrompt } from '@shared/types'
 import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
+import { t } from '../lib/i18n'
 import { CopyButton, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
 
@@ -36,7 +37,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     try {
       const account = await window.gabi.accounts.loginMicrosoft()
       if (ticket !== attempt.current) return
-      toast('success', 'Angemeldet', `Willkommen, ${account.username}!`)
+      toast(
+        'success',
+        t('wizard', 'account.toast.loggedInTitle'),
+        t('wizard', 'account.toast.loggedInBody', { name: account.username })
+      )
       await refreshAccounts()
       setPrompt(null)
     } catch (err) {
@@ -44,7 +49,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       // A cancel the user asked for themselves is not a failure and needs no
       // alarming message; the dialog has already returned to its normal state.
       if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
-        toastError(err, 'Anmeldung fehlgeschlagen')
+        toastError(err, t('wizard', 'account.toast.loginError'))
       }
       setPrompt(null)
     } finally {
@@ -78,11 +83,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     setCreatingOffline(true)
     try {
       const account = await window.gabi.accounts.loginOffline(offlineName.trim())
-      toast('success', 'Offline-Profil angelegt', account.username)
+      toast('success', t('wizard', 'account.toast.offlineCreatedTitle'), account.username)
       setOfflineName('')
       await refreshAccounts()
     } catch (err) {
-      toastError(err, 'Profil konnte nicht angelegt werden')
+      toastError(err, t('wizard', 'account.toast.offlineCreateError'))
     } finally {
       setCreatingOffline(false)
     }
@@ -101,8 +106,8 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <Modal
       open={open}
-      title="Accounts"
-      subtitle="Melde dich mit Microsoft an, um online zu spielen, oder nutze ein Offline-Profil zum Testen."
+      title={t('wizard', 'account.modal.title')}
+      subtitle={t('wizard', 'account.modal.subtitle')}
       // Every close path cancels a login in flight first. The old condition
       // (`busy && prompt`) left a gap: between clicking "log in" and the device
       // code arriving there is one network round trip during which closing went
@@ -134,21 +139,21 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
           <div className="col gap-12">
             <button className="btn primary block lg" onClick={loginMicrosoft} disabled={busy}>
               {busy ? <span className="spinner" /> : <IconUser size={17} />}
-              Mit Microsoft anmelden
+              {t('wizard', 'account.loginMicrosoftButton')}
             </button>
 
             <div className="row gap-12" style={{ color: 'var(--text-4)', fontSize: 12 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-              oder
+              {t('wizard', 'account.or')}
               <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
             </div>
 
             <div className="field">
-              <label className="label" id="am-offline-profil">Offline-Profil</label>
+              <label className="label" id="am-offline-profil">{t('wizard', 'account.offlineProfileLabel')}</label>
               <div role="group" aria-labelledby="am-offline-profil" className="row gap-8">
                 <input
                   className="input"
-                  placeholder="Spielername"
+                  placeholder={t('wizard', 'account.usernamePlaceholder')}
                   value={offlineName}
                   maxLength={16}
                   onChange={(event) => setOfflineName(event.target.value)}
@@ -159,11 +164,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
                   onClick={loginOffline}
                   disabled={creatingOffline || offlineName.trim().length < 3}
                 >
-                  Anlegen
+                  {t('wizard', 'account.createOfflineButton')}
                 </button>
               </div>
               <span className="hint">
-                Offline-Profile funktionieren nur auf Servern ohne Online-Modus und in Einzelspieler-Welten.
+                {t('wizard', 'account.offlineProfileHint')}
               </span>
             </div>
           </div>
@@ -209,10 +214,14 @@ function AccountRow({
       <div className="content-actions">
         {!account.active && (
           <button className="btn sm" onClick={onActivate}>
-            Auswählen
+            {t('wizard', 'account.selectButton')}
           </button>
         )}
-        <button className="btn ghost icon sm" onClick={onRemove} aria-label="Entfernen">
+        <button
+          className="btn ghost icon sm"
+          onClick={onRemove}
+          aria-label={t('common', 'remove')}
+        >
           <IconTrash size={15} />
         </button>
       </div>
@@ -240,11 +249,8 @@ function DeviceCodePanel({
   return (
     <div className="col gap-20">
       <div className="col gap-8">
-        <div style={{ fontSize: 15, fontWeight: 650 }}>Anmeldung bei Microsoft</div>
-        <p className="hint">
-          Öffne die Seite, melde dich mit deinem Microsoft-Konto an und gib dort den folgenden Code ein.
-          Danach geht es hier automatisch weiter.
-        </p>
+        <div style={{ fontSize: 15, fontWeight: 650 }}>{t('wizard', 'account.deviceCode.title')}</div>
+        <p className="hint">{t('wizard', 'account.deviceCode.instructions')}</p>
       </div>
 
       <div className="device-code">{prompt.userCode}</div>
@@ -255,18 +261,21 @@ function DeviceCodePanel({
           onClick={() => void window.gabi.app.openExternal(prompt.verificationUri)}
         >
           <IconExternal size={16} />
-          Anmeldeseite öffnen
+          {t('wizard', 'account.deviceCode.openPageButton')}
         </button>
-        <CopyButton value={prompt.userCode} label="Code kopieren" />
+        <CopyButton value={prompt.userCode} label={t('wizard', 'account.deviceCode.copyCodeLabel')} />
       </div>
 
       <div className="row-between">
         <span className="hint">
           <span className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />
-          Warte auf Bestätigung… (noch {minutes}:{String(seconds).padStart(2, '0')})
+          {t('wizard', 'account.deviceCode.waiting', {
+            minutes,
+            seconds: String(seconds).padStart(2, '0')
+          })}
         </span>
         <button className="btn ghost sm" onClick={onCancel}>
-          Abbrechen
+          {t('common', 'cancel')}
         </button>
       </div>
     </div>

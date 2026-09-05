@@ -3,6 +3,7 @@ import type { LoaderId, LoaderVersion, MinecraftVersion } from '@shared/types'
 import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatDate, formatMemory, pluralise } from '../lib/format'
+import { t } from '../lib/i18n'
 import { Modal } from '../components/ui'
 import { IconCheck, IconSearch, IconSparkle,
   IconRefresh} from '../components/Icons'
@@ -70,7 +71,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         setMcVersion((chosen) => chosen || list.find((v) => v.type === 'release')?.id || list[0]?.id || '')
       })
       .catch((err) => {
-        if (current) toastError(err, 'Versionsliste konnte nicht geladen werden')
+        if (current) toastError(err, t('wizard', 'createInstance.toast.versionsLoadError'))
       })
       .finally(() => {
         if (current) setLoadingVersions(false)
@@ -159,26 +160,30 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
       toast(
         'success',
-        'Instanz erstellt',
-        `${instance.name} wird im Hintergrund eingerichtet.`
+        t('wizard', 'createInstance.toast.createdTitle'),
+        t('wizard', 'createInstance.toast.createdBody', { name: instance.name })
       )
       await refreshInstances()
       onClose()
       navigate(`/instances/${instance.id}`)
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht erstellt werden')
+      toastError(err, t('wizard', 'createInstance.toast.createError'))
     } finally {
       setBusy(false)
     }
   }
 
-  const steps = ['Version', 'Mod Loader', 'Details']
+  const steps = [
+    t('wizard', 'createInstance.steps.version'),
+    t('wizard', 'createInstance.steps.loader'),
+    t('wizard', 'createInstance.steps.details')
+  ]
 
   return (
     <Modal
       open={open}
-      title="Neue Instanz"
-      subtitle="In drei Schritten zur eigenen Minecraft-Installation."
+      title={t('wizard', 'createInstance.header.title')}
+      subtitle={t('wizard', 'createInstance.header.subtitle')}
       onClose={onClose}
       busy={busy}
       width="wide"
@@ -186,7 +191,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         <>
           {step > 0 && (
             <button className="btn ghost" onClick={() => setStep((s) => (s - 1) as Step)} disabled={busy}>
-              Zurück
+              {t('common', 'back')}
             </button>
           )}
           <div className="grow" />
@@ -196,12 +201,12 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               disabled={step === 0 ? !mcVersion : false}
               onClick={() => setStep((s) => (s + 1) as Step)}
             >
-              Weiter
+              {t('common', 'next')}
             </button>
           ) : (
             <button className="btn primary" onClick={create} disabled={busy || !mcVersion}>
               {busy ? <span className="spinner" /> : <IconSparkle size={15} />}
-              INSTANZ ERSTELLEN
+              {t('wizard', 'createInstance.actions.create')}
             </button>
           )}
         </>
@@ -226,7 +231,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               <IconSearch size={16} />
               <input
                 className="input"
-                placeholder="Version suchen, z. B. 1.21.11"
+                placeholder={t('wizard', 'createInstance.version.searchPlaceholder')}
                 value={versionSearch}
                 onChange={(event) => setVersionSearch(event.target.value)}
                 autoFocus
@@ -236,7 +241,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               className={`btn ${showSnapshots ? 'primary' : ''}`}
               onClick={() => setShowSnapshots((value) => !value)}
             >
-              Snapshots
+              {t('wizard', 'createInstance.version.snapshots')}
             </button>
           </div>
 
@@ -256,12 +261,11 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
              */
             <div className="col gap-12" style={{ padding: '28px 0', textAlign: 'center' }}>
               <p className="hint">
-                Die Versionsliste konnte nicht geladen werden. Meist liegt das an der
-                Internetverbindung.
+                {t('wizard', 'createInstance.version.loadErrorHint')}
               </p>
               <div>
                 <button className="btn" onClick={() => setVersionAttempt((n) => n + 1)}>
-                  <IconRefresh size={14} /> Erneut versuchen
+                  <IconRefresh size={14} /> {t('common', 'retry')}
                 </button>
               </div>
             </div>
@@ -289,8 +293,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
       {step === 1 && (
         <div className="col gap-16">
           <p className="hint">
-            Der Mod Loader entscheidet, welche Mods du installieren kannst. Ohne Loader läuft Minecraft
-            unverändert. Ausgegraute Loader gibt es für {mcVersion} noch nicht.
+            {t('wizard', 'createInstance.loader.hint', { version: mcVersion })}
           </p>
 
           <div className="option-grid">
@@ -308,7 +311,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   // picked before anyone knew whether a build for this
                   // Minecraft version exists at all.
                   disabled={!available || unknown}
-                  title={unknown ? 'Verfügbarkeit wird noch geprüft…' : undefined}
+                  title={unknown ? t('wizard', 'createInstance.loader.checkingTitle') : undefined}
                   onClick={() => setLoader(entry.id)}
                 >
                   <div className="option-name">
@@ -327,7 +330,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   {unknown && (
                     <div className="hint mt-8">
                       <span className="spinner" style={{ width: 11, height: 11, display: 'inline-block' }} />{' '}
-                      wird geprüft…
+                      {t('wizard', 'createInstance.loader.checkingInline')}
                     </div>
                   )}
                   {/*
@@ -339,10 +342,14 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   {!unknown && (
                     <div className="hint mt-8">
                       {entry.id === 'vanilla'
-                        ? 'Immer verfügbar'
+                        ? t('wizard', 'createInstance.loader.alwaysAvailable')
                         : available
-                          ? `${loaderVersions[entry.id].length} ${pluralise(loaderVersions[entry.id].length, 'Version', 'Versionen')}`
-                          : `Nicht für ${mcVersion}`}
+                          ? `${loaderVersions[entry.id].length} ${pluralise(
+                              loaderVersions[entry.id].length,
+                              t('wizard', 'createInstance.loader.versionCountSingular'),
+                              t('wizard', 'createInstance.loader.versionCountPlural')
+                            )}`
+                          : t('wizard', 'createInstance.loader.notAvailableFor', { version: mcVersion })}
                     </div>
                   )}
                 </button>
@@ -352,7 +359,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
           {loader !== 'vanilla' && (loaderVersions[loader]?.length ?? 0) > 0 && (
             <div className="field">
-              <label className="label" htmlFor="ci-loader-version">Loader-Version</label>
+              <label className="label" htmlFor="ci-loader-version">{t('wizard', 'createInstance.loader.versionLabel')}</label>
               <select id="ci-loader-version"
                 className="select"
                 value={loaderVersion}
@@ -361,12 +368,16 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 {loaderVersions[loader].map((version) => (
                   <option key={version.version} value={version.version}>
                     {version.version}
-                    {version.recommended ? ' · empfohlen' : version.stable ? ' · stabil' : ' · beta'}
+                    {version.recommended
+                      ? t('wizard', 'createInstance.loader.recommended')
+                      : version.stable
+                        ? t('wizard', 'createInstance.loader.stable')
+                        : t('wizard', 'createInstance.loader.beta')}
                   </option>
                 ))}
               </select>
               <span className="hint">
-                Im Zweifel die empfohlene Version nehmen, sie ist am besten getestet.
+                {t('wizard', 'createInstance.loader.recommendedHint')}
               </span>
             </div>
           )}
@@ -376,7 +387,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
       {step === 2 && (
         <div className="col gap-20">
           <div className="field">
-            <label className="label" htmlFor="ci-name">Name</label>
+            <label className="label" htmlFor="ci-name">{t('wizard', 'createInstance.details.nameLabel')}</label>
             <input id="ci-name"
               className="input"
               placeholder={suggestedName}
@@ -388,16 +399,16 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
           <div className="row gap-16" style={{ alignItems: 'flex-start' }}>
             <div className="field grow">
-              <label className="label" htmlFor="ci-gruppe-optional">Gruppe (optional)</label>
+              <label className="label" htmlFor="ci-gruppe-optional">{t('wizard', 'createInstance.details.groupLabel')}</label>
               <input id="ci-gruppe-optional"
                 className="input"
-                placeholder="z. B. Modded"
+                placeholder={t('wizard', 'createInstance.details.groupPlaceholder')}
                 value={group}
                 onChange={(event) => setGroup(event.target.value)}
               />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="ci-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+              <label className="label" htmlFor="ci-arbeitsspeicher">{t('wizard', 'createInstance.details.memoryLabel', { memory: formatMemory(memory) })}</label>
               <input id="ci-arbeitsspeicher"
                 className="range"
                 type="range"
@@ -408,13 +419,13 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
-                Für Vanilla reichen 2-4 GB, für große Modpacks eher 6-8 GB.
+                {t('wizard', 'createInstance.details.memoryHint')}
               </span>
             </div>
           </div>
 
           <div className="field">
-            <label className="label" id="ci-icon">Icon</label>
+            <label className="label" id="ci-icon">{t('wizard', 'createInstance.details.iconLabel')}</label>
             <div role="group" aria-labelledby="ci-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button
@@ -429,7 +440,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           </div>
 
           <div className="field">
-            <label className="label" id="ci-akzentfarbe">Akzentfarbe</label>
+            <label className="label" id="ci-akzentfarbe">{t('wizard', 'createInstance.details.accentLabel')}</label>
             <div role="group" aria-labelledby="ci-akzentfarbe" className="swatches">
               {ACCENT_CHOICES.map((choice) => (
                 <button
