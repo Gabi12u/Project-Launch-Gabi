@@ -10,6 +10,7 @@ import type { InstanceDetail, RecordingInfo, ScreenshotInfo, WorldInfo } from '@
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { createShortcut, repairInstanceWithOverlay, startInstance, stopInstance } from '../lib/actions'
 import { clickable } from '../lib/a11y'
+import { t } from '../lib/i18n'
 import {
   LOADER_LABELS,
   formatBytes,
@@ -52,14 +53,16 @@ import { VersionPicker } from '../components/VersionPicker'
 
 type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'recordings' | 'logs' | 'settings'
 
+// `label` holds an instanceDetail translation key, not display text, so the
+// lookup happens at render time and stays reactive to a language switch.
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Übersicht' },
-  { id: 'content', label: 'Installiert' },
-  { id: 'browse', label: 'Inhalte finden' },
-  { id: 'worlds', label: 'Welten' },
-  { id: 'recordings', label: 'Aufnahmen' },
-  { id: 'logs', label: 'Log' },
-  { id: 'settings', label: 'Einstellungen' }
+  { id: 'overview', label: 'tabs.overview' },
+  { id: 'content', label: 'tabs.content' },
+  { id: 'browse', label: 'tabs.browse' },
+  { id: 'worlds', label: 'tabs.worlds' },
+  { id: 'recordings', label: 'tabs.recordings' },
+  { id: 'logs', label: 'tabs.logs' },
+  { id: 'settings', label: 'tabs.settings' }
 ]
 
 /**
@@ -125,7 +128,7 @@ export function InstanceDetailView({
       if (mounted.current) setInstance(detail)
     } catch (err) {
       if (!mounted.current) return
-      toastError(err, 'Instanz konnte nicht geladen werden')
+      toastError(err, t('instanceDetail', 'errors.loadFailed'))
       navigate('/instances')
     }
   }, [instanceId])
@@ -140,7 +143,7 @@ export function InstanceDetailView({
       setPreflight(flight)
       setReport(compat)
     } catch (err) {
-      toastError(err, 'Prüfung fehlgeschlagen')
+      toastError(err, t('instanceDetail', 'errors.checkFailed'))
     } finally {
       setChecking(false)
     }
@@ -168,11 +171,11 @@ export function InstanceDetailView({
   const remove = async (): Promise<void> => {
     try {
       await window.gabi.instances.remove(instanceId)
-      toast('info', 'Instanz gelöscht', instance?.name)
+      toast('info', t('instanceDetail', 'errors.instanceDeletedTitle'), instance?.name)
       await refreshInstances()
       navigate('/instances')
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht gelöscht werden')
+      toastError(err, t('instanceDetail', 'errors.deleteFailed'))
     }
   }
 
@@ -193,7 +196,7 @@ export function InstanceDetailView({
     <div className="col gap-24">
       <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/instances')}>
         <IconChevronLeft size={14} />
-        Alle Instanzen
+        {t('instanceDetail', 'header.allInstances')}
       </button>
 
       {/* --- Header ------------------------------------------------- */}
@@ -232,13 +235,19 @@ export function InstanceDetailView({
                 {LOADER_LABELS[instance.loader]}
                 {instance.loaderVersion ? ` ${instance.loaderVersion}` : ''}
               </span>
-              {modCount > 0 && <span className="badge">{modCount} Mods</span>}
-              <span className="badge">RAM: {formatMemory(instance.settings.memoryMb)}</span>
-              {updateCount > 0 && <span className="badge warn">{updateCount} Updates</span>}
+              {modCount > 0 && (
+                <span className="badge">{t('instanceDetail', 'header.modsBadge', { count: modCount })}</span>
+              )}
+              <span className="badge">
+                {t('instanceDetail', 'header.ramBadge', { value: formatMemory(instance.settings.memoryMb) })}
+              </span>
+              {updateCount > 0 && (
+                <span className="badge warn">{t('instanceDetail', 'header.updatesBadge', { count: updateCount })}</span>
+              )}
               {instance.installing && (
                 <span className="badge accent">
                   <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-                  Wird eingerichtet
+                  {t('instanceDetail', 'header.installingBadge')}
                 </span>
               )}
             </div>
@@ -247,7 +256,7 @@ export function InstanceDetailView({
           <div className="col gap-10" style={{ alignItems: 'flex-end' }}>
             {running ? (
               <button className="btn-play stop" onClick={() => void stopInstance(instanceId)}>
-                <IconStop size={18} /> BEENDEN
+                <IconStop size={18} /> {t('instanceDetail', 'header.stopButton')}
               </button>
             ) : (
               // Also blocked while a repair runs: it is replacing the very
@@ -259,7 +268,7 @@ export function InstanceDetailView({
                 onClick={() => void startInstance(instanceId, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? 'STARTET…' : 'PLAY'}
+                {busy ? t('instanceDetail', 'header.startingLabel') : t('instanceDetail', 'header.playLabel')}
               </button>
             )}
 
@@ -282,14 +291,14 @@ export function InstanceDetailView({
       {/* --- Action bar ---------------------------------------------- */}
       <div className="row gap-8 wrap">
         <button className="btn sm" onClick={() => void window.gabi.instances.openFolder(instanceId)}>
-          <IconFolder size={14} /> Ordner
+          <IconFolder size={14} /> {t('instanceDetail', 'actions.folder')}
         </button>
         <button className="btn sm" onClick={() => void createShortcut(instanceId)}>
-          <IconLink size={14} /> Desktop-Verknüpfung
+          <IconLink size={14} /> {t('instanceDetail', 'actions.desktopShortcut')}
         </button>
         <button className="btn sm" onClick={repair} disabled={repairing || running}>
           {repairing ? <span className="spinner" /> : <IconWrench size={14} />}
-          Reparieren
+          {t('instanceDetail', 'actions.repair')}
         </button>
         <button
           className="btn sm"
@@ -297,28 +306,32 @@ export function InstanceDetailView({
             try {
               await window.gabi.modpacks.export(instanceId)
             } catch (err) {
-              toastError(err, 'Export fehlgeschlagen')
+              toastError(err, t('instanceDetail', 'actions.exportFailed'))
             }
           }}
         >
-          <IconUpload size={14} /> Als Modpack exportieren
+          <IconUpload size={14} /> {t('instanceDetail', 'actions.exportModpack')}
         </button>
         <button
           className="btn sm"
           onClick={async () => {
             try {
               await window.gabi.backups.create(instanceId, { includes: ['saves', 'config'] })
-              toast('success', 'Sicherung erstellt', 'Welten und Konfiguration wurden gesichert.')
+              toast(
+                'success',
+                t('instanceDetail', 'actions.backupCreatedTitle'),
+                t('instanceDetail', 'actions.backupCreatedMessage')
+              )
             } catch (err) {
-              toastError(err, 'Sicherung fehlgeschlagen')
+              toastError(err, t('instanceDetail', 'actions.backupFailed'))
             }
           }}
         >
-          <IconSave size={14} /> Sichern
+          <IconSave size={14} /> {t('instanceDetail', 'actions.backupButton')}
         </button>
         <div className="grow" />
         <button className="btn sm danger" onClick={() => setConfirmDelete(true)} disabled={running}>
-          <IconTrash size={14} /> Löschen
+          <IconTrash size={14} /> {t('common', 'delete')}
         </button>
       </div>
 
@@ -330,7 +343,7 @@ export function InstanceDetailView({
             className={`tab ${tab === entry.id ? 'active' : ''}`}
             onClick={() => setTab(entry.id)}
           >
-            {entry.label}
+            {t('instanceDetail', entry.label)}
             {entry.id === 'content' && instance.content.length > 0 && (
               <span className="tab-count">{instance.content.length}</span>
             )}
@@ -382,13 +395,12 @@ export function InstanceDetailView({
 
       <Confirm
         open={confirmDelete}
-        title="Instanz löschen?"
+        title={t('instanceDetail', 'dialog.deleteInstanceTitle')}
         danger
-        confirmLabel="Endgültig löschen"
+        confirmLabel={t('instanceDetail', 'dialog.deleteInstanceConfirm')}
         message={
           <>
-            <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots und Sicherungen
-            unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
+            <strong>{instance.name}</strong> {t('instanceDetail', 'dialog.deleteInstanceMessage')}
           </>
         }
         onConfirm={remove}
@@ -423,40 +435,54 @@ function OverviewTab({
     <div className="col gap-24">
       <section className="col gap-12">
         <div className="row-between">
-          <h2 className="section-title">Vor dem Start</h2>
+          <h2 className="section-title">{t('instanceDetail', 'overview.preflightTitle')}</h2>
           <button className="btn ghost sm" onClick={onRefresh} disabled={checking}>
             {checking ? <span className="spinner" /> : <IconRefresh size={14} />}
-            Neu prüfen
+            {t('instanceDetail', 'overview.recheckButton')}
           </button>
         </div>
 
         <div className="preflight-grid">
           <Cell label="Minecraft" value={instance.mcVersion} />
           <Cell
-            label="Loader"
+            label={t('instanceDetail', 'overview.loaderLabel')}
             value={`${LOADER_LABELS[instance.loader]}${instance.loaderVersion ? ` ${instance.loaderVersion}` : ''}`}
           />
           <Cell
             label="Java"
-            value={preflight?.java ? `Java ${preflight.java.major}` : 'Wird geladen'}
-            hint={preflight?.java ? (preflight.java.managed ? 'verwaltet' : 'System') : 'bei Bedarf'}
+            value={preflight?.java ? `Java ${preflight.java.major}` : t('instanceDetail', 'overview.javaLoadingValue')}
+            hint={
+              preflight?.java
+                ? preflight.java.managed
+                  ? t('instanceDetail', 'overview.javaManagedHint')
+                  : t('instanceDetail', 'overview.javaSystemHint')
+                : t('instanceDetail', 'overview.javaOnDemandHint')
+            }
           />
           <Cell
-            label="RAM"
+            label={t('instanceDetail', 'overview.ramLabel')}
             value={formatMemory(instance.settings.memoryMb)}
-            hint={preflight ? `von ${formatMemory(preflight.systemMemoryMb)}` : undefined}
+            hint={
+              preflight
+                ? t('instanceDetail', 'overview.ramOfHint', { total: formatMemory(preflight.systemMemoryMb) })
+                : undefined
+            }
           />
-          <Cell label="Mods" value={String(preflight?.enabledModCount ?? 0)} hint={`${preflight?.modCount ?? 0} installiert`} />
-          <Cell label="Resourcepacks" value={String(preflight?.resourcePackCount ?? 0)} />
-          <Cell label="Shader" value={String(preflight?.shaderCount ?? 0)} />
+          <Cell
+            label={t('instanceDetail', 'overview.modsLabel')}
+            value={String(preflight?.enabledModCount ?? 0)}
+            hint={t('instanceDetail', 'overview.modsInstalledHint', { count: preflight?.modCount ?? 0 })}
+          />
+          <Cell label={t('instanceDetail', 'overview.resourcepacksLabel')} value={String(preflight?.resourcePackCount ?? 0)} />
+          <Cell label={t('instanceDetail', 'overview.shaderLabel')} value={String(preflight?.shaderCount ?? 0)} />
           {preflight && preflight.downloadSizeMb > 0 && (
-            <Cell label="Noch zu laden" value={`${preflight.downloadSizeMb} MB`} />
+            <Cell label={t('instanceDetail', 'overview.downloadSizeLabel')} value={`${preflight.downloadSizeMb} MB`} />
           )}
         </div>
       </section>
 
       <section className="col gap-12">
-        <h2 className="section-title">Mod-Kompatibilität</h2>
+        <h2 className="section-title">{t('instanceDetail', 'overview.compatibilityTitle')}</h2>
         <CompatibilityPanel
           report={report}
           instanceId={instance.id}
@@ -466,24 +492,24 @@ function OverviewTab({
       </section>
 
       <section className="col gap-12">
-        <h2 className="section-title">Statistik</h2>
+        <h2 className="section-title">{t('instanceDetail', 'overview.statsTitle')}</h2>
         <div className="stat-grid">
           <div className="stat">
-            <div className="stat-label">Gesamte Spielzeit</div>
+            <div className="stat-label">{t('instanceDetail', 'overview.totalPlaytimeLabel')}</div>
             <div className="stat-value">{formatPlayTime(instance.totalPlayMs)}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Sitzungen</div>
+            <div className="stat-label">{t('instanceDetail', 'overview.sessionsLabel')}</div>
             <div className="stat-value">{instance.sessions.length}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Zuletzt gespielt</div>
+            <div className="stat-label">{t('instanceDetail', 'overview.lastPlayedLabel')}</div>
             <div className="stat-value" style={{ fontSize: 16 }}>
               {formatRelative(instance.lastPlayed)}
             </div>
           </div>
           <div className="stat">
-            <div className="stat-label">Letzte Sitzung</div>
+            <div className="stat-label">{t('instanceDetail', 'overview.lastSessionLabel')}</div>
             <div className="stat-value" style={{ fontSize: 16 }}>
               {lastSession ? formatPlayTime(lastSession.durationMs) : '-'}
             </div>
@@ -503,7 +529,11 @@ function OverviewTab({
                   </div>
                   <div className="content-meta">
                     {formatPlayTime(session.durationMs)}
-                    {session.crashed && <span className="badge danger">Absturz (Code {session.exitCode})</span>}
+                    {session.crashed && (
+                      <span className="badge danger">
+                        {t('instanceDetail', 'overview.crashBadge', { code: session.exitCode })}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -529,11 +559,13 @@ function Cell({ label, value, hint }: { label: string; value: string; hint?: str
  * Installed content
  * ------------------------------------------------------------------ */
 
+// `label` holds an instanceDetail translation key, not display text, so the
+// lookup happens at render time and stays reactive to a language switch.
 const CONTENT_TABS: { id: ContentType; label: string }[] = [
-  { id: 'mod', label: 'Mods' },
-  { id: 'resourcepack', label: 'Resourcepacks' },
-  { id: 'shaderpack', label: 'Shader' },
-  { id: 'datapack', label: 'Data Packs' }
+  { id: 'mod', label: 'contentTabs.mod' },
+  { id: 'resourcepack', label: 'contentTabs.resourcepack' },
+  { id: 'shaderpack', label: 'contentTabs.shaderpack' },
+  { id: 'datapack', label: 'contentTabs.datapack' }
 ]
 
 function ContentTab({
@@ -571,12 +603,21 @@ function ContentTab({
       const count = updated.content.filter((c) => c.update).length
       toast(
         count > 0 ? 'info' : 'success',
-        count > 0 ? `${count} ${pluralise(count, 'Update', 'Updates')} verfügbar` : 'Alles aktuell',
-        count > 0 ? 'Du kannst einzeln oder alle auf einmal aktualisieren.' : undefined
+        count > 0
+          ? t('instanceDetail', 'content.updatesAvailableTitle', {
+              count,
+              word: pluralise(
+                count,
+                t('instanceDetail', 'content.updateWord.one'),
+                t('instanceDetail', 'content.updateWord.many')
+              )
+            })
+          : t('instanceDetail', 'content.upToDateTitle'),
+        count > 0 ? t('instanceDetail', 'content.updatesAvailableMessage') : undefined
       )
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update-Prüfung fehlgeschlagen')
+      toastError(err, t('instanceDetail', 'content.checkUpdatesFailed'))
     } finally {
       setChecking(false)
     }
@@ -586,10 +627,16 @@ function ContentTab({
     setChecking(true)
     try {
       const count = await window.gabi.content.updateAll(instance.id)
-      toast('success', `${count} ${pluralise(count, 'Mod', 'Mods')} aktualisiert`)
+      toast(
+        'success',
+        t('instanceDetail', 'content.modsUpdatedTitle', {
+          count,
+          word: pluralise(count, t('instanceDetail', 'content.modWord.one'), t('instanceDetail', 'content.modWord.many'))
+        })
+      )
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, t('instanceDetail', 'content.updateFailed'))
     } finally {
       setChecking(false)
     }
@@ -605,10 +652,10 @@ function ContentTab({
     setUpdating(item.id)
     try {
       await window.gabi.content.update(instance.id, item.id)
-      toast('success', `${item.name} aktualisiert`)
+      toast('success', t('instanceDetail', 'content.itemUpdatedTitle', { name: item.name }))
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, t('instanceDetail', 'content.updateFailed'))
     } finally {
       setUpdating(null)
     }
@@ -626,7 +673,7 @@ function ContentTab({
                 className={type === entry.id ? 'active' : ''}
                 onClick={() => setType(entry.id)}
               >
-                {entry.label}
+                {t('instanceDetail', entry.label)}
                 {count > 0 && <span className="tab-count">{count}</span>}
               </button>
             )
@@ -637,7 +684,7 @@ function ContentTab({
           <IconPackage size={15} />
           <input
             className="input"
-            placeholder="Filtern…"
+            placeholder={t('instanceDetail', 'content.filterPlaceholder')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -647,7 +694,7 @@ function ContentTab({
 
         <button className="btn sm" onClick={checkUpdates} disabled={checking}>
           {checking ? <span className="spinner" /> : <IconRefresh size={14} />}
-          Auf Updates prüfen
+          {t('instanceDetail', 'content.checkUpdatesButton')}
         </button>
 
         {updates > 0 && (
@@ -658,7 +705,14 @@ function ContentTab({
             title={blockedReason ?? undefined}
           >
             <IconDownload size={14} />
-            {updates} {pluralise(updates, 'Update', 'Updates')} installieren
+            {t('instanceDetail', 'content.installUpdatesButton', {
+              count: updates,
+              word: pluralise(
+                updates,
+                t('instanceDetail', 'content.updateWord.one'),
+                t('instanceDetail', 'content.updateWord.many')
+              )
+            })}
           </button>
         )}
 
@@ -668,23 +722,35 @@ function ContentTab({
             try {
               const added = await window.gabi.content.importFile(instance.id, type)
               if (added.length > 0) {
-                toast('success', `${added.length} ${pluralise(added.length, 'Datei', 'Dateien')} hinzugefügt`)
+                toast(
+                  'success',
+                  t('instanceDetail', 'content.filesAddedTitle', {
+                    count: added.length,
+                    word: pluralise(
+                      added.length,
+                      t('instanceDetail', 'content.fileWord.one'),
+                      t('instanceDetail', 'content.fileWord.many')
+                    )
+                  })
+                )
                 await onChanged()
               }
             } catch (err) {
-              toastError(err, 'Import fehlgeschlagen')
+              toastError(err, t('instanceDetail', 'content.importFailed'))
             }
           }}
         >
-          <IconUpload size={14} /> Datei hinzufügen
+          <IconUpload size={14} /> {t('instanceDetail', 'content.addFileButton')}
         </button>
       </div>
 
       {items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Nichts installiert"
-          message={`Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden", um welche zu installieren.`}
+          title={t('instanceDetail', 'content.emptyTitle')}
+          message={t('instanceDetail', 'content.emptyMessage', {
+            type: t('instanceDetail', CONTENT_TABS.find((entry) => entry.id === type)?.label ?? '')
+          })}
         />
       ) : (
         <div className="col gap-8">
@@ -703,7 +769,7 @@ function ContentTab({
               }}
               onRemove={async () => {
                 await window.gabi.content.remove(instance.id, item.id)
-                toast('info', `${item.name} entfernt`)
+                toast('info', t('instanceDetail', 'content.itemRemovedTitle', { name: item.name }))
                 await onChanged()
               }}
             />
@@ -723,7 +789,12 @@ function ContentTab({
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
                 await onChanged()
               } catch (err) {
-                toastError(err, enabled ? 'Aktivieren fehlgeschlagen' : 'Deaktivieren fehlgeschlagen')
+                toastError(
+                  err,
+                  enabled
+                    ? t('instanceDetail', 'content.activateFailed')
+                    : t('instanceDetail', 'content.deactivateFailed')
+                )
               }
             },
             onUpdate: (item) => setConfirmUpdate(item),
@@ -732,10 +803,10 @@ function ContentTab({
             onRemove: async (item) => {
               try {
                 await window.gabi.content.remove(instance.id, item.id)
-                toast('info', `${item.name} entfernt`)
+                toast('info', t('instanceDetail', 'content.itemRemovedTitle', { name: item.name }))
                 await onChanged()
               } catch (err) {
-                toastError(err, 'Entfernen fehlgeschlagen')
+                toastError(err, t('instanceDetail', 'content.removeFailed'))
               }
             }
           })}
@@ -755,17 +826,16 @@ function ContentTab({
 
       <Confirm
         open={confirmUpdate !== null}
-        title="Mod aktualisieren"
+        title={t('instanceDetail', 'content.confirmUpdateTitle')}
         message={
-          confirmUpdate && (
-            <>
-              Nur „{confirmUpdate.name}" auf {confirmUpdate.update?.versionNumber} aktualisieren? Die
-              bisherige Datei wird dabei entfernt.
-            </>
-          )
+          confirmUpdate &&
+          t('instanceDetail', 'content.confirmUpdateMessage', {
+            name: confirmUpdate.name,
+            version: confirmUpdate.update?.versionNumber ?? ''
+          })
         }
-        confirmLabel="Ja, aktualisieren"
-        cancelLabel="Nein"
+        confirmLabel={t('instanceDetail', 'content.confirmUpdateYes')}
+        cancelLabel={t('common', 'no')}
         onConfirm={async () => {
           const item = confirmUpdate
           setConfirmUpdate(null)
