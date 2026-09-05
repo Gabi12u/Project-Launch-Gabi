@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
 import { NAV_ENTRIES } from '../lib/nav'
+import { t } from '../lib/i18n'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
 import { IconSearch, IconSettings } from './Icons'
@@ -70,7 +71,7 @@ export function Sidebar(): JSX.Element {
               onClick={() => navigate(entry.route)}
             >
               {entry.icon}
-              <span>{entry.label}</span>
+              <span>{t('nav', entry.id)}</span>
               {entry.id === 'mods' && updateCount > 0 ? (
                 <span className="nav-badge">{updateCount}</span>
               ) : null}

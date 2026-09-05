@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
 import { NAV_ENTRIES } from '../lib/nav'
+import { t } from '../lib/i18n'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
 import {
@@ -93,7 +94,7 @@ export function TopBar(): JSX.Element {
               onClick={() => navigate(entry.id === 'settings' && updateReady ? '/settings?section=updates' : entry.route)}
               title={entry.id === 'settings' && updateReady ? `Update auf ${updateReady} wartet` : undefined}
             >
-              {entry.label}
+              {t('nav', entry.id)}
               {entry.id === 'mods' && updateCount > 0 ? <span className="nav-badge">{updateCount}</span> : null}
               {entry.id === 'settings' && updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
             </button>

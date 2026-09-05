@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import type {
   JavaRuntime,
+  LanguageId,
   LaunchBehaviour,
   RecordingQuality,
   ThemeId,
@@ -10,6 +11,7 @@ import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { SUPPORTED_LANGUAGES, t } from '../lib/i18n'
 import { formatBytes, formatDate, formatDateTime, formatMemory, updateHeadline } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
@@ -327,6 +329,24 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
           {section === 'appearance' && (
             <>
+              <section className="setting-group">
+                <h3>{t('settings', 'language.title')}</h3>
+                <p className="hint">{t('settings', 'language.hint')}</p>
+                <select
+                  value={settings.language}
+                  onChange={(event) =>
+                    void saveSettings({ language: event.target.value as LanguageId })
+                  }
+                  style={{ alignSelf: 'flex-start', marginTop: 10, maxWidth: 220 }}
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
               <section className="setting-group">
                 <h3>Navigation</h3>
                 <p className="hint">
