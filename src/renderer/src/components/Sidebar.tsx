@@ -47,14 +47,18 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="brand-text">
             <span className="brand-name">Launch Gabi</span>
-            <span className="brand-sub">{running > 0 ? `${running} aktiv` : 'Launcher'}</span>
+            <span className="brand-sub">
+              {running > 0
+                ? t('shell', 'sidebar.brandActiveCount', { count: running })
+                : t('shell', 'status.launcherLabel')}
+            </span>
           </div>
         </div>
 
         <button className="nav-search no-drag" onClick={() => setState({ paletteOpen: true })}>
           <IconSearch size={15} />
-          <span>Suchen…</span>
-          <span className="kbd">Strg K</span>
+          <span>{t('shell', 'sidebar.searchPlaceholder')}</span>
+          <span className="kbd">{t('shell', 'sidebar.searchShortcut')}</span>
         </button>
 
         <div className="nav-list" ref={navRef}>
@@ -84,14 +88,18 @@ export function Sidebar(): JSX.Element {
             data-active={section === 'settings'}
             className={`nav-item ${section === 'settings' ? 'active' : ''}`}
             onClick={() => navigate(updateReady ? '/settings?section=updates' : '/settings')}
-            title={updateReady ? `Update auf ${updateReady} wartet auf einen Neustart` : undefined}
+            title={
+              updateReady
+                ? t('shell', 'sidebar.updateWaitingRestartTitle', { version: updateReady })
+                : undefined
+            }
           >
             <IconSettings />
-            <span>Einstellungen</span>
+            <span>{t('common', 'settings')}</span>
             {/* A waiting update announced itself once, in a toast that faded
                 after a few seconds, and nowhere else. This is the standing
                 reminder for everyone who was not looking at that moment. */}
-            {updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
+            {updateReady ? <span className="nav-dot" aria-label={t('shell', 'status.updateReady')} /> : null}
           </button>
         </div>
 
@@ -109,14 +117,14 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="col grow" style={{ overflow: 'hidden' }}>
             <span className="truncate" style={{ fontSize: 13, fontWeight: 620 }}>
-              {active?.username ?? 'Kein Account'}
+              {active?.username ?? t('shell', 'account.none')}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
               {active
                 ? active.type === 'microsoft'
                   ? 'Microsoft'
-                  : 'Offline-Profil'
-                : 'Zum Anmelden klicken'}
+                  : t('shell', 'account.offlineProfile')
+                : t('shell', 'account.signInPrompt')}
             </span>
           </div>
         </button>

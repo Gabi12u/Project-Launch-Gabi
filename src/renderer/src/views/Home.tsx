@@ -6,6 +6,7 @@ import { importModpack, startInstance } from '../lib/actions'
 import { useCountUp } from '../lib/hooks'
 import { clickable } from '../lib/a11y'
 import { formatDate, formatPlayTime } from '../lib/format'
+import { t } from '../lib/i18n'
 import { InstanceTile } from '../components/InstanceEntry'
 import { Confirm, EmptyState } from '../components/ui'
 import {
@@ -80,12 +81,12 @@ export function HomeView(): JSX.Element {
         <div className="col gap-14" style={{ minWidth: 0 }}>
           <div>
             <h1 className="home-hero-title">
-              Willkommen zurück{activeAccount ? ', ' + activeAccount.username : ''}!
+              {activeAccount
+                ? t('shell', 'hero.welcomeBack', { name: activeAccount.username })
+                : t('shell', 'hero.welcomeBackGeneric')}
             </h1>
             <p className="home-hero-sub">
-              {featured
-                ? 'Bereit für dein nächstes Abenteuer?'
-                : 'Lege deine erste Instanz an und leg los.'}
+              {featured ? t('shell', 'hero.subReady') : t('shell', 'hero.subEmpty')}
             </p>
           </div>
 
@@ -97,7 +98,11 @@ export function HomeView(): JSX.Element {
                 onClick={() => void startInstance(featured.id, featured.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={15} />}
-                {featured.running ? 'Minecraft läuft' : busy ? 'Startet…' : 'Minecraft starten'}
+                {featured.running
+                  ? t('shell', 'status.running')
+                  : busy
+                    ? t('shell', 'hero.playStarting')
+                    : t('shell', 'hero.playStart')}
               </button>
               <button className="btn" onClick={() => navigate('/instances/' + featured.id)}>
                 {featured.name}
@@ -108,11 +113,11 @@ export function HomeView(): JSX.Element {
             <div className="row gap-8">
               <button className="btn primary" onClick={() => setState({ createOpen: true })}>
                 <IconPlus size={15} />
-                Instanz erstellen
+                {t('shell', 'hero.createInstance')}
               </button>
               <button className="btn" onClick={() => void importModpack()}>
                 <IconDownload size={15} />
-                Modpack importieren
+                {t('shell', 'hero.importModpack')}
               </button>
             </div>
           )}
@@ -123,16 +128,16 @@ export function HomeView(): JSX.Element {
         <div className="card pad-lg">
           <EmptyState
             icon={<IconCube size={28} />}
-            title="Noch keine Instanz"
-            message="Eine Instanz ist eine eigenständige Minecraft-Installation mit eigener Version, eigenen Mods und eigenen Welten."
+            title={t('shell', 'empty.title')}
+            message={t('shell', 'empty.message')}
           />
         </div>
       ) : (
         <section className="col gap-12">
           <div className="row-between">
-            <h2 className="section-title">Deine Instanzen</h2>
+            <h2 className="section-title">{t('shell', 'instances.title')}</h2>
             <button className="btn ghost sm" onClick={() => navigate('/instances')}>
-              Alle Instanzen
+              {t('shell', 'instances.viewAll')}
               <IconChevronRight size={14} />
             </button>
           </div>
@@ -144,10 +149,12 @@ export function HomeView(): JSX.Element {
             <div
               className="inst-tile create"
               {...clickable(() => setState({ createOpen: true }))}
-              aria-label="Neue Instanz"
+              aria-label={t('shell', 'instances.newInstance')}
             >
               <IconPlus size={18} />
-              <span style={{ fontSize: 12.5, fontWeight: 600 }}>Neue Instanz</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600 }}>
+                {t('shell', 'instances.newInstance')}
+              </span>
             </div>
           </div>
         </section>
@@ -155,9 +162,9 @@ export function HomeView(): JSX.Element {
 
       <div className="panel-pair">
         <div className="panel">
-          <span className="panel-label">NEUIGKEITEN</span>
+          <span className="panel-label">{t('shell', 'news.title')}</span>
           {news.length === 0 ? (
-            <span className="hint">Gerade keine Meldungen.</span>
+            <span className="hint">{t('shell', 'news.empty')}</span>
           ) : (
             <div className="col gap-8">
               {news.slice(0, 3).map((item) => (
@@ -186,7 +193,7 @@ export function HomeView(): JSX.Element {
                 style={{ alignSelf: 'flex-start' }}
                 onClick={() => navigate('/news')}
               >
-                Alle News
+                {t('shell', 'news.viewAll')}
                 <IconChevronRight size={13} />
               </button>
             </div>
@@ -194,18 +201,18 @@ export function HomeView(): JSX.Element {
         </div>
 
         <div className="panel">
-          <span className="panel-label">AKTUELLER STATUS</span>
+          <span className="panel-label">{t('shell', 'status.title')}</span>
           <div className="col gap-8">
             <div className="status-line">
               <span>Minecraft</span>
-              <b>{featured ? featured.mcVersion : 'keine Instanz'}</b>
+              <b>{featured ? featured.mcVersion : t('shell', 'status.noInstance')}</b>
             </div>
             <div className="status-line">
-              <span>Launcher</span>
+              <span>{t('shell', 'status.launcherLabel')}</span>
               <b>{info ? 'v' + info.version : '…'}</b>
             </div>
             <div className="status-line">
-              <span>Status</span>
+              <span>{t('shell', 'status.label')}</span>
               <span
                 className="row gap-6"
                 style={{
@@ -217,12 +224,12 @@ export function HomeView(): JSX.Element {
                 }}
               >
                 {updateStatus?.state === 'ready'
-                  ? 'Update bereit'
+                  ? t('shell', 'status.updateReady')
                   : updateStatus?.state === 'downloading'
-                    ? 'Update wird geladen'
+                    ? t('shell', 'status.updateDownloading')
                     : updateStatus?.state === 'disabled'
-                      ? 'Entwicklungsmodus'
-                      : 'Auf dem neuesten Stand'}
+                      ? t('shell', 'status.devMode')
+                      : t('shell', 'status.upToDate')}
                 {(!updateStatus ||
                   updateStatus.state === 'up-to-date' ||
                   updateStatus.state === 'idle') && <IconCheck size={13} />}
@@ -234,19 +241,27 @@ export function HomeView(): JSX.Element {
 
       {stats && stats.totalInstances > 0 && (
         <section className="col gap-12">
-          <h2 className="section-title">Überblick</h2>
+          <h2 className="section-title">{t('shell', 'overview.title')}</h2>
           <div className="stat-grid stagger">
-            <Stat icon={<IconGrid size={13} />} label="Instanzen" value={stats.totalInstances} />
+            <Stat
+              icon={<IconGrid size={13} />}
+              label={t('shell', 'overview.instances')}
+              value={stats.totalInstances}
+            />
             <Stat
               icon={<IconClock size={13} />}
-              label="Spielzeit"
+              label={t('shell', 'overview.playtime')}
               value={stats.totalPlayMs}
               format={formatPlayTime}
             />
-            <Stat icon={<IconPackage size={13} />} label="Mods insgesamt" value={stats.totalMods} />
+            <Stat
+              icon={<IconPackage size={13} />}
+              label={t('shell', 'overview.totalMods')}
+              value={stats.totalMods}
+            />
             <Stat
               icon={<IconSave size={13} />}
-              label="Speicherplatz"
+              label={t('shell', 'overview.diskUsage')}
               value={stats.diskUsageBytes / 1024 / 1024 / 1024}
               format={(v) => v.toFixed(1)}
               suffix="GB"
@@ -257,14 +272,10 @@ export function HomeView(): JSX.Element {
 
       <Confirm
         open={confirmDelete !== null}
-        title="Instanz löschen"
+        title={t('shell', 'deleteInstance.title')}
         danger
-        message={
-          confirmDelete
-            ? 'Diese Instanz wird mit allen Welten, Mods und Einstellungen gelöscht. Das lässt sich nicht rückgängig machen.'
-            : ''
-        }
-        confirmLabel="Endgültig löschen"
+        message={confirmDelete ? t('shell', 'deleteInstance.message') : ''}
+        confirmLabel={t('shell', 'deleteInstance.confirm')}
         onConfirm={async () => {
           if (!confirmDelete) return
           await window.gabi.instances.remove(confirmDelete.id)

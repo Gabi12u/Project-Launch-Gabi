@@ -92,11 +92,17 @@ export function TopBar(): JSX.Element {
               data-active={section === entry.id}
               className={`topbar-tab ${section === entry.id ? 'active' : ''} ${entry.trailing ? 'trailing' : ''}`}
               onClick={() => navigate(entry.id === 'settings' && updateReady ? '/settings?section=updates' : entry.route)}
-              title={entry.id === 'settings' && updateReady ? `Update auf ${updateReady} wartet` : undefined}
+              title={
+                entry.id === 'settings' && updateReady
+                  ? t('shell', 'topbar.updateWaitingTitle', { version: updateReady })
+                  : undefined
+              }
             >
               {t('nav', entry.id)}
               {entry.id === 'mods' && updateCount > 0 ? <span className="nav-badge">{updateCount}</span> : null}
-              {entry.id === 'settings' && updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
+              {entry.id === 'settings' && updateReady ? (
+                <span className="nav-dot" aria-label={t('shell', 'status.updateReady')} />
+              ) : null}
             </button>
           ))}
         </div>
@@ -104,14 +110,18 @@ export function TopBar(): JSX.Element {
         <div className="topbar-status">
           {running > 0 && (
             <span className="badge ok dot live no-drag">
-              {running === 1 ? 'Minecraft läuft' : `${running} laufen`}
+              {running === 1
+                ? t('shell', 'status.running')
+                : t('shell', 'topbar.runningMany', { count: running })}
             </span>
           )}
           {recording.active && (
             <button
               className="rec-pill no-drag"
-              title="Aufnahme beenden"
-              aria-label={`Aufnahme beenden, läuft seit ${elapsed(recording.startedAt)}`}
+              title={t('shell', 'recording.stopTitle')}
+              aria-label={t('shell', 'recording.stopAriaLabel', {
+                elapsed: elapsed(recording.startedAt)
+              })}
               onClick={() => void window.gabi.recording.toggle()}
             >
               <span className="rec-dot" />
@@ -133,7 +143,7 @@ export function TopBar(): JSX.Element {
           >
             {active ? (skinHeadStyle(active.skinUrl) ? '' : initials(active.username)) : '?'}
           </div>
-          <span className="truncate">{active?.username ?? 'Kein Account'}</span>
+          <span className="truncate">{active?.username ?? t('shell', 'account.none')}</span>
           <IconChevronDown size={13} />
         </button>
 
@@ -142,22 +152,30 @@ export function TopBar(): JSX.Element {
             <button
               className="win-btn no-drag"
               onClick={() => setState({ paletteOpen: true })}
-              aria-label="Befehle suchen"
-              data-tip="Strg + K"
+              aria-label={t('shell', 'commandPalette.ariaLabel')}
+              data-tip={t('shell', 'commandPalette.shortcut')}
             >
               <IconSearch size={15} />
             </button>
-            <button className="win-btn no-drag" onClick={() => window.gabi.window.minimize()} aria-label="Minimieren">
+            <button
+              className="win-btn no-drag"
+              onClick={() => window.gabi.window.minimize()}
+              aria-label={t('shell', 'window.minimize')}
+            >
               <IconMinimize />
             </button>
             <button
               className="win-btn no-drag"
               onClick={() => window.gabi.window.maximize()}
-              aria-label={maximized ? 'Wiederherstellen' : 'Maximieren'}
+              aria-label={maximized ? t('shell', 'window.restore') : t('shell', 'window.maximize')}
             >
               {maximized ? <IconRestore /> : <IconMaximize />}
             </button>
-            <button className="win-btn close no-drag" onClick={() => window.gabi.window.close()} aria-label="Schließen">
+            <button
+              className="win-btn close no-drag"
+              onClick={() => window.gabi.window.close()}
+              aria-label={t('common', 'close')}
+            >
               <IconClose />
             </button>
           </div>
