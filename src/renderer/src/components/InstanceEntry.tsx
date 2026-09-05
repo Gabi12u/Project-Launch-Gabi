@@ -5,6 +5,7 @@ import { repairInstanceWithOverlay, startInstance, stopInstance, toggleFavorite 
 import { useInstanceIcon } from '../lib/hooks'
 import { clickable } from '../lib/a11y'
 import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/format'
+import { t } from '../lib/i18n'
 import { ContextMenu, type MenuItem } from './ContextMenu'
 import {
   IconCopy,
@@ -28,29 +29,31 @@ import {
 function instanceMenu(instance: InstanceSummary, onDeleted: () => void): MenuItem[] {
   const busy = instance.running || instance.installing
   const busyReason = instance.running
-    ? 'Die Instanz läuft gerade.'
+    ? t('instances', 'busyReason.running')
     : instance.installing
-      ? 'Die Instanz wird gerade eingerichtet.'
+      ? t('instances', 'busyReason.installing')
       : undefined
 
   return [
     {
-      label: 'Bearbeiten',
+      label: t('common', 'edit'),
       icon: <IconPackage size={14} />,
       onSelect: () => navigate(`/instances/${instance.id}?tab=settings`)
     },
     {
-      label: 'Ordner öffnen',
+      label: t('instances', 'menu.openFolder'),
       icon: <IconFolder size={14} />,
       onSelect: () => void window.gabi.instances.openFolder(instance.id)
     },
     {
-      label: instance.favorite ? 'Favorit entfernen' : 'Als Favorit',
+      label: instance.favorite
+        ? t('instances', 'menu.favoriteRemove')
+        : t('instances', 'menu.favoriteAdd'),
       icon: instance.favorite ? <IconStarFilled size={14} /> : <IconStar size={14} />,
       onSelect: () => void toggleFavorite(instance.id, !instance.favorite)
     },
     {
-      label: 'Duplizieren',
+      label: t('instances', 'menu.duplicate'),
       icon: <IconCopy size={14} />,
       separated: true,
       disabled: busy,
@@ -59,21 +62,25 @@ function instanceMenu(instance: InstanceSummary, onDeleted: () => void): MenuIte
         void window.gabi.instances
           .duplicate(instance.id)
           .then(async (copy) => {
-            toast('success', 'Instanz dupliziert', `${copy.name} wurde angelegt.`)
+            toast(
+              'success',
+              t('instances', 'duplicate.title'),
+              t('instances', 'duplicate.message', { name: copy.name })
+            )
             await refreshInstances()
           })
-          .catch((err: unknown) => toastError(err, 'Duplizieren fehlgeschlagen'))
+          .catch((err: unknown) => toastError(err, t('instances', 'duplicate.failed')))
       }
     },
     {
-      label: 'Reparieren',
+      label: t('instances', 'menu.repair'),
       icon: <IconWrench size={14} />,
       disabled: busy,
       disabledReason: busyReason,
       onSelect: () => void repairInstanceWithOverlay(instance.id, instance.name)
     },
     {
-      label: 'Löschen',
+      label: t('common', 'delete'),
       icon: <IconTrash size={14} />,
       danger: true,
       separated: true,
@@ -110,7 +117,7 @@ function LaunchButton({ instance }: { instance: InstanceSummary }): JSX.Element 
     return (
       <button
         className="play-btn stop"
-        aria-label="Beenden"
+        aria-label={t('instances', 'stopLabel')}
         onClick={(event) => {
           event.stopPropagation()
           void stopInstance(instance.id)
@@ -124,7 +131,7 @@ function LaunchButton({ instance }: { instance: InstanceSummary }): JSX.Element 
   return (
     <button
       className="play-btn"
-      aria-label={`${instance.name} starten`}
+      aria-label={t('instances', 'startLabel', { name: instance.name })}
       disabled={isStarting || instance.installing}
       onClick={(event) => {
         event.stopPropagation()
@@ -157,11 +164,13 @@ export function InstanceRow({
         <div className="inst-row-main">
           <div className="row gap-8">
             <span className="inst-row-name truncate">{instance.name}</span>
-            {instance.running && <span className="badge ok dot live">Läuft</span>}
+            {instance.running && (
+              <span className="badge ok dot live">{t('instances', 'status.running')}</span>
+            )}
             {instance.installing && !instance.running && (
               <span className="badge accent">
                 <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-                Setup
+                {t('instances', 'status.setup')}
               </span>
             )}
             {instance.favorite && <IconStarFilled size={12} style={{ color: 'var(--warn)' }} />}
@@ -179,21 +188,24 @@ export function InstanceRow({
               {LOADER_LABELS[instance.loader]}
             </span>
             <span className="chip">
-              {instance.modCount} {pluralise(instance.modCount, 'Mod', 'Mods')}
+              {instance.modCount}{' '}
+              {pluralise(instance.modCount, t('instances', 'mod'), t('instances', 'modsPlural'))}
             </span>
             {instance.updateCount > 0 && (
               <span className="chip" style={{ color: 'var(--warn)' }}>
-                {instance.updateCount} Updates
+                {instance.updateCount} {t('instances', 'updates')}
               </span>
             )}
           </div>
         </div>
 
-        <span className="inst-row-played">Zuletzt gespielt: {formatRelative(instance.lastPlayed)}</span>
+        <span className="inst-row-played">
+          {t('instances', 'lastPlayed', { time: formatRelative(instance.lastPlayed) })}
+        </span>
 
         <LaunchButton instance={instance} />
 
-        <button className="sq-btn" aria-label="Mehr" onClick={menu.open}>
+        <button className="sq-btn" aria-label={t('common', 'more')} onClick={menu.open}>
           <IconMore size={16} />
         </button>
       </div>
@@ -228,7 +240,12 @@ export function InstanceTile({
           <div className="inst-row-icon" style={{ width: 34, height: 34, fontSize: 17 }}>
             {iconSrc ? <img src={iconSrc} alt="" /> : (instance.appearance.icon ?? <IconCube size={16} />)}
           </div>
-          <button className="sq-btn" style={{ width: 28, height: 28 }} aria-label="Mehr" onClick={menu.open}>
+          <button
+            className="sq-btn"
+            style={{ width: 28, height: 28 }}
+            aria-label={t('common', 'more')}
+            onClick={menu.open}
+          >
             <IconMore size={14} />
           </button>
         </div>
