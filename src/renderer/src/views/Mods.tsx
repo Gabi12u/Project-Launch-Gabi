@@ -11,6 +11,7 @@ import {
 } from '../lib/format'
 import { EmptyState } from '../components/ui'
 import { DiscoverView } from './Discover'
+import { t } from '../lib/i18n'
 import {
   IconChevronRight,
   IconDownload,
@@ -47,18 +48,16 @@ export function ModsView({ query }: { query?: URLSearchParams }): JSX.Element {
   return (
     <div className="col gap-20">
       <header>
-        <h1 className="page-title">Mods</h1>
-        <p className="page-sub">
-          Was installiert ist, und was es bei Modrinth und CurseForge zu holen gibt.
-        </p>
+        <h1 className="page-title">{t('mods', 'page.title')}</h1>
+        <p className="page-sub">{t('mods', 'page.subtitle')}</p>
       </header>
 
       <div className="segmented" style={{ alignSelf: 'flex-start' }}>
         <button className={tab === 'installed' ? 'active' : ''} onClick={() => setTab('installed')}>
-          Installiert
+          {t('mods', 'tabs.installed')}
         </button>
         <button className={tab === 'discover' ? 'active' : ''} onClick={() => setTab('discover')}>
-          Verfügbar
+          {t('mods', 'tabs.discover')}
         </button>
       </div>
 
@@ -107,7 +106,7 @@ function InstalledMods(): JSX.Element {
       }
       if (request === requestId.current) setRows(collected)
     } catch (err) {
-      if (request === requestId.current) toastError(err, 'Mods konnten nicht geladen werden')
+      if (request === requestId.current) toastError(err, t('mods', 'toast.loadFailed'))
     } finally {
       if (request === requestId.current) setLoading(false)
     }
@@ -137,22 +136,34 @@ function InstalledMods(): JSX.Element {
       if (failed.length > 0) {
         toast(
           'warning',
-          `${failed.length} ${pluralise(failed.length, 'Instanz', 'Instanzen')} nicht prüfbar`,
-          `${total} ${pluralise(total, 'Update', 'Updates')} in den übrigen gefunden. ` +
-            `Fehlgeschlagen: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
+          t('mods', 'toast.checkFailedTitle', {
+            count: failed.length,
+            unit: pluralise(failed.length, t('mods', 'unit.instance'), t('mods', 'unit.instances'))
+          }),
+          t('mods', 'toast.checkFailedBody', {
+            count: total,
+            unit: pluralise(total, t('mods', 'unit.update'), t('mods', 'unit.updates')),
+            names: failed.slice(0, 3).join(', '),
+            more: failed.length > 3 ? t('mods', 'toast.andMore') : ''
+          }),
           8000
         )
       } else {
         toast(
           total > 0 ? 'info' : 'success',
-          total > 0 ? `${total} ${pluralise(total, 'Update', 'Updates')} gefunden` : 'Alles aktuell',
-          total > 0 ? 'Du kannst sie einzeln oder pro Instanz installieren.' : undefined
+          total > 0
+            ? t('mods', 'toast.updatesFoundTitle', {
+                count: total,
+                unit: pluralise(total, t('mods', 'unit.update'), t('mods', 'unit.updates'))
+              })
+            : t('mods', 'toast.upToDateTitle'),
+          total > 0 ? t('mods', 'toast.updatesFoundBody') : undefined
         )
       }
       await refreshInstances()
       await load()
     } catch (err) {
-      toastError(err, 'Update-Prüfung fehlgeschlagen')
+      toastError(err, t('mods', 'toast.checkError'))
     } finally {
       setChecking(false)
     }
@@ -198,25 +209,41 @@ function InstalledMods(): JSX.Element {
       if (skipped.length > 0 && failed.length === 0) {
         toast(
           'warning',
-          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`,
-          `Übersprungen, weil gerade in Benutzung: ${skipped.join(', ')}`,
+          t('mods', 'toast.updatedTitle', {
+            count: total,
+            unit: pluralise(total, t('mods', 'unit.mod'), t('mods', 'unit.mods'))
+          }),
+          t('mods', 'toast.skippedBusy', { names: skipped.join(', ') }),
           8000
         )
       } else if (failed.length > 0) {
         toast(
           'warning',
-          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert, ${failed.length} fehlgeschlagen`,
-          `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}. ` +
-            `Grund: ${reasons[0] ?? 'unbekannt'}`,
+          t('mods', 'toast.updatedWithFailuresTitle', {
+            count: total,
+            unit: pluralise(total, t('mods', 'unit.mod'), t('mods', 'unit.mods')),
+            failedCount: failed.length
+          }),
+          t('mods', 'toast.updateFailedBody', {
+            names: failed.slice(0, 3).join(', '),
+            more: failed.length > 3 ? t('mods', 'toast.andMore') : '',
+            reason: reasons[0] ?? t('common', 'unknown')
+          }),
           9000
         )
       } else {
-        toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
+        toast(
+          'success',
+          t('mods', 'toast.updatedTitle', {
+            count: total,
+            unit: pluralise(total, t('mods', 'unit.mod'), t('mods', 'unit.mods'))
+          })
+        )
       }
       await refreshInstances()
       await load()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, t('mods', 'toast.updateError'))
     } finally {
       setChecking(false)
     }
@@ -247,28 +274,36 @@ function InstalledMods(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <p className="page-sub" style={{ marginTop: 0 }}>
-          {rows.length} {pluralise(rows.length, 'Eintrag', 'Einträge')} über sämtliche Instanzen
-          {totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : ''}.
+          {`${t('mods', 'summary.main', {
+            count: rows.length,
+            unit: pluralise(rows.length, t('mods', 'unit.entry'), t('mods', 'unit.entries'))
+          })}${
+            totalUpdates > 0
+              ? t('mods', 'summary.withUpdates', {
+                  count: totalUpdates,
+                  unit: pluralise(totalUpdates, t('mods', 'unit.update'), t('mods', 'unit.updates'))
+                })
+              : ''
+          }.`}
         </p>
 
         <div className="row gap-8">
           <button className="btn" onClick={checkAll} disabled={checking || instances.length === 0}>
             {checking ? <span className="spinner" /> : <IconRefresh size={16} />}
-            Auf Updates prüfen
+            {t('mods', 'actions.checkUpdates')}
           </button>
           {totalUpdates > 0 && (
             <button
               className="btn primary"
               onClick={updateEverything}
               disabled={checking || updatableInstances.length === 0}
-              title={
-                updatableInstances.length === 0
-                  ? 'Alle betroffenen Instanzen laufen gerade oder werden bearbeitet.'
-                  : undefined
-              }
+              title={updatableInstances.length === 0 ? t('mods', 'hints.allBusy') : undefined}
             >
               <IconSparkle size={16} />
-              {totalUpdates} {pluralise(totalUpdates, 'Update', 'Updates')} installieren
+              {t('mods', 'actions.installUpdates', {
+                count: totalUpdates,
+                unit: pluralise(totalUpdates, t('mods', 'unit.update'), t('mods', 'unit.updates'))
+              })}
             </button>
           )}
         </div>
@@ -277,11 +312,11 @@ function InstalledMods(): JSX.Element {
       {instances.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Keine Instanzen"
-          message="Sobald du eine Instanz mit Mods hast, siehst du hier alles auf einen Blick."
+          title={t('mods', 'empty.noInstances.title')}
+          message={t('mods', 'empty.noInstances.message')}
           action={
             <button className="btn primary" onClick={() => navigate('/instances')}>
-              Zu den Instanzen
+              {t('mods', 'empty.noInstances.action')}
             </button>
           }
         />
@@ -292,7 +327,7 @@ function InstalledMods(): JSX.Element {
               <IconSearch size={16} />
               <input
                 className="input"
-                placeholder="Mods durchsuchen…"
+                placeholder={t('mods', 'filters.searchPlaceholder')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -304,7 +339,7 @@ function InstalledMods(): JSX.Element {
               value={instanceFilter}
               onChange={(event) => setInstanceFilter(event.target.value)}
             >
-              <option value="all">Alle Instanzen</option>
+              <option value="all">{t('mods', 'filters.allInstances')}</option>
               {instances.map((instance) => (
                 <option key={instance.id} value={instance.id}>
                   {instance.name}
@@ -316,7 +351,7 @@ function InstalledMods(): JSX.Element {
               className={`btn ${onlyUpdates ? 'primary' : ''}`}
               onClick={() => setOnlyUpdates((value) => !value)}
             >
-              Nur mit Update
+              {t('mods', 'filters.onlyUpdates')}
             </button>
           </div>
 
@@ -329,23 +364,23 @@ function InstalledMods(): JSX.Element {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={<IconPackage size={26} />}
-              title="Noch keine Mods installiert"
-              message="Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus, Launch Gabi installiert Abhängigkeiten automatisch mit."
+              title={t('mods', 'empty.noMods.title')}
+              message={t('mods', 'empty.noMods.message')}
               action={
                 <button className="btn primary" onClick={() => navigate('/discover')}>
                   <IconSearch size={16} />
-                  Mods entdecken
+                  {t('mods', 'empty.noMods.action')}
                 </button>
               }
             />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={<IconPackage size={26} />}
-              title={onlyUpdates ? 'Alles aktuell' : 'Nichts gefunden'}
+              title={onlyUpdates ? t('mods', 'toast.upToDateTitle') : t('mods', 'empty.nothingFound.title')}
               message={
                 onlyUpdates
-                  ? 'Für keine deiner Instanzen liegen Updates vor.'
-                  : 'Keine Inhalte passen zu diesem Filter.'
+                  ? t('mods', 'empty.noUpdates.message')
+                  : t('mods', 'empty.nothingFound.message')
               }
             />
           ) : (
@@ -368,10 +403,10 @@ function InstalledMods(): JSX.Element {
                           ? 'MR'
                           : row.item.provider === 'curseforge'
                             ? 'CF'
-                            : 'LOKAL'}
+                            : t('mods', 'provider.local')}
                       </span>
-                      {row.item.update && <span className="badge warn">Update</span>}
-                      {!row.item.enabled && <span className="badge">Deaktiviert</span>}
+                      {row.item.update && <span className="badge warn">{t('mods', 'badge.update')}</span>}
+                      {!row.item.enabled && <span className="badge">{t('mods', 'badge.disabled')}</span>}
                     </div>
 
                     <div className="content-meta">
@@ -407,25 +442,25 @@ function InstalledMods(): JSX.Element {
                           setUpdating(row.item.id)
                           try {
                             await window.gabi.content.update(row.instance.id, row.item.id)
-                            toast('success', `${row.item.name} aktualisiert`)
+                            toast('success', t('mods', 'toast.itemUpdated', { name: row.item.name }))
                             await refreshInstances()
                             await load()
                           } catch (err) {
-                            toastError(err, 'Update fehlgeschlagen')
+                            toastError(err, t('mods', 'toast.updateError'))
                           } finally {
                             setUpdating(null)
                           }
                         }}
                       >
                         {updating === row.item.id ? <span className="spinner" /> : <IconDownload size={13} />}
-                        Update
+                        {t('mods', 'badge.update')}
                       </button>
                     )}
                     {row.item.pageUrl && (
                       <button
                         className="btn ghost icon sm"
                         onClick={() => void window.gabi.app.openExternal(row.item.pageUrl as string)}
-                        aria-label="Projektseite"
+                        aria-label={t('mods', 'actions.projectPage')}
                       >
                         <IconExternal size={14} />
                       </button>
@@ -433,7 +468,7 @@ function InstalledMods(): JSX.Element {
                     <button
                       className="btn ghost icon sm"
                       onClick={() => navigate(`/instances/${row.instance.id}?tab=content`)}
-                      aria-label="In der Instanz öffnen"
+                      aria-label={t('mods', 'actions.openInInstance')}
                     >
                       <IconChevronRight size={15} />
                     </button>
