@@ -531,7 +531,9 @@ function OverviewTab({
                     {formatPlayTime(session.durationMs)}
                     {session.crashed && (
                       <span className="badge danger">
-                        {t('instanceDetail', 'overview.crashBadge', { code: session.exitCode })}
+                        {t('instanceDetail', 'overview.crashBadge', {
+                          code: session.exitCode ?? t('common', 'unknown')
+                        })}
                       </span>
                     )}
                   </div>
@@ -870,38 +872,40 @@ function contentMenuItems(
 
   return [
     {
-      label: item.enabled ? 'Deaktivieren' : 'Aktivieren',
+      label: item.enabled ? t('instanceDetail', 'content.deactivate') : t('instanceDetail', 'content.activate'),
       icon: item.enabled ? <IconX size={14} /> : <IconCheck size={14} />,
       disabled: blocked,
       disabledReason: reason,
       onSelect: () => handlers.onToggle(item, !item.enabled)
     },
     {
-      label: item.update ? `Auf ${item.update.versionNumber} aktualisieren` : 'Kein Update verfügbar',
+      label: item.update
+        ? t('instanceDetail', 'content.menuUpdateToLabel', { version: item.update.versionNumber })
+        : t('instanceDetail', 'content.menuNoUpdateLabel'),
       icon: <IconDownload size={14} />,
       disabled: blocked || !item.update,
-      disabledReason: blocked ? reason : 'Dieser Eintrag ist bereits aktuell.',
+      disabledReason: blocked ? reason : t('instanceDetail', 'content.menuAlreadyUpToDateReason'),
       onSelect: () => handlers.onUpdate(item)
     },
     {
-      label: 'Version wählen…',
+      label: t('instanceDetail', 'content.menuChooseVersionLabel'),
       icon: <IconLayers size={14} />,
       disabled: blocked || local,
       disabledReason: blocked
         ? reason
-        : 'Diese Datei wurde von Hand hinzugefügt, es gibt keine Versionsliste.',
+        : t('instanceDetail', 'content.menuNoVersionListReason'),
       onSelect: () => handlers.onPickVersion(item)
     },
     {
-      label: 'Projektseite öffnen',
+      label: t('instanceDetail', 'content.menuOpenPageLabel'),
       icon: <IconExternal size={14} />,
       disabled: !item.pageUrl,
-      disabledReason: 'Für diesen Eintrag ist keine Seite hinterlegt.',
+      disabledReason: t('instanceDetail', 'content.menuNoPageReason'),
       separated: true,
       onSelect: () => handlers.onOpenPage(item)
     },
     {
-      label: 'Entfernen',
+      label: t('common', 'remove'),
       icon: <IconTrash size={14} />,
       danger: true,
       disabled: blocked,
@@ -951,9 +955,13 @@ function ContentRow({
         <div className="row gap-8">
           <span className="content-name truncate">{item.name}</span>
           <span className={`provider-tag ${item.provider}`}>
-            {item.provider === 'modrinth' ? 'MR' : item.provider === 'curseforge' ? 'CF' : 'LOKAL'}
+            {item.provider === 'modrinth'
+              ? 'MR'
+              : item.provider === 'curseforge'
+                ? 'CF'
+                : t('instanceDetail', 'content.providerLocal')}
           </span>
-          {item.update && <span className="badge warn">Update</span>}
+          {item.update && <span className="badge warn">{t('instanceDetail', 'content.updateWord')}</span>}
         </div>
 
         <div className="content-meta">
@@ -977,14 +985,14 @@ function ContentRow({
             title={blocked ? reason : undefined}
           >
             {updating ? <span className="spinner" /> : <IconDownload size={13} />}
-            Update
+            {t('instanceDetail', 'content.updateWord')}
           </button>
         )}
         {item.pageUrl && (
           <button
             className="btn ghost icon sm"
             onClick={() => void window.gabi.app.openExternal(item.pageUrl as string)}
-            aria-label="Projektseite"
+            aria-label={t('instanceDetail', 'content.projectPageAria')}
           >
             <IconExternal size={14} />
           </button>
@@ -993,16 +1001,22 @@ function ContentRow({
           className="btn sm"
           onClick={() => onToggle(!item.enabled)}
           disabled={blocked}
-          title={blocked ? reason : item.enabled ? 'Deaktivieren' : 'Aktivieren'}
+          title={
+            blocked
+              ? reason
+              : item.enabled
+                ? t('instanceDetail', 'content.deactivate')
+                : t('instanceDetail', 'content.activate')
+          }
         >
-          {item.enabled ? 'An' : 'Aus'}
+          {item.enabled ? t('instanceDetail', 'content.onLabel') : t('instanceDetail', 'content.offLabel')}
         </button>
         <button
           className="btn ghost icon sm"
           onClick={onRemove}
           disabled={blocked}
           title={blocked ? reason : undefined}
-          aria-label="Entfernen"
+          aria-label={t('common', 'remove')}
         >
           <IconTrash size={14} />
         </button>
@@ -1028,8 +1042,8 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
     return (
       <EmptyState
         icon={<IconCube size={26} />}
-        title="Noch keine Welten"
-        message="Sobald du in dieser Instanz eine Welt erstellst, erscheint sie hier, inklusive Größe und letztem Spielstand."
+        title={t('instanceDetail', 'worlds.emptyTitle')}
+        message={t('instanceDetail', 'worlds.emptyMessage')}
       />
     )
   }
@@ -1043,12 +1057,12 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
             <div className="content-name">{world.name}</div>
             <div className="content-meta">
               <span>{formatBytes(world.sizeBytes)}</span>
-              <span>Zuletzt: {formatRelative(world.lastPlayed)}</span>
+              <span>{t('instanceDetail', 'worlds.lastPlayedLabel', { time: formatRelative(world.lastPlayed) })}</span>
             </div>
           </div>
           <div className="content-actions">
             <button className="btn sm" onClick={() => void window.gabi.app.openPath(world.folder)}>
-              <IconFolder size={13} /> Öffnen
+              <IconFolder size={13} /> {t('common', 'open')}
             </button>
           </div>
         </div>
@@ -1130,10 +1144,10 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const remove = async (clip: RecordingInfo): Promise<void> => {
     try {
       await window.gabi.instances.deleteRecording(instanceId, clip.file)
-      toast('success', 'Aufnahme gelöscht')
+      toast('success', t('instanceDetail', 'recordings.deletedTitle'))
       await load()
     } catch (err) {
-      toastError(err, 'Aufnahme konnte nicht gelöscht werden')
+      toastError(err, t('instanceDetail', 'recordings.deleteFailed'))
     } finally {
       setConfirmDelete(null)
     }
@@ -1143,8 +1157,8 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
     return (
       <EmptyState
         icon={<IconFilm size={26} />}
-        title="Noch nichts aufgenommen"
-        message="Drücke im Spiel F2 für einen Screenshot oder die Aufnahmetaste für ein Video. Beides taucht dann hier auf."
+        title={t('instanceDetail', 'recordings.emptyTitle')}
+        message={t('instanceDetail', 'recordings.emptyMessage')}
       />
     )
   }
@@ -1156,7 +1170,13 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
           <div
             key={moment.key}
             className={`shot${moment.kind === 'clip' ? ' is-clip' : ''}`}
-            aria-label={`${moment.kind === 'clip' ? 'Aufnahme' : 'Screenshot'} ${formatDateTime(moment.at)} öffnen`}
+            aria-label={t('instanceDetail', 'recordings.openAria', {
+              kind:
+                moment.kind === 'clip'
+                  ? t('instanceDetail', 'recordings.kindClip')
+                  : t('instanceDetail', 'recordings.kindShot'),
+              time: formatDateTime(moment.at)
+            })}
             {...clickable(() => void window.gabi.app.openPath(moment.file))}
           >
             {moment.preview && <img src={moment.preview} alt="" loading="lazy" />}
@@ -1171,13 +1191,13 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
                 )}
                 <span className="shot-badge">
                   <IconFilm size={11} />
-                  {moment.durationMs ? formatDuration(moment.durationMs) : 'Video'}
+                  {moment.durationMs ? formatDuration(moment.durationMs) : t('instanceDetail', 'recordings.videoFallback')}
                 </span>
                 <span className="shot-size">{formatBytes(moment.sizeBytes ?? 0)}</span>
                 <button
                   className="shot-remove"
-                  title="Aufnahme löschen"
-                  aria-label="Aufnahme löschen"
+                  title={t('instanceDetail', 'recordings.deleteButtonTitle')}
+                  aria-label={t('instanceDetail', 'recordings.deleteButtonTitle')}
                   onClick={(event) => {
                     // Without this the tile's own click handler fires too and
                     // opens the very video the user is trying to delete.
@@ -1196,9 +1216,9 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
       <Confirm
         open={confirmDelete !== null}
-        title="Aufnahme löschen"
-        message={`${confirmDelete?.fileName ?? ''} wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.`}
-        confirmLabel="Löschen"
+        title={t('instanceDetail', 'recordings.deleteButtonTitle')}
+        message={t('instanceDetail', 'recordings.confirmDeleteMessage', { fileName: confirmDelete?.fileName ?? '' })}
+        confirmLabel={t('common', 'delete')}
         danger
         onConfirm={() => (confirmDelete ? remove(confirmDelete) : Promise.resolve())}
         onCancel={() => setConfirmDelete(null)}
@@ -1267,13 +1287,13 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
       <div className="row gap-12 wrap">
         <div className="segmented">
           <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
-            Alles
+            {t('instanceDetail', 'logs.filterAll')}
           </button>
           <button className={filter === 'warn' ? 'active' : ''} onClick={() => setFilter('warn')}>
-            Warnungen
+            {t('instanceDetail', 'logs.filterWarnings')}
           </button>
           <button className={filter === 'error' ? 'active' : ''} onClick={() => setFilter('error')}>
-            Fehler
+            {t('instanceDetail', 'logs.filterErrors')}
           </button>
         </div>
 
@@ -1281,7 +1301,7 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
           className={`btn sm ${autoScroll ? 'primary' : ''}`}
           onClick={() => setAutoScroll((value) => !value)}
         >
-          Auto-Scroll
+          {t('instanceDetail', 'logs.autoScrollButton')}
         </button>
 
         <div className="grow" />
@@ -1290,17 +1310,17 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
           className="btn sm"
           onClick={() => void navigator.clipboard.writeText(lines.map((l) => l.text).join('\n'))}
         >
-          Log kopieren
+          {t('instanceDetail', 'logs.copyButton')}
         </button>
         <button className="btn sm" onClick={() => setLines([])}>
-          Leeren
+          {t('instanceDetail', 'logs.clearButton')}
         </button>
       </div>
 
       <div className="log-view" ref={boxRef}>
         {shown.length === 0 ? (
           <div className="muted" style={{ padding: 12 }}>
-            Noch keine Ausgabe. Starte die Instanz, um das Live-Log zu sehen.
+            {t('instanceDetail', 'logs.emptyMessage')}
           </div>
         ) : (
           shown.map((line, index) => (
@@ -1314,9 +1334,7 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
       <div className="row gap-8">
         <IconTerminal size={14} style={{ color: 'var(--text-4)' }} />
-        <span className="hint">
-          {lines.length} Zeilen im Puffer. Das vollständige Log liegt im Instanzordner unter logs/latest.log.
-        </span>
+        <span className="hint">{t('instanceDetail', 'logs.bufferHint', { count: lines.length })}</span>
       </div>
     </div>
   )
