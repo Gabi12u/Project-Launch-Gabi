@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '../lib/store'
 import { updateHeadline } from '../lib/format'
+import { t } from '../lib/i18n'
 import { Modal, ProgressBar } from './ui'
 
 interface LogEntry {
@@ -36,7 +37,9 @@ export function UpdateOverlay(): JSX.Element | null {
       // Progress ticks within the same state, so the download percentage
       // still shows something moving instead of one line sitting at 0%.
       if (state === 'downloading') {
-        const text = `[DOWNLOAD] ${Math.round(updateStatus.percent ?? 0)}%`
+        const text = t('overlays', 'update.log.downloadProgress', {
+          percent: Math.round(updateStatus.percent ?? 0)
+        })
         setEntries((current) => {
           const last = current[current.length - 1]
           if (last?.text === text) return current
@@ -58,25 +61,29 @@ export function UpdateOverlay(): JSX.Element | null {
     let text: string | null = null
     switch (state) {
       case 'checking':
-        text = '[INFO] Suche nach Updates…'
+        text = t('overlays', 'update.log.checking')
         break
       case 'available':
-        text = `[SUCCESS] Neue Version gefunden: ${updateStatus.version}`
+        text = t('overlays', 'update.log.available', { version: updateStatus.version ?? '' })
         break
       case 'downloading':
-        text = '[DOWNLOAD] Lade Update herunter…'
+        text = t('overlays', 'update.log.downloading')
         break
       case 'ready':
-        text = '[SUCCESS] Download abgeschlossen'
+        text = t('overlays', 'update.log.ready')
         break
       case 'installing':
-        text = '[INSTALL] Installiere Update…'
+        text = t('overlays', 'update.log.installing')
         break
       case 'up-to-date':
-        text = visibleRef.current ? '[SUCCESS] Launch Gabi ist aktuell' : null
+        text = visibleRef.current ? t('overlays', 'update.log.upToDate') : null
         break
       case 'error':
-        text = visibleRef.current ? `[ERROR] ${updateStatus.error ?? 'Update fehlgeschlagen'}` : null
+        text = visibleRef.current
+          ? t('overlays', 'update.log.error', {
+              error: updateStatus.error ?? t('overlays', 'update.log.errorFallback')
+            })
+          : null
         break
       default:
         text = null
@@ -90,14 +97,14 @@ export function UpdateOverlay(): JSX.Element | null {
   const close = (): void => setDismissed(true)
 
   return (
-    <Modal open title="Launcher-Update" subtitle={updateHeadline(updateStatus)} onClose={close} width="wide" footer={<button className="btn" onClick={close}>Schließen</button>}>
+    <Modal open title={t('overlays', 'update.title')} subtitle={updateHeadline(updateStatus)} onClose={close} width="wide" footer={<button className="btn" onClick={close}>{t('common', 'close')}</button>}>
       <div className="col gap-12">
         {updateStatus.state === 'downloading' && <ProgressBar value={(updateStatus.percent ?? 0) / 100} />}
 
         <div className="log-view" style={{ maxHeight: 280 }}>
           {entries.length === 0 ? (
             <div className="muted" style={{ padding: 12 }}>
-              Noch keine Ereignisse.
+              {t('overlays', 'update.noEvents')}
             </div>
           ) : (
             entries.map((entry, index) => (

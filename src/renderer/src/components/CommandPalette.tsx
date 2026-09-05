@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
+import { t } from '../lib/i18n'
 import {
   IconCompass,
   IconCube,
@@ -61,13 +62,19 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `play-${instance.id}`,
-        label: instance.running ? `${instance.name} beenden` : `${instance.name} spielen`,
+        label: instance.running
+          ? t('overlays', 'palette.stopInstance', { name: instance.name })
+          : t('overlays', 'palette.playInstance', { name: instance.name }),
         hint: `${instance.mcVersion} · ${LOADER_LABELS[instance.loader]}${
           instance.modCount > 0
-            ? ` · ${instance.modCount} ${pluralise(instance.modCount, 'Mod', 'Mods')}`
+            ? ` · ${instance.modCount} ${pluralise(
+                instance.modCount,
+                t('overlays', 'mod.singular'),
+                t('overlays', 'mod.plural')
+              )}`
             : ''
         }`,
-        group: 'Spielen',
+        group: t('overlays', 'palette.group.play'),
         icon: instance.running ? <IconStop size={16} /> : <IconPlay size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} start launch`,
         run: () => {
@@ -78,9 +85,9 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `open-${instance.id}`,
-        label: `${instance.name} öffnen`,
-        hint: 'Mods, Welten, Einstellungen',
-        group: 'Instanzen',
+        label: t('overlays', 'palette.openInstance', { name: instance.name }),
+        hint: t('overlays', 'palette.openInstanceHint'),
+        group: t('overlays', 'palette.instances'),
         icon: <IconCube size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} verwalten`,
         run: () => navigate(`/instances/${instance.id}`)
@@ -90,58 +97,64 @@ export function CommandPalette(): JSX.Element | null {
     items.push(
       {
         id: 'new-instance',
-        label: 'Neue Instanz erstellen',
-        hint: 'Strg N',
-        group: 'Aktionen',
+        label: t('overlays', 'palette.newInstance'),
+        hint: t('overlays', 'palette.newInstanceHint'),
+        group: t('overlays', 'palette.group.actions'),
         icon: <IconPlus size={16} />,
         keywords: 'anlegen erstellen create version loader',
         run: () => setState({ createOpen: true })
       },
       {
         id: 'import-modpack',
-        label: 'Modpack importieren',
-        hint: '.mrpack oder .zip',
-        group: 'Aktionen',
+        label: t('overlays', 'palette.importModpack'),
+        hint: t('overlays', 'palette.importModpackHint'),
+        group: t('overlays', 'palette.group.actions'),
         icon: <IconDownload size={16} />,
         keywords: 'mrpack curseforge zip einlesen',
         run: () => void importModpack()
       },
-      { id: 'go-home', label: 'Home', group: 'Navigation', icon: <IconHome size={16} />, run: () => navigate('/home') },
+      {
+        id: 'go-home',
+        label: t('overlays', 'palette.home'),
+        group: t('overlays', 'palette.group.navigation'),
+        icon: <IconHome size={16} />,
+        run: () => navigate('/home')
+      },
       {
         id: 'go-instances',
-        label: 'Instanzen',
-        group: 'Navigation',
+        label: t('overlays', 'palette.instances'),
+        group: t('overlays', 'palette.group.navigation'),
         icon: <IconGrid size={16} />,
         run: () => navigate('/instances')
       },
       {
         id: 'go-mods',
-        label: 'Mods',
-        group: 'Navigation',
+        label: t('overlays', 'palette.mods'),
+        group: t('overlays', 'palette.group.navigation'),
         icon: <IconPackage size={16} />,
         keywords: 'updates inhalte',
         run: () => navigate('/mods')
       },
       {
         id: 'go-discover',
-        label: 'Entdecken',
-        group: 'Navigation',
+        label: t('overlays', 'palette.discover'),
+        group: t('overlays', 'palette.group.navigation'),
         icon: <IconCompass size={16} />,
         keywords: 'modrinth curseforge suchen shader resourcepack',
         run: () => navigate('/discover')
       },
       {
         id: 'go-backups',
-        label: 'Backups',
-        group: 'Navigation',
+        label: t('overlays', 'palette.backups'),
+        group: t('overlays', 'palette.group.navigation'),
         icon: <IconSave size={16} />,
         keywords: 'sicherung wiederherstellen',
         run: () => navigate('/backups')
       },
       {
         id: 'go-settings',
-        label: 'Einstellungen',
-        group: 'Navigation',
+        label: t('common', 'settings'),
+        group: t('overlays', 'palette.group.navigation'),
         icon: <IconSettings size={16} />,
         keywords: 'java ram theme sprache account',
         run: () => navigate('/settings')

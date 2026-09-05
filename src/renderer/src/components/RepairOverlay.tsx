@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX } from 'react'
 import type { LogLine } from '@shared/types'
 import { setState, useStore } from '../lib/store'
 import { formatTime } from '../lib/format'
+import { t } from '../lib/i18n'
 import { Modal, ProgressBar } from './ui'
 
 /**
@@ -45,8 +46,8 @@ export function RepairOverlay(): JSX.Element | null {
   return (
     <Modal
       open
-      title={`Reparatur: ${repairGate.instanceName}`}
-      subtitle={running ? (task?.detail ?? 'Wird vorbereitet…') : undefined}
+      title={t('overlays', 'repair.title', { name: repairGate.instanceName })}
+      subtitle={running ? (task?.detail ?? t('overlays', 'repair.preparing')) : undefined}
       onClose={close}
       busy={running}
       width="wide"
@@ -54,11 +55,11 @@ export function RepairOverlay(): JSX.Element | null {
         running ? (
           <span className="hint row gap-8">
             <span className="spinner" style={{ width: 12, height: 12 }} />
-            Wird ausgeführt…
+            {t('overlays', 'repair.running')}
           </span>
         ) : (
           <button className="btn primary" onClick={close}>
-            Fertig
+            {t('common', 'done')}
           </button>
         )
       }
@@ -68,14 +69,14 @@ export function RepairOverlay(): JSX.Element | null {
 
         {!running && repairGate.report && (
           <div className={`badge ${failed ? 'warn' : 'ok'}`} style={{ fontSize: 13 }}>
-            {failed ? '⚠ Einige Probleme konnten nicht automatisch behoben werden' : '✓ Reparatur erfolgreich'}
+            {failed ? t('overlays', 'repair.someFailed') : t('overlays', 'repair.success')}
           </div>
         )}
 
         <div className="log-view" ref={boxRef} style={{ maxHeight: 340 }}>
           {lines.length === 0 ? (
             <div className="muted" style={{ padding: 12 }}>
-              Noch keine Ausgabe.
+              {t('overlays', 'repair.noOutput')}
             </div>
           ) : (
             lines.map((line, index) => (

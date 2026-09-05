@@ -3,6 +3,7 @@ import type { LogLine } from '@shared/types'
 import { setState, useStore } from '../lib/store'
 import { repairInstanceWithOverlay } from '../lib/actions'
 import { formatTime } from '../lib/format'
+import { t } from '../lib/i18n'
 import { Modal, ProgressBar } from './ui'
 import { IconWrench } from './Icons'
 
@@ -23,40 +24,38 @@ function analyzeCrash(lines: LogLine[]): CrashAnalysis {
 
   if (!text.trim()) {
     return {
-      cause: 'Es liegt kein Protokoll vor, aus dem sich eine Ursache ablesen ließe.',
+      cause: t('overlays', 'launch.crash.noLog'),
       suggestRepair: true
     }
   }
   if (/OutOfMemoryError/i.test(text)) {
     return {
-      cause:
-        'Dem Spiel ist der Arbeitsspeicher ausgegangen. Mehr zugewiesener Speicher in den ' +
-        'Instanz-Einstellungen kann helfen.',
+      cause: t('overlays', 'launch.crash.outOfMemory'),
       suggestRepair: false
     }
   }
   if (/UnsupportedClassVersionError|has been compiled by a more recent version/i.test(text)) {
-    return { cause: 'Die installierte Java-Version passt nicht zu einer der Dateien.', suggestRepair: true }
+    return { cause: t('overlays', 'launch.crash.javaVersion'), suggestRepair: true }
   }
   if (/mixin.*(apply|inject).*fail|MixinApplicatorStandard|mixin\.injection\.throwables/i.test(text)) {
     return {
-      cause: 'Ein Mod konnte sich nicht korrekt ins Spiel einklinken. Das deutet meist auf eine Mod hin, die nicht zu dieser Minecraft-Version passt.',
+      cause: t('overlays', 'launch.crash.mixinFailed'),
       suggestRepair: true
     }
   }
   if (/ModResolutionException|requires[^\n]*but[^\n]*(is|was) (not present|missing)|duplicate mod id/i.test(text)) {
-    return { cause: 'Einer Mod fehlt eine Abhängigkeit, oder zwei Mods stehen sich im Weg.', suggestRepair: true }
+    return { cause: t('overlays', 'launch.crash.modDependency'), suggestRepair: true }
   }
   if (/was designed for minecraft|is incompatible with/i.test(text)) {
-    return { cause: 'Eine Mod ist vermutlich nicht mit dieser Minecraft-Version kompatibel.', suggestRepair: true }
+    return { cause: t('overlays', 'launch.crash.modIncompatible'), suggestRepair: true }
   }
   if (/Exception|Error/i.test(text)) {
     return {
-      cause: 'Es ist ein unerwarteter Fehler aufgetreten. Die Mods dieser Instanz könnten die Ursache sein.',
+      cause: t('overlays', 'launch.crash.unexpectedError'),
       suggestRepair: true
     }
   }
-  return { cause: 'Die genaue Ursache ließ sich aus dem Protokoll nicht eindeutig bestimmen.', suggestRepair: true }
+  return { cause: t('overlays', 'launch.crash.unknown'), suggestRepair: true }
 }
 
 const SETTLED_PHASES = new Set(['running', 'crashed', 'stopped', 'idle'])
@@ -118,7 +117,7 @@ export function LaunchOverlay(): JSX.Element | null {
     <Modal
       open
       title={launchOverlay.instanceName}
-      subtitle={status?.detail ?? 'Vorbereitung läuft…'}
+      subtitle={status?.detail ?? t('overlays', 'launch.preparing')}
       onClose={close}
       busy={!settled}
       width="wide"
@@ -126,23 +125,23 @@ export function LaunchOverlay(): JSX.Element | null {
         crashed || failedEarly ? (
           <>
             <button className="btn ghost" onClick={close}>
-              Schließen
+              {t('common', 'close')}
             </button>
             {(!crashed || analysis?.suggestRepair) && (
               <button className="btn primary" onClick={repairNow}>
                 <IconWrench size={14} />
-                Mods prüfen &amp; reparieren
+                {t('overlays', 'launch.repairAction')}
               </button>
             )}
           </>
         ) : settled ? (
           <button className="btn primary" onClick={close}>
-            Schließen
+            {t('common', 'close')}
           </button>
         ) : (
           <span className="hint row gap-8">
             <span className="spinner" style={{ width: 12, height: 12 }} />
-            Wird gestartet…
+            {t('overlays', 'launch.starting')}
           </span>
         )
       }
@@ -152,19 +151,19 @@ export function LaunchOverlay(): JSX.Element | null {
 
         {crashed && analysis && (
           <div className="col gap-8">
-            <div className="badge danger">Minecraft konnte nicht gestartet werden</div>
+            <div className="badge danger">{t('overlays', 'launch.crashedBadge')}</div>
             <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-2)' }}>
-              <strong>Mögliche Ursache:</strong> {analysis.cause}
+              <strong>{t('overlays', 'launch.possibleCause')}</strong> {analysis.cause}
             </div>
           </div>
         )}
 
-        {status?.phase === 'running' && <div className="badge ok">Minecraft wurde erfolgreich gestartet.</div>}
+        {status?.phase === 'running' && <div className="badge ok">{t('overlays', 'launch.startedBadge')}</div>}
 
         <div className="log-view" ref={boxRef} style={{ maxHeight: 320 }}>
           {lines.length === 0 ? (
             <div className="muted" style={{ padding: 12 }}>
-              Noch keine Ausgabe.
+              {t('overlays', 'launch.noOutput')}
             </div>
           ) : (
             lines.map((line, index) => (
