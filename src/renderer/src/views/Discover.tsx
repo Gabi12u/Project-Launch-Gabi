@@ -5,6 +5,7 @@ import { LOADER_LABELS } from '../lib/format'
 import { ContentBrowser } from '../components/ContentBrowser'
 import { EmptyState } from '../components/ui'
 import { IconCompass, IconPlus } from '../components/Icons'
+import { t } from '../lib/i18n'
 
 /**
  * Global content discovery. Because installing needs a target, the user picks
@@ -72,16 +73,14 @@ export function DiscoverView({
           <div />
         ) : (
           <div>
-            <h1 className="page-title">Entdecken</h1>
-            <p className="page-sub">
-              Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.
-            </p>
+            <h1 className="page-title">{t('mods', 'discover.title')}</h1>
+            <p className="page-sub">{t('mods', 'discover.subtitle')}</p>
           </div>
         )}
 
         {instances.length > 0 && (
           <div className="row gap-8">
-            <span className="hint">Ziel-Instanz:</span>
+            <span className="hint">{t('mods', 'discover.targetLabel')}</span>
             <select
               className="select"
               style={{ width: 240 }}
@@ -101,12 +100,12 @@ export function DiscoverView({
       {instances.length === 0 ? (
         <EmptyState
           icon={<IconCompass size={26} />}
-          title="Erst eine Instanz, dann die Mods"
-          message="Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit."
+          title={t('mods', 'discover.emptyNoInstance.title')}
+          message={t('mods', 'discover.emptyNoInstance.message')}
           action={
             <button className="btn primary" onClick={() => setState({ createOpen: true })}>
               <IconPlus size={16} />
-              Instanz erstellen
+              {t('mods', 'discover.emptyNoInstance.action')}
             </button>
           }
         />
@@ -115,11 +114,13 @@ export function DiscoverView({
           {instance && (
             <div className="row gap-8 wrap">
               <span className="badge accent">
-                Ziel: {instance.name} · Minecraft {instance.mcVersion} · {LOADER_LABELS[instance.loader]}
+                {t('mods', 'discover.targetSummary', {
+                  name: instance.name,
+                  version: instance.mcVersion,
+                  loader: LOADER_LABELS[instance.loader]
+                })}
               </span>
-              <span className="hint">
-                Modpacks bringen ihre eigene Instanz mit und ignorieren die Auswahl.
-              </span>
+              <span className="hint">{t('mods', 'discover.modpackHint')}</span>
             </div>
           )}
 
