@@ -1,6 +1,7 @@
 import { getState, refreshInstances, setState, toast, toastError } from './store'
 import { renderInstanceIcon } from './icon'
 import { pluralise } from './format'
+import { t } from './i18n'
 
 /**
  * Runs a repair and drives the global overlay through it, so the same flow
@@ -19,16 +20,25 @@ export async function repairInstanceWithOverlay(instanceId: string, instanceName
     const failed = result.steps.filter((s) => s.status === 'failed').length
     toast(
       failed > 0 ? 'warning' : 'success',
-      'Reparatur abgeschlossen',
-      `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ${result.repairedFiles} erneuert` +
-        (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
+      t('lib', 'action.repairDoneTitle'),
+      t('lib', 'action.repairSummary', {
+        checked: result.checkedFiles,
+        checkedLabel: pluralise(result.checkedFiles, t('lib', 'action.repairFile'), t('lib', 'action.repairFiles')),
+        repaired: result.repairedFiles
+      }) +
+        (failed > 0
+          ? t('lib', 'action.repairSummaryFailedSuffix', {
+              failed,
+              failedLabel: pluralise(failed, t('lib', 'action.repairStep'), t('lib', 'action.repairSteps'))
+            })
+          : '') +
         '.',
       9000
     )
     await refreshInstances()
   } catch (err) {
     setState((current) => (current.repairGate?.instanceId === instanceId ? { repairGate: null } : {}))
-    toastError(err, 'Reparatur fehlgeschlagen')
+    toastError(err, t('lib', 'action.repairFailed'))
   }
 }
 
@@ -43,8 +53,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
   if (accounts.length === 0) {
     toast(
       'warning',
-      'Kein Account',
-      'Melde dich zuerst mit Microsoft an oder lege ein Offline-Profil an.',
+      t('lib', 'action.noAccountTitle'),
+      t('lib', 'action.noAccountMessage'),
       7000
     )
     return
@@ -65,8 +75,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          `${instanceName} kann nicht starten`,
-          'Es gibt Probleme mit den Mods. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          t('lib', 'action.cannotStartTitle', { name: instanceName }),
+          t('lib', 'action.modsProblemMessage'),
           8000
         )
         return
@@ -87,8 +97,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          `${instanceName} kann nicht starten`,
-          'Es gibt veraltete Mods bei einer anderen Instanz. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          t('lib', 'action.cannotStartTitle', { name: instanceName }),
+          t('lib', 'action.outdatedModsMessage'),
           8000
         )
         return
@@ -102,7 +112,7 @@ export async function startInstance(instanceId: string, instanceName: string): P
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, `${instanceName} konnte nicht gestartet werden`)
+    toastError(err, t('lib', 'action.startFailed', { name: instanceName }))
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -116,7 +126,7 @@ export async function startInstanceForced(instanceId: string, instanceName: stri
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, `${instanceName} konnte nicht gestartet werden`)
+    toastError(err, t('lib', 'action.startFailed', { name: instanceName }))
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -126,7 +136,7 @@ export async function stopInstance(instanceId: string): Promise<void> {
   try {
     await window.gabi.launch.stop(instanceId)
   } catch (err) {
-    toastError(err, 'Minecraft konnte nicht beendet werden')
+    toastError(err, t('lib', 'action.stopFailed'))
   }
 }
 
@@ -156,7 +166,7 @@ export async function createShortcut(instanceId: string): Promise<void> {
 
     await window.gabi.instances.createShortcut(instanceId, iconImages)
   } catch (err) {
-    toastError(err, 'Verknüpfung konnte nicht erstellt werden')
+    toastError(err, t('lib', 'action.shortcutFailed'))
   }
 }
 
@@ -164,10 +174,10 @@ export async function importModpack(): Promise<void> {
   try {
     const instance = await window.gabi.modpacks.import()
     if (!instance) return
-    toast('success', 'Import gestartet', `${instance.name} wird eingerichtet.`)
+    toast('success', t('lib', 'action.importStartedTitle'), t('lib', 'action.modpackImportMessage', { name: instance.name }))
     await refreshInstances()
   } catch (err) {
-    toastError(err, 'Modpack konnte nicht importiert werden')
+    toastError(err, t('lib', 'action.modpackImportFailed'))
   }
 }
 
@@ -178,11 +188,11 @@ export async function importInstanceFolder(): Promise<void> {
     if (!instance) return
     toast(
       'success',
-      'Import gestartet',
-      `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`
+      t('lib', 'action.importStartedTitle'),
+      t('lib', 'action.folderImportMessage', { name: instance.name })
     )
     await refreshInstances()
   } catch (err) {
-    toastError(err, 'Ordner konnte nicht importiert werden')
+    toastError(err, t('lib', 'action.folderImportFailed'))
   }
 }
