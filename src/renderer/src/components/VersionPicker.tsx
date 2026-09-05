@@ -4,6 +4,7 @@ import { Modal } from './ui'
 import { IconCheck, IconDownload } from './Icons'
 import { formatBytes, formatRelative } from '../lib/format'
 import { toast, toastError } from '../lib/store'
+import { t } from '../lib/i18n'
 
 interface Props {
   item: ContentItem
@@ -50,7 +51,7 @@ export function VersionPicker({
       })
       .catch((err) => {
         if (!current) return
-        toastError(err, 'Versionen konnten nicht geladen werden')
+        toastError(err, t('content', 'picker.loadFailed'))
         setVersions([])
       })
     return () => {
@@ -82,11 +83,11 @@ export function VersionPicker({
         versionId: version.versionId,
         type: item.type
       })
-      toast('success', `${item.name} ${version.versionNumber} installiert`)
+      toast('success', t('content', 'picker.installSuccess', { name: item.name, version: version.versionNumber }))
       await onChanged()
       onClose()
     } catch (err) {
-      toastError(err, 'Version konnte nicht gewechselt werden')
+      toastError(err, t('content', 'picker.installFailed'))
     } finally {
       setInstalling(null)
     }
@@ -95,8 +96,8 @@ export function VersionPicker({
   return (
     <Modal
       open
-      title={`Version wählen: ${item.name}`}
-      subtitle={item.version ? `Aktuell installiert: ${item.version}` : undefined}
+      title={t('content', 'picker.title', { name: item.name })}
+      subtitle={item.version ? t('content', 'picker.subtitle', { version: item.version }) : undefined}
       onClose={onClose}
       width="wide"
       busy={installing !== null}
@@ -110,8 +111,8 @@ export function VersionPicker({
       ) : versions.length === 0 ? (
         <p className="hint">
           {item.provider === 'local'
-            ? 'Diese Datei wurde von Hand hinzugefügt, es gibt daher keine Versionsliste.'
-            : 'Für dieses Projekt wurden keine Versionen gefunden.'}
+            ? t('content', 'picker.localNoVersions')
+            : t('content', 'picker.noVersions')}
         </p>
       ) : (
         <div className="col gap-12">
@@ -122,17 +123,16 @@ export function VersionPicker({
               onChange={(event) => setOnlyCompatible(event.target.checked)}
             />
             <span style={{ fontSize: 13 }}>
-              Nur passende zu Minecraft {mcVersion}
-              {loader !== 'vanilla' ? ` und ${loader}` : ''}
-              {hiddenCount > 0 && onlyCompatible ? ` (${hiddenCount} ausgeblendet)` : ''}
+              {t('content', 'picker.filter.label', { version: mcVersion })}
+              {loader !== 'vanilla' ? ` ${t('content', 'picker.filter.andLoader', { loader })}` : ''}
+              {hiddenCount > 0 && onlyCompatible
+                ? ` ${t('content', 'picker.filter.hidden', { count: hiddenCount })}`
+                : ''}
             </span>
           </label>
 
           {shown.length === 0 ? (
-            <p className="hint">
-              Keine passende Version. Nimm den Haken heraus, um alle zu sehen, dann kann die
-              Instanz aber abstürzen.
-            </p>
+            <p className="hint">{t('content', 'picker.noneMatch')}</p>
           ) : (
             <div className="col gap-8">
               {shown.slice(0, 60).map((version) => {
@@ -146,8 +146,8 @@ export function VersionPicker({
                         {version.releaseType !== 'release' && (
                           <span className="badge warn">{version.releaseType}</span>
                         )}
-                        {active && <span className="badge ok">Installiert</span>}
-                        {!compatible && <span className="badge danger">Passt nicht</span>}
+                        {active && <span className="badge ok">{t('content', 'status.installed')}</span>}
+                        {!compatible && <span className="badge danger">{t('content', 'status.incompatible')}</span>}
                       </div>
                       <div className="content-meta">
                         <span>{formatRelative(new Date(version.releasedAt).getTime())}</span>
@@ -158,7 +158,7 @@ export function VersionPicker({
 
                     <div className="content-actions">
                       {active ? (
-                        <span className="badge ok dot">Aktiv</span>
+                        <span className="badge ok dot">{t('content', 'status.active')}</span>
                       ) : (
                         <button
                           className="btn sm primary"
@@ -170,7 +170,7 @@ export function VersionPicker({
                           disabled={installing !== null || (onlyCompatible && !compatible)}
                           title={
                             onlyCompatible && !compatible
-                              ? 'Passt nicht zu dieser Instanz. Nimm den Haken oben heraus, um es trotzdem zu tun.'
+                              ? t('content', 'picker.incompatibleTooltip')
                               : undefined
                           }
                           onClick={() => void install(version)}
@@ -182,7 +182,7 @@ export function VersionPicker({
                           ) : (
                             <IconDownload size={13} />
                           )}
-                          Einsetzen
+                          {t('content', 'action.apply')}
                         </button>
                       )}
                     </div>

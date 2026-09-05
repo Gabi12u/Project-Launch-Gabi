@@ -11,6 +11,7 @@ import type {
 import { refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatNumber, formatRelative, plainText } from '../lib/format'
 import { clickable } from '../lib/a11y'
+import { t } from '../lib/i18n'
 import { EmptyState, Modal, Segmented } from '../components/ui'
 import {
   IconCheck,
@@ -20,14 +21,6 @@ import {
   IconSearch,
   IconWarning
 } from './Icons'
-
-const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
-  mod: 'Mods',
-  resourcepack: 'Resourcepacks',
-  shaderpack: 'Shader',
-  datapack: 'Data Packs',
-  modpack: 'Modpacks'
-}
 
 interface Props {
   /** When set, results can be installed straight into this instance. */
@@ -127,7 +120,7 @@ export function ContentBrowser({
           // An appended page is left alone: losing what is already on screen
           // because page four failed would be worse.
           if (!append) setResponse(null)
-          toastError(err, 'Suche fehlgeschlagen')
+          toastError(err, t('content', 'search.failed'))
         }
       } finally {
         if (id === requestId.current) setLoading(false)
@@ -150,7 +143,7 @@ export function ContentBrowser({
     try {
       if (item.type === 'modpack') {
         await window.gabi.modpacks.installFromProvider(item.provider, item.projectId, versionId)
-        toast('success', 'Modpack wird installiert', item.name)
+        toast('success', t('content', 'install.modpackStarted'), item.name)
       } else {
         const installed = await window.gabi.content.install({
           instanceId,
@@ -161,14 +154,16 @@ export function ContentBrowser({
         })
         toast(
           'success',
-          `${item.name} installiert`,
-          installed.length > 1 ? `Inklusive ${installed.length - 1} Abhängigkeiten.` : undefined
+          t('content', 'install.success', { name: item.name }),
+          installed.length > 1
+            ? t('content', 'install.withDeps', { count: installed.length - 1 })
+            : undefined
         )
       }
       onInstalled?.()
       await refreshInstances()
     } catch (err) {
-      toastError(err, `${item.name} konnte nicht installiert werden`)
+      toastError(err, t('content', 'install.failed', { name: item.name }))
     } finally {
       setInstalling((current) => {
         const next = new Set(current)
@@ -190,7 +185,7 @@ export function ContentBrowser({
           <IconSearch size={16} />
           <input
             className="input"
-            placeholder={`${TYPE_LABELS[type]} durchsuchen…`}
+            placeholder={t('content', 'search.placeholder', { type: t('content', `type.${type}`) })}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -204,7 +199,7 @@ export function ContentBrowser({
                 className={type === entry ? 'active' : ''}
                 onClick={() => setType(entry)}
               >
-                {TYPE_LABELS[entry]}
+                {t('content', `type.${entry}`)}
               </button>
             ))}
           </div>
@@ -214,9 +209,9 @@ export function ContentBrowser({
           value={sort}
           onChange={setSort}
           options={[
-            { value: 'relevance', label: 'Relevanz' },
-            { value: 'downloads', label: 'Downloads' },
-            { value: 'updated', label: 'Aktualisiert' }
+            { value: 'relevance', label: t('content', 'sort.relevance') },
+            { value: 'downloads', label: t('content', 'sort.downloads') },
+            { value: 'updated', label: t('content', 'sort.updated') }
           ]}
         />
       </div>
@@ -229,7 +224,7 @@ export function ContentBrowser({
             style={{ cursor: 'pointer' }}
           >
             {useVersionFilter ? <IconCheck size={11} /> : null}
-            Nur passend für {mcVersion}
+            {t('content', 'filter.onlyMatching', { version: mcVersion })}
             {loader && loader !== 'vanilla' ? ` · ${loader}` : ''}
           </button>
         )}
@@ -264,7 +259,7 @@ export function ContentBrowser({
 
         {response && (
           <span className="muted" style={{ marginLeft: 'auto' }}>
-            {formatNumber(response.total)} Treffer
+            {t('content', 'results.count', { count: formatNumber(response.total) })}
           </span>
         )}
       </div>
@@ -275,10 +270,9 @@ export function ContentBrowser({
             <IconWarning size={16} />
           </div>
           <div className="grow">
-            <div className="issue-title">CurseForge ist nicht verbunden</div>
+            <div className="issue-title">{t('content', 'curseforge.notConnected.title')}</div>
             <div className="issue-detail">
-              Für die CurseForge-Suche wird ein kostenloser API-Schlüssel benötigt. Du kannst ihn in den
-              Einstellungen unter „Inhalte“ eintragen. Modrinth funktioniert auch ohne.
+              {t('content', 'curseforge.notConnected.detail')}
             </div>
           </div>
         </div>
@@ -293,11 +287,11 @@ export function ContentBrowser({
       ) : response && response.items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Nichts gefunden"
+          title={t('content', 'empty.title')}
           message={
             useVersionFilter && mcVersion
-              ? `Für Minecraft ${mcVersion} gibt es dazu nichts. Schalte den Versionsfilter aus, um breiter zu suchen.`
-              : 'Versuche einen anderen Suchbegriff.'
+              ? t('content', 'empty.versionFiltered', { version: mcVersion })
+              : t('content', 'empty.tryOther')
           }
         />
       ) : (
@@ -331,7 +325,7 @@ export function ContentBrowser({
               }}
             >
               {loading ? <span className="spinner" /> : null}
-              Mehr laden
+              {t('content', 'loadMore')}
             </button>
           )}
         </>
@@ -396,7 +390,9 @@ function ProjectCard({
             <IconDownload size={11} style={{ display: 'inline', verticalAlign: '-1px' }}/>{' '}
             {formatNumber(item.downloads)}
           </span>
-          {item.author && <span className="truncate">von {item.author}</span>}
+          {item.author && (
+            <span className="truncate">{t('content', 'project.byAuthor', { author: item.author })}</span>
+          )}
           {item.updatedAt && <span>{formatRelative(new Date(item.updatedAt).getTime())}</span>}
         </div>
       </div>
@@ -418,7 +414,7 @@ function ProjectCard({
           ) : (
             <IconDownload size={14} />
           )}
-          {installed ? 'Installiert' : installing ? '' : 'Installieren'}
+          {installed ? t('content', 'status.installed') : installing ? '' : t('common', 'install')}
         </button>
       )}
     </article>
@@ -464,7 +460,7 @@ function ProjectModal({
         setVersions(details.versions)
       })
       .catch((err) => {
-        if (current) toastError(err, 'Projekt konnte nicht geladen werden')
+        if (current) toastError(err, t('content', 'project.loadFailed'))
       })
       .finally(() => {
         if (current) setLoading(false)
@@ -502,20 +498,22 @@ function ProjectModal({
     <Modal
       open
       title={item.name}
-      subtitle={item.author ? `von ${item.author}` : undefined}
+      subtitle={item.author ? t('content', 'project.byAuthor', { author: item.author }) : undefined}
       onClose={onClose}
       width="wide"
       footer={
         <>
           <button className="btn ghost" onClick={() => void window.gabi.app.openExternal(item.pageUrl)}>
             <IconExternal size={14} />
-            Auf {item.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'} öffnen
+            {t('content', 'modal.openOn', {
+              provider: item.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'
+            })}
           </button>
           <div className="grow" />
           {instanceId && (
             <button className="btn primary" onClick={() => onInstall(selected || undefined)} disabled={installing}>
               {installing ? <span className="spinner" /> : <IconDownload size={15} />}
-              {selected ? 'Diese Version installieren' : 'Neueste installieren'}
+              {selected ? t('content', 'modal.installSelected') : t('content', 'modal.installLatest')}
             </button>
           )}
         </>
@@ -549,14 +547,14 @@ function ProjectModal({
 
           <div className="col gap-12">
             <div className="row-between">
-              <h3 className="section-title">Versionen</h3>
+              <h3 className="section-title">{t('content', 'versions.heading')}</h3>
               {mcVersion && (
                 <button
                   className={`badge ${onlyCompatible ? 'accent' : ''}`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setOnlyCompatible((value) => !value)}
                 >
-                  Nur kompatible
+                  {t('content', 'versions.onlyCompatible')}
                 </button>
               )}
             </div>
@@ -567,10 +565,12 @@ function ProjectModal({
                   <IconWarning size={16} />
                 </div>
                 <div>
-                  <div className="issue-title">Keine passende Version</div>
+                  <div className="issue-title">{t('content', 'versions.none.title')}</div>
                   <div className="issue-detail">
-                    Für Minecraft {mcVersion} {loader && loader !== 'vanilla' ? `(${loader})` : ''} gibt es
-                    keine Veröffentlichung. Schalte den Filter aus, um alle Versionen zu sehen.
+                    {t('content', 'versions.none.detail', {
+                      version: mcVersion ?? '',
+                      loaderSuffix: loader && loader !== 'vanilla' ? ` (${loader})` : ''
+                    })}
                   </div>
                 </div>
               </div>
