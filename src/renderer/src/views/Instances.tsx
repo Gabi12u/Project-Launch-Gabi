@@ -6,6 +6,7 @@ import { importInstanceFolder, importModpack } from '../lib/actions'
 import { LOADER_LABELS, formatMemory, pluralise } from '../lib/format'
 import { InstanceRow } from '../components/InstanceEntry'
 import { Confirm, EmptyState, Segmented } from '../components/ui'
+import { t } from '../lib/i18n'
 import {
   IconCube,
   IconDownload,
@@ -81,10 +82,10 @@ export function InstancesView(): JSX.Element {
     if (!confirmDelete) return
     try {
       await window.gabi.instances.remove(confirmDelete.id)
-      toast('info', `${confirmDelete.name} gelöscht`)
+      toast('info', t('instances', 'deleted', { name: confirmDelete.name }))
       await refreshInstances()
     } catch (err) {
-      toastError(err, 'Löschen fehlgeschlagen')
+      toastError(err, t('instances', 'deleteFailed'))
     } finally {
       setConfirmDelete(null)
     }
@@ -94,8 +95,8 @@ export function InstancesView(): JSX.Element {
     <div className="col gap-20">
       <header className="row-between wrap gap-12">
         <div>
-          <h1 className="page-title">Deine Instanzen</h1>
-          <p className="page-sub">Verwalte und starte deine Minecraft Instanzen</p>
+          <h1 className="page-title">{t('instances', 'title')}</h1>
+          <p className="page-sub">{t('instances', 'subtitle')}</p>
         </div>
 
         <div className="row gap-8">
@@ -103,26 +104,30 @@ export function InstancesView(): JSX.Element {
             <IconSearch size={15} />
             <input
               className="input"
-              placeholder="Instanz suchen…"
+              placeholder={t('instances', 'searchPlaceholder')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
-          <button className="btn" onClick={() => void importModpack()} title="Ein .mrpack oder ein CurseForge-Zip einlesen">
+          <button
+            className="btn"
+            onClick={() => void importModpack()}
+            title={t('instances', 'importModpackTitle')}
+          >
             <IconDownload size={15} />
-            Modpack
+            {t('instances', 'importModpack')}
           </button>
           <button
             className="btn"
             onClick={() => void importInstanceFolder()}
-            title="Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen"
+            title={t('instances', 'importFolderTitle')}
           >
             <IconFolder size={15} />
-            Ordner
+            {t('instances', 'importFolder')}
           </button>
           <button className="btn primary" onClick={() => setState({ createOpen: true })}>
             <IconPlus size={15} />
-            Neue Instanz
+            {t('instances', 'newInstance')}
           </button>
         </div>
       </header>
@@ -132,7 +137,7 @@ export function InstancesView(): JSX.Element {
           {loaders.length > 1 && (
             <div className="segmented">
               <button className={loader === 'all' ? 'active' : ''} onClick={() => setLoader('all')}>
-                Alle
+                {t('instances', 'filter.all')}
               </button>
               {loaders.map((id) => (
                 <button key={id} className={loader === id ? 'active' : ''} onClick={() => setLoader(id)}>
@@ -146,9 +151,9 @@ export function InstancesView(): JSX.Element {
               value={sort}
               onChange={setSort}
               options={[
-                { value: 'recent', label: 'Zuletzt' },
-                { value: 'name', label: 'Name' },
-                { value: 'played', label: 'Spielzeit' }
+                { value: 'recent', label: t('instances', 'sort.recent') },
+                { value: 'name', label: t('instances', 'sort.name') },
+                { value: 'played', label: t('instances', 'sort.played') }
               ]}
             />
           </div>
@@ -159,12 +164,12 @@ export function InstancesView(): JSX.Element {
         <div className="card pad-lg">
           <EmptyState
             icon={<IconCube size={28} />}
-            title="Noch keine Instanzen"
-            message="Erstelle eine Instanz mit der Minecraft-Version und dem Mod Loader deiner Wahl. Launch Gabi richtet alles Weitere automatisch ein."
+            title={t('instances', 'empty.title')}
+            message={t('instances', 'empty.message')}
             action={
               <button className="btn primary" onClick={() => setState({ createOpen: true })}>
                 <IconPlus size={16} />
-                Erste Instanz erstellen
+                {t('instances', 'empty.action')}
               </button>
             }
           />
@@ -172,8 +177,8 @@ export function InstancesView(): JSX.Element {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<IconSearch size={26} />}
-          title="Nichts gefunden"
-          message={`Für „${search}" gibt es keine passende Instanz.`}
+          title={t('instances', 'noResults.title')}
+          message={t('instances', 'noResults.message', { search })}
           action={
             <button
               className="btn"
@@ -182,7 +187,7 @@ export function InstancesView(): JSX.Element {
                 setLoader('all')
               }}
             >
-              Filter zurücksetzen
+              {t('instances', 'noResults.reset')}
             </button>
           }
         />
@@ -205,10 +210,10 @@ export function InstancesView(): JSX.Element {
             <IconPlus size={18} />
             <div className="col" style={{ gap: 2 }}>
               <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-2)' }}>
-                Neue Instanz erstellen
+                {t('instances', 'create.title')}
               </span>
               <span style={{ fontSize: 11.5, color: 'var(--text-4)' }}>
-                Erstelle eine neue Minecraft Instanz
+                {t('instances', 'create.subtitle')}
               </span>
             </div>
           </div>
@@ -218,17 +223,17 @@ export function InstancesView(): JSX.Element {
       {active && (
         <div className="panel-pair">
           <div className="panel">
-            <span className="panel-label">AKTUELLE INSTANZ</span>
+            <span className="panel-label">{t('instances', 'panel.current')}</span>
             <div className="row-between gap-12">
               <div className="row gap-10" style={{ minWidth: 0 }}>
                 <span className={`badge ${active.running ? 'ok dot live' : ''}`}>
-                  {active.running ? 'Läuft' : 'Bereit'}
+                  {active.running ? t('instances', 'status.running') : t('instances', 'status.ready')}
                 </span>
                 <div className="col" style={{ gap: 2, minWidth: 0 }}>
                   <span className="inst-row-name truncate">{active.name}</span>
                   <span style={{ fontSize: 11.5, color: 'var(--text-4)' }}>
                     {active.mcVersion} · {LOADER_LABELS[active.loader]} · {active.modCount}{' '}
-                    {pluralise(active.modCount, 'Mod', 'Mods')}
+                    {pluralise(active.modCount, t('instances', 'mod'), t('instances', 'modsPlural'))}
                   </span>
                 </div>
               </div>
@@ -237,13 +242,13 @@ export function InstancesView(): JSX.Element {
                 onClick={() => void window.gabi.instances.openFolder(active.id)}
               >
                 <IconFolder size={14} />
-                Instanz Ordner öffnen
+                {t('instances', 'openInstanceFolder')}
               </button>
             </div>
           </div>
 
           <div className="panel">
-            <span className="panel-label">SPEICHER</span>
+            <span className="panel-label">{t('instances', 'panel.memory')}</span>
             <div className="row-between gap-12">
               <span style={{ fontSize: 18, fontWeight: 680, color: 'var(--text)' }}>
                 {formatMemory(active.memoryMb)}
@@ -258,7 +263,7 @@ export function InstancesView(): JSX.Element {
                 className="btn sm"
                 onClick={() => navigate(`/instances/${active.id}?tab=settings`)}
               >
-                RAM ändern
+                {t('instances', 'changeRam')}
               </button>
             </div>
             <div className="ram-bar">
@@ -270,8 +275,12 @@ export function InstancesView(): JSX.Element {
               />
             </div>
             <span style={{ fontSize: 11.5, color: 'var(--text-4)' }}>
-              Für {active.name} zugewiesen
-              {systemMb > 0 ? `, insgesamt ${formatMemory(systemMb)} im System` : ''}
+              {systemMb > 0
+                ? t('instances', 'memoryAssignedForWithTotal', {
+                    name: active.name,
+                    total: formatMemory(systemMb)
+                  })
+                : t('instances', 'memoryAssignedFor', { name: active.name })}
             </span>
           </div>
         </div>
@@ -279,14 +288,14 @@ export function InstancesView(): JSX.Element {
 
       <Confirm
         open={confirmDelete !== null}
-        title="Instanz löschen"
+        title={t('instances', 'deleteConfirm.title')}
         danger
         message={
           confirmDelete
-            ? `„${confirmDelete.name}" wird mit allen Welten, Mods und Einstellungen gelöscht. Das lässt sich nicht rückgängig machen.`
+            ? t('instances', 'deleteConfirm.message', { name: confirmDelete.name })
             : ''
         }
-        confirmLabel="Endgültig löschen"
+        confirmLabel={t('instances', 'deleteConfirm.confirm')}
         onConfirm={remove}
         onCancel={() => setConfirmDelete(null)}
       />
