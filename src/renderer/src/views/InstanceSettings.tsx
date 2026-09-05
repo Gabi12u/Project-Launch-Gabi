@@ -4,6 +4,7 @@ import type { InstanceDetail } from '@shared/api'
 import { ACCENT_CHOICES, ICON_CHOICES } from '@shared/defaults'
 import { refreshInstances, toast, toastError } from '../lib/store'
 import { formatMemory } from '../lib/format'
+import { t } from '../lib/i18n'
 import { SettingToggle } from '../components/ui'
 import { IconImage, IconRefresh, IconTrash } from '../components/Icons'
 
@@ -113,9 +114,13 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
       await refreshInstances()
       await onChanged()
       setDirty(false)
-      toast('success', 'Gespeichert', `${savedName} wurde aktualisiert.`)
+      toast(
+        'success',
+        t('instanceSettings', 'settings.savedToastTitle'),
+        t('instanceSettings', 'settings.savedToastMessage', { name: savedName })
+      )
     } catch (err) {
-      toastError(err, 'Speichern fehlgeschlagen')
+      toastError(err, t('instanceSettings', 'settings.saveFailedToast'))
     } finally {
       setSaving(false)
     }
@@ -125,20 +130,20 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
     <div className="col gap-32">
       {/* --- Appearance --------------------------------------------- */}
       <section className="setting-group">
-        <h3>Darstellung</h3>
-        <p className="hint">Name, Icon und Farbe dieser Instanz.</p>
+        <h3>{t('instanceSettings', 'settings.appearanceTitle')}</h3>
+        <p className="hint">{t('instanceSettings', 'settings.appearanceHint')}</p>
 
         <div className="col gap-16">
           <div className="row gap-16 wrap">
             <div className="field grow">
-              <label className="label" htmlFor="is-name">Name</label>
+              <label className="label" htmlFor="is-name">{t('instanceSettings', 'settings.nameLabel')}</label>
               <input id="is-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="is-gruppe">Gruppe</label>
+              <label className="label" htmlFor="is-gruppe">{t('instanceSettings', 'settings.groupLabel')}</label>
               <input id="is-gruppe"
                 className="input"
-                placeholder="z. B. Modded"
+                placeholder={t('instanceSettings', 'settings.groupPlaceholder')}
                 value={group}
                 onChange={(e) => setGroup(e.target.value)}
               />
@@ -146,17 +151,17 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-beschreibung">Beschreibung</label>
+            <label className="label" htmlFor="is-beschreibung">{t('instanceSettings', 'settings.descriptionLabel')}</label>
             <input id="is-beschreibung"
               className="input"
-              placeholder="Worum geht es in dieser Instanz?"
+              placeholder={t('instanceSettings', 'settings.descriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div className="field">
-            <label className="label" id="is-icon">Icon</label>
+            <label className="label" id="is-icon">{t('instanceSettings', 'settings.iconLabel')}</label>
             <div role="group" aria-labelledby="is-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button
@@ -175,11 +180,11 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                   const result = await window.gabi.instances.setIconImage(instance.id)
                   if (result) {
                     await onChanged()
-                    toast('success', 'Icon gesetzt')
+                    toast('success', t('instanceSettings', 'settings.iconSetToast'))
                   }
                 }}
               >
-                <IconImage size={14} /> Eigenes Bild
+                <IconImage size={14} /> {t('instanceSettings', 'settings.customImageButton')}
               </button>
               <button
                 className="btn sm"
@@ -187,11 +192,11 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                   const result = await window.gabi.instances.setBackground(instance.id)
                   if (result) {
                     await onChanged()
-                    toast('success', 'Hintergrund gesetzt')
+                    toast('success', t('instanceSettings', 'settings.backgroundSetToast'))
                   }
                 }}
               >
-                <IconImage size={14} /> Hintergrundbild
+                <IconImage size={14} /> {t('instanceSettings', 'settings.backgroundImageButton')}
               </button>
               {instance.appearance.background && (
                 <button
@@ -207,14 +212,14 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                     await onChanged()
                   }}
                 >
-                  <IconTrash size={14} /> Hintergrund entfernen
+                  <IconTrash size={14} /> {t('instanceSettings', 'settings.removeBackgroundButton')}
                 </button>
               )}
             </div>
           </div>
 
           <div className="field">
-            <label className="label" id="is-akzentfarbe">Akzentfarbe</label>
+            <label className="label" id="is-akzentfarbe">{t('instanceSettings', 'settings.accentColorLabel')}</label>
             <div role="group" aria-labelledby="is-akzentfarbe" className="swatches">
               {ACCENT_CHOICES.map((choice) => (
                 <button
@@ -232,12 +237,14 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
       {/* --- Performance --------------------------------------------- */}
       <section className="setting-group">
-        <h3>Leistung</h3>
-        <p className="hint">Arbeitsspeicher und Java-Einstellungen für diese Instanz.</p>
+        <h3>{t('instanceSettings', 'settings.performanceTitle')}</h3>
+        <p className="hint">{t('instanceSettings', 'settings.performanceHint')}</p>
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label" htmlFor="is-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+            <label className="label" htmlFor="is-arbeitsspeicher">
+              {t('instanceSettings', 'settings.memoryLabel', { value: formatMemory(memory) })}
+            </label>
             <input id="is-arbeitsspeicher"
               className="range"
               type="range"
@@ -248,19 +255,22 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
               onChange={(e) => setMemory(Number(e.target.value))}
             />
             <span className="hint">
-              Mehr ist nicht automatisch besser. Über 8 GB bringt bei den meisten Modpacks nichts mehr und
-              kann die Garbage Collection sogar verlangsamen.
+              {t('instanceSettings', 'settings.memoryHint')}
             </span>
           </div>
 
           <div className="field">
-            <label className="label" id="is-java-version">Java-Version</label>
+            <label className="label" id="is-java-version">{t('instanceSettings', 'settings.javaVersionLabel')}</label>
             <div role="group" aria-labelledby="is-java-version" className="row gap-8">
               <select className="select" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
-                <option value="">Automatisch verwalten (empfohlen)</option>
+                <option value="">{t('instanceSettings', 'settings.javaAutoOption')}</option>
                 {runtimes.map((runtime) => (
                   <option key={runtime.path} value={runtime.path}>
-                    Java {runtime.major} · {runtime.version} {runtime.managed ? '(verwaltet)' : ''}
+                    {t('instanceSettings', 'settings.javaOptionLabel', {
+                      major: runtime.major,
+                      version: runtime.version
+                    })}{' '}
+                    {runtime.managed ? t('instanceSettings', 'settings.javaManagedSuffix') : ''}
                   </option>
                 ))}
               </select>
@@ -268,25 +278,23 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                 className="btn icon"
                 onClick={async () => {
                   setRuntimes(await window.gabi.java.detect())
-                  toast('info', 'Java-Suche abgeschlossen')
+                  toast('info', t('instanceSettings', 'settings.javaSearchDoneToast'))
                 }}
-                aria-label="Neu suchen"
+                aria-label={t('instanceSettings', 'settings.javaRedetectAria')}
               >
                 <IconRefresh size={15} />
               </button>
             </div>
             <span className="hint">
-              Automatisch bedeutet: Launch Gabi wählt die von Mojang für {instance.mcVersion} vorgegebene
-              Java-Version und lädt sie bei Bedarf selbst herunter.
+              {t('instanceSettings', 'settings.javaAutoHint', { version: instance.mcVersion })}
             </span>
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-jvm-argumente">JVM-Argumente</label>
+            <label className="label" htmlFor="is-jvm-argumente">{t('instanceSettings', 'settings.jvmArgsLabel')}</label>
             <textarea id="is-jvm-argumente" className="textarea" value={jvmArgs} onChange={(e) => setJvmArgs(e.target.value)} />
             <span className="hint">
-              Die Voreinstellung enthält bewährte G1GC-Flags für modded Minecraft. Nur ändern, wenn du weißt,
-              was du tust.
+              {t('instanceSettings', 'settings.jvmArgsHint')}
             </span>
           </div>
         </div>
@@ -294,11 +302,11 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
       {/* --- Window ---------------------------------------------------- */}
       <section className="setting-group">
-        <h3>Fenster & Start</h3>
+        <h3>{t('instanceSettings', 'settings.windowTitle')}</h3>
 
         <SettingToggle
-          label="Vollbild starten"
-          hint="Minecraft startet direkt im Vollbildmodus."
+          label={t('instanceSettings', 'settings.fullscreenLabel')}
+          hint={t('instanceSettings', 'settings.fullscreenHint')}
           checked={fullscreen}
           onChange={setFullscreen}
         />
@@ -306,7 +314,7 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         {!fullscreen && (
           <div className="row gap-16 mt-12">
             <div className="field grow">
-              <label className="label" htmlFor="is-fensterbreite">Fensterbreite</label>
+              <label className="label" htmlFor="is-fensterbreite">{t('instanceSettings', 'settings.windowWidthLabel')}</label>
               <input id="is-fensterbreite"
                 className="input"
                 type="number"
@@ -316,7 +324,7 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
               />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="is-fensterhohe">Fensterhöhe</label>
+              <label className="label" htmlFor="is-fensterhohe">{t('instanceSettings', 'settings.windowHeightLabel')}</label>
               <input id="is-fensterhohe"
                 className="input"
                 type="number"
@@ -329,22 +337,22 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         )}
 
         <div className="field mt-16">
-          <label className="label" htmlFor="is-launcher-verhalten-beim-star">Launcher-Verhalten beim Start</label>
+          <label className="label" htmlFor="is-launcher-verhalten-beim-star">{t('instanceSettings', 'settings.launchBehaviourLabel')}</label>
           <select id="is-launcher-verhalten-beim-star"
             className="select"
             value={behaviour}
             onChange={(e) => setBehaviour(e.target.value as LaunchBehaviour)}
           >
-            <option value="keep">Launcher offen lassen</option>
-            <option value="hide">Launcher ausblenden</option>
-            <option value="close">Launcher minimieren</option>
+            <option value="keep">{t('instanceSettings', 'settings.keepOpenOption')}</option>
+            <option value="hide">{t('instanceSettings', 'settings.hideOption')}</option>
+            <option value="close">{t('instanceSettings', 'settings.minimizeOption')}</option>
           </select>
         </div>
 
         <div className="mt-16">
           <SettingToggle
-            label="Vor Mod-Updates sichern"
-            hint="Legt automatisch eine Sicherung der Welten an, bevor Mods aktualisiert werden."
+            label={t('instanceSettings', 'settings.backupBeforeUpdatesLabel')}
+            hint={t('instanceSettings', 'settings.backupBeforeUpdatesHint')}
             checked={backupBeforeUpdates}
             onChange={setBackupBeforeUpdates}
           />
@@ -353,15 +361,15 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
       {/* --- Advanced -------------------------------------------------- */}
       <section className="setting-group">
-        <h3>Erweitert</h3>
-        <p className="hint">Nur nötig für Spezialfälle wie Aufnahme-Tools oder eigene Startskripte.</p>
+        <h3>{t('instanceSettings', 'settings.advancedTitle')}</h3>
+        <p className="hint">{t('instanceSettings', 'settings.advancedHint')}</p>
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label" htmlFor="is-umgebungsvariablen">Umgebungsvariablen</label>
+            <label className="label" htmlFor="is-umgebungsvariablen">{t('instanceSettings', 'settings.envVarsLabel')}</label>
             <textarea id="is-umgebungsvariablen"
               className="textarea"
-              placeholder="KEY=VALUE&#10;MESA_GL_VERSION_OVERRIDE=4.5"
+              placeholder={t('instanceSettings', 'settings.envVarsPlaceholder')}
               value={envVars}
               onChange={(e) => setEnvVars(e.target.value)}
               style={{ minHeight: 68 }}
@@ -369,28 +377,25 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-befehl-vor-dem-start">Befehl vor dem Start</label>
+            <label className="label" htmlFor="is-befehl-vor-dem-start">{t('instanceSettings', 'settings.preLaunchLabel')}</label>
             <input id="is-befehl-vor-dem-start"
               className="input"
-              placeholder="z. B. ein Skript, das etwas vorbereitet"
+              placeholder={t('instanceSettings', 'settings.preLaunchPlaceholder')}
               value={preLaunch}
               onChange={(e) => setPreLaunch(e.target.value)}
             />
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-wrapper-befehl">Wrapper-Befehl</label>
+            <label className="label" htmlFor="is-wrapper-befehl">{t('instanceSettings', 'settings.wrapperLabel')}</label>
             <input id="is-wrapper-befehl"
               className="input"
-              placeholder="z. B. gamemoderun"
+              placeholder={t('instanceSettings', 'settings.wrapperPlaceholder')}
               value={wrapper}
               onChange={(e) => setWrapper(e.target.value)}
             />
             <span className="hint">
-              Wird dem Java-Aufruf vorangestellt. Der Befehl muss Java selbst übernehmen, also per
-              exec ersetzen, und darf es nicht im Hintergrund starten. Sonst hält der Launcher das
-              Spiel für beendet, sobald der Wrapper fertig ist, und Mod-Änderungen sind dann nicht
-              mehr gesperrt.
+              {t('instanceSettings', 'settings.wrapperHint')}
             </span>
           </div>
         </div>
@@ -412,11 +417,11 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
           }}
         >
           <span className="hint grow" style={{ alignSelf: 'center' }}>
-            Es gibt ungespeicherte Änderungen.
+            {t('instanceSettings', 'settings.unsavedChanges')}
           </span>
           <button className="btn primary" onClick={save} disabled={saving}>
             {saving && <span className="spinner" />}
-            Speichern
+            {t('common', 'save')}
           </button>
         </div>
       )}

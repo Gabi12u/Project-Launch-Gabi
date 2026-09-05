@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import type { NewsItem } from '@shared/types'
+import { t } from '../lib/i18n'
 import { EmptyState, SkeletonRows } from '../components/ui'
 import { IconInfo } from '../components/Icons'
 import { NewsCard } from './Home'
@@ -21,8 +22,8 @@ export function NewsView(): JSX.Element {
   return (
     <div className="col gap-24">
       <header>
-        <h1 className="page-title">News</h1>
-        <p className="page-sub">Neues rund um Minecraft und Launch Gabi</p>
+        <h1 className="page-title">{t('instanceSettings', 'news.pageTitle')}</h1>
+        <p className="page-sub">{t('instanceSettings', 'news.pageSubtitle')}</p>
       </header>
 
       {news === null ? (
@@ -30,8 +31,8 @@ export function NewsView(): JSX.Element {
       ) : news.length === 0 ? (
         <EmptyState
           icon={<IconInfo size={26} />}
-          title="Keine Meldungen"
-          message="Gerade liegen keine Neuigkeiten vor. Ohne Internetverbindung bleibt diese Seite leer."
+          title={t('instanceSettings', 'news.emptyTitle')}
+          message={t('instanceSettings', 'news.emptyMessage')}
         />
       ) : (
         <div className="discover-grid stagger">

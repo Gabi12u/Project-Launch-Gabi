@@ -3,6 +3,7 @@ import type { ContentItem, ContentType } from '@shared/types'
 import type { InstanceDetail } from '@shared/api'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatBytes, formatRelative, loaderColor, LOADER_LABELS } from '../lib/format'
+import { t } from '../lib/i18n'
 import { EmptyState, Switch } from '../components/ui'
 import { IconChevronRight, IconExternal, IconImage, IconSparkle, IconTrash } from '../components/Icons'
 
@@ -10,17 +11,20 @@ interface Props {
   type: Extract<ContentType, 'resourcepack' | 'shaderpack'>
 }
 
+// title/subtitle/empty hold instanceSettings translation keys, not display
+// text, so the lookup happens at render time and stays reactive to a
+// language switch.
 const COPY = {
   resourcepack: {
-    title: 'Resource Packs',
-    subtitle: 'Texturen und Klänge der aktuellen Instanz',
-    empty: 'Noch keine Resource Packs in dieser Instanz.',
+    title: 'content.resourcepackTitle',
+    subtitle: 'content.resourcepackSubtitle',
+    empty: 'content.resourcepackEmpty',
     icon: <IconImage size={26} />
   },
   shaderpack: {
-    title: 'Shader',
-    subtitle: 'Shader der aktuellen Instanz',
-    empty: 'Noch keine Shader in dieser Instanz.',
+    title: 'content.shaderpackTitle',
+    subtitle: 'content.shaderpackSubtitle',
+    empty: 'content.shaderpackEmpty',
     icon: <IconSparkle size={26} />
   }
 } as const
@@ -59,17 +63,17 @@ export function InstanceContentView({ type }: Props): JSX.Element {
 
   const items: ContentItem[] = (detail?.content ?? []).filter((item) => item.type === type)
   const blocked = active?.running
-    ? 'Minecraft läuft gerade.'
+    ? t('instanceSettings', 'content.blockedRunning')
     : active?.contentBusy
-      ? 'An den Inhalten wird gerade gearbeitet.'
+      ? t('instanceSettings', 'content.blockedBusy')
       : null
 
   return (
     <div className="col gap-24">
       <header className="row-between wrap gap-12">
         <div>
-          <h1 className="page-title">{copy.title}</h1>
-          <p className="page-sub">{copy.subtitle}</p>
+          <h1 className="page-title">{t('instanceSettings', copy.title)}</h1>
+          <p className="page-sub">{t('instanceSettings', copy.subtitle)}</p>
         </div>
 
         {active && (
@@ -89,14 +93,14 @@ export function InstanceContentView({ type }: Props): JSX.Element {
       {!active ? (
         <EmptyState
           icon={copy.icon}
-          title="Keine Instanz"
-          message="Lege zuerst eine Instanz an, dann erscheinen hier ihre Inhalte."
+          title={t('instanceSettings', 'content.noInstanceTitle')}
+          message={t('instanceSettings', 'content.noInstanceMessage')}
         />
       ) : items.length === 0 ? (
         <EmptyState
           icon={copy.icon}
-          title="Nichts installiert"
-          message={`${copy.empty} Über „Mods" lassen sich welche finden und installieren.`}
+          title={t('instanceSettings', 'content.emptyTitle')}
+          message={t('instanceSettings', 'content.emptyMessage', { empty: t('instanceSettings', copy.empty) })}
         />
       ) : (
         <div className="col gap-8">
@@ -111,8 +115,8 @@ export function InstanceContentView({ type }: Props): JSX.Element {
               <div className="grow" style={{ overflow: 'hidden' }}>
                 <div className="row gap-8">
                   <span className="content-name truncate">{item.name}</span>
-                  {!item.enabled && <span className="badge">Deaktiviert</span>}
-                  {item.update && <span className="badge warn">Update</span>}
+                  {!item.enabled && <span className="badge">{t('instanceSettings', 'content.disabledBadge')}</span>}
+                  {item.update && <span className="badge warn">{t('instanceSettings', 'content.updateBadge')}</span>}
                 </div>
                 <div className="content-meta">
                   {item.version && <span>{item.version}</span>}
@@ -132,7 +136,12 @@ export function InstanceContentView({ type }: Props): JSX.Element {
                       await load()
                       await refreshInstances()
                     } catch (err) {
-                      toastError(err, value ? 'Aktivieren fehlgeschlagen' : 'Deaktivieren fehlgeschlagen')
+                      toastError(
+                        err,
+                        value
+                          ? t('instanceSettings', 'content.activateFailedToast')
+                          : t('instanceSettings', 'content.deactivateFailedToast')
+                      )
                     } finally {
                       setBusy(null)
                     }
@@ -142,7 +151,7 @@ export function InstanceContentView({ type }: Props): JSX.Element {
                   <button
                     className="btn ghost icon sm"
                     onClick={() => void window.gabi.app.openExternal(item.pageUrl as string)}
-                    aria-label="Projektseite"
+                    aria-label={t('instanceSettings', 'content.projectPageAria')}
                   >
                     <IconExternal size={14} />
                   </button>
@@ -151,16 +160,16 @@ export function InstanceContentView({ type }: Props): JSX.Element {
                   className="btn ghost icon sm"
                   disabled={blocked !== null || busy === item.id}
                   title={blocked ?? undefined}
-                  aria-label="Entfernen"
+                  aria-label={t('common', 'remove')}
                   onClick={async () => {
                     setBusy(item.id)
                     try {
                       await window.gabi.content.remove(active.id, item.id)
-                      toast('info', `${item.name} entfernt`)
+                      toast('info', t('instanceSettings', 'content.itemRemovedToast', { name: item.name }))
                       await load()
                       await refreshInstances()
                     } catch (err) {
-                      toastError(err, 'Entfernen fehlgeschlagen')
+                      toastError(err, t('instanceSettings', 'content.removeFailedToast'))
                     } finally {
                       setBusy(null)
                     }

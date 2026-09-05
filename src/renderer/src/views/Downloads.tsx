@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { useStore } from '../lib/store'
 import { formatRelative, updateHeadline } from '../lib/format'
+import { t } from '../lib/i18n'
 import { EmptyState, ProgressBar } from '../components/ui'
 import { IconDownload } from '../components/Icons'
 
@@ -20,14 +21,14 @@ export function DownloadsView(): JSX.Element {
   return (
     <div className="col gap-24">
       <header>
-        <h1 className="page-title">Downloads</h1>
-        <p className="page-sub">Laufende und zuletzt abgeschlossene Vorgänge</p>
+        <h1 className="page-title">{t('instanceSettings', 'downloads.pageTitle')}</h1>
+        <p className="page-sub">{t('instanceSettings', 'downloads.pageSubtitle')}</p>
       </header>
 
       {updateStatus && updateStatus.state !== 'idle' && updateStatus.state !== 'disabled' && (
         <section className="card col gap-10">
           <div className="row-between">
-            <span className="card-title">Launcher</span>
+            <span className="card-title">{t('instanceSettings', 'downloads.launcherCardTitle')}</span>
             <span className="badge">{updateStatus.currentVersion}</span>
           </div>
           <span className="hint">{updateHeadline(updateStatus)}</span>
@@ -40,20 +41,20 @@ export function DownloadsView(): JSX.Element {
       {running.length === 0 && finished.length === 0 ? (
         <EmptyState
           icon={<IconDownload size={26} />}
-          title="Nichts unterwegs"
-          message="Installationen, Updates und Reparaturen erscheinen hier, solange sie laufen."
+          title={t('instanceSettings', 'downloads.emptyTitle')}
+          message={t('instanceSettings', 'downloads.emptyMessage')}
         />
       ) : (
         <>
           {running.length > 0 && (
             <section className="col gap-8">
-              <h2 className="section-title">Läuft gerade</h2>
+              <h2 className="section-title">{t('instanceSettings', 'downloads.runningTitle')}</h2>
               {running.map((task) => (
                 <div key={task.id} className="card col gap-8">
                   <div className="row-between">
                     <span className="content-name truncate">{task.title}</span>
                     <button className="btn ghost sm" onClick={() => void window.gabi.tasks.cancel(task.id)}>
-                      Abbrechen
+                      {t('common', 'cancel')}
                     </button>
                   </div>
                   <ProgressBar value={task.progress} />
@@ -65,7 +66,7 @@ export function DownloadsView(): JSX.Element {
 
           {finished.length > 0 && (
             <section className="col gap-8">
-              <h2 className="section-title">Zuletzt</h2>
+              <h2 className="section-title">{t('instanceSettings', 'downloads.recentTitle')}</h2>
               {finished.map((task) => (
                 <div key={task.id} className="content-row">
                   <div className="content-icon">
@@ -80,10 +81,10 @@ export function DownloadsView(): JSX.Element {
                         }`}
                       >
                         {task.state === 'failed'
-                          ? 'Fehlgeschlagen'
+                          ? t('instanceSettings', 'downloads.statusFailed')
                           : task.state === 'cancelled'
-                            ? 'Abgebrochen'
-                            : 'Fertig'}
+                            ? t('instanceSettings', 'downloads.statusCancelled')
+                            : t('common', 'done')}
                       </span>
                     </div>
                     <div className="content-meta">
