@@ -153,6 +153,37 @@
     .bg { transition: none; }
     .btn:hover { transform: none; }
   }
+
+  /* ---- language switch ---- */
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid var(--glass-line);
+    margin-bottom: 22px;
+  }
+  .lang-switch button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .25s var(--ease), background .25s var(--ease);
+  }
+  .lang-switch button:hover { color: #fff; }
+  .lang-switch button[aria-pressed="true"] {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  }
 </style>
 </head>
 <body>
@@ -160,9 +191,14 @@
 <div class="bg" id="bg" aria-hidden="true"></div>
 
 <main>
+  <div class="lang-switch" id="langSwitch" role="group" aria-label="Sprache wählen / Choose language">
+    <button type="button" data-lang="de" aria-pressed="true">DE</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  </div>
+
   <p class="code" aria-hidden="true">404</p>
-  <h1>Falsch abgebogen</h1>
-  <p>
+  <h1 data-i18n="heading">Falsch abgebogen</h1>
+  <p data-i18n="body">
     Diese Seite gibt es nicht. Vielleicht hat sich ein Tippfehler in die Adresse
     geschlichen, oder die Seite ist umgezogen.
   </p>
@@ -170,13 +206,63 @@
   <div class="actions">
     <a class="btn primary" href="/">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
-      Zurück zur Startseite
+      <span data-i18n="btnHome">Zurück zur Startseite</span>
     </a>
-    <a class="btn ghost" href="/#download">Zum Download</a>
+    <a class="btn ghost" href="/#download" data-i18n="btnDownload">Zum Download</a>
   </div>
 </main>
 
 <script>
+  // Same language dictionary approach as index.html (data-i18n attributes
+  // plus a small t()), kept in sync with it by hand since this page only
+  // has a handful of strings.
+  var I18N = {
+    de: {
+      pageTitle: 'Falsch abgebogen: Launch Gabi',
+      heading: 'Falsch abgebogen',
+      body: 'Diese Seite gibt es nicht. Vielleicht hat sich ein Tippfehler in die Adresse geschlichen, oder die Seite ist umgezogen.',
+      btnHome: 'Zurück zur Startseite',
+      btnDownload: 'Zum Download'
+    },
+    en: {
+      pageTitle: 'Wrong turn: Launch Gabi',
+      heading: 'Wrong turn',
+      body: 'This page does not exist. Maybe a typo snuck into the address, or the page has moved.',
+      btnHome: 'Back to the homepage',
+      btnDownload: 'Go to download'
+    }
+  };
+
+  var LANG_KEY = 'lg-lang';
+  var lang = 'de';
+  try { lang = localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'de'; } catch (e) { /* storage unavailable, ignore */ }
+
+  function applyLanguage() {
+    document.documentElement.lang = lang;
+    document.title = I18N[lang].pageTitle;
+
+    var nodes = document.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].textContent = I18N[lang][nodes[i].getAttribute('data-i18n')];
+    }
+
+    var buttons = document.querySelectorAll('.lang-switch button');
+    for (var j = 0; j < buttons.length; j++) {
+      buttons[j].setAttribute('aria-pressed', buttons[j].getAttribute('data-lang') === lang ? 'true' : 'false');
+    }
+  }
+  applyLanguage();
+
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.lang-switch button');
+    if (!btn) return;
+    var picked = btn.getAttribute('data-lang');
+    if ((picked !== 'de' && picked !== 'en') || picked === lang) return;
+    lang = picked;
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* storage unavailable, ignore */ }
+    applyLanguage();
+  });
+
   // Erst einblenden, wenn das Bild wirklich da ist. Schlaegt es fehl, bleibt
   // der dunkle Verlauf stehen statt eines halb geladenen Bildes.
   (function () {

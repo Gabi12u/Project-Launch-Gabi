@@ -175,8 +175,39 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,.44), 0 12px 30px rgba(199,77,255,.5);
   }
 
+  /* ---- language switch ---- */
+  .lang-switch {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-line);
+  }
+  .lang-switch button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .25s var(--ease), background .25s var(--ease);
+  }
+  .lang-switch button:hover { color: #fff; }
+  .lang-switch button[aria-pressed="true"] {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  }
+
   @media (max-width: 720px) {
     .nav-links { display: none; }
+    .lang-switch { margin-left: auto; }
     .nav-cta { margin-left: auto; }
   }
 
@@ -709,14 +740,19 @@
   </a>
 
   <div class="nav-links">
-    <a href="#funktionen">Funktionen</a>
-    <a href="#download">Download</a>
-    <a href="#hilfe">Hilfe</a>
+    <a href="#funktionen" data-i18n="nav.functions">Funktionen</a>
+    <a href="#download" data-i18n="nav.download">Download</a>
+    <a href="#hilfe" data-i18n="nav.help">Hilfe</a>
     <a href="https://status.launchgabi.com/">Status</a>
     <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a>
   </div>
 
-  <a class="nav-cta" href="#download">Herunterladen</a>
+  <div class="lang-switch" id="langSwitch" role="group" aria-label="Sprache wählen / Choose language">
+    <button type="button" data-lang="de" aria-pressed="true">DE</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  </div>
+
+  <a class="nav-cta" href="#download" data-i18n="nav.cta">Herunterladen</a>
 </nav>
 
 <main id="top">
@@ -724,8 +760,8 @@
   <!-- ============================ HERO ============================ -->
   <section class="hero inner">
     <span class="badge" id="badge"><span class="dot"></span>Kostenlos · Open für alle</span>
-    <h1>Minecraft,<br>endlich aufgeräumt.</h1>
-    <p class="tagline">Beliebig viele getrennte Instanzen. Mod Loader, Java und
+    <h1 data-i18n="hero.title">Minecraft,<br>endlich aufgeräumt.</h1>
+    <p class="tagline" data-i18n="hero.tagline">Beliebig viele getrennte Instanzen. Mod Loader, Java und
       Abhängigkeiten regelt Launch Gabi im Hintergrund. Du drückst Play.</p>
 
     <!-- The script replaces this with the visitor's own build. It is a real
@@ -743,9 +779,9 @@
     <!-- ========================= FEATURES ========================= -->
     <section id="funktionen" class="inner">
       <div class="reveal">
-        <p class="eyebrow">Funktionen</p>
-        <h2>Alles drin, nichts einzurichten</h2>
-        <p class="lede">Kein Gefummel mit Java-Versionen, keine Installer von Drittanbietern,
+        <p class="eyebrow" data-i18n="features.eyebrow">Funktionen</p>
+        <h2 data-i18n="features.title">Alles drin, nichts einzurichten</h2>
+        <p class="lede" data-i18n="features.lede">Kein Gefummel mit Java-Versionen, keine Installer von Drittanbietern,
           keine kaputten Mod-Ordner. Launch Gabi nimmt dir die Arbeit ab, die sonst zwischen
           dir und dem Spiel steht.</p>
       </div>
@@ -754,57 +790,57 @@
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
-          <h3>Getrennte Instanzen</h3>
-          <p>Beliebig viele Installationen nebeneinander, jede mit eigener Version, eigenen Mods,
+          <h3 data-i18n="features.f1.title">Getrennte Instanzen</h3>
+          <p data-i18n="features.f1.body">Beliebig viele Installationen nebeneinander, jede mit eigener Version, eigenen Mods,
             Welten und RAM-Einstellung. Assets werden geteilt statt vervielfacht.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 7h4a2 2 0 0 1 2 2v4"/><path d="M10 3v2.5a1.5 1.5 0 0 1-3 0V3H5a2 2 0 0 0-2 2v3h2.5a1.5 1.5 0 0 1 0 3H3v3a2 2 0 0 0 2 2h3v-2.5a1.5 1.5 0 0 1 3 0V19h4"/><path d="M20 13v3a2 2 0 0 1-2 2h-2.5a1.5 1.5 0 0 0 0 3H18"/></svg></div>
-          <h3>Alle vier Mod Loader</h3>
-          <p>Fabric, NeoForge, Forge und Quilt installieren sich vollautomatisch. Forge und
+          <h3 data-i18n="features.f2.title">Alle vier Mod Loader</h3>
+          <p data-i18n="features.f2.body">Fabric, NeoForge, Forge und Quilt installieren sich vollautomatisch. Forge und
             NeoForge patcht Launch Gabi selbst. Ein externer Installer ist nicht nötig.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><path d="M6 2v3M10 2v3M14 2v3"/></svg></div>
-          <h3>Java ohne Nachdenken</h3>
-          <p>Vorhandene JDKs werden auf dem System gefunden. Fehlt die passende Version, lädt
+          <h3 data-i18n="features.f3.title">Java ohne Nachdenken</h3>
+          <p data-i18n="features.f3.body">Vorhandene JDKs werden auf dem System gefunden. Fehlt die passende Version, lädt
             Launch Gabi ein Temurin-Runtime und verwaltet es selbst.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div>
-          <h3>Modrinth &amp; CurseForge</h3>
-          <p>Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data
+          <h3 data-i18n="features.f4.title">Modrinth &amp; CurseForge</h3>
+          <p data-i18n="features.f4.body">Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data
             Packs. Abhängigkeiten kommen automatisch mit.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></div>
-          <h3>Prüfung vor dem Start</h3>
-          <p>Loader-Konflikte, Versions-Mismatches, fehlende Abhängigkeiten, doppelte Mods.
+          <h3 data-i18n="features.f5.title">Prüfung vor dem Start</h3>
+          <p data-i18n="features.f5.body">Loader-Konflikte, Versions-Mismatches, fehlende Abhängigkeiten, doppelte Mods.
             Für jedes lösbare Problem gibt es einen Knopf, der es behebt.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M10 12h4"/></svg></div>
-          <h3>Backups</h3>
-          <p>Welten, Konfiguration und Mods sichern. Wiederherstellen legt vorher automatisch
+          <h3 data-i18n="features.f6.title">Backups</h3>
+          <p data-i18n="features.f6.body">Welten, Konfiguration und Mods sichern. Wiederherstellen legt vorher automatisch
             eine Sicherheitskopie an. Vor Mod-Updates geschieht das auf Wunsch von allein.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5l-9.6 9.6a2.8 2.8 0 0 1-4-4Z"/><path d="m18 2 4 4"/></svg></div>
-          <h3>Selbstreparatur</h3>
-          <p>Prüft Ordnerstruktur, Client-Jar, Bibliotheken, Assets, Natives und Mod-Dateien per
+          <h3 data-i18n="features.f7.title">Selbstreparatur</h3>
+          <p data-i18n="features.f7.body">Prüft Ordnerstruktur, Client-Jar, Bibliotheken, Assets, Natives und Mod-Dateien per
             SHA1 und repariert, was defekt ist.</p>
         </article>
 
         <article class="feature glass reveal">
           <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></div>
-          <h3>Updates von allein</h3>
-          <p>Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft
+          <h3 data-i18n="features.f8.title">Updates von allein</h3>
+          <p data-i18n="features.f8.body">Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft
             gerade Minecraft, wartet er.</p>
         </article>
 
@@ -815,8 +851,8 @@
     <section id="download" class="inner">
       <div class="narrow">
         <div class="reveal">
-          <p class="eyebrow">Download</p>
-          <h2>Wähle dein System</h2>
+          <p class="eyebrow" data-i18n="download.eyebrow">Download</p>
+          <h2 data-i18n="download.title">Wähle dein System</h2>
           <p class="lede" id="dl-lede">Ein Download, danach hält sich der Launcher selbst aktuell.</p>
         </div>
         <div id="downloads" class="reveal">
@@ -831,49 +867,49 @@
     <section id="hilfe" class="inner">
       <div class="narrow">
         <div class="reveal">
-          <p class="eyebrow">Hilfe</p>
-          <h2>Häufige Fragen</h2>
+          <p class="eyebrow" data-i18n="help.eyebrow">Hilfe</p>
+          <h2 data-i18n="help.title">Häufige Fragen</h2>
         </div>
 
         <div class="reveal">
           <details class="glass">
-            <summary>Welchen Chip hat mein Mac?</summary>
-            <p>Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
+            <summary data-i18n="faq.f1.summary">Welchen Chip hat mein Mac?</summary>
+            <p data-i18n="faq.f1.body">Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>,
             nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.</p>
           </details>
 
           <details class="glass">
-            <summary>Linux: das AppImage startet nicht</summary>
-            <p>Erst ausführbar machen. Klick den Befehl an, dann liegt er in der Zwischenablage:
+            <summary data-i18n="faq.f2.summary">Linux: das AppImage startet nicht</summary>
+            <p data-i18n="faq.f2.body1">Erst ausführbar machen. Klick den Befehl an, dann liegt er in der Zwischenablage:
             <code data-copy tabindex="0" role="button">chmod +x launch-gabi-*.AppImage</code></p>
-            <p>Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek.
+            <p data-i18n="faq.f2.body2">Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek.
             Ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert:
             <code data-copy tabindex="0" role="button">sudo apt install libfuse2</code></p>
           </details>
 
           <details class="glass">
-            <summary>Warnung „unbekannter Entwickler" beim ersten Start</summary>
-            <p>Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim
+            <summary data-i18n="faq.f3.summary">Warnung „unbekannter Entwickler" beim ersten Start</summary>
+            <p data-i18n="faq.f3.body1">Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim
             ersten Mal. Das betrifft nur den ersten Start.</p>
-            <p><strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br>
+            <p data-i18n="faq.f3.body2"><strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br>
             <strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em></p>
           </details>
 
           <details class="glass">
-            <summary>Muss ich später neu herunterladen?</summary>
-            <p>Auf Windows und Linux nicht, denn der Launcher aktualisiert sich selbst. Auf macOS schon:
+            <summary data-i18n="faq.f4.summary">Muss ich später neu herunterladen?</summary>
+            <p data-i18n="faq.f4.body">Auf Windows und Linux nicht, denn der Launcher aktualisiert sich selbst. Auf macOS schon:
             dort verhindert die fehlende Signatur die automatische Aktualisierung.</p>
           </details>
 
           <details class="glass">
-            <summary>Brauche ich ein Minecraft-Konto?</summary>
-            <p>Zum Spielen ja. Launch Gabi meldet dich per Microsoft-Login an, wie der offizielle
+            <summary data-i18n="faq.f5.summary">Brauche ich ein Minecraft-Konto?</summary>
+            <p data-i18n="faq.f5.body">Zum Spielen ja. Launch Gabi meldet dich per Microsoft-Login an, wie der offizielle
             Launcher auch. Zum Ausprobieren der Oberfläche gibt es zusätzlich Offline-Profile.</p>
           </details>
 
           <details class="glass">
-            <summary>Was kostet das?</summary>
-            <p>Nichts. Launch Gabi ist ein privates Projekt, kein kommerzielles Produkt. Keine Konten,
+            <summary data-i18n="faq.f6.summary">Was kostet das?</summary>
+            <p data-i18n="faq.f6.body">Nichts. Launch Gabi ist ein privates Projekt, kein kommerzielles Produkt. Keine Konten,
             keine Werbung, kein Abo.</p>
           </details>
 
@@ -885,10 +921,10 @@
             <span class="body">
               <span class="tag">Discord</span>
               <span class="name">Busbahnhof</span>
-              <span class="desc">Komm vorbei, quatsch mit uns und zock mit. Und wenn mal
+              <span class="desc" data-i18n="discord.desc">Komm vorbei, quatsch mit uns und zock mit. Und wenn mal
               etwas klemmt, wird dir hier geholfen.</span>
             </span>
-            <span class="join">Beitreten
+            <span class="join"><span data-i18n="discord.join">Beitreten</span>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </span>
           </a>
@@ -898,12 +934,12 @@
 
     <footer>
       <div class="inner">
-        <p><a href="https://status.launchgabi.com/">Status &amp; bekannte Probleme</a> ·
-           <a href="https://github.com/Gabi12u/Project-Launch-Gabi">Quellcode auf GitHub</a> ·
-           <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases">Alle Versionen</a> ·
+        <p><a href="https://status.launchgabi.com/" data-i18n="footer.status">Status &amp; bekannte Probleme</a> ·
+           <a href="https://github.com/Gabi12u/Project-Launch-Gabi" data-i18n="footer.source">Quellcode auf GitHub</a> ·
+           <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases" data-i18n="footer.releases">Alle Versionen</a> ·
            <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a></p>
-        <p><a href="impressum.html">Impressum</a> &middot; <a href="datenschutz.html">Datenschutzerkl&auml;rung</a></p>
-        <p>Kein offizielles Produkt von Mojang oder Microsoft. Minecraft ist eine Marke von Mojang AB.</p>
+        <p><a href="impressum.html" data-i18n="footer.imprint">Impressum</a> &middot; <a href="datenschutz.html" data-i18n="footer.privacy">Datenschutzerkl&auml;rung</a></p>
+        <p data-i18n="footer.disclaimer">Kein offizielles Produkt von Mojang oder Microsoft. Minecraft ist eine Marke von Mojang AB.</p>
       </div>
     </footer>
 
@@ -911,6 +947,252 @@
 </main>
 
 <script>
+/* ------------------------------------------------------------------ *
+ * i18n: German and English strings, plus the switch between them.
+ * Everything else in this file reads its text through t(key) so a
+ * language change never needs a page reload.
+ * ------------------------------------------------------------------ */
+var I18N = {
+  de: {
+    meta: {
+      title: 'Launch Gabi: Minecraft-Launcher, Mod-Manager und Instance-Manager',
+      description: 'Beliebig viele getrennte Minecraft-Instanzen, Fabric, Forge, NeoForge und Quilt vollautomatisch, Mods von Modrinth und CurseForge. Kostenlos für Windows, macOS und Linux.',
+      ogTitle: 'Launch Gabi: Minecraft-Launcher',
+      ogDescription: 'Beliebig viele getrennte Instanzen, alle vier Mod Loader vollautomatisch, Mods von Modrinth und CurseForge. Kostenlos für Windows, macOS und Linux.'
+    },
+    nav: { functions: 'Funktionen', download: 'Download', help: 'Hilfe', cta: 'Herunterladen' },
+    hero: {
+      badge: 'Kostenlos · Open für alle',
+      title: 'Minecraft,<br>endlich aufgeräumt.',
+      tagline: 'Beliebig viele getrennte Instanzen. Mod Loader, Java und Abhängigkeiten regelt Launch Gabi im Hintergrund. Du drückst Play.',
+      ctaLabel: 'Zu den Downloads',
+      ctaLoading: 'Version wird geladen …'
+    },
+    features: {
+      eyebrow: 'Funktionen',
+      title: 'Alles drin, nichts einzurichten',
+      lede: 'Kein Gefummel mit Java-Versionen, keine Installer von Drittanbietern, keine kaputten Mod-Ordner. Launch Gabi nimmt dir die Arbeit ab, die sonst zwischen dir und dem Spiel steht.',
+      f1: { title: 'Getrennte Instanzen', body: 'Beliebig viele Installationen nebeneinander, jede mit eigener Version, eigenen Mods, Welten und RAM-Einstellung. Assets werden geteilt statt vervielfacht.' },
+      f2: { title: 'Alle vier Mod Loader', body: 'Fabric, NeoForge, Forge und Quilt installieren sich vollautomatisch. Forge und NeoForge patcht Launch Gabi selbst. Ein externer Installer ist nicht nötig.' },
+      f3: { title: 'Java ohne Nachdenken', body: 'Vorhandene JDKs werden auf dem System gefunden. Fehlt die passende Version, lädt Launch Gabi ein Temurin-Runtime und verwaltet es selbst.' },
+      f4: { title: 'Modrinth &amp; CurseForge', body: 'Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data Packs. Abhängigkeiten kommen automatisch mit.' },
+      f5: { title: 'Prüfung vor dem Start', body: 'Loader-Konflikte, Versions-Mismatches, fehlende Abhängigkeiten, doppelte Mods. Für jedes lösbare Problem gibt es einen Knopf, der es behebt.' },
+      f6: { title: 'Backups', body: 'Welten, Konfiguration und Mods sichern. Wiederherstellen legt vorher automatisch eine Sicherheitskopie an. Vor Mod-Updates geschieht das auf Wunsch von allein.' },
+      f7: { title: 'Selbstreparatur', body: 'Prüft Ordnerstruktur, Client-Jar, Bibliotheken, Assets, Natives und Mod-Dateien per SHA1 und repariert, was defekt ist.' },
+      f8: { title: 'Updates von allein', body: 'Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft gerade Minecraft, wartet er.' }
+    },
+    download: {
+      eyebrow: 'Download',
+      title: 'Wähle dein System',
+      ledeLoading: 'Ein Download, danach hält sich der Launcher selbst aktuell.',
+      rowLoadingOs: 'Alle Dateien auf GitHub',
+      rowLoadingNote: 'Dateien werden geladen …'
+    },
+    help: { eyebrow: 'Hilfe', title: 'Häufige Fragen' },
+    faq: {
+      f1: { summary: 'Welchen Chip hat mein Mac?', body: 'Apple-Menü oben links → <em>Über diesen Mac</em>. Steht dort <strong>Apple M1/M2/M3/M4</strong>, nimm die <code>arm64</code>-Datei. Steht dort <strong>Intel</strong>, nimm <code>x64</code>.' },
+      f2: {
+        summary: 'Linux: das AppImage startet nicht',
+        body1: 'Erst ausführbar machen. Klick den Befehl an, dann liegt er in der Zwischenablage: <code data-copy tabindex="0" role="button">chmod +x launch-gabi-*.AppImage</code>',
+        body2: 'Kommt ein Fehler zu <em>FUSE</em> oder passiert gar nichts, fehlt eine Systembibliothek. Ab Ubuntu 22.04 ist sie nicht mehr vorinstalliert: <code data-copy tabindex="0" role="button">sudo apt install libfuse2</code>'
+      },
+      f3: {
+        summary: 'Warnung „unbekannter Entwickler" beim ersten Start',
+        body1: 'Launch Gabi ist nicht kostenpflichtig signiert, deshalb warnen Windows und macOS beim ersten Mal. Das betrifft nur den ersten Start.',
+        body2: '<strong>Windows:</strong> <em>Weitere Informationen</em> → <em>Trotzdem ausführen</em><br><strong>macOS:</strong> Rechtsklick auf die App → <em>Öffnen</em> → im Dialog nochmals <em>Öffnen</em>'
+      },
+      f4: { summary: 'Muss ich später neu herunterladen?', body: 'Auf Windows und Linux nicht, denn der Launcher aktualisiert sich selbst. Auf macOS schon: dort verhindert die fehlende Signatur die automatische Aktualisierung.' },
+      f5: { summary: 'Brauche ich ein Minecraft-Konto?', body: 'Zum Spielen ja. Launch Gabi meldet dich per Microsoft-Login an, wie der offizielle Launcher auch. Zum Ausprobieren der Oberfläche gibt es zusätzlich Offline-Profile.' },
+      f6: { summary: 'Was kostet das?', body: 'Nichts. Launch Gabi ist ein privates Projekt, kein kommerzielles Produkt. Keine Konten, keine Werbung, kein Abo.' }
+    },
+    discord: { desc: 'Komm vorbei, quatsch mit uns und zock mit. Und wenn mal etwas klemmt, wird dir hier geholfen.', join: 'Beitreten' },
+    footer: {
+      status: 'Status &amp; bekannte Probleme',
+      source: 'Quellcode auf GitHub',
+      releases: 'Alle Versionen',
+      imprint: 'Impressum',
+      privacy: 'Datenschutzerkl&auml;rung',
+      disclaimer: 'Kein offizielles Produkt von Mojang oder Microsoft. Minecraft ist eine Marke von Mojang AB.'
+    },
+    dyn: {
+      copied: 'Kopiert!',
+      platform: {
+        win:    { label: 'Windows',          note: 'Installer (.exe) · 10 und 11', labelPlain: 'Windows' },
+        macArm: { label: 'Mac · Apple-Chip', note: 'M1 bis M4 (.dmg)',             labelPlain: 'Mac Apple-Chip' },
+        macX64: { label: 'Mac · Intel-Chip', note: 'Ältere Macs (.dmg)',           labelPlain: 'Mac Intel-Chip' },
+        linux:  { label: 'Linux',            note: 'AppImage · x86_64',           labelPlain: 'Linux' }
+      },
+      mobileNoteTitle: 'Auf dem Handy leider nicht möglich',
+      mobileNoteBody: 'Launch Gabi ist ein Programm für Windows, macOS und Linux. Auf einem Handy oder Tablet lässt es sich nicht installieren. Öffne diese Seite einfach an deinem PC, dann kannst du direkt herunterladen.',
+      mobileOnly: 'Nur am PC verfügbar',
+      mobileOnlySmall: 'Warum? Kurz erklärt',
+      forDownload: 'Für {label} herunterladen',
+      otherSystems: 'Andere Systeme ansehen',
+      chooseDownload: 'Download wählen',
+      chooseDownloadSmall: 'Windows · macOS · Linux',
+      yourSystem: 'Dein System',
+      allFiles: 'Alle Dateien auf GitHub',
+      badgeVersion: 'Version {version} · kostenlos',
+      dlLede: 'Version {version} · ein Download, danach hält sich der Launcher selbst aktuell. ',
+      changesLink: 'Änderungen ansehen'
+    }
+  },
+  en: {
+    meta: {
+      title: 'Launch Gabi: Minecraft Launcher, Mod Manager and Instance Manager',
+      description: 'As many separate Minecraft instances as you want, Fabric, Forge, NeoForge and Quilt fully automatic, mods from Modrinth and CurseForge. Free for Windows, macOS and Linux.',
+      ogTitle: 'Launch Gabi: Minecraft Launcher',
+      ogDescription: 'As many separate instances as you want, all four mod loaders fully automatic, mods from Modrinth and CurseForge. Free for Windows, macOS and Linux.'
+    },
+    nav: { functions: 'Features', download: 'Download', help: 'Help', cta: 'Download now' },
+    hero: {
+      badge: 'Free · open to everyone',
+      title: 'Minecraft,<br>finally organized.',
+      tagline: 'As many separate instances as you want. Launch Gabi handles mod loaders, Java, and dependencies in the background. You just hit play.',
+      ctaLabel: 'Go to downloads',
+      ctaLoading: 'Loading version…'
+    },
+    features: {
+      eyebrow: 'Features',
+      title: 'Everything included, nothing to set up',
+      lede: 'No fiddling with Java versions, no third party installers, no broken mod folders. Launch Gabi takes care of everything that would otherwise stand between you and the game.',
+      f1: { title: 'Separate instances', body: 'As many installations side by side as you like, each with its own version, mods, worlds, and RAM setting. Assets are shared instead of duplicated.' },
+      f2: { title: 'All four mod loaders', body: 'Fabric, NeoForge, Forge, and Quilt install themselves fully automatically. Launch Gabi patches Forge and NeoForge itself, no external installer needed.' },
+      f3: { title: 'Java without the hassle', body: 'Existing JDKs on your system are detected automatically. If the right version is missing, Launch Gabi downloads a Temurin runtime and manages it itself.' },
+      f4: { title: 'Modrinth &amp; CurseForge', body: 'One search across both platforms: mods, modpacks, resource packs, shaders, and data packs. Dependencies come along automatically.' },
+      f5: { title: 'Checked before launch', body: 'Loader conflicts, version mismatches, missing dependencies, duplicate mods. Every problem that can be fixed comes with a button that fixes it.' },
+      f6: { title: 'Backups', body: 'Back up worlds, config, and mods. Restoring automatically makes a safety copy first. It can do the same before mod updates on its own if you want.' },
+      f7: { title: 'Self repair', body: 'Checks folder structure, client jar, libraries, assets, natives, and mod files via SHA1, and repairs whatever is broken.' },
+      f8: { title: 'Updates on its own', body: 'The launcher updates itself in the background and installs the update on exit. If Minecraft is currently running, it waits.' }
+    },
+    download: {
+      eyebrow: 'Download',
+      title: 'Choose your system',
+      ledeLoading: 'One download, then the launcher keeps itself up to date.',
+      rowLoadingOs: 'All files on GitHub',
+      rowLoadingNote: 'Loading files…'
+    },
+    help: { eyebrow: 'Help', title: 'Frequently asked questions' },
+    faq: {
+      f1: { summary: 'Which chip does my Mac have?', body: 'Apple menu top left → <em>About This Mac</em>. If it says <strong>Apple M1/M2/M3/M4</strong>, get the <code>arm64</code> file. If it says <strong>Intel</strong>, get <code>x64</code>.' },
+      f2: {
+        summary: 'Linux: the AppImage will not start',
+        body1: 'Make it executable first. Click the command below and it lands on your clipboard: <code data-copy tabindex="0" role="button">chmod +x launch-gabi-*.AppImage</code>',
+        body2: 'If you get an error about <em>FUSE</em> or nothing happens at all, a system library is missing. Since Ubuntu 22.04 it is no longer preinstalled: <code data-copy tabindex="0" role="button">sudo apt install libfuse2</code>'
+      },
+      f3: {
+        summary: 'Warning about an "unknown developer" on first launch',
+        body1: 'Launch Gabi is not signed with a paid certificate, so Windows and macOS warn you the first time. This only affects the very first launch.',
+        body2: '<strong>Windows:</strong> <em>More info</em> → <em>Run anyway</em><br><strong>macOS:</strong> right click the app → <em>Open</em> → click <em>Open</em> again in the dialog'
+      },
+      f4: { summary: 'Do I need to download it again later?', body: 'Not on Windows or Linux, the launcher updates itself. On macOS you do: the missing signature there prevents automatic updates.' },
+      f5: { summary: 'Do I need a Minecraft account?', body: 'To play, yes. Launch Gabi signs you in with Microsoft login, just like the official launcher. To try out the interface there are also offline profiles.' },
+      f6: { summary: 'What does it cost?', body: 'Nothing. Launch Gabi is a private project, not a commercial product. No accounts, no ads, no subscription.' }
+    },
+    discord: { desc: 'Come hang out, chat with us, and play together. And if something is not working, this is where you get help.', join: 'Join' },
+    footer: {
+      status: 'Status &amp; known issues',
+      source: 'Source code on GitHub',
+      releases: 'All versions',
+      imprint: 'Imprint',
+      privacy: 'Privacy policy',
+      disclaimer: 'Not an official product of Mojang or Microsoft. Minecraft is a trademark of Mojang AB.'
+    },
+    dyn: {
+      copied: 'Copied!',
+      platform: {
+        win:    { label: 'Windows',        note: 'Installer (.exe) · 10 and 11', labelPlain: 'Windows' },
+        macArm: { label: 'Mac · Apple chip', note: 'M1 to M4 (.dmg)',            labelPlain: 'Mac Apple chip' },
+        macX64: { label: 'Mac · Intel chip', note: 'Older Macs (.dmg)',          labelPlain: 'Mac Intel chip' },
+        linux:  { label: 'Linux',          note: 'AppImage · x86_64',           labelPlain: 'Linux' }
+      },
+      mobileNoteTitle: 'Not possible on a phone',
+      mobileNoteBody: 'Launch Gabi is a program for Windows, macOS, and Linux. It cannot be installed on a phone or tablet. Just open this page on your PC and you can download it directly.',
+      mobileOnly: 'PC only',
+      mobileOnlySmall: 'Why? Quick explanation',
+      forDownload: 'Download for {label}',
+      otherSystems: 'See other systems',
+      chooseDownload: 'Choose a download',
+      chooseDownloadSmall: 'Windows · macOS · Linux',
+      yourSystem: 'Your system',
+      allFiles: 'All files on GitHub',
+      badgeVersion: 'Version {version} · free',
+      dlLede: 'Version {version}. One download, then the launcher keeps itself up to date. ',
+      changesLink: 'See changes'
+    }
+  }
+};
+
+var LANG_KEY = 'lg-lang';
+var i18nState = { lang: 'de' };
+
+function loadSavedLang() {
+  try {
+    return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'de';
+  } catch (e) {
+    return 'de';
+  }
+}
+function saveLang(lang) {
+  try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* storage unavailable, ignore */ }
+}
+
+function t(path) {
+  var parts = path.split('.');
+  var node = I18N[i18nState.lang];
+  for (var i = 0; i < parts.length && node != null; i++) node = node[parts[i]];
+  if (node == null) {
+    node = I18N.de;
+    for (var j = 0; j < parts.length && node != null; j++) node = node[parts[j]];
+  }
+  return node == null ? '' : node;
+}
+
+function setMetaContent(selector, content) {
+  var el = document.querySelector(selector);
+  if (el) el.setAttribute('content', content);
+}
+
+// Filled in later by the download-building script, so a language switch can
+// re-render the platform list without a second fetch.
+var renderDownloadState = null;
+
+function applyLanguage() {
+  document.documentElement.lang = i18nState.lang;
+  document.title = t('meta.title');
+  setMetaContent('meta[name="description"]', t('meta.description'));
+  setMetaContent('meta[property="og:title"]', t('meta.ogTitle'));
+  setMetaContent('meta[property="og:description"]', t('meta.ogDescription'));
+
+  var nodes = document.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < nodes.length; i++) {
+    nodes[i].innerHTML = t(nodes[i].getAttribute('data-i18n'));
+  }
+
+  var buttons = document.querySelectorAll('.lang-switch button');
+  for (var j = 0; j < buttons.length; j++) {
+    var pressed = buttons[j].getAttribute('data-lang') === i18nState.lang;
+    buttons[j].setAttribute('aria-pressed', pressed ? 'true' : 'false');
+  }
+
+  if (typeof renderDownloadState === 'function') renderDownloadState();
+}
+
+(function () {
+  i18nState.lang = loadSavedLang();
+  applyLanguage();
+
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.lang-switch button');
+    if (!btn) return;
+    var lang = btn.getAttribute('data-lang');
+    if ((lang !== 'de' && lang !== 'en') || lang === i18nState.lang) return;
+    i18nState.lang = lang;
+    saveLang(lang);
+    applyLanguage();
+  });
+})();
+
 /* ------------------------------------------------------------------ *
  * Background: reveal once decoded, survive a missing file
  * ------------------------------------------------------------------ */
@@ -959,7 +1241,7 @@ observeReveals();
     navigator.clipboard.writeText(el.textContent.trim()).then(function () {
       var original = el.textContent;
       el.classList.add('copied');
-      el.textContent = 'Kopiert!';
+      el.textContent = t('dyn.copied');
       setTimeout(function () { el.textContent = original; el.classList.remove('copied'); }, 1300);
     }).catch(function () { /* clipboard refused; the text is still selectable */ });
   }
@@ -994,13 +1276,18 @@ observeReveals();
   };
 
   // Each platform recognises its own asset, so a rename in electron-builder
-  // cannot silently point a button at the wrong file.
+  // cannot silently point a button at the wrong file. Labels and notes come
+  // from I18N through their key, not as literal text, so a language switch
+  // relabels the same list instead of needing a second fetch.
   var PLATFORMS = [
-    { id: 'win',     icon: 'win',   label: 'Windows',          note: 'Installer (.exe) · 10 und 11', match: function (n) { return /\.exe$/i.test(n); } },
-    { id: 'mac-arm', icon: 'mac',   label: 'Mac · Apple-Chip', note: 'M1 bis M4 (.dmg)',             match: function (n) { return /arm64\.dmg$/i.test(n); } },
-    { id: 'mac-x64', icon: 'mac',   label: 'Mac · Intel-Chip', note: 'Ältere Macs (.dmg)',           match: function (n) { return /x64\.dmg$/i.test(n); } },
-    { id: 'linux',   icon: 'linux', label: 'Linux',            note: 'AppImage · x86_64',            match: function (n) { return /\.AppImage$/i.test(n); } }
+    { id: 'win',     icon: 'win',   i18nKey: 'win',    match: function (n) { return /\.exe$/i.test(n); } },
+    { id: 'mac-arm', icon: 'mac',   i18nKey: 'macArm', match: function (n) { return /arm64\.dmg$/i.test(n); } },
+    { id: 'mac-x64', icon: 'mac',   i18nKey: 'macX64', match: function (n) { return /x64\.dmg$/i.test(n); } },
+    { id: 'linux',   icon: 'linux', i18nKey: 'linux',  match: function (n) { return /\.AppImage$/i.test(n); } }
   ];
+  function platformLabel(p)      { return t('dyn.platform.' + p.i18nKey + '.label'); }
+  function platformNote(p)       { return t('dyn.platform.' + p.i18nKey + '.note'); }
+  function platformLabelPlain(p) { return t('dyn.platform.' + p.i18nKey + '.labelPlain'); }
 
   function guessPlatform() {
     var ua = navigator.userAgent;
@@ -1008,9 +1295,9 @@ observeReveals();
     if (/Linux/i.test(ua) && !/Android/i.test(ua)) return 'linux';
     if (/Mac OS X|Macintosh/i.test(ua)) {
       // Safari and Chrome both report Intel on Apple Silicon, so the user agent
-      // cannot settle this. WebGL can — Apple's own GPU only exists on M-series
-      // — but privacy modes (Brave's farbling, resistFingerprinting, blocker
-      // extensions) hide or spoof that string. Falling back to Intel there
+      // cannot settle this. WebGL can, since Apple's own GPU only exists on
+      // M-series chips, but privacy modes (Brave's farbling, resistFingerprinting,
+      // blocker extensions) hide or spoof that string. Falling back to Intel there
       // hands an M-series Mac a build that will not run, so an unreadable
       // renderer stays undecided and the visitor picks from the list instead.
       try {
@@ -1050,13 +1337,11 @@ observeReveals();
 
   var MOBILE_ICON = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M11 18.4h2"/></svg>';
 
-  var MOBILE_NOTE =
-    '<div class="mobile-note">' + MOBILE_ICON +
-      '<span><strong>Auf dem Handy leider nicht möglich</strong>' +
-      'Launch Gabi ist ein Programm für Windows, macOS und Linux. ' +
-      'Auf einem Handy oder Tablet lässt es sich nicht installieren. ' +
-      'Öffne diese Seite einfach an deinem PC, dann kannst du direkt herunterladen.</span>' +
-    '</div>';
+  function mobileNoteHtml() {
+    return '<div class="mobile-note">' + MOBILE_ICON +
+      '<span><strong>' + t('dyn.mobileNoteTitle') + '</strong>' +
+      t('dyn.mobileNoteBody') + '</span></div>';
+  }
 
   // Everything below is built with innerHTML, and tag names and asset URLs come
   // from the GitHub API rather than from this page. A release published with a
@@ -1077,26 +1362,108 @@ observeReveals();
     return /^https:\/\/github\.com\//i.test(url) ? esc(url) : RELEASES;
   }
 
-  function fallback(message) {
-    // Same rule as the normal path: a phone never gets pointed at a download,
-    // not even the plain GitHub listing.
-    if (isMobile()) {
-      document.getElementById('main-cta').innerHTML =
-        '<a class="primary" href="#download"><span>Nur am PC verfügbar' +
-        '<small>Warum? Kurz erklärt</small></span></a>';
-      document.getElementById('downloads').innerHTML = MOBILE_NOTE;
+  // Everything the fetch can end up in, kept so a language switch can
+  // re-render this section without asking GitHub again.
+  var dl = { mobile: isMobile(), mine: null, result: { kind: 'loading' } };
+  dl.mine = dl.mobile ? null : guessPlatform();
+
+  function render() {
+    var mainCta = document.getElementById('main-cta');
+    var downloads = document.getElementById('downloads');
+    var badge = document.getElementById('badge');
+    var lede = document.getElementById('dl-lede');
+    var r = dl.result;
+
+    if (r.kind !== 'ok') {
+      badge.innerHTML = '<span class="dot"></span>' + t('hero.badge');
+      lede.textContent = t('download.ledeLoading');
+    }
+
+    if (r.kind === 'loading') {
+      mainCta.innerHTML =
+        '<a class="primary" href="' + RELEASES + '"><span>' + t('hero.ctaLabel') +
+        '<small>' + t('hero.ctaLoading') + '</small></span></a>';
+      downloads.innerHTML =
+        '<a class="row glass" href="' + RELEASES + '"><span class="os">' +
+          t('download.rowLoadingOs') + '<span class="note">' + t('download.rowLoadingNote') + '</span></span></a>';
       observeReveals();
       return;
     }
-    document.getElementById('main-cta').innerHTML =
-      '<a class="primary" href="' + RELEASES + '"><span>Zu den Downloads' +
-      '<small>' + esc(message) + '</small></span></a>';
-    document.getElementById('downloads').innerHTML =
-      '<a class="row glass" href="' + RELEASES + '">' +
-        '<span class="os">Alle Dateien auf GitHub<span class="note">' + esc(message) + '</span></span>' +
-      '</a>';
+
+    if (r.kind === 'error' || r.kind === 'no-assets') {
+      // Same rule as the normal path: a phone never gets pointed at a download,
+      // not even the plain GitHub listing.
+      if (dl.mobile) {
+        mainCta.innerHTML =
+          '<a class="primary" href="#download"><span>' + t('dyn.mobileOnly') +
+          '<small>' + t('dyn.mobileOnlySmall') + '</small></span></a>';
+        downloads.innerHTML = mobileNoteHtml();
+        observeReveals();
+        return;
+      }
+      var message = r.kind === 'no-assets' ? ('Version ' + r.version) : t('dyn.allFiles');
+      mainCta.innerHTML =
+        '<a class="primary" href="' + RELEASES + '"><span>' + t('hero.ctaLabel') +
+        '<small>' + esc(message) + '</small></span></a>';
+      downloads.innerHTML =
+        '<a class="row glass" href="' + RELEASES + '">' +
+          '<span class="os">' + t('dyn.allFiles') + '<span class="note">' + esc(message) + '</span></span>' +
+        '</a>';
+      observeReveals();
+      return;
+    }
+
+    // r.kind === 'ok'
+    var version = esc(r.version);
+    badge.innerHTML = '<span class="dot"></span>' + t('dyn.badgeVersion').replace('{version}', version);
+
+    // Hero: the visitor's own platform, or a nudge to the list below. On a
+    // phone every download would be a dead end, so the button points at the
+    // explanation instead of handing over a file that cannot be opened.
+    mainCta.innerHTML = dl.mobile
+      ? '<a class="primary" href="#download"><span>' + t('dyn.mobileOnly') +
+          '<small>' + t('dyn.mobileOnlySmall') + '</small></span></a>'
+      : r.primary
+        ? '<a class="primary" href="' + safeUrl(r.primary.asset.browser_download_url) + '">' +
+            '<span>' + t('dyn.forDownload').replace('{label}', platformLabelPlain(r.primary.p)) +
+              '<small>' + platformNote(r.primary.p) + ' · ' + mb(r.primary.asset.size) + '</small>' +
+            '</span></a>' +
+          '<a class="ghost" href="#download">' + t('dyn.otherSystems') + '</a>'
+        : '<a class="primary" href="#download"><span>' + t('dyn.chooseDownload') +
+            '<small>' + t('dyn.chooseDownloadSmall') + '</small></span></a>';
+
+    // Download section always lists every platform, with the visitor's marked.
+    // On mobile the same rows render as plain divs: still informative about
+    // what exists, but nothing that starts a download.
+    downloads.innerHTML =
+      (dl.mobile ? mobileNoteHtml() : '') +
+      r.found.map(function (f) {
+        var you = (f === r.primary) ? ('<span class="you">' + t('dyn.yourSystem') + '</span>') : '';
+        var inner =
+          '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
+          '<span class="os">' + platformLabel(f.p) + you +
+            '<span class="note">' + platformNote(f.p) + '</span>' +
+          '</span>' +
+          '<span class="size">' + mb(f.asset.size) + '</span>';
+
+        return dl.mobile
+          ? '<div class="row glass locked">' + inner + '</div>'
+          : '<a class="row glass' + (f === r.primary ? ' is-you' : '') + '" href="' +
+              safeUrl(f.asset.browser_download_url) + '">' + inner + '</a>';
+      }).join('');
+
+    lede.innerHTML =
+      t('dyn.dlLede').replace('{version}', version) +
+      '<a href="' + RELEASES + '" style="color:#e0bcff;display:inline-block;padding:9px 2px">' +
+        t('dyn.changesLink') + '</a>';
+
     observeReveals();
   }
+
+  // Exposed so applyLanguage() can re-render this section on a language
+  // switch, using the release data already fetched instead of asking again.
+  renderDownloadState = render;
+  render();
 
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
     headers: { Accept: 'application/vnd.github+json' },
@@ -1120,62 +1487,28 @@ observeReveals();
         return asset ? { p: p, asset: asset } : null;
       }).filter(Boolean);
 
-      if (!found.length) { fallback('Version ' + (release.tag_name || '')); return; }
-
-      var mobile = isMobile();
-      var mine = mobile ? null : guessPlatform();
-      var primary = null;
-      for (var i = 0; i < found.length; i++) {
-        if (found[i].p.id === mine) { primary = found[i]; break; }
+      if (!found.length) {
+        dl.result = { kind: 'no-assets', version: (release.tag_name || '') };
+        render();
+        return;
       }
 
-      var version = esc((release.tag_name || '').replace(/^v/, ''));
-      document.getElementById('badge').innerHTML =
-        '<span class="dot"></span>Version ' + version + ' · kostenlos';
+      var primary = null;
+      for (var i = 0; i < found.length; i++) {
+        if (found[i].p.id === dl.mine) { primary = found[i]; break; }
+      }
 
-      // Hero: the visitor's own platform, or a nudge to the list below. On a
-      // phone every download would be a dead end, so the button points at the
-      // explanation instead of handing over a file that cannot be opened.
-      document.getElementById('main-cta').innerHTML = mobile
-        ? '<a class="primary" href="#download"><span>Nur am PC verfügbar' +
-            '<small>Warum? Kurz erklärt</small></span></a>'
-        : primary
-          ? '<a class="primary" href="' + safeUrl(primary.asset.browser_download_url) + '">' +
-              '<span>Für ' + primary.p.label.replace(' · ', ' ') + ' herunterladen' +
-                '<small>' + primary.p.note + ' · ' + mb(primary.asset.size) + '</small>' +
-              '</span></a>' +
-            '<a class="ghost" href="#download">Andere Systeme ansehen</a>'
-          : '<a class="primary" href="#download"><span>Download wählen' +
-              '<small>Windows · macOS · Linux</small></span></a>';
-
-      // Download section always lists every platform, with the visitor's marked.
-      // On mobile the same rows render as plain divs: still informative about
-      // what exists, but nothing that starts a download.
-      document.getElementById('downloads').innerHTML =
-        (mobile ? MOBILE_NOTE : '') +
-        found.map(function (f) {
-          var you = (f === primary) ? '<span class="you">Dein System</span>' : '';
-          var inner =
-            '<span class="plat-ico">' + ICONS[f.p.icon] + '</span>' +
-            '<span class="os">' + f.p.label + you +
-              '<span class="note">' + f.p.note + '</span>' +
-            '</span>' +
-            '<span class="size">' + mb(f.asset.size) + '</span>';
-
-          return mobile
-            ? '<div class="row glass locked">' + inner + '</div>'
-            : '<a class="row glass' + (f === primary ? ' is-you' : '') + '" href="' +
-                safeUrl(f.asset.browser_download_url) + '">' + inner + '</a>';
-        }).join('');
-
-      document.getElementById('dl-lede').innerHTML =
-        'Version ' + version + ' · ein Download, danach hält sich der Launcher selbst aktuell. ' +
-        '<a href="' + RELEASES + '" style="color:#e0bcff;display:inline-block;padding:9px 2px">Änderungen ansehen</a>';
-
-      observeReveals();
+      dl.result = {
+        kind: 'ok',
+        version: (release.tag_name || '').replace(/^v/, ''),
+        found: found,
+        primary: primary
+      };
+      render();
     })
     .catch(function () {
-      fallback('Alle Dateien auf GitHub');
+      dl.result = { kind: 'error' };
+      render();
     });
 })();
 </script>

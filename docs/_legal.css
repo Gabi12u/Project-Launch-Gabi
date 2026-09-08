@@ -40,6 +40,18 @@ h1 {
   letter-spacing: -.02em;
 }
 .lede { color: var(--muted); margin: 0 0 48px; }
+/* Shown above the German-only legal text, in English, for visitors who
+   switched the marketing site to English and land here through a footer
+   link. Stays visible no matter which language the rest of the page uses. */
+.lang-note {
+  font-size: .82rem;
+  color: var(--muted-dim);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 0 0 32px;
+}
 h2 {
   font-size: 1.15rem;
   margin: 44px 0 12px;
