@@ -650,7 +650,7 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
 
     case 'disable-content': {
       if (!fix.contentId) return
-      toggleContent(instanceId, fix.contentId, false)
+      await toggleContent(instanceId, fix.contentId, false)
       return
     }
 

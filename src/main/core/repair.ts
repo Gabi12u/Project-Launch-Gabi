@@ -16,6 +16,12 @@ import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
 import { pushLog } from './instanceLog'
+import { beginRepair, endRepair, isRepairing } from './repairLock'
+
+// Re-exported so `launch.ts` keeps importing this from `repair.ts` unchanged;
+// the marker itself lives in `repairLock.ts` to avoid a cycle with
+// `instances.ts` (see that module for why).
+export { isRepairing } from './repairLock'
 
 const logger = log('repair')
 
@@ -49,20 +55,14 @@ export interface RepairReport {
  * and the Java runtime.
  */
 /**
- * Instances with a repair in progress.
- *
  * The renderer's own "wird repariert" flag lives in component state and is
  * lost the moment the user navigates away, which re-enables the button while
  * the run is still going. Two runs then delete and re-download the same paths
  * and both write the instance record at the end, so whichever finishes last
- * silently discards the other's work.
+ * silently discards the other's work. `isRepairing`/`beginRepair`/`endRepair`
+ * live in `repairLock.ts`, so a launch can refuse to start on top and now an
+ * instance delete or duplicate can refuse to run mid-repair too.
  */
-const repairing = new Set<string>()
-
-/** True while a repair is running, so a launch can refuse to start on top. */
-export function isRepairing(instanceId: string): boolean {
-  return repairing.has(instanceId)
-}
 
 /**
  * True when a content entry still looks exactly as it did when the repair
@@ -126,7 +126,7 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
   }
 
-  if (repairing.has(instanceId)) {
+  if (isRepairing(instanceId)) {
     throw new Error('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.')
   }
 
@@ -148,11 +148,11 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.')
   }
 
-  repairing.add(instanceId)
+  beginRepair(instanceId)
   try {
     return await runRepair(instanceId, instance)
   } finally {
-    repairing.delete(instanceId)
+    endRepair(instanceId)
   }
 }
 
