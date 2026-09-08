@@ -199,6 +199,88 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'notice for as long as at least one saved account is affected. The underlying limit itself does not ' +
       'change: without encryption from the system, plain text remains the only alternative to refusing to ' +
       'save the sign in at all.'
+  },
+  'update-deaktivierte-mod-wird-aktiv': {
+    title: 'Updating a disabled mod turns it back on',
+    detail:
+      'When a switched-off mod is updated, the freshly downloaded file lands on disk without the ' +
+      '".disabled" suffix, even though the internal record still says switched off. The next scan of the ' +
+      'folder goes by the real file and records the mod as enabled, with no message shown. A mod that was ' +
+      'deliberately switched off because of a crash or an incompatibility can therefore quietly come back ' +
+      'after an automatic update and cause the same fault again.'
+  },
+  'java-tausch-nicht-atomar': {
+    title: 'A Java switch can destroy both the old and the newly downloaded version',
+    detail:
+      'When a downloaded Java version is put into place, the existing folder is deleted first and the ' +
+      'freshly unpacked folder is then moved into its spot. If that second step fails, for example ' +
+      'because a virus scanner or a backup program is holding a file inside the new folder open at that ' +
+      'moment, the old, previously working installation is already gone, and the cleanup step afterwards ' +
+      'removes the new folder as well. Both are then lost, and the Java version has to be downloaded ' +
+      'again from scratch.'
+  },
+  'alte-assets-ohne-pruefung': {
+    title: 'Very old Minecraft versions do not check copied files for completeness',
+    detail:
+      'For Minecraft versions before 1.6, assets are copied into an older folder layout. This only checks ' +
+      'whether a file already exists at the destination, not whether it is complete. If the launcher ' +
+      'breaks off during this copy, for instance from a crash or a power loss, an incomplete file is left ' +
+      'behind and gets skipped as already done on every further launch. This only shows up on very old ' +
+      'versions, as a missing sound or texture, with no error message.'
+  },
+  'loeschen-ohne-reparatur-sperre': {
+    title: 'Deleting an instance does not check whether a repair is running',
+    detail:
+      'Before deleting an instance, the launcher checks whether it is running, starting, having its mods ' +
+      'worked on, or having a backup restored. A repair in progress is not among these checks. Deleting ' +
+      'an instance during its own repair leaves the repair writing into the folder that was just removed, ' +
+      'partially recreating it. Because freed internal ids get reused later, a freshly created instance ' +
+      'can end up with a non-empty folder made of these leftovers.'
+  },
+  'reparatur-wiederherstellung-ungesperrt': {
+    title: 'Repair and restoring a backup can interfere with each other',
+    detail:
+      'A repair does not check whether a backup is currently being restored for the same instance, and a ' +
+      'restore does not check the other way around whether a repair or mod work is in progress. Starting ' +
+      'both at once for the same instance has them write into the same subfolders as worlds and settings. ' +
+      'Depending on timing, this can leave half written world or configuration files.'
+  },
+  'reparatur-trifft-fremde-instanz': {
+    title: 'Repairing one instance can disrupt the launch of another on the same Minecraft version',
+    detail:
+      'Native libraries are kept in one folder per Minecraft version, shared by every instance on that ' +
+      'version. Repair only recognises an instance as in use once it is already running, not one that is ' +
+      'in the middle of starting, for example while native libraries are being unpacked or a custom pre ' +
+      'launch command is still running. Repairing a different instance on the same version during that ' +
+      'window clears the shared folder, and the starting instance can crash without its native libraries, ' +
+      'even though nothing about it was changed.'
+  },
+  'duplizieren-ohne-sperre': {
+    title: 'Duplicating an instance checks no lock at all',
+    detail:
+      'Unlike deleting, duplicating an instance does not check whether it is running, starting, having ' +
+      'its mods worked on, or having a backup restored before copying the folder. If one of these is ' +
+      'happening at the same time, the resulting copy can contain missing, half written or inconsistent ' +
+      'files, with no message shown. This only becomes noticeable once the copy is started later.'
+  },
+  'mod-umschalten-ohne-sperre': {
+    title: 'Switching a mod on or off bypasses the lock for content changes',
+    detail:
+      'Installing, removing, updating and repairing content all hold the same lock while they run, so ' +
+      'they cannot overwrite each other. Switching a mod on or off does not hold that lock and is not ' +
+      'caught by the check in its own command either. If this happens right while an installation, ' +
+      'update or repair is running in the background for the same instance, whichever saves last ' +
+      'overwrites the other one’s change, without a warning.'
+  },
+  'versionspruefung-wirkungslos': {
+    title: 'A check when locating installed loader versions has no effect',
+    detail:
+      'When locating an already installed loader folder, a check is meant to rule out mistakenly using a ' +
+      'folder from another instance that shares the same loader version but a different Minecraft ' +
+      'version. Because of how two conditions are combined, this check never actually applies in ' +
+      'practice: the result always comes out positive regardless of the Minecraft version comparison. ' +
+      'Rare in practice, since Forge and NeoForge version numbers are usually tied to one specific ' +
+      'Minecraft version, but in an unlucky case an instance would start with the wrong version profile.'
   }
 }
 

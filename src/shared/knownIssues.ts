@@ -300,6 +300,123 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Alternative dazu, die Anmeldung gar nicht erst zu speichern.',
     state: 'limitation',
     since: '2026-09-08'
+  },
+  {
+    id: 'update-deaktivierte-mod-wird-aktiv',
+    title: 'Aktualisieren einer deaktivierten Mod schaltet sie wieder ein',
+    detail:
+      'Wird eine ausgeschaltete Mod aktualisiert, landet die neu heruntergeladene Datei auf der ' +
+      'Festplatte ohne die Endung ".disabled", obwohl der interne Eintrag weiterhin "ausgeschaltet" ' +
+      'sagt. Der nächste Abgleich mit dem Ordnerinhalt richtet sich nach der echten Datei und trägt ' +
+      'die Mod als eingeschaltet ein, ohne dass eine Meldung erscheint. Eine Mod, die bewusst wegen ' +
+      'eines Absturzes oder einer Unverträglichkeit ausgeschaltet wurde, kann dadurch nach einer ' +
+      'automatischen Aktualisierung unbemerkt wieder mitladen und denselben Fehler erneut auslösen.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'java-tausch-nicht-atomar',
+    title: 'Ein Java-Wechsel kann sowohl die alte als auch die neu geladene Version vernichten',
+    detail:
+      'Beim Einspielen einer heruntergeladenen Java-Version wird der bisherige Ordner zuerst gelöscht ' +
+      'und danach der frisch entpackte Ordner an seine Stelle verschoben. Schlägt dieser zweite ' +
+      'Schritt fehl, zum Beispiel weil ein Virenscanner oder ein Backup-Programm in diesem Moment ' +
+      'eine Datei im neuen Ordner offen hält, ist die alte, bisher funktionierende Installation ' +
+      'bereits weg, und der Aufräumschritt danach entfernt zusätzlich den neuen Ordner. Beide Stände ' +
+      'sind dann verloren, und die Java-Version muss vollständig neu heruntergeladen werden.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'alte-assets-ohne-pruefung',
+    title: 'Sehr alte Minecraft-Versionen prüfen kopierte Dateien nicht auf Vollständigkeit',
+    detail:
+      'Für Minecraft-Versionen vor 1.6 werden Assets in eine ältere Ordnerstruktur kopiert. Dabei ' +
+      'wird nur geprüft, ob am Ziel bereits eine Datei liegt, nicht ob sie vollständig ist. Bricht der ' +
+      'Launcher während dieses Kopiervorgangs ab, etwa durch einen Absturz oder einen Stromausfall, ' +
+      'bleibt eine unvollständige Datei liegen und wird bei jedem weiteren Start als bereits erledigt ' +
+      'übersprungen. Bemerkbar macht sich das nur bei sehr alten Versionen, als fehlender Sound oder ' +
+      'fehlende Textur, ohne dass eine Fehlermeldung erscheint.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'loeschen-ohne-reparatur-sperre',
+    title: 'Löschen einer Instanz prüft nicht, ob gerade eine Reparatur läuft',
+    detail:
+      'Vor dem Löschen einer Instanz prüft der Launcher, ob sie gerade läuft, startet, an ihren Mods ' +
+      'gearbeitet wird oder eine Sicherung eingespielt wird. Eine laufende Reparatur gehört nicht zu ' +
+      'diesen Prüfungen. Wird eine Instanz genau während ihrer eigenen Reparatur gelöscht, schreibt ' +
+      'die Reparatur weiter in den bereits entfernten Ordner und legt ihn dabei teilweise wieder an. ' +
+      'Da freigewordene interne Kennungen später erneut vergeben werden, kann eine neu angelegte ' +
+      'Instanz auf einen nicht leeren, aus alten Resten bestehenden Ordner treffen.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'reparatur-wiederherstellung-ungesperrt',
+    title: 'Reparatur und Wiederherstellung einer Sicherung können sich gegenseitig stören',
+    detail:
+      'Eine Reparatur prüft nicht, ob für dieselbe Instanz gerade eine Sicherung eingespielt wird, und ' +
+      'eine Wiederherstellung prüft umgekehrt nicht, ob gerade repariert wird oder an den Mods ' +
+      'gearbeitet wird. Werden beide Vorgänge gleichzeitig für dieselbe Instanz angestoßen, schreiben ' +
+      'sie in dieselben Unterordner wie Welten und Einstellungen. Je nach Zeitpunkt kann das zu halb ' +
+      'geschriebenen Welt- oder Konfigurationsdateien führen.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'reparatur-trifft-fremde-instanz',
+    title: 'Reparatur einer Instanz kann den Start einer anderen mit derselben Minecraft-Version stören',
+    detail:
+      'Native Bibliotheken werden pro Minecraft-Version in einem gemeinsamen Ordner abgelegt, den sich ' +
+      'alle Instanzen mit dieser Version teilen. Die Reparatur erkennt nur eine bereits laufende ' +
+      'Instanz als "in Benutzung", nicht eine, die sich gerade mitten im Start befindet, etwa während ' +
+      'die nativen Bibliotheken entpackt oder ein eigener Vorstart-Befehl noch läuft. Wird in diesem ' +
+      'Zeitfenster eine andere Instanz mit derselben Version repariert, leert die Reparatur den ' +
+      'gemeinsamen Ordner, und die startende Instanz kann ohne ihre nativen Bibliotheken abstürzen, ' +
+      'obwohl an ihr selbst nichts verändert wurde.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'duplizieren-ohne-sperre',
+    title: 'Duplizieren einer Instanz prüft überhaupt keine Sperre',
+    detail:
+      'Anders als Löschen prüft das Duplizieren einer Instanz nicht, ob sie gerade läuft, gestartet ' +
+      'wird, an ihren Mods gearbeitet wird oder eine Sicherung eingespielt wird, bevor der Ordner ' +
+      'kopiert wird. Läuft währenddessen einer dieser Vorgänge, kann die entstehende Kopie fehlende, ' +
+      'halb geschriebene oder widersprüchliche Dateien enthalten, ohne dass eine Meldung erscheint. ' +
+      'Bemerkbar wird das erst, wenn die Kopie später gestartet wird.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'mod-umschalten-ohne-sperre',
+    title: 'Eine Mod ein- oder auszuschalten umgeht die Sperre für Inhalts-Änderungen',
+    detail:
+      'Installieren, Entfernen, Aktualisieren und Reparieren von Inhalten halten während ihrer Laufzeit ' +
+      'dieselbe Sperre, damit sie sich nicht gegenseitig überschreiben. Eine Mod ein- oder ' +
+      'auszuschalten hält diese Sperre nicht und wird auch von der Prüfung im entsprechenden Befehl ' +
+      'nicht erfasst. Geschieht das genau während im Hintergrund eine Installation, Aktualisierung ' +
+      'oder Reparatur derselben Instanz läuft, überschreibt wer zuletzt speichert die Änderung des ' +
+      'jeweils anderen Vorgangs, ohne Warnung.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'versionspruefung-wirkungslos',
+    title: 'Eine Prüfung beim Auffinden installierter Loader-Versionen ist wirkungslos',
+    detail:
+      'Beim Auffinden eines bereits installierten Loader-Ordners soll eine Prüfung ausschließen, dass ' +
+      'ein Ordner einer anderen Instanz mit derselben Loader-Version, aber einer anderen Minecraft-' +
+      'Version, fälschlich verwendet wird. Durch die Reihenfolge, in der zwei Bedingungen verknüpft ' +
+      'sind, greift diese Prüfung in der Praxis nie: das Ergebnis fällt unabhängig vom Vergleich mit ' +
+      'der Minecraft-Version immer positiv aus. In der Praxis selten, weil Forge- und NeoForge-' +
+      'Versionsnummern meist eindeutig einer Minecraft-Version zugeordnet sind, aber im ungünstigen ' +
+      'Fall würde eine Instanz mit dem Versionsprofil der falschen Minecraft-Version starten.',
+    state: 'investigating',
+    since: '2026-09-08'
   }
 ]
 
