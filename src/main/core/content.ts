@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import type {
   CompatibilityIssue,
@@ -492,11 +492,14 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   if (!item?.update) return null
 
   const dir = targetDir(instanceId, item.type)
-  const destination = contentPath(dir, item.update.fileName)
+  // Downloaded under its bare name first. Whether ".disabled" belongs on it
+  // depends on the enabled state as read fresh below, which is not known for
+  // sure until after the download, so this is only a staging location.
+  const downloadPath = contentPath(dir, item.update.fileName)
 
   await downloadFile({
     url: item.update.downloadUrl,
-    path: destination,
+    path: downloadPath,
     sha1: item.update.sha1,
     size: item.update.size
   })
@@ -506,9 +509,6 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   // that toggle and delete a file that has since been renamed.
   const current = getInstance(instanceId).content.find((c) => c.id === contentId)
   if (!current) return null
-
-  const oldPath = contentPath(dir, current.fileName)
-  const stale = samePath(oldPath, destination) ? null : oldPath
 
   const next: ContentItem = {
     ...current,
@@ -525,6 +525,21 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     installedAt: Date.now(),
     update: null
   }
+
+  // The file downloaded above always sits under its bare name. If the mod is
+  // disabled, `next.fileName` carries the ".disabled" suffix, but the file on
+  // disk does not yet, so it is renamed onto that exact name here, before the
+  // record is written. Skipping this step is exactly how a mod the user just
+  // turned off came back on: the disk held an active jar while the record
+  // claimed it was off, and the next folder scan in `syncContentWithDisk`
+  // trusts the disk and flips the record back to enabled on its own.
+  const destination = contentPath(dir, next.fileName)
+  if (!samePath(downloadPath, destination)) {
+    renameSync(downloadPath, destination)
+  }
+
+  const oldPath = contentPath(dir, current.fileName)
+  const stale = samePath(oldPath, destination) ? null : oldPath
 
   // Dependencies can change between versions.
   try {
