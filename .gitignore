@@ -5,6 +5,8 @@ dist/
 *.log
 .env
 .env.*
+# Die Vorlage schon, sie enthaelt nur Namen und keine Werte.
+!.env.example
 
 # Lokale Werkzeug- und Editor-Einstellungen, gehören niemandem sonst
 .claude/

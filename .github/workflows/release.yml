@@ -74,6 +74,13 @@ jobs:
           # Without an Apple certificate, auto-discovery would pick up a random
           # keychain identity and fail the macOS build.
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          # Die Zugangsdaten der Fehlerberichte. Sie stehen bewusst nirgends im
+          # Quelltext: die alte Webhook-Adresse tat das, und ein Scanner-Bot
+          # hatte sie am 2026-09-08 aus dem oeffentlichen Repository gefischt.
+          # Fehlt eines der beiden, baut alles weiter und der jeweilige Weg
+          # bleibt in dieser Version einfach aus.
+          LG_REPORT_WEBHOOK: ${{ secrets.LG_REPORT_WEBHOOK }}
+          LG_REPORT_PANEL_TOKEN: ${{ secrets.LG_REPORT_PANEL_TOKEN }}
         run: npm run pack:${{ matrix.platform }}
 
       # Only the shippable files. `dist/` also holds the unpacked app trees,

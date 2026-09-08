@@ -17,16 +17,21 @@ const logger = log('reports')
  * own server would put every reporter's IP in its access log, which is exactly
  * what we do not want to collect.
  *
- * Empty means the whole feature stays inert: reports are still written locally
- * and can be handed over by the user, but nothing leaves the machine.
+ * Injected at build time, never written down here. The previous address sat
+ * in this file as a literal, and on 2026-09-08 a scanner bot found it in the
+ * public repository and used it to spam the channel. In a built installer the
+ * address is still readable, which cannot be avoided for a client that posts
+ * on its own, but that takes someone unpacking the app on purpose instead of
+ * a bot grepping GitHub every few minutes.
  *
- * This address is readable by anyone with the app or the repository, which is
- * unavoidable for a client that posts on its own. It is not a key to anything:
- * it can only write into one channel, nothing can be read back through it, and
- * replacing it in Discord revokes it instantly.
+ * It is not a key to anything: it can only write into one channel, nothing can
+ * be read back through it, and replacing it in Discord revokes it instantly.
+ *
+ * Empty means this path stays inert: reports are still written locally and can
+ * be handed over by the user, but nothing leaves the machine. That is what
+ * every fork and every build without the secret gets.
  */
-const WEBHOOK_URL =
-  'https://discord.com/api/webhooks/1542163323036897300/lDjTzT3Ap5OYz4SBrXCEOm90SD-CGGtkgcO_m0FqdI-KqRwAZOb_HnSi2Rf_iIthJHqr'
+const WEBHOOK_URL = process.env.LG_REPORT_WEBHOOK ?? ''
 
 /**
  * Das interne Panel, als zweiter Empfaenger neben Discord.
@@ -40,13 +45,15 @@ const WEBHOOK_URL =
  * Server. Die Adresse der meldenden Person ist damit dort sichtbar.
  * Das ist eine bewusste Entscheidung und kein Versehen.
  *
- * Das Berichtswort steckt wie die Webhook-Adresse in jeder
- * Installation und ist auslesbar. Es oeffnet nichts: damit laesst sich
- * ausschliesslich schreiben, nichts lesen, und ein Wechsel auf dem
- * Server entwertet es sofort. Leer heisst: dieser Weg bleibt aus.
+ * Das Berichtswort kommt wie die Webhook-Adresse aus dem Bau und steht
+ * nicht im Quelltext. In einer fertigen Installation ist es trotzdem
+ * auslesbar, anders geht es bei einem Client nicht, der selbst sendet.
+ * Es oeffnet nichts: damit laesst sich ausschliesslich schreiben, nichts
+ * lesen, und ein Wechsel auf dem Server entwertet es sofort. Leer
+ * heisst: dieser Weg bleibt aus.
  */
 const PANEL_URL = 'https://admin.launchgabi.com/api/reports'
-const PANEL_TOKEN = 'Xn7FV0mE8-cZjB-Ctwh0bVrFukjC1pLE'
+const PANEL_TOKEN = process.env.LG_REPORT_PANEL_TOKEN ?? ''
 
 /** Reports per launcher session, so a crash loop cannot flood the channel. */
 const MAX_PER_SESSION = 5
@@ -378,6 +385,11 @@ async function send(report: ErrorReport): Promise<void> {
   // Das Panel bekommt denselben Bericht. Getrennt vom Webhook, damit
   // ein Ausfall der einen Seite die andere nicht mitnimmt.
   void sendToPanel(report)
+
+  // Ein Bau kann das Panel kennen und den Webhook nicht. Ohne diese
+  // Zeile ginge die Anfrage an eine leere Adresse und verbrauchte einen
+  // der fuenf Plaetze dieser Sitzung fuer nichts.
+  if (!WEBHOOK_URL) return
 
   const body = JSON.stringify({
     // No mentions, ever: a report should never be able to ping a whole server.
