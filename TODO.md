@@ -122,6 +122,10 @@ Der Weg dorthin, in dieser Reihenfolge:
 
       Damit ist die Freigabe die einzige verbleibende Hürde, und das
       Formular ist keine Rateaktion.
+
+      Am 2026-09-08 abgeschickt. Antwort kommt per Mail, dauert Tage bis
+      Wochen. Wenn sie da ist: nochmal `test-azure-login.mjs` laufen
+      lassen, und erst bei fünf grünen Haken weitergehen.
 - [ ] **Erst danach** die ID als Standard in `src/shared/defaults.ts`
       eintragen. Vorher wäre sie für alle Nutzer eine Verschlechterung.
 

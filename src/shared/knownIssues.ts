@@ -98,8 +98,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Launcher meldet sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers an, weil ' +
       'eine eigene erst von Mojang freigegeben werden muss. Microsoft lässt diese gemeinsame ' +
       'Anwendung für fremde Programme zunehmend nicht mehr zu, und die Ablehnung kommt genau ' +
-      'dann, wenn jemand die Anmeldung im Browser abgeschlossen hat. Bewiesen ist das erst, ' +
-      'wenn eine eigene, freigegebene Anwendungs-ID läuft.',
+      'dann, wenn jemand die Anmeldung im Browser abgeschlossen hat. Seit dem 8. September gibt ' +
+      'es eine eigene Anwendung, und der Anmeldeweg ist damit einmal von Hand durchgemessen ' +
+      'worden: Gerätecode, Anmeldung, Xbox Live und die Xbox-Freigabe laufen sauber durch, erst ' +
+      'Minecraft selbst weist eine noch nicht freigegebene Anwendung ab. Die Freigabe ist ' +
+      'beantragt und steht noch aus. Solange sie fehlt, bleibt es bei der gemeinsamen Anwendung, ' +
+      'und der Fehler kann weiter auftreten.',
     state: 'fixing',
     since: '2026-08-25'
   },
