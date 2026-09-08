@@ -133,6 +133,38 @@ a { color: inherit; }
   white-space: nowrap;
 }
 
+/* Two text buttons rather than a dropdown: there are only ever two
+   languages, and a dropdown would hide the current choice behind a click. */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  background: var(--glass);
+  flex: none;
+}
+
+.lang-switch button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+.lang-switch button:hover { color: var(--ink); }
+
+.lang-switch button.active { background: var(--glass-hi); color: var(--ink); }
+
 /* -------------------------------------------------------------- Layout */
 
 .head { padding: 46px 0 10px; }
@@ -439,7 +471,11 @@ footer a:hover { color: var(--ink); }
   .brand { font-size: 15px; }
   .brand svg { width: 26px; height: 26px; }
 
-  .nav-cta { margin-left: auto; padding: 8px 14px; }
+  /* The switcher takes over the auto margin, so it and the download button
+     stay packed together on the right of the first row instead of drifting
+     apart once the nav links drop to their own row below. */
+  .lang-switch { margin-left: auto; }
+  .nav-cta { padding: 8px 14px; }
 
   .nav-links {
     order: 3;
@@ -521,19 +557,24 @@ footer a:hover { color: var(--ink); }
   </a>
 
   <div class="nav-links">
-    <a href="https://launchgabi.com/">Startseite</a>
-    <a href="https://launchgabi.com/#hilfe">Hilfe</a>
+    <a href="https://launchgabi.com/" data-i18n="navHome">Startseite</a>
+    <a href="https://launchgabi.com/#hilfe" data-i18n="navHelp">Hilfe</a>
     <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a>
   </div>
 
-  <a class="nav-cta" href="https://launchgabi.com/#download">Herunterladen</a>
+  <div class="lang-switch" role="group" aria-label="Sprache / Language">
+    <button type="button" data-lang="de" class="active">DE</button>
+    <button type="button" data-lang="en">EN</button>
+  </div>
+
+  <a class="nav-cta" href="https://launchgabi.com/#download" data-i18n="navDownload">Herunterladen</a>
 </nav>
 
 <main class="inner">
 
   <div class="head">
-    <h1>Status</h1>
-    <p>
+    <h1 data-i18n="heroTitle">Status</h1>
+    <p data-i18n="heroText">
       Aktuelle Version, wie oft Launch Gabi heruntergeladen wurde und was zuletzt
       behoben wurde. Die Zahlen kommen direkt von GitHub und werden bei jedem
       Aufruf frisch geladen.
@@ -542,65 +583,65 @@ footer a:hover { color: var(--ink); }
 
   <!-- ============================ TILES ============================ -->
   <section aria-labelledby="h-ueberblick">
-    <h2 id="h-ueberblick">Überblick</h2>
+    <h2 id="h-ueberblick" data-i18n="hOverview">Überblick</h2>
     <div class="grid tiles">
       <div class="card">
-        <div class="tile-label">Aktuelle Version</div>
+        <div class="tile-label" data-i18n="tileVersion">Aktuelle Version</div>
         <div class="tile-value" id="t-version"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-version-note">wird geladen…</div>
+        <div class="tile-note" id="t-version-note" data-i18n="loading">wird geladen…</div>
       </div>
 
       <div class="card">
-        <div class="tile-label">Downloads gesamt</div>
+        <div class="tile-label" data-i18n="tileDownloads">Downloads gesamt</div>
         <div class="tile-value" id="t-downloads"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-downloads-note">über alle Versionen</div>
+        <div class="tile-note" id="t-downloads-note" data-i18n="tileDownloadsNote">über alle Versionen</div>
       </div>
 
       <div class="card">
-        <div class="tile-label">Veröffentlichungen</div>
+        <div class="tile-label" data-i18n="tileReleases">Veröffentlichungen</div>
         <div class="tile-value" id="t-releases"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-releases-note">seit dem ersten Release</div>
+        <div class="tile-note" id="t-releases-note" data-i18n="tileReleasesNote">seit dem ersten Release</div>
       </div>
 
       <div class="card">
-        <div class="tile-label">Verfügbarkeit</div>
+        <div class="tile-label" data-i18n="tileAvailability">Verfügbarkeit</div>
         <div class="tile-value" style="font-size:20px;padding-top:6px">
-          <span class="state ok" id="t-state"><span class="dot"></span>wird geprüft</span>
+          <span class="state ok" id="t-state"><span class="dot"></span><span data-i18n="checking">wird geprüft</span></span>
         </div>
-        <div class="tile-note" id="t-state-note">Windows, macOS und Linux</div>
+        <div class="tile-note" id="t-state-note" data-i18n="availabilityNote">Windows, macOS und Linux</div>
       </div>
     </div>
   </section>
 
   <!-- =========================== CHARTS ============================ -->
   <section aria-labelledby="h-zahlen">
-    <h2 id="h-zahlen">Downloads</h2>
+    <h2 id="h-zahlen" data-i18n="hDownloads">Downloads</h2>
 
     <div class="grid charts">
 
       <!-- Part of a whole, three parts: a ring is the honest form here. -->
       <div class="card">
         <div class="chart-head">
-          <span class="chart-title">Nach Plattform</span>
+          <span class="chart-title" data-i18n="byPlatform">Nach Plattform</span>
         </div>
 
         <div class="donut-wrap">
           <svg width="180" height="180" viewBox="0 0 180 180" id="donut" role="img"
                aria-labelledby="donut-title">
-            <title id="donut-title">Anteil der Downloads je Plattform</title>
+            <title id="donut-title" data-i18n="donutTitle">Anteil der Downloads je Plattform</title>
             <circle cx="90" cy="90" r="66" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="22"></circle>
             <g id="donut-segs"></g>
             <text x="90" y="86" text-anchor="middle" class="donut-centre-value" id="donut-total">–</text>
-            <text x="90" y="104" text-anchor="middle" class="donut-centre-label">GESAMT</text>
+            <text x="90" y="104" text-anchor="middle" class="donut-centre-label" data-i18n="donutTotalLabel">GESAMT</text>
           </svg>
 
           <div class="legend" id="donut-legend"></div>
         </div>
 
         <details class="table">
-          <summary>Als Tabelle anzeigen</summary>
+          <summary data-i18n="showAsTable">Als Tabelle anzeigen</summary>
           <table id="platform-table">
-            <thead><tr><th>Plattform</th><th class="num">Downloads</th><th class="num">Anteil</th></tr></thead>
+            <thead><tr><th data-i18n="thPlatform">Plattform</th><th class="num" data-i18n="thDownloads">Downloads</th><th class="num" data-i18n="thShare">Anteil</th></tr></thead>
             <tbody></tbody>
           </table>
         </details>
@@ -609,16 +650,16 @@ footer a:hover { color: var(--ink); }
       <!-- Magnitude across versions: bars, one axis, sorted newest first. -->
       <div class="card">
         <div class="chart-head">
-          <span class="chart-title">Nach Version</span>
+          <span class="chart-title" data-i18n="byVersion">Nach Version</span>
           <span class="chart-sub" id="bars-sub"></span>
         </div>
 
-        <div class="bars" id="bars" role="img" aria-label="Downloads je Version"></div>
+        <div class="bars" id="bars" role="img" aria-label="Downloads je Version" data-i18n-attr="aria-label:barsAriaLabel"></div>
 
         <details class="table">
-          <summary>Als Tabelle anzeigen</summary>
+          <summary data-i18n="showAsTable">Als Tabelle anzeigen</summary>
           <table id="version-table">
-            <thead><tr><th>Version</th><th>Veröffentlicht</th><th class="num">Downloads</th></tr></thead>
+            <thead><tr><th data-i18n="thVersion">Version</th><th data-i18n="thPublished">Veröffentlicht</th><th class="num" data-i18n="thDownloads">Downloads</th></tr></thead>
             <tbody></tbody>
           </table>
         </details>
@@ -631,12 +672,12 @@ footer a:hover { color: var(--ink); }
 
   <!-- ========================== ISSUES ============================= -->
   <section aria-labelledby="h-offen">
-    <h2 id="h-offen">Bekannte Probleme</h2>
+    <h2 id="h-offen" data-i18n="hIssues">Bekannte Probleme</h2>
 
     <div class="card">
       <div class="chart-head">
-        <span class="chart-title" id="issues-count">wird geladen…</span>
-        <span class="chart-sub">Erledigtes verschwindet hier, sobald die Version draußen ist</span>
+        <span class="chart-title" id="issues-count" data-i18n="loading">wird geladen…</span>
+        <span class="chart-sub" data-i18n="issuesSub">Erledigtes verschwindet hier, sobald die Version draußen ist</span>
       </div>
 
       <div id="issues-list"></div>
@@ -645,7 +686,7 @@ footer a:hover { color: var(--ink); }
 
   <!-- ========================== CHANGES ============================ -->
   <section aria-labelledby="h-neu">
-    <h2 id="h-neu">Zuletzt behoben</h2>
+    <h2 id="h-neu" data-i18n="hChanges">Zuletzt behoben</h2>
 
     <div class="card">
       <div class="chart-head">
@@ -657,21 +698,21 @@ footer a:hover { color: var(--ink); }
       <div id="fix-list"></div>
 
       <div class="older">
-        <p>
+        <p data-i18n-html="olderTextHtml">
           Ältere Einträge stehen vollständig im Launcher selbst, unter
           <strong>Einstellungen &rarr; Neuerungen</strong>. Dort bleibt jede Version
           stehen, auch die von früher.
         </p>
-        <a class="nav-cta" href="https://launchgabi.com/#download">Launcher herunterladen</a>
+        <a class="nav-cta" href="https://launchgabi.com/#download" data-i18n="olderCta">Launcher herunterladen</a>
       </div>
     </div>
   </section>
 
   <footer>
     <span>Launch Gabi</span>
-    <a href="https://launchgabi.com/impressum.html">Impressum</a>
-    <a href="https://launchgabi.com/datenschutz.html">Datenschutz</a>
-    <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases" target="_blank" rel="noopener noreferrer">Alle Releases</a>
+    <a href="https://launchgabi.com/impressum.html" data-i18n="footerImprint">Impressum</a>
+    <a href="https://launchgabi.com/datenschutz.html" data-i18n="footerPrivacy">Datenschutz</a>
+    <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases" target="_blank" rel="noopener noreferrer" data-i18n="footerReleases">Alle Releases</a>
   </footer>
 
 </main>
@@ -715,15 +756,194 @@ footer a:hover { color: var(--ink); }
 
   function hideTip() { tip.classList.remove('show'); }
 
-  function num(value) { return value.toLocaleString('de-DE'); }
+  // Every fixed piece of text on the page, in both languages. The dynamic
+  // entries are small builder functions so a number or a date can still be
+  // dropped into the right spot without typing the sentence around it twice.
+  var I18N = {
+    de: {
+      navHome: 'Startseite',
+      navHelp: 'Hilfe',
+      navDownload: 'Herunterladen',
+      heroTitle: 'Status',
+      heroText: 'Aktuelle Version, wie oft Launch Gabi heruntergeladen wurde und was zuletzt ' +
+        'behoben wurde. Die Zahlen kommen direkt von GitHub und werden bei jedem Aufruf frisch geladen.',
+      hOverview: 'Überblick',
+      tileVersion: 'Aktuelle Version',
+      loading: 'wird geladen…',
+      tileDownloads: 'Downloads gesamt',
+      tileDownloadsNote: 'über alle Versionen',
+      tileReleases: 'Veröffentlichungen',
+      tileReleasesNote: 'seit dem ersten Release',
+      tileAvailability: 'Verfügbarkeit',
+      checking: 'wird geprüft',
+      availabilityNote: 'Windows, macOS und Linux',
+      hDownloads: 'Downloads',
+      byPlatform: 'Nach Plattform',
+      donutTitle: 'Anteil der Downloads je Plattform',
+      donutTotalLabel: 'GESAMT',
+      showAsTable: 'Als Tabelle anzeigen',
+      thPlatform: 'Plattform',
+      thDownloads: 'Downloads',
+      thShare: 'Anteil',
+      byVersion: 'Nach Version',
+      barsAriaLabel: 'Downloads je Version',
+      thVersion: 'Version',
+      thPublished: 'Veröffentlicht',
+      hIssues: 'Bekannte Probleme',
+      issuesSub: 'Erledigtes verschwindet hier, sobald die Version draußen ist',
+      hChanges: 'Zuletzt behoben',
+      olderTextHtml: 'Ältere Einträge stehen vollständig im Launcher selbst, unter ' +
+        '<strong>Einstellungen → Neuerungen</strong>. Dort bleibt jede Version stehen, auch die von früher.',
+      olderCta: 'Launcher herunterladen',
+      footerImprint: 'Impressum',
+      footerPrivacy: 'Datenschutz',
+      footerReleases: 'Alle Releases',
+      metaTitle: 'Status: Launch Gabi',
+      metaDescription: 'Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen von Launch Gabi.',
+
+      versionLabel: function (v) { return 'Version ' + v; },
+      versionNote: function (d) { return 'veröffentlicht am ' + d; },
+      releasesNote: function (d) { return 'seit ' + d; },
+      availAll: 'alle Plattformen',
+      availAllNote: 'Windows, macOS und Linux verfügbar',
+      availPartial: 'unvollständig',
+      missingNote: function (names) { return 'Es fehlt: ' + names; },
+      dataNote: function (stamp) {
+        return 'Gezählt werden nur die Installationsdateien, nicht die Update-Dateien, die der Launcher ' +
+          'selbst im Hintergrund abruft. Stand: ' + stamp + '.';
+      },
+      versionsCount: function (n) { return n + (n === 1 ? ' Version' : ' Versionen'); },
+      tipShare: function (name, count, pctText) { return '<b>' + name + '</b><br>' + count + ' Downloads · ' + pctText; },
+      tipVersion: function (tag, count, d) { return '<b>' + tag + '</b><br>' + count + ' Downloads<br>' + d; },
+      unreachable: 'nicht erreichbar',
+      unknown: 'unbekannt',
+      numbersUnavailable: 'Die Zahlen konnten nicht geladen werden.',
+      rateLimited: 'GitHub hat die Anfrage vorerst abgelehnt (zu viele Aufrufe von dieser Leitung). In einer Stunde geht es wieder.',
+      httpError: function (status) { return 'GitHub antwortete mit HTTP ' + status + '.'; },
+      noReleasesYet: 'Es sind noch keine Veröffentlichungen vorhanden.',
+      issuesNone: 'Nichts Offenes',
+      issuesOpenCount: function (n) { return n + (n === 1 ? ' offener Punkt' : ' offene Punkte'); },
+      issuesNoneDetail: 'Zurzeit sind keine Probleme bekannt.',
+      since: function (d) { return 'seit ' + d; },
+      fixedComing: function (v) { return ', kommt mit ' + v; },
+      fixedInVersion: function (v) { return ' in ' + v; }
+    },
+    en: {
+      navHome: 'Home',
+      navHelp: 'Help',
+      navDownload: 'Download',
+      heroTitle: 'Status',
+      heroText: 'The current version, how often Launch Gabi has been downloaded and what was fixed ' +
+        'most recently. The numbers come straight from GitHub and are loaded fresh on every visit.',
+      hOverview: 'Overview',
+      tileVersion: 'Current version',
+      loading: 'loading…',
+      tileDownloads: 'Total downloads',
+      tileDownloadsNote: 'across all versions',
+      tileReleases: 'Releases',
+      tileReleasesNote: 'since the first release',
+      tileAvailability: 'Availability',
+      checking: 'checking…',
+      availabilityNote: 'Windows, macOS and Linux',
+      hDownloads: 'Downloads',
+      byPlatform: 'By platform',
+      donutTitle: 'Share of downloads by platform',
+      donutTotalLabel: 'TOTAL',
+      showAsTable: 'Show as table',
+      thPlatform: 'Platform',
+      thDownloads: 'Downloads',
+      thShare: 'Share',
+      byVersion: 'By version',
+      barsAriaLabel: 'Downloads by version',
+      thVersion: 'Version',
+      thPublished: 'Published',
+      hIssues: 'Known issues',
+      issuesSub: 'Fixed items disappear here as soon as the version is out',
+      hChanges: 'Recently fixed',
+      olderTextHtml: 'Older entries live in full inside the launcher itself, under ' +
+        '<strong>Settings → What’s New</strong>. Every version stays there, including the old ones.',
+      olderCta: 'Download launcher',
+      footerImprint: 'Legal notice',
+      footerPrivacy: 'Privacy policy',
+      footerReleases: 'All releases',
+      metaTitle: 'Status: Launch Gabi',
+      metaDescription: 'Current version, download numbers by platform and the newest fixes from Launch Gabi.',
+
+      versionLabel: function (v) { return 'Version ' + v; },
+      versionNote: function (d) { return 'published on ' + d; },
+      releasesNote: function (d) { return 'since ' + d; },
+      availAll: 'all platforms',
+      availAllNote: 'Windows, macOS and Linux available',
+      availPartial: 'incomplete',
+      missingNote: function (names) { return 'Missing: ' + names; },
+      dataNote: function (stamp) {
+        return 'Only the installer files are counted, not the update feed files the launcher fetches on ' +
+          'its own in the background. As of ' + stamp + '.';
+      },
+      versionsCount: function (n) { return n + (n === 1 ? ' version' : ' versions'); },
+      tipShare: function (name, count, pctText) { return '<b>' + name + '</b><br>' + count + ' downloads · ' + pctText; },
+      tipVersion: function (tag, count, d) { return '<b>' + tag + '</b><br>' + count + ' downloads<br>' + d; },
+      unreachable: 'unavailable',
+      unknown: 'unknown',
+      numbersUnavailable: 'The numbers could not be loaded.',
+      rateLimited: 'GitHub declined the request for now (too many calls from this connection). It opens up again in an hour.',
+      httpError: function (status) { return 'GitHub answered with HTTP ' + status + '.'; },
+      noReleasesYet: 'There are no releases yet.',
+      issuesNone: 'Nothing open',
+      issuesOpenCount: function (n) { return n + (n === 1 ? ' open item' : ' open items'); },
+      issuesNoneDetail: 'No problems are known at the moment.',
+      since: function (d) { return 'since ' + d; },
+      fixedComing: function (v) { return ', coming in ' + v; },
+      fixedInVersion: function (v) { return ' in ' + v; }
+    }
+  };
+
+  // Defaults to German; changed only through setLang, further down.
+  var LANG = 'de';
+
+  function t(key) { return I18N[LANG][key]; }
+
+  function num(value) { return value.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE'); }
+
+  // The two languages format a share differently: a comma and a space before
+  // the sign in German, a dot and no space in English.
+  function pct(share) {
+    var value = share * 100;
+    return LANG === 'en' ? value.toFixed(1) + '%' : value.toFixed(1).replace('.', ',') + ' %';
+  }
 
   function date(iso) {
     try {
-      return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+      return new Date(iso).toLocaleDateString(LANG === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
     } catch (err) { return ''; }
   }
 
+  function dateTime(d) {
+    try { return d.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE'); } catch (err) { return ''; }
+  }
+
   function set(id, text) { document.getElementById(id).textContent = text; }
+
+  // Swaps every fixed label and heading over to the current language, without
+  // touching anything built from live data, which the render functions redo
+  // on their own whenever the language changes.
+  function applyStaticText() {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      el.textContent = t(el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+      el.innerHTML = t(el.getAttribute('data-i18n-html'));
+    });
+    document.querySelectorAll('[data-i18n-attr]').forEach(function (el) {
+      el.getAttribute('data-i18n-attr').split(',').forEach(function (pair) {
+        var parts = pair.split(':');
+        el.setAttribute(parts[0], t(parts[1]));
+      });
+    });
+    document.title = t('metaTitle');
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t('metaDescription'));
+  }
 
   /* ------------------------------------------------------- Donut ---- */
 
@@ -762,8 +982,7 @@ footer a:hover { color: var(--ink); }
         segs.appendChild(arc);
 
         arc.addEventListener('mouseenter', function (event) {
-          showTip('<b>' + part.name + '</b><br>' + num(part.value) + ' Downloads · ' +
-                  (share * 100).toFixed(1).replace('.', ',') + ' %', event);
+          showTip(t('tipShare')(part.name, num(part.value), pct(share)), event);
         });
         arc.addEventListener('mousemove', moveTip);
         arc.addEventListener('mouseleave', hideTip);
@@ -780,7 +999,7 @@ footer a:hover { color: var(--ink); }
 
       var tr = document.createElement('tr');
       tr.innerHTML = '<td>' + part.name + '</td><td class="num">' + num(part.value) +
-        '</td><td class="num">' + (share * 100).toFixed(1).replace('.', ',') + ' %</td>';
+        '</td><td class="num">' + pct(share) + '</td>';
       body.appendChild(tr);
     });
   }
@@ -807,7 +1026,7 @@ footer a:hover { color: var(--ink); }
         '<span class="bar-value">' + num(v.total) + '</span>';
 
       row.addEventListener('mouseenter', function (event) {
-        showTip('<b>' + v.tag + '</b><br>' + num(v.total) + ' Downloads<br>' + date(v.published), event);
+        showTip(t('tipVersion')(v.tag, num(v.total), date(v.published)), event);
       });
       row.addEventListener('mousemove', moveTip);
       row.addEventListener('mouseleave', hideTip);
@@ -819,22 +1038,74 @@ footer a:hover { color: var(--ink); }
       body.appendChild(tr);
     });
 
-    document.getElementById('bars-sub').textContent =
-      versions.length + (versions.length === 1 ? ' Version' : ' Versionen');
+    document.getElementById('bars-sub').textContent = t('versionsCount')(versions.length);
   }
 
   /* -------------------------------------------------------- Load ---- */
 
-  function failed(message) {
+  // Set once the release list is in, so a language switch can redraw every
+  // number and date in the new locale without asking GitHub again.
+  var fetchState = null;
+  // Set instead of fetchState when the request itself failed, so a language
+  // switch can redraw the right error message rather than losing it.
+  var lastFailure = null;
+
+  function renderFailed(failure) {
     ['t-version', 't-downloads', 't-releases'].forEach(function (id) {
       document.getElementById(id).textContent = '–';
     });
-    set('t-version-note', 'nicht erreichbar');
+    set('t-version-note', t('unreachable'));
     var state = document.getElementById('t-state');
     state.className = 'state warn';
-    state.innerHTML = '<span class="dot"></span>unbekannt';
-    set('t-state-note', 'Die Zahlen konnten nicht geladen werden.');
+    state.innerHTML = '<span class="dot"></span>' + t('unknown');
+    set('t-state-note', t('numbersUnavailable'));
+
+    var message = t('numbersUnavailable');
+    if (failure.kind === 'rateLimited') message = t('rateLimited');
+    else if (failure.kind === 'http') message = t('httpError')(failure.status);
+    else if (failure.kind === 'noReleases') message = t('noReleasesYet');
+
     document.getElementById('data-note').textContent = message;
+  }
+
+  function renderFetchedStats() {
+    if (!fetchState) return;
+    var latest = fetchState.latest;
+    var releases = fetchState.releases;
+    var totals = fetchState.totals;
+    var grand = fetchState.grand;
+    var perVersion = fetchState.perVersion;
+
+    set('t-version', latest.tag_name);
+    set('t-version-note', t('versionNote')(date(latest.published_at)));
+    set('t-downloads', num(grand));
+    set('t-releases', String(releases.length));
+    set('t-releases-note', t('releasesNote')(date(releases[releases.length - 1].published_at)));
+
+    // "Available" here means one thing only, and the page says which: does
+    // the newest release actually carry an installer for all three systems.
+    var missing = PLATFORMS.filter(function (p) {
+      return !(latest.assets || []).some(function (a) { return p.test(a.name); });
+    });
+
+    var state = document.getElementById('t-state');
+    if (missing.length === 0) {
+      state.className = 'state ok';
+      state.innerHTML = '<span class="dot"></span>' + t('availAll');
+      set('t-state-note', t('availAllNote'));
+    } else {
+      state.className = 'state warn';
+      state.innerHTML = '<span class="dot"></span>' + t('availPartial');
+      set('t-state-note', t('missingNote')(missing.map(function (p) { return p.name; }).join(', ')));
+    }
+
+    drawDonut(PLATFORMS.map(function (p) {
+      return { name: p.name, colour: p.colour, value: totals[p.key] };
+    }), grand);
+
+    drawBars(perVersion.slice(0, 8));
+
+    document.getElementById('data-note').textContent = t('dataNote')(dateTime(fetchState.fetchedAt));
   }
 
   fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=100', {
@@ -845,15 +1116,23 @@ footer a:hover { color: var(--ink); }
   })
     .then(function (response) {
       if (response.status === 403) {
-        throw new Error('GitHub hat die Anfrage vorerst abgelehnt (zu viele Aufrufe von dieser Leitung). In einer Stunde geht es wieder.');
+        var rateLimit = new Error('rate-limited');
+        rateLimit.kind = 'rateLimited';
+        throw rateLimit;
       }
-      if (!response.ok) throw new Error('GitHub antwortete mit HTTP ' + response.status + '.');
+      if (!response.ok) {
+        var httpFail = new Error('http-error');
+        httpFail.kind = 'http';
+        httpFail.status = response.status;
+        throw httpFail;
+      }
       return response.json();
     })
     .then(function (releases) {
       releases = (releases || []).filter(function (r) { return !r.draft; });
       if (releases.length === 0) {
-        failed('Es sind noch keine Veröffentlichungen vorhanden.');
+        lastFailure = { kind: 'noReleases' };
+        renderFailed(lastFailure);
         return;
       }
 
@@ -882,41 +1161,19 @@ footer a:hover { color: var(--ink); }
       // "already out" from "waiting for the next release".
       renderIssues();
 
-      set('t-version', latest.tag_name);
-      set('t-version-note', 'veröffentlicht am ' + date(latest.published_at));
-      set('t-downloads', num(grand));
-      set('t-releases', String(releases.length));
-      set('t-releases-note', 'seit ' + date(releases[releases.length - 1].published_at));
-
-      // "Available" here means one thing only, and the page says which: does
-      // the newest release actually carry an installer for all three systems.
-      var missing = PLATFORMS.filter(function (p) {
-        return !(latest.assets || []).some(function (a) { return p.test(a.name); });
-      });
-
-      var state = document.getElementById('t-state');
-      if (missing.length === 0) {
-        state.className = 'state ok';
-        state.innerHTML = '<span class="dot"></span>alle Plattformen';
-        set('t-state-note', 'Windows, macOS und Linux verfügbar');
-      } else {
-        state.className = 'state warn';
-        state.innerHTML = '<span class="dot"></span>unvollständig';
-        set('t-state-note', 'Es fehlt: ' + missing.map(function (p) { return p.name; }).join(', '));
-      }
-
-      drawDonut(PLATFORMS.map(function (p) {
-        return { name: p.name, colour: p.colour, value: totals[p.key] };
-      }), grand);
-
-      drawBars(perVersion.slice(0, 8));
-
-      document.getElementById('data-note').textContent =
-        'Gezählt werden nur die Installationsdateien, nicht die Update-Dateien, die der Launcher ' +
-        'selbst im Hintergrund abruft. Stand: ' + new Date().toLocaleString('de-DE') + '.';
+      fetchState = {
+        latest: latest,
+        releases: releases,
+        totals: totals,
+        grand: grand,
+        perVersion: perVersion,
+        fetchedAt: new Date()
+      };
+      renderFetchedStats();
     })
     .catch(function (err) {
-      failed(err && err.message ? err.message : 'Die Zahlen konnten nicht geladen werden.');
+      lastFailure = err && err.kind ? { kind: err.kind, status: err.status } : { kind: 'generic' };
+      renderFailed(lastFailure);
     });
 
   /* ------------------------------------------------------ Changes --- */
@@ -951,6 +1208,38 @@ footer a:hover { color: var(--ink); }
         "text": "Die Installationsdateien sind kleiner: die Website, die Werkzeuge und der Fabric-Mod landeten bisher versehentlich mit im Installer, obwohl der Launcher sie nie liest."
       }
     ]
+  };
+  var LATEST_EN = {
+    "version": "1.0.17",
+    "date": "2026-09-04",
+    "headline": "Minecraft through Xbox Game Pass now works.",
+    "changes": [
+      {
+        "kind": "fixed",
+        "text": "Anyone with Minecraft through Xbox Game Pass could not sign in: the launcher reported that the account did not own a Java Edition licence. That was not true. The launcher asked Microsoft for a list of entitlements and treated an empty list as no ownership, and that list does not come back reliably filled for Game Pass. The decision is now made from the player profile instead."
+      },
+      {
+        "kind": "improved",
+        "text": "If an account is still missing its Java Edition player name, the message now names the right next step. That step differs for Game Pass compared to a purchase, and everyone used to get the same, wrong instructions for Game Pass."
+      },
+      {
+        "kind": "improved",
+        "text": "If Microsoft sign-in breaks off, the message now says in plain language what happened and what to do, instead of a raw technical line. The technical code still follows, since it helps in a screenshot."
+      },
+      {
+        "kind": "fixed",
+        "text": "The launcher kept waiting after a permanently rejected sign-in code instead of recognising that and stopping."
+      },
+      {
+        "kind": "improved",
+        "text": "The installer is smaller: the website, the tools and the Fabric mod used to end up inside it by accident, even though the launcher never reads them."
+      }
+    ]
+  };
+  var KIND_LABEL_EN = {
+    "new": "New",
+    "improved": "Improved",
+    "fixed": "Fixed"
   };
   // AUTO-ENDE
 
@@ -1103,6 +1392,154 @@ footer a:hover { color: var(--ink); }
     "fixed": "Behoben",
     "limitation": "Bekannte Grenze"
   };
+  var ISSUES_EN = [
+    {
+      "id": "mod-entfernen-kommt-zurueck",
+      "title": "A removed mod could reappear on its own",
+      "detail": "Removing was the one change to an instance’s mods that did not hold back a mod-list scan running at the same time. If a removal landed inside such a scan, triggered by something as ordinary as opening the instance page or an update check, the scan could write the just-removed mod straight back into the list from its not-yet-vanished state on disk. Since 1.0.16, removing holds the scan back until it is done, exactly as installing and updating always did. The repair function also cleans up any leftover duplicates from earlier occurrences while it is at it.",
+      "state": "fixed",
+      "since": "2026-09-02",
+      "fixedIn": "1.0.16"
+    },
+    {
+      "id": "launcher-schwarz-bei-spielstart",
+      "title": "Launcher turns completely black and stops responding when the game starts",
+      "detail": "Starting Minecraft from the launcher could turn the launcher window completely black, after which it no longer responded to anything. The cause was a crash or hang in the interface layer itself, one it never recovered from: the window stayed on screen showing nothing but its empty background colour, unresponsive, without the launcher noticing or fixing it on its own. What exactly crashed the interface at that moment is not fully settled. Since 1.0.16 the launcher reloads itself the moment this is detected.",
+      "state": "fixed",
+      "since": "2026-09-02",
+      "fixedIn": "1.0.16"
+    },
+    {
+      "id": "gamepass-keine-lizenz",
+      "title": "Game Pass accounts were turned away as \"no licence\"",
+      "detail": "Anyone with Minecraft through Xbox Game Pass could not sign in: the launcher reported \"This account does not own a Minecraft Java Edition licence.\" The account was never the problem. The launcher asked Microsoft for a list of entitlements and treated an empty list as no ownership, but that list does not come back reliably filled for Game Pass, even when the account is fully entitled to play. The decision is now made from the player profile instead: if Microsoft returns a player name, the account can play. If the name is still missing, the message now names the right next step, and that step differs for Game Pass compared to a purchase.",
+      "state": "fixed",
+      "since": "2026-09-04",
+      "fixedIn": "1.0.17"
+    },
+    {
+      "id": "login-http-400",
+      "title": "Sign-in ends with error 400",
+      "detail": "On some accounts, Microsoft sign-in breaks off with error 400. A crash report from 1.0.16 has since shown what is behind it: Microsoft answers the device-code check with \"invalid_grant\". Measured against the real sign-in service, that means either the code has expired or the sign-in in the browser was never completed. Both are final: the code is not accepted afterwards. Until now the launcher did not recognise this case and showed the raw technical line instead of saying what to do. That part is fixed: a plain-language message now appears alongside the technical code, and the report includes how long the attempt ran. That landed in 1.0.17. A strong suspicion about the underlying cause has also emerged since: the launcher signs in with the official Minecraft launcher’s application id, because its own id first needs approval from Mojang. Microsoft is increasingly refusing that shared application for third-party programs, and the rejection lands the moment someone finishes signing in in the browser. As of September 8 a dedicated application exists, and the sign-in path has been measured through by hand once: device code, sign-in, Xbox Live and the Xbox authorisation all complete cleanly, only Minecraft itself turns away an application that is not yet approved. The approval has been requested and is still pending. Until it arrives, the shared application stays in use, and the error can keep occurring.",
+      "state": "fixing",
+      "since": "2026-08-25"
+    },
+    {
+      "id": "anmeldung-falsches-system",
+      "title": "A changed setting could break sign-in for good",
+      "detail": "When renewing a sign-in in the background, the launcher used the application id currently sitting in Settings, not the one the account had originally signed in with. If that setting was changed, or reset through \"Reset settings,\" every further renewal went to the wrong system and failed from then on with error 400, only for that one account and with no visible reason.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "vorstart-befehl-haengt",
+      "title": "A hanging pre-launch command blocked the instance for good",
+      "detail": "Anyone with a custom command set to run before the game starts had that instance stuck on \"starting\" indefinitely if the command itself hung, for example while waiting on a network reply. Neither a timeout nor the cancel button caught this, and the instance could then neither start, nor be repaired, nor have its mods changed until the launcher was restarted.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "fehlerbericht-datenschutz-luecken",
+      "title": "A few pieces of data in crash reports were not reliably removed",
+      "detail": "Cleaning a crash report before sending was missing a rule against IP addresses, even though the consent dialog promises exactly that. On top of that, a Windows username with an umlaut or similar character at the edge went unrecognised, an email address could be left half-removed instead of gone entirely depending on rule order, and an upper-case path like C:\\USERS\\... slipped through.",
+      "state": "fixed",
+      "since": "2026-09-01",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "wiederherstellung-riskant",
+      "title": "Restoring a backup can lose data",
+      "detail": "Before restoring, the launcher moves the existing state aside and brings it back if unpacking fails. If bringing it back failed in turn, for instance because Windows still had a folder open, the set-aside state was deleted anyway while the message claimed everything had been restored. On top of that, the game could be started during a restore, straight into a half-unpacked world folder, and the cancel button had no effect. A full backup of the prior state is still created automatically immediately before every restore.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "instanz-startet-nie-wieder",
+      "title": "An instance suddenly refuses to start",
+      "detail": "If preparing a launch failed very early, the \"starting\" marker stayed in place. After that, the instance could neither start nor have its mods changed, with no visible reason and no error message, until the launcher was restarted. Because internal ids of deleted instances get reused later, a freshly created instance could inherit the problem.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "reparatur-verwirft-mods",
+      "title": "Repair can discard a freshly installed mod",
+      "detail": "The repair function remembers the mod list at the start and writes it back in full at the end. If a mod was installed or updated in the meantime, which can easily take minutes for a large download, its entry disappeared again. The file itself stayed on disk and was later picked up again as an unknown local mod with no known source or version.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "aufnahme-abgeschnitten",
+      "title": "Recordings can be cut short at the end",
+      "detail": "Closing the launcher while a recording was running could let it quit before the file finished writing. The last stretch was then missing, without any message, since the window was already gone. If the disk filled up during a recording, the recording could also hang instead of stopping cleanly.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "instanz-loeschen-waehrend-arbeit",
+      "title": "Deleting during a launch or mod work was possible",
+      "detail": "Deleting an instance only checked whether the game was already running. A launch in progress, or a mod installation in progress, did not stop it, so the folder could vanish while something was still writing into it.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "update-hinweis-einmalig",
+      "title": "The notice about a ready update was easy to miss",
+      "detail": "A downloaded update announced itself exactly once, with a banner that disappeared on its own after a few seconds and never came back. Anyone leaving the launcher open in the background only found out by checking Settings themselves.",
+      "state": "fixed",
+      "since": "2026-08-31",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "mods-doppelt",
+      "title": "Mods appear twice in the list",
+      "detail": "During an update the same mod could show up twice in the list. The cause was a timing window: the new file was already on disk but not yet recorded, and a scan landing in that exact moment treated it as an unknown second mod. Perfectly ordinary actions, like opening the instance page, could trigger it.",
+      "state": "fixed",
+      "since": "2026-08-30",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "einfrieren-linux",
+      "title": "The launcher freezes completely at times",
+      "detail": "Several tasks scanned folders in a blocking way and ran on their own, such as the disk-usage display after every session and the cleanup on every start. While one of these ran, the window did not respond at all. Every system is affected; it stands out more on Linux, where encrypted or network-mounted home folders come into play more often.",
+      "state": "fixed",
+      "since": "2026-08-30",
+      "fixedIn": "1.0.14"
+    },
+    {
+      "id": "wrapper-exec",
+      "title": "A wrapper command can take the game out of tracking",
+      "detail": "If a custom wrapper command starts Java in the background instead of replacing itself with it via exec, the launcher considers the game finished as soon as the wrapper itself exits. Mod changes then stop being locked. This cannot be repaired: there is no reliable way to reach a detached process. As of 1.0.14 this case is detected and reported, and the field in Settings names the condition.",
+      "state": "limitation",
+      "since": "2026-08-30",
+      "platforms": [
+        "Linux"
+      ]
+    },
+    {
+      "id": "mac-linux-ungetestet",
+      "title": "macOS and Linux are barely tested",
+      "detail": "Installers exist for both systems and are built for every release. Whether sign-in and launching the game work reliably there has not yet been checked systematically by anyone. macOS also lacks a signature, so the system shows a warning on first launch there and automatic updates do not work.",
+      "state": "limitation",
+      "since": "2026-08-17",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    }
+  ];
+  var ISSUE_LABEL_EN = {
+    "investigating": "Being investigated",
+    "fixing": "Being fixed",
+    "fixed": "Fixed",
+    "limitation": "Known limitation"
+  };
   // AUTO-ISSUES-ENDE
 
   var KIND_LABEL = { new: 'Neu', improved: 'Besser', fixed: 'Behoben' };
@@ -1133,37 +1570,39 @@ footer a:hover { color: var(--ink); }
   }
 
   function renderIssues() {
+    var issues = LANG === 'en' ? ISSUES_EN : ISSUES;
+    var issueLabel = LANG === 'en' ? ISSUE_LABEL_EN : ISSUE_LABEL;
+
     var host = document.getElementById('issues-list');
-    // Cleared first: this runs a second time once the versions are known.
+    // Cleared first: this runs again once the versions are known, and again
+    // on every language switch.
     host.innerHTML = '';
-    var open = ISSUES.filter(function (i) { return i.state !== 'fixed'; });
+    var open = issues.filter(function (i) { return i.state !== 'fixed'; });
 
     document.getElementById('issues-count').textContent =
-      open.length === 0
-        ? 'Nichts Offenes'
-        : open.length + (open.length === 1 ? ' offener Punkt' : ' offene Punkte');
+      open.length === 0 ? t('issuesNone') : t('issuesOpenCount')(open.length);
 
-    if (ISSUES.length === 0) {
+    if (issues.length === 0) {
       host.innerHTML = '<div class="issues-none">' + ICONS.fixed +
-        '<span>Zurzeit sind keine Probleme bekannt.</span></div>';
+        '<span>' + t('issuesNoneDetail') + '</span></div>';
       return;
     }
 
     // Open items first, and within those the ones actively being worked on.
     var order = { fixing: 0, investigating: 1, limitation: 2, fixed: 3 };
-    ISSUES.slice()
+    issues.slice()
       .sort(function (a, b) { return order[a.state] - order[b.state]; })
       .forEach(function (issue) {
-        var meta = ['seit ' + date(issue.since)];
+        var meta = [t('since')(date(issue.since))];
         if (issue.platforms && issue.platforms.length) meta.push(issue.platforms.join(', '));
 
-        var label = ISSUE_LABEL[issue.state];
+        var label = issueLabel[issue.state];
         if (issue.state === 'fixed' && issue.fixedIn) {
           // "Behoben in 1.0.14" reads as though that version were available.
           // Until it actually is, the badge says so plainly instead.
           label += isNewerThanReleased(issue.fixedIn)
-            ? ', kommt mit ' + issue.fixedIn
-            : ' in ' + issue.fixedIn;
+            ? t('fixedComing')(issue.fixedIn)
+            : t('fixedInVersion')(issue.fixedIn);
         }
 
         var article = document.createElement('article');
@@ -1180,20 +1619,61 @@ footer a:hover { color: var(--ink); }
       });
   }
 
-  renderIssues();
+  function renderChangelog() {
+    var latest = LANG === 'en' ? LATEST_EN : LATEST;
+    var kindLabel = LANG === 'en' ? KIND_LABEL_EN : KIND_LABEL;
 
-  set('fix-version', 'Version ' + LATEST.version);
-  set('fix-date', date(LATEST.date));
-  set('fix-headline', LATEST.headline);
+    set('fix-version', t('versionLabel')(latest.version));
+    set('fix-date', date(latest.date));
+    set('fix-headline', latest.headline);
 
-  var list = document.getElementById('fix-list');
-  LATEST.changes.forEach(function (change) {
-    var row = document.createElement('div');
-    row.className = 'change';
-    row.innerHTML = '<span class="kind ' + change.kind + '">' + KIND_LABEL[change.kind] + '</span><p></p>';
-    row.querySelector('p').textContent = change.text;
-    list.appendChild(row);
+    var list = document.getElementById('fix-list');
+    list.innerHTML = '';
+    latest.changes.forEach(function (change) {
+      var row = document.createElement('div');
+      row.className = 'change';
+      row.innerHTML = '<span class="kind ' + change.kind + '">' + kindLabel[change.kind] + '</span><p></p>';
+      row.querySelector('p').textContent = change.text;
+      list.appendChild(row);
+    });
+  }
+
+  var STORAGE_KEY = 'lg-status-lang';
+
+  // Switches every language-dependent part of the page at once, without a
+  // reload: the fixed labels, the two data-driven lists, and the download
+  // stats if they already arrived.
+  function setLang(lang, persist) {
+    LANG = lang === 'en' ? 'en' : 'de';
+    document.documentElement.lang = LANG;
+
+    document.querySelectorAll('.lang-switch button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === LANG);
+    });
+
+    applyStaticText();
+    renderIssues();
+    renderChangelog();
+
+    if (lastFailure) renderFailed(lastFailure);
+    else if (fetchState) renderFetchedStats();
+
+    if (persist) {
+      try { localStorage.setItem(STORAGE_KEY, LANG); } catch (err) { /* private mode, storage disabled, and so on */ }
+    }
+  }
+
+  document.querySelectorAll('.lang-switch button').forEach(function (btn) {
+    btn.addEventListener('click', function () { setLang(btn.getAttribute('data-lang'), true); });
   });
+
+  var initialLang = 'de';
+  try {
+    var stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'en' || stored === 'de') initialLang = stored;
+  } catch (err) { /* falls back to German */ }
+
+  setLang(initialLang, false);
 })();
 </script>
 
