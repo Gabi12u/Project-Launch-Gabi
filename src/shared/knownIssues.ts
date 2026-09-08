@@ -280,7 +280,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'geschützt" mit dem Hinweis "Unbekannter Herausgeber". Das ist keine Fehlfunktion des ' +
       'Launchers, sondern eine dauerhafte Folge der fehlenden Signatur, die mit jeder neuen Version ' +
       'erneut erscheint. Wer die Meldung sieht, klickt auf "Weitere Informationen" und danach auf ' +
-      '"Trotzdem ausführen", danach startet Launch Gabi ganz normal.',
+      '"Trotzdem ausführen", danach startet Launch Gabi ganz normal. Dieselbe fehlende Signatur hat ' +
+      'eine zweite, weniger sichtbare Folge: Der eingebaute Updater prüft Updates normalerweise auch ' +
+      'per Authenticode-Signatur, bevor er sie installiert. Ohne Zertifikat gibt es keine solche ' +
+      'Signatur zu prüfen, diese zweite Kontrolle bleibt also wirkungslos. Es bleibt beim Abgleich der ' +
+      'Prüfsumme aus der Versionsdatei, die aus demselben Release stammt wie die Installationsdatei ' +
+      'selbst und deshalb keine unabhängige zweite Quelle ist.',
     state: 'limitation',
     since: '2026-09-08',
     platforms: ['Windows']
@@ -426,6 +431,184 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-08',
     fixedIn: '1.0.18'
+  },
+  {
+    id: 'konten-falscher-typ-nach-login',
+    title: 'Nach einer Anmeldung konnte die Kontenliste abstürzen',
+    detail:
+      'Nach einer erfolgreichen Microsoft-Anmeldung oder dem Anlegen eines Offline-Profils schickte ' +
+      'der Launcher intern das neue Konto allein statt der vollständigen Kontenliste an die ' +
+      'Oberfläche, obwohl genau diese Liste als Ergebnis erwartet wird. Seitenleiste, Kopfzeile und ' +
+      'der Einrichtungsassistent lesen aus dieser Liste sofort Dinge wie "das aktive Konto finden" ' +
+      'oder "wie viele Konten gibt es", was bei einem einzelnen Konto statt einer Liste zum Absturz ' +
+      'der gesamten Oberfläche führen kann. Betroffen wäre damit ausgerechnet der Moment, den jede ' +
+      'neue Person beim ersten Öffnen des Launchers durchläuft.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'forge-installer-pfad-traversal',
+    title: 'Ein manipulierter Forge- oder NeoForge-Installer konnte Dateien an beliebiger Stelle ablegen',
+    detail:
+      'Beim Einrichten von Forge oder NeoForge liest der Launcher eine Liste von Datenpfaden aus dem ' +
+      'Installer selbst und entpackt sie in einen eigenen Arbeitsordner. Ein Pfad, der mit einem ' +
+      'Schrägstrich beginnt, wurde dabei ungeprüft übernommen, während der Launcher an vergleichbaren ' +
+      'Stellen im selben Code bewusst eine Schutzfunktion gegen genau solche Pfade einsetzt. Ein ' +
+      'Installer mit einem entsprechend präparierten Pfad hätte eine Datei außerhalb des vorgesehenen ' +
+      'Ordners ablegen können, zum Beispiel im Autostart-Ordner von Windows. Der Installer selbst ' +
+      'kommt von der offiziellen Forge- beziehungsweise NeoForge-Adresse, das Risiko besteht also nur, ' +
+      'wenn diese Quelle selbst kompromittiert wäre.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'loader-versionid-pfad-traversal',
+    title: 'Eine unbereinigte Kennung aus dem Netz konnte beim Einrichten eines Loaders einen Pfad verlassen',
+    detail:
+      'Fabric, Quilt, Forge und NeoForge liefern beim Einrichten eine Versionskennung, aus der der ' +
+      'Launcher sowohl einen Ordnernamen als auch einen Dateinamen bildet, ohne diese Kennung vorher ' +
+      'zu bereinigen. Käme diese Kennung von einem kompromittierten Metadatenserver oder einem ' +
+      'manipulierten Installer mit eingebauten Schrägstrichen, hätte die dabei erzeugte Datei ' +
+      'außerhalb des vorgesehenen Ordners für Versionsdaten landen können.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'ordner-oeffnen-ohne-instanzpruefung',
+    title: 'Ordner öffnen prüfte die übergebene Instanz nicht und konnte dadurch ein Programm starten',
+    detail:
+      'Die Befehle zum Öffnen des Sicherungs- oder Instanzordners bauten den Zielpfad direkt aus der ' +
+      'übergebenen Kennung, ohne zu prüfen, dass diese Kennung wirklich zu einer bestehenden Instanz ' +
+      'gehört. Unter Windows öffnet das verwendete Systemwerkzeug eine ausführbare Datei nicht nur an, ' +
+      'es startet sie. Mit einer entsprechend aufgebauten Kennung ließe sich dadurch eine Datei ' +
+      'starten, die irgendwo im Datenverzeichnis liegt, etwa eine der vom Launcher selbst verwalteten ' +
+      'Java-Versionen. Genau diese Prüfung gibt es an einer benachbarten Stelle im selben Code bereits, ' +
+      'dort wurde sie schon einmal bewusst ergänzt, hier fehlte sie noch.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'instanzlisten-ohne-existenzpruefung',
+    title: 'Welten, Screenshots und Aufnahmen wurden ohne Prüfung der Instanz aufgelistet',
+    detail:
+      'Anders als fast jeder andere Befehl rund um eine Instanz prüften die Befehle zum Auflisten von ' +
+      'Welten, Bildschirmfotos und Aufnahmen nicht zuerst, ob die übergebene Kennung überhaupt zu einer ' +
+      'bestehenden Instanz gehört. Bei einer gelöschten Instanz, deren Ordner aus irgendeinem Grund ' +
+      'noch auf der Platte liegt, könnten dadurch Inhalte gelesen und angezeigt werden, die eigentlich ' +
+      'nicht mehr zugänglich sein sollten.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'installation-ohne-sperre',
+    title: 'Eine Instanz neu einrichten prüfte keine der üblichen Sperren',
+    detail:
+      'Reparatur und Wiederherstellung prüfen vor Beginn ausführlich, ob die Instanz gerade läuft, ' +
+      'startet oder anderweitig beschäftigt ist, mit der ausdrücklichen Begründung, dass sonst ' +
+      'gemeinsam genutzte Dateien beschädigt werden könnten. Die vergleichbare Funktion zum erneuten ' +
+      'Einrichten einer Instanz hat keine dieser Prüfungen, obwohl sie dieselben Dateien anfasst. Wird ' +
+      'sie ausgelöst, während dieselbe Instanz bereits läuft, könnten Bibliotheken oder native Dateien ' +
+      'unter einem laufenden Spiel weggeschrieben werden.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'curseforge-seitengroesse-falsch',
+    title: 'Die Versionsabfrage bei CurseForge sah oft nur die letzten fünfzig Dateien',
+    detail:
+      'Beim Abfragen aller Dateien eines Projekts bei CurseForge verlangte der Launcher fälschlich ' +
+      'zweihundert Einträge pro Seite. CurseForge liefert an dieser Stelle aber nie mehr als fünfzig, ' +
+      'unabhängig davon, wie viele angefragt werden. Dadurch brach die Abfrage immer nach der ersten ' +
+      'Seite ab, bei einem Projekt mit vielen Dateien sah der Launcher nur die fünfzig zuletzt ' +
+      'hochgeladenen, über alle Minecraft-Versionen und Loader hinweg gemischt. Fehlte die passende ' +
+      'Datei für die gewünschte Version darunter, installierte der Launcher entweder eine falsche oder ' +
+      'meldete fälschlich, es gebe keine passende Version. Ein Kommentar im selben Code beschreibt ' +
+      'genau dieses Problem bereits als behoben, nur eben mit der falschen Zahl.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'einstellungen-vor-speichern-uebernommen',
+    title: 'Eine geänderte Einstellung galt schon, bevor sie wirklich gespeichert war',
+    detail:
+      'Beim Speichern einer Einstellung übernahm der Launcher den neuen Stand sofort im Arbeitsspeicher, ' +
+      'bevor das Schreiben auf die Festplatte bestätigt war. Schlägt dieses Schreiben fehl, zum ' +
+      'Beispiel weil Windows die Datei kurzzeitig durch einen Virenscanner oder die Suchindizierung ' +
+      'sperrt, denkt der Launcher für den Rest der Sitzung, die Änderung sei aktiv, obwohl auf der ' +
+      'Platte weiterhin der alte Stand liegt. Nach einem Neustart ist die Änderung dann kommentarlos ' +
+      'wieder weg. Besonders unangenehm beim Datenverzeichnis: Ein fehlgeschlagenes Schreiben ließ den ' +
+      'Launcher sofort so tun, als läge alles am neuen Ort, ohne dass die dafür nötigen Vorbereitungen ' +
+      'tatsächlich stattgefunden hätten.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'forge-abbruch-stoppt-prozess-nicht',
+    title: 'Abbrechen einer Forge-Installation stoppte den laufenden Java-Prozess nicht',
+    detail:
+      'Während der letzten Schritte einer Forge- oder NeoForge-Installation laufen kurze Java-Prozesse, ' +
+      'die Dateien zusammenbauen. Anders als bei Downloads im selben Vorgang wurde ein Abbruch-Wunsch ' +
+      'nicht an diese Prozesse weitergereicht. Bricht jemand die Installation währenddessen ab, meldet ' +
+      'die Oberfläche den Vorgang zwar als beendet, der Java-Prozess läuft aber im Hintergrund weiter ' +
+      'und schreibt dabei in Ordner, die von mehreren Instanzen gemeinsam genutzt werden.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'beschaedigter-installer-blockiert-dauerhaft',
+    title: 'Ein beschädigt heruntergeladener Forge-Installer blockierte jeden weiteren Versuch',
+    detail:
+      'Kann die Prüfsumme eines Forge- oder NeoForge-Installers nicht abgerufen werden, lässt der ' +
+      'Launcher die Installation bewusst trotzdem weiterlaufen, ungeprüft. War die heruntergeladene ' +
+      'Datei dabei tatsächlich beschädigt, aber nicht leer, etwa weil statt der echten Datei eine ' +
+      'Fehlerseite passender Größe ausgeliefert wurde, blieb diese beschädigte Datei im Zwischenspeicher ' +
+      'liegen und wurde von da an bei jedem weiteren Versuch als bereits vorhanden angenommen. Jeder ' +
+      'erneute Versuch schlug dadurch auf dieselbe Weise fehl, bis jemand den Zwischenspeicher von Hand ' +
+      'leerte.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'log-dateien-mit-benutzername',
+    title: 'Protokolldateien enthalten den Windows-Benutzernamen, anders als Fehlerberichte',
+    detail:
+      'Fehlerberichte entfernen bewusst und ausdrücklich Namen, Pfade und andere persönliche Angaben, ' +
+      'bevor sie irgendwohin geschickt werden. Die normale Protokolldatei, die beim Spielstart, bei ' +
+      'einer Java-Installation oder beim Anlegen einer Verknüpfung mitschreibt, tut das nicht: Sie ' +
+      'enthält volle Dateipfade, und die enthalten unter Windows den Benutzernamen. Wer sein Protokoll ' +
+      'für eine Fehlersuche weitergibt, gibt damit unbeabsichtigt auch seinen Windows-Namen preis. ' +
+      'Zusätzlich fehlt eine Größenbegrenzung, eine sehr lange Sitzung kann die Datei unbegrenzt ' +
+      'wachsen lassen.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'geraetecode-anzeige-vertauscht',
+    title: 'Ein angezeigter Anmeldecode konnte zu einer schon abgebrochenen Anmeldung gehören',
+    detail:
+      'Bricht jemand eine gerade laufende Microsoft-Anmeldung ab und startet sofort eine neue, etwa für ' +
+      'ein zweites Konto, kann in seltenen Fällen die Antwort der ersten, bereits abgebrochenen ' +
+      'Anmeldung noch eintreffen und den bereits angezeigten neuen Anmeldecode überschreiben. Die ' +
+      'eigentliche Anmeldung bleibt davon unberührt und läuft weiterhin für das richtige Konto, es ' +
+      'kommt zu keiner Vermischung von Konten oder Tokens. Es kann aber kurzzeitig ein Code angezeigt ' +
+      'werden, der zu nichts mehr gehört und im Browser eingegeben ins Leere liefe.',
+    state: 'investigating',
+    since: '2026-09-08'
+  },
+  {
+    id: 'plattform-antwort-unzureichend-abgesichert',
+    title: 'Unerwartete Antworten von Modrinth oder CurseForge waren nicht überall abgesichert',
+    detail:
+      'An mehreren Stellen beim Abfragen von Modrinth und CurseForge verließ sich der Launcher darauf, ' +
+      'dass bestimmte Felder in der Antwort immer vorhanden und richtig sortierbar sind, obwohl an ' +
+      'vergleichbaren Stellen im selben Code bereits bekannt ist, dass das nicht garantiert ist, ' +
+      'insbesondere bei älteren Einträgen. Fehlt ein solches Feld, kann die gesamte Versionsliste eines ' +
+      'Projekts abbrechen, statt nur den einen betroffenen Eintrag zu verwerfen. Zusätzlich sortierte ' +
+      'ein fehlendes Veröffentlichungsdatum die betroffene Version an eine unvorhersehbare Stelle statt ' +
+      'zuverlässig ans Ende, und eine Zuordnungstabelle bei CurseForge ordnete eine Abhängigkeitsart ' +
+      'falsch zu, was aktuell aber noch keine sichtbare Auswirkung hat.',
+    state: 'investigating',
+    since: '2026-09-08'
   }
 ]
 

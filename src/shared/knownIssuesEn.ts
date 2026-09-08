@@ -186,7 +186,12 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'the message "Windows protected your PC" with the note "Unknown publisher" on the very first ' +
       'launch. This is not a malfunction of the launcher but a permanent consequence of the missing ' +
       'signature, appearing again with every new version. Anyone who sees the message clicks "More info" ' +
-      'and then "Run anyway", after which Launch Gabi starts normally.'
+      'and then "Run anyway", after which Launch Gabi starts normally. The same missing signature has a ' +
+      'second, less visible consequence: the built-in updater normally also checks an Authenticode ' +
+      'signature before installing an update. Without a certificate there is no such signature to check, ' +
+      'so this second safeguard has nothing to do. What remains is comparing the checksum from the ' +
+      'release manifest, which comes from the same release as the installer file itself and is therefore ' +
+      'not an independent second source.'
   },
   'tokens-ohne-verschluesselung': {
     title: 'Missing encryption of login tokens was invisible',
@@ -281,6 +286,136 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'practice: the result always comes out positive regardless of the Minecraft version comparison. ' +
       'Rare in practice, since Forge and NeoForge version numbers are usually tied to one specific ' +
       'Minecraft version, but in an unlucky case an instance would start with the wrong version profile.'
+  },
+  'konten-falscher-typ-nach-login': {
+    title: 'The account list could crash after signing in',
+    detail:
+      'After a successful Microsoft sign-in or creating an offline profile, the launcher internally sent ' +
+      'just the new account instead of the full account list to the interface, even though that full ' +
+      'list is exactly what is expected as the result. The sidebar, the header and the setup wizard all ' +
+      'read from that list immediately for things like "find the active account" or "how many accounts ' +
+      'are there," which can crash the entire interface when a single account arrives instead of a list. ' +
+      'That would hit precisely the moment every new person goes through the first time they open the ' +
+      'launcher.'
+  },
+  'forge-installer-pfad-traversal': {
+    title: 'A tampered Forge or NeoForge installer could place files anywhere on disk',
+    detail:
+      'When setting up Forge or NeoForge, the launcher reads a list of data paths out of the installer ' +
+      'itself and unpacks them into its own working folder. A path starting with a forward slash was ' +
+      'taken over unchecked, while the launcher deliberately applies a safeguard against exactly this ' +
+      'kind of path at comparable spots in the same code. An installer with a suitably crafted path ' +
+      'could have placed a file outside the intended folder, for instance in Windows’ startup folder. ' +
+      'The installer itself comes from the official Forge or NeoForge address, so the risk only exists ' +
+      'if that source itself were compromised.'
+  },
+  'loader-versionid-pfad-traversal': {
+    title: 'An unsanitised id from the network could escape a folder while setting up a loader',
+    detail:
+      'Fabric, Quilt, Forge and NeoForge all return a version id while setting up, which the launcher ' +
+      'turns into both a folder name and a file name without sanitising that id first. If that id came ' +
+      'from a compromised metadata server or a tampered installer with slashes built in, the file it ' +
+      'produced could have landed outside the folder meant for version data.'
+  },
+  'ordner-oeffnen-ohne-instanzpruefung': {
+    title: 'Opening a folder did not check the instance it was given, and could launch a program instead',
+    detail:
+      'The commands for opening a backup or instance folder built the target path directly from the id ' +
+      'they were given, without checking that the id actually belonged to an existing instance. On ' +
+      'Windows, the system tool used for this does not just reveal an executable file, it runs it. With ' +
+      'a suitably built id, this could have started a file living anywhere in the data directory, such ' +
+      'as one of the Java versions the launcher manages itself. This exact check already exists at a ' +
+      'neighbouring spot in the same code, deliberately added there before; it was simply still missing ' +
+      'here.'
+  },
+  'instanzlisten-ohne-existenzpruefung': {
+    title: 'Worlds, screenshots and recordings were listed without checking the instance',
+    detail:
+      'Unlike almost every other instance-related command, the commands for listing worlds, screenshots ' +
+      'and recordings did not first check whether the given id actually belonged to an existing ' +
+      'instance. For a deleted instance whose folder happens to still sit on disk for some reason, this ' +
+      'could read and display content that should no longer be reachable.'
+  },
+  'installation-ohne-sperre': {
+    title: 'Setting up an instance again checked none of the usual locks',
+    detail:
+      'Repair and restore both check extensively before starting whether the instance is currently ' +
+      'running, starting, or otherwise busy, with the explicit reasoning that shared files could ' +
+      'otherwise be damaged. The comparable function for setting up an instance again has none of these ' +
+      'checks, even though it touches the same files. Triggered while the same instance is already ' +
+      'running, it could write libraries or native files out from under a running game.'
+  },
+  'curseforge-seitengroesse-falsch': {
+    title: 'Querying versions on CurseForge often only saw the last fifty files',
+    detail:
+      'When querying every file of a project on CurseForge, the launcher incorrectly asked for two ' +
+      'hundred entries per page. CurseForge never returns more than fifty at this endpoint, no matter ' +
+      'how many are requested. This always broke the query off after the first page; for a project with ' +
+      'many files, the launcher only ever saw the fifty most recently uploaded ones, mixed across every ' +
+      'Minecraft version and loader. If the right file for the wanted version was not among those fifty, ' +
+      'the launcher either installed the wrong one or wrongly reported that no matching version existed. ' +
+      'A comment in the same code already describes this exact problem as fixed, just with the wrong ' +
+      'number.'
+  },
+  'einstellungen-vor-speichern-uebernommen': {
+    title: 'A changed setting took effect before it was actually saved',
+    detail:
+      'When saving a setting, the launcher adopted the new state in memory immediately, before the write ' +
+      'to disk was confirmed. If that write failed, for instance because Windows briefly locked the file ' +
+      'through a virus scanner or search indexing, the launcher believed for the rest of the session that ' +
+      'the change was active, even though the old state still sat on disk. After a restart the change was ' +
+      'then quietly gone again. Particularly awkward for the data directory: a failed write made the ' +
+      'launcher immediately act as if everything lived at the new location, without the preparation that ' +
+      'would actually require having happened.'
+  },
+  'forge-abbruch-stoppt-prozess-nicht': {
+    title: 'Cancelling a Forge install did not stop the running Java process',
+    detail:
+      'During the last steps of a Forge or NeoForge install, short Java processes run that assemble ' +
+      'files. Unlike downloads within the same operation, a cancellation was not passed on to these ' +
+      'processes. Cancelling the install while one of them runs has the interface report the operation ' +
+      'as finished, while the Java process keeps running in the background and keeps writing into ' +
+      'folders shared by every instance.'
+  },
+  'beschaedigter-installer-blockiert-dauerhaft': {
+    title: 'A corrupted Forge installer download blocked every further attempt',
+    detail:
+      'If the checksum of a Forge or NeoForge installer cannot be fetched, the launcher deliberately lets ' +
+      'the install continue anyway, unchecked. If the downloaded file was actually corrupted but not ' +
+      'empty, for instance because an error page of a matching size was served instead of the real file, ' +
+      'that corrupted file stayed in the cache and was taken as already present on every further attempt ' +
+      'from then on. Every retry then failed the same way, until someone cleared the cache by hand.'
+  },
+  'log-dateien-mit-benutzername': {
+    title: 'Log files carry the Windows username, unlike crash reports',
+    detail:
+      'Crash reports deliberately and explicitly remove names, paths and other personal details before ' +
+      'going anywhere. The ordinary log file, which writes while the game starts, while Java installs or ' +
+      'while a shortcut gets created, does not: it carries full file paths, and on Windows those paths ' +
+      'carry the username. Anyone sharing their log to get help unintentionally hands over their Windows ' +
+      'name along with it. On top of that there is no size limit, so a very long session can let the file ' +
+      'grow without bound.'
+  },
+  'geraetecode-anzeige-vertauscht': {
+    title: 'A displayed sign-in code could belong to an already cancelled attempt',
+    detail:
+      'Cancelling a running Microsoft sign-in and immediately starting a new one, for instance for a ' +
+      'second account, can in rare cases have the reply from the first, already cancelled attempt arrive ' +
+      'late and overwrite the new code already on screen. The actual sign-in itself is unaffected and ' +
+      'keeps running for the right account, no accounts or tokens ever get mixed up. But a code can ' +
+      'briefly be shown that belongs to nothing anymore, and entering it in the browser would lead ' +
+      'nowhere.'
+  },
+  'plattform-antwort-unzureichend-abgesichert': {
+    title: 'Unexpected responses from Modrinth or CurseForge were not guarded everywhere',
+    detail:
+      'In several places when querying Modrinth and CurseForge, the launcher relied on certain fields in ' +
+      'the response always being present and sortable, even though comparable spots in the same code ' +
+      'already account for that not being guaranteed, especially for older entries. A missing field like ' +
+      'that can break an entire project’s version list instead of just discarding the one affected entry. ' +
+      'On top of that, a missing release date sorted the affected version to an unpredictable spot ' +
+      'instead of reliably to the end, and a mapping table on the CurseForge side misclassified one kind ' +
+      'of dependency, which currently has no visible effect yet.'
   }
 }
 
