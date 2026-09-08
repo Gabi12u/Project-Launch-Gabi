@@ -480,8 +480,44 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       )
     }
 
-    rmSync(targetDir, { recursive: true, force: true })
-    renameSync(staging, targetDir)
+    // Swapping in the new install must not cost the old one. Deleting
+    // targetDir first and renaming staging into place second used to mean a
+    // renameSync failure here, for example a virus scanner or backup tool
+    // still holding a file open inside the freshly extracted staging folder,
+    // a realistic and transient case on Windows, left targetDir already gone
+    // with nothing to put back. Parking the old install aside first keeps a
+    // way back until the new one has actually taken its place.
+    if (existsSync(targetDir)) {
+      let parked = `${targetDir}.old-${randomUUID().slice(0, 8)}`
+      // A collision is unlikely with a fresh random suffix, but not
+      // impossible if an earlier crashed swap left a folder of that exact
+      // name behind. Picking a second name rather than deleting into it means
+      // that leftover, whatever it is, is never mistaken for the real thing.
+      if (existsSync(parked)) parked = `${parked}-${randomUUID().slice(0, 8)}`
+
+      renameSync(targetDir, parked)
+      try {
+        renameSync(staging, targetDir)
+      } catch (swapErr) {
+        // The new install could not take the old one's place. Put the old one
+        // back so a failed update never costs a working installation, then
+        // let the original error continue up unchanged.
+        try {
+          renameSync(parked, targetDir)
+        } catch (rollbackErr) {
+          logger.error(`Rollback der alten Java-${major}-Installation fehlgeschlagen:`, rollbackErr)
+        }
+        throw swapErr
+      }
+      try {
+        rmSync(parked, { recursive: true, force: true })
+      } catch {
+        // Leftover old install is harmless once the new one is in place.
+      }
+    } else {
+      // First install for this major: nothing to swap out.
+      renameSync(staging, targetDir)
+    }
   } catch (err) {
     // The archive carries no checksum, so a truncated one would be treated as
     // "already downloaded" forever and every later attempt would fail the same
