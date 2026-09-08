@@ -311,8 +311,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'die Mod als eingeschaltet ein, ohne dass eine Meldung erscheint. Eine Mod, die bewusst wegen ' +
       'eines Absturzes oder einer Unverträglichkeit ausgeschaltet wurde, kann dadurch nach einer ' +
       'automatischen Aktualisierung unbemerkt wieder mitladen und denselben Fehler erneut auslösen.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'java-tausch-nicht-atomar',
@@ -324,8 +325,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'eine Datei im neuen Ordner offen hält, ist die alte, bisher funktionierende Installation ' +
       'bereits weg, und der Aufräumschritt danach entfernt zusätzlich den neuen Ordner. Beide Stände ' +
       'sind dann verloren, und die Java-Version muss vollständig neu heruntergeladen werden.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'alte-assets-ohne-pruefung',
@@ -337,8 +339,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'bleibt eine unvollständige Datei liegen und wird bei jedem weiteren Start als bereits erledigt ' +
       'übersprungen. Bemerkbar macht sich das nur bei sehr alten Versionen, als fehlender Sound oder ' +
       'fehlende Textur, ohne dass eine Fehlermeldung erscheint.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'loeschen-ohne-reparatur-sperre',
@@ -350,8 +353,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'die Reparatur weiter in den bereits entfernten Ordner und legt ihn dabei teilweise wieder an. ' +
       'Da freigewordene interne Kennungen später erneut vergeben werden, kann eine neu angelegte ' +
       'Instanz auf einen nicht leeren, aus alten Resten bestehenden Ordner treffen.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'reparatur-wiederherstellung-ungesperrt',
@@ -362,8 +366,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'gearbeitet wird. Werden beide Vorgänge gleichzeitig für dieselbe Instanz angestoßen, schreiben ' +
       'sie in dieselben Unterordner wie Welten und Einstellungen. Je nach Zeitpunkt kann das zu halb ' +
       'geschriebenen Welt- oder Konfigurationsdateien führen.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'reparatur-trifft-fremde-instanz',
@@ -376,8 +381,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Zeitfenster eine andere Instanz mit derselben Version repariert, leert die Reparatur den ' +
       'gemeinsamen Ordner, und die startende Instanz kann ohne ihre nativen Bibliotheken abstürzen, ' +
       'obwohl an ihr selbst nichts verändert wurde.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'duplizieren-ohne-sperre',
@@ -388,8 +394,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'kopiert wird. Läuft währenddessen einer dieser Vorgänge, kann die entstehende Kopie fehlende, ' +
       'halb geschriebene oder widersprüchliche Dateien enthalten, ohne dass eine Meldung erscheint. ' +
       'Bemerkbar wird das erst, wenn die Kopie später gestartet wird.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'mod-umschalten-ohne-sperre',
@@ -401,8 +408,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'nicht erfasst. Geschieht das genau während im Hintergrund eine Installation, Aktualisierung ' +
       'oder Reparatur derselben Instanz läuft, überschreibt wer zuletzt speichert die Änderung des ' +
       'jeweils anderen Vorgangs, ohne Warnung.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'versionspruefung-wirkungslos',
@@ -415,8 +423,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'der Minecraft-Version immer positiv aus. In der Praxis selten, weil Forge- und NeoForge-' +
       'Versionsnummern meist eindeutig einer Minecraft-Version zugeordnet sind, aber im ungünstigen ' +
       'Fall würde eine Instanz mit dem Versionsprofil der falschen Minecraft-Version starten.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   }
 ]
 
