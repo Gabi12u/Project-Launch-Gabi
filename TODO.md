@@ -110,6 +110,18 @@ Der Weg dorthin, in dieser Reihenfolge:
       https://aka.ms/mce-reviewappid
       Ohne diese Freigabe antwortet `api.minecraftservices.com` mit 403.
       Der Launcher erklärt diesen Fall seit 1.0.18 im Klartext.
+
+      Am 2026-09-08 nachgemessen statt vermutet, mit
+      `node scripts/test-azure-login.mjs`. Gerätecode, Anmeldung, Xbox
+      Live und XSTS laufen mit der eigenen ID sauber durch, die
+      Registrierung ist also richtig eingestellt. Erst Minecraft lehnt
+      ab, mit genau dieser Antwort:
+
+          403  "Invalid app registration, see
+                https://aka.ms/AppRegInfo for more information"
+
+      Damit ist die Freigabe die einzige verbleibende Hürde, und das
+      Formular ist keine Rateaktion.
 - [ ] **Erst danach** die ID als Standard in `src/shared/defaults.ts`
       eintragen. Vorher wäre sie für alle Nutzer eine Verschlechterung.
 
