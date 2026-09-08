@@ -20,8 +20,9 @@ import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
-import { isContentBusy } from './contentLock'
+import { isContentBusy, withContentLock } from './contentLock'
 import { isRestoring } from './restoreLock'
+import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
 
 const logger = log('instances')
@@ -379,7 +380,13 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
     const lower = name.toLowerCase()
     if (!lower.includes(instance.loader)) return false
     if (needle && !lower.includes(needle.toLowerCase())) return false
-    return lower.includes(instance.mcVersion.toLowerCase()) || Boolean(needle)
+    // Always required, needle or not. `|| Boolean(needle)` used to stand here,
+    // which is true whenever a needle is given, so the mcVersion check was
+    // skipped in exactly the case that matters: `resolveVersionId` always
+    // resolves a needle before calling this, so the check never actually
+    // applied. A resolved loader build number is not guaranteed unique across
+    // Minecraft versions, which is what this line is meant to guard against.
+    return lower.includes(instance.mcVersion.toLowerCase())
   })
 
   return candidates.sort((a, b) => b.length - a.length)[0] ?? null
@@ -421,8 +428,19 @@ function assertInside(root: string, candidate: string, label: string): string {
   return resolved
 }
 
-export function deleteInstance(id: string): void {
-  if (isRunning(id)) throw new Error('Die Instanz läuft gerade und kann nicht gelöscht werden.')
+/**
+ * Throws if anything is currently working against the instance's files.
+ *
+ * Shared by `deleteInstance` and `duplicateInstance`, the two mutations that
+ * touch the whole instance folder rather than one file within it, so both
+ * need every guard the other content and lifecycle locks already provide.
+ * `actionPastParticiple` fills the "kann nicht ... werden" wording so the two
+ * running/starting messages still read naturally for each caller.
+ */
+function assertInstanceIdle(id: string, actionPastParticiple: string): void {
+  if (isRunning(id)) {
+    throw new Error(`Die Instanz läuft gerade und kann nicht ${actionPastParticiple} werden.`)
+  }
 
   // "Running" was the only state this asked about, and it is the last of the
   // three to be reached. A launch still gathering libraries, a mod download,
@@ -430,7 +448,7 @@ export function deleteInstance(id: string): void {
   // below, and each of them survives the deletion as work against files that
   // are no longer there.
   if (isStarting(id)) {
-    throw new Error('Die Instanz wird gerade gestartet und kann nicht gelöscht werden.')
+    throw new Error(`Die Instanz wird gerade gestartet und kann nicht ${actionPastParticiple} werden.`)
   }
   if (isContentBusy(id)) {
     throw new Error('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das fertig ist.')
@@ -438,6 +456,17 @@ export function deleteInstance(id: string): void {
   if (isRestoring(id)) {
     throw new Error('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das fertig ist.')
   }
+  // Mirrors the guard `launchInstance` has against `isRepairing`: a repair
+  // rewrites the client jar, the natives folder, the loader and the mods, and
+  // deleting or duplicating that folder while it is only half rebuilt is the
+  // same kind of half written state the other four guards already prevent.
+  if (isRepairing(id)) {
+    throw new Error('Für diese Instanz läuft gerade eine Reparatur. Warte, bis das fertig ist.')
+  }
+}
+
+export function deleteInstance(id: string): void {
+  assertInstanceIdle(id, 'gelöscht')
 
   // Must be a known instance, not just any id the caller made up.
   if (!cache.has(id)) {
@@ -472,6 +501,12 @@ export function deleteInstance(id: string): void {
 }
 
 export async function duplicateInstance(id: string, newName?: string): Promise<Instance> {
+  // Had none of the five checks `deleteInstance` has, so duplicating mid-launch,
+  // mid-content-work, mid-restore or mid-repair copied a folder that was being
+  // written to at that exact moment, baking the half finished state into the
+  // new instance.
+  assertInstanceIdle(id, 'dupliziert')
+
   const source = getInstance(id)
   const name = newName?.trim() || `${source.name} (Kopie)`
   const newId = uniqueId(name)
@@ -733,34 +768,45 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
   return persist({ ...instance, content: result })
 }
 
-/** Renames a content file to toggle Minecraft's `.disabled` convention. */
-export function toggleContent(id: string, contentId: string, enabled: boolean): Instance {
-  const instance = getInstance(id)
-  const item = instance.content.find((c) => c.id === contentId)
-  if (!item) throw new Error('Inhalt nicht gefunden')
+/**
+ * Renames a content file to toggle Minecraft's `.disabled` convention.
+ *
+ * Held under `withContentLock`, the same marker every other content mutation
+ * in `content.ts` takes. This was the one write to the content folder that
+ * did not: `syncContentWithDisk` could scan mid-rename and see a file under
+ * neither its old nor its new name for a moment, and `deleteInstance` or
+ * `repairInstance` could start against the same folder while the rename was
+ * still in flight, since `isContentBusy` looked idle the whole time.
+ */
+export function toggleContent(id: string, contentId: string, enabled: boolean): Promise<Instance> {
+  return withContentLock(id, async () => {
+    const instance = getInstance(id)
+    const item = instance.content.find((c) => c.id === contentId)
+    if (!item) throw new Error('Inhalt nicht gefunden')
 
-  const dirMap: Record<ContentItem['type'], string> = {
-    mod: paths.mods(id),
-    resourcepack: paths.resourcePacks(id),
-    shaderpack: paths.shaderPacks(id),
-    datapack: join(paths.gameDir(id), 'datapacks')
-  }
+    const dirMap: Record<ContentItem['type'], string> = {
+      mod: paths.mods(id),
+      resourcepack: paths.resourcePacks(id),
+      shaderpack: paths.shaderPacks(id),
+      datapack: join(paths.gameDir(id), 'datapacks')
+    }
 
-  const dir = dirMap[item.type]
-  const currentPath = join(dir, item.fileName)
-  const bare = item.fileName.endsWith('.disabled')
-    ? item.fileName.slice(0, -'.disabled'.length)
-    : item.fileName
-  const nextName = enabled ? bare : `${bare}.disabled`
+    const dir = dirMap[item.type]
+    const currentPath = join(dir, item.fileName)
+    const bare = item.fileName.endsWith('.disabled')
+      ? item.fileName.slice(0, -'.disabled'.length)
+      : item.fileName
+    const nextName = enabled ? bare : `${bare}.disabled`
 
-  if (existsSync(currentPath) && nextName !== item.fileName) {
-    renameSync(currentPath, join(dir, nextName))
-  }
+    if (existsSync(currentPath) && nextName !== item.fileName) {
+      renameSync(currentPath, join(dir, nextName))
+    }
 
-  const content = instance.content.map((c) =>
-    c.id === contentId ? { ...c, fileName: nextName, enabled } : c
-  )
-  return persist({ ...instance, content })
+    const content = instance.content.map((c) =>
+      c.id === contentId ? { ...c, fileName: nextName, enabled } : c
+    )
+    return persist({ ...instance, content })
+  })
 }
 
 /* ------------------------------------------------------------------ *
