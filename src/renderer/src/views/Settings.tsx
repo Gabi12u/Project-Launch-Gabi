@@ -9,7 +9,7 @@ import type {
 } from '@shared/types'
 import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
-import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
+import { changelogLocalized, changeKindLabel } from '@shared/changelogEn'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { SUPPORTED_LANGUAGES, t } from '../lib/i18n'
 import { formatBytes, formatDate, formatDateTime, formatMemory, updateHeadline } from '../lib/format'
@@ -980,7 +980,7 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
       </p>
 
       <div className="changelog">
-        {CHANGELOG.map((release) => (
+        {changelogLocalized(settings.language).map((release) => (
           <article key={release.version} className="changelog-entry">
             <header className="changelog-head">
               <span className="changelog-version">{release.version}</span>
@@ -996,7 +996,7 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
               {release.changes.map((change, index) => (
                 <li key={index}>
                   <span className={`changelog-kind ${change.kind}`}>
-                    {CHANGE_KIND_LABEL[change.kind]}
+                    {changeKindLabel(settings.language, change.kind)}
                   </span>
                   <span>{change.text}</span>
                 </li>
