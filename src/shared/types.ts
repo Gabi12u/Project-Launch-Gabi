@@ -235,6 +235,12 @@ export interface Account {
   expiresAt?: number
   skinUrl?: string
   active: boolean
+  /**
+   * Whether the stored token for this account is encrypted at rest.
+   * Only meaningful for `microsoft` accounts; false means the operating
+   * system offered no encryption and the token sits in plain text.
+   */
+  secure?: boolean
 }
 
 export interface DeviceCodePrompt {

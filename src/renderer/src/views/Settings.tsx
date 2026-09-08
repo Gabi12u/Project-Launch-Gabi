@@ -23,7 +23,8 @@ import {
   IconRefresh,
   IconRecord,
   IconShield,
-  IconTrash
+  IconTrash,
+  IconWarning
 } from '../components/Icons'
 
 type Section =
@@ -186,7 +187,7 @@ const THEMES: { id: ThemeId; label: string; colors: [string, string] }[] = [
 const SECTION_IDS = new Set<string>(SECTIONS.map((entry) => entry.id))
 
 export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Element {
-  const { settings } = useStore()
+  const { settings, accounts } = useStore()
   const wanted = query?.get('section')
   const [section, setSection] = useState<Section>(
     wanted && SECTION_IDS.has(wanted) ? (wanted as Section) : 'general'
@@ -694,6 +695,21 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   </div>
                 </div>
               </div>
+              {accounts.some((account) => account.secure === false) && (
+                <div className="issue warning mt-8">
+                  <div className="issue-icon">
+                    <IconWarning size={16} />
+                  </div>
+                  <div>
+                    <div className="issue-title">
+                      {t('settings', 'accounts.tokenStorage.insecureTitle')}
+                    </div>
+                    <div className="issue-detail">
+                      {t('settings', 'accounts.tokenStorage.insecureDetail')}
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 

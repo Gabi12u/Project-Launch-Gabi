@@ -115,6 +115,9 @@ export default {
   'accounts.tokenStorage.title': 'Wo werden Tokens gespeichert?',
   'accounts.tokenStorage.detail':
     'Zugriffs- und Aktualisierungstoken liegen verschlüsselt in deinem Benutzerprofil und werden über die Verschlüsselung des Betriebssystems geschützt. Sie verlassen deinen Rechner nur Richtung Microsoft und Mojang.',
+  'accounts.tokenStorage.insecureTitle': 'Ungeschützt gespeichert',
+  'accounts.tokenStorage.insecureDetail':
+    'Bei mindestens einem gespeicherten Konto konnte das Betriebssystem keine Verschlüsselung anbieten, der Token liegt dort ungeschützt auf der Festplatte.',
 
   // Recording
   'recording.inGame.title': 'Aufnehmen im Spiel',

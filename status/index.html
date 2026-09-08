@@ -1384,6 +1384,23 @@ footer a:hover { color: var(--ink); }
         "macOS",
         "Linux"
       ]
+    },
+    {
+      "id": "windows-ungesigniert",
+      "title": "Windows warnt beim ersten Start vor dem Programm",
+      "detail": "Launch Gabi hat kein Code-Signing-Zertifikat für Windows. Ein solches Zertifikat kostet laufend Geld, und für ein privates, kostenloses Projekt wurde bewusst darauf verzichtet, eines zu kaufen. Ohne Signatur stuft der SmartScreen-Filter von Windows jede neue Version zunächst als unbekannt ein und zeigt beim allerersten Start die Meldung \"Windows hat den PC geschützt\" mit dem Hinweis \"Unbekannter Herausgeber\". Das ist keine Fehlfunktion des Launchers, sondern eine dauerhafte Folge der fehlenden Signatur, die mit jeder neuen Version erneut erscheint. Wer die Meldung sieht, klickt auf \"Weitere Informationen\" und danach auf \"Trotzdem ausführen\", danach startet Launch Gabi ganz normal.",
+      "state": "limitation",
+      "since": "2026-09-08",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "tokens-ohne-verschluesselung",
+      "title": "Fehlende Verschlüsselung von Anmeldetoken war unsichtbar",
+      "detail": "Der Launcher verschlüsselt das Microsoft-Anmeldetoken vor dem Speichern über die Verschlüsselung des Betriebssystems. Bietet das System diese nicht an, was vor allem auf manchen Linux-Installationen ohne eingerichteten Schlüsselbund vorkommen kann, legt der Launcher das Token stattdessen als Klartext ab. Bisher stand das nur in der internen Protokolldatei, die kein Nutzer normalerweise öffnet. Jetzt erscheint in diesem Fall eine Benachrichtigung, und der Kontobereich der Einstellungen zeigt dauerhaft einen Hinweis, solange mindestens ein gespeichertes Konto betroffen ist. An der zugrunde liegenden Grenze ändert das nichts: ohne eine Verschlüsselung des Systems bleibt der Klartext die einzige Alternative dazu, die Anmeldung gar nicht erst zu speichern.",
+      "state": "limitation",
+      "since": "2026-09-08"
     }
   ];
   var ISSUE_LABEL = {
@@ -1532,6 +1549,23 @@ footer a:hover { color: var(--ink); }
         "macOS",
         "Linux"
       ]
+    },
+    {
+      "id": "windows-ungesigniert",
+      "title": "Windows warns about the program on first launch",
+      "detail": "Launch Gabi has no code signing certificate for Windows. Such a certificate costs money on an ongoing basis, and for a private, free project the decision was made deliberately not to buy one. Without a signature, Windows SmartScreen treats every new version as unknown at first and shows the message \"Windows protected your PC\" with the note \"Unknown publisher\" on the very first launch. This is not a malfunction of the launcher but a permanent consequence of the missing signature, appearing again with every new version. Anyone who sees the message clicks \"More info\" and then \"Run anyway\", after which Launch Gabi starts normally.",
+      "state": "limitation",
+      "since": "2026-09-08",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "tokens-ohne-verschluesselung",
+      "title": "Missing encryption of login tokens was invisible",
+      "detail": "The launcher encrypts the Microsoft login token before saving it, using the operating system’s own encryption. When the system does not offer that, which can happen mainly on some Linux installations without a configured keyring, the launcher stores the token as plain text instead. Until now that only showed up in the internal log file, which no user normally opens. A notification now appears in that case, and the accounts section of Settings shows a persistent notice for as long as at least one saved account is affected. The underlying limit itself does not change: without encryption from the system, plain text remains the only alternative to refusing to save the sign in at all.",
+      "state": "limitation",
+      "since": "2026-09-08"
     }
   ];
   var ISSUE_LABEL_EN = {

@@ -107,6 +107,9 @@ export default {
   'accounts.tokenStorage.title': 'Where are tokens stored?',
   'accounts.tokenStorage.detail':
     "Access and refresh tokens are stored encrypted in your user profile and protected by your operating system's encryption. They leave your computer only towards Microsoft and Mojang.",
+  'accounts.tokenStorage.insecureTitle': 'Stored unprotected',
+  'accounts.tokenStorage.insecureDetail':
+    'For at least one saved account, the operating system could not offer encryption, so its token sits unprotected on disk.',
 
   // Recording
   'recording.inGame.title': 'Recording In-Game',

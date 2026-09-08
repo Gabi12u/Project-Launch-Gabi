@@ -268,6 +268,38 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'limitation',
     since: '2026-08-17',
     platforms: ['macOS', 'Linux']
+  },
+  {
+    id: 'windows-ungesigniert',
+    title: 'Windows warnt beim ersten Start vor dem Programm',
+    detail:
+      'Launch Gabi hat kein Code-Signing-Zertifikat für Windows. Ein solches Zertifikat kostet ' +
+      'laufend Geld, und für ein privates, kostenloses Projekt wurde bewusst darauf verzichtet, ' +
+      'eines zu kaufen. Ohne Signatur stuft der SmartScreen-Filter von Windows jede neue Version ' +
+      'zunächst als unbekannt ein und zeigt beim allerersten Start die Meldung "Windows hat den PC ' +
+      'geschützt" mit dem Hinweis "Unbekannter Herausgeber". Das ist keine Fehlfunktion des ' +
+      'Launchers, sondern eine dauerhafte Folge der fehlenden Signatur, die mit jeder neuen Version ' +
+      'erneut erscheint. Wer die Meldung sieht, klickt auf "Weitere Informationen" und danach auf ' +
+      '"Trotzdem ausführen", danach startet Launch Gabi ganz normal.',
+    state: 'limitation',
+    since: '2026-09-08',
+    platforms: ['Windows']
+  },
+  {
+    id: 'tokens-ohne-verschluesselung',
+    title: 'Fehlende Verschlüsselung von Anmeldetoken war unsichtbar',
+    detail:
+      'Der Launcher verschlüsselt das Microsoft-Anmeldetoken vor dem Speichern über die ' +
+      'Verschlüsselung des Betriebssystems. Bietet das System diese nicht an, was vor allem auf ' +
+      'manchen Linux-Installationen ohne eingerichteten Schlüsselbund vorkommen kann, legt der ' +
+      'Launcher das Token stattdessen als Klartext ab. Bisher stand das nur in der internen ' +
+      'Protokolldatei, die kein Nutzer normalerweise öffnet. Jetzt erscheint in diesem Fall eine ' +
+      'Benachrichtigung, und der Kontobereich der Einstellungen zeigt dauerhaft einen Hinweis, ' +
+      'solange mindestens ein gespeichertes Konto betroffen ist. An der zugrunde liegenden Grenze ' +
+      'ändert das nichts: ohne eine Verschlüsselung des Systems bleibt der Klartext die einzige ' +
+      'Alternative dazu, die Anmeldung gar nicht erst zu speichern.',
+    state: 'limitation',
+    since: '2026-09-08'
   }
 ]
 

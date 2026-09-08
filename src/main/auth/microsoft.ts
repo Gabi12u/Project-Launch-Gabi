@@ -1,8 +1,8 @@
 import { safeStorage } from 'electron'
 import { randomUUID, createHash } from 'node:crypto'
-import type { Account, DeviceCodePrompt } from '@shared/types'
+import type { Account, DeviceCodePrompt, LanguageId } from '@shared/types'
 import { EVENTS } from '@shared/ipc'
-import { emit } from '../events'
+import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
 import { fetchJson, httpRequest, HttpError } from '../core/net'
 import { log } from '../logger'
@@ -61,6 +61,44 @@ function endpointsFor(clientId: string): Endpoints {
  * Token storage
  * ------------------------------------------------------------------ */
 
+/**
+ * True once the insecure fallback below has already been announced this run.
+ *
+ * `encrypt()` runs on every login and every silent token refresh, and once a
+ * machine lacks encryption it lacks it for the whole session, so without this
+ * guard the notification would reappear on every single refresh instead of
+ * being said once and then left to the persistent hint in Settings.
+ */
+let insecureStorageAnnounced = false
+
+/**
+ * Tells the renderer, once per run, that a token is about to be saved as
+ * plain text. There is no translation key system reachable from the main
+ * process, so the finished text for both languages lives right here and the
+ * current language is read from settings to pick between them, the same
+ * source the renderer itself uses for `t()`.
+ */
+function announceInsecureStorage(): void {
+  if (insecureStorageAnnounced) return
+  insecureStorageAnnounced = true
+
+  const language: LanguageId = getSettings().language
+  const { title, message } =
+    language === 'en'
+      ? {
+          title: 'Login token stored unencrypted',
+          message:
+            'This device offers no encryption for stored data, so the Microsoft login token is being kept as plain text. See the account settings for more.'
+        }
+      : {
+          title: 'Anmeldetoken unverschlüsselt gespeichert',
+          message:
+            'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Kontoeinstellungen.'
+        }
+
+  notify('warning', title, message, { route: '/settings?section=accounts' })
+}
+
 function encrypt(value: string): { value: string; secure: boolean } {
   try {
     if (safeStorage.isEncryptionAvailable()) {
@@ -72,6 +110,7 @@ function encrypt(value: string): { value: string; secure: boolean } {
   } catch (err) {
     logger.warn('safeStorage nicht verfügbar, Tokens werden im Klartext abgelegt:', err)
   }
+  announceInsecureStorage()
   return { value, secure: false }
 }
 
@@ -951,7 +990,8 @@ export function toPublicAccount(account: StoredAccount): Account {
     uuid: account.uuid,
     expiresAt: account.expiresAt,
     skinUrl: account.skinUrl,
-    active: account.active
+    active: account.active,
+    secure: account.secure
   }
 }
 

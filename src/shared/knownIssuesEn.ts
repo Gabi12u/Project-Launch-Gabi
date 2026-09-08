@@ -176,6 +176,29 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Installers exist for both systems and are built for every release. Whether sign-in and launching ' +
       'the game work reliably there has not yet been checked systematically by anyone. macOS also lacks ' +
       'a signature, so the system shows a warning on first launch there and automatic updates do not work.'
+  },
+  'windows-ungesigniert': {
+    title: 'Windows warns about the program on first launch',
+    detail:
+      'Launch Gabi has no code signing certificate for Windows. Such a certificate costs money on an ' +
+      'ongoing basis, and for a private, free project the decision was made deliberately not to buy one. ' +
+      'Without a signature, Windows SmartScreen treats every new version as unknown at first and shows ' +
+      'the message "Windows protected your PC" with the note "Unknown publisher" on the very first ' +
+      'launch. This is not a malfunction of the launcher but a permanent consequence of the missing ' +
+      'signature, appearing again with every new version. Anyone who sees the message clicks "More info" ' +
+      'and then "Run anyway", after which Launch Gabi starts normally.'
+  },
+  'tokens-ohne-verschluesselung': {
+    title: 'Missing encryption of login tokens was invisible',
+    detail:
+      'The launcher encrypts the Microsoft login token before saving it, using the operating system’s ' +
+      'own encryption. When the system does not offer that, which can happen mainly on some Linux ' +
+      'installations without a configured keyring, the launcher stores the token as plain text instead. ' +
+      'Until now that only showed up in the internal log file, which no user normally opens. A ' +
+      'notification now appears in that case, and the accounts section of Settings shows a persistent ' +
+      'notice for as long as at least one saved account is affected. The underlying limit itself does not ' +
+      'change: without encryption from the system, plain text remains the only alternative to refusing to ' +
+      'save the sign in at all.'
   }
 }
 
