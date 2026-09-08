@@ -81,14 +81,31 @@ und "grant the client application access to the requested scope".
 
 Der Weg dorthin, in dieser Reihenfolge:
 
-- [ ] **Ein Azure-Verzeichnis.** Ein privates Microsoft-Konto hat keins.
+- [x] **Ein Azure-Verzeichnis.** Ein privates Microsoft-Konto hat keins.
       Über `portal.azure.com`, Mandanten verwalten, Erstellen ist es am
-      2026-09-04 nicht gelungen. Bleibt `azure.microsoft.com/free`, das
-      verlangt eine Karte zur Identitätsprüfung, bucht aber nichts ab.
-- [ ] **Anwendung registrieren.** App registrations, New registration,
-      Name `Launch Gabi`, bei den Kontotypen "Any organizational
-      directory and personal Microsoft accounts", Redirect URI leer.
-      Danach unter Authentication "Allow public client flows" auf Yes.
+      2026-09-04 nicht gelungen. Über `azure.microsoft.com/free` dann
+      am 2026-09-08 doch: das Konto hat seitdem ein `Default Directory`,
+      und darin wird registriert. Ein neuer Mandant war nie nötig, der
+      kostenlose Zugang legt eins von selbst an. Eine App-Registrierung
+      kostet nichts und braucht kein Abonnement.
+- [x] **Anwendung registrieren.** Am 2026-09-08 erledigt. Name
+      `Launch Gabi`, Kontotypen "Alle Konten von Entra ID-Mandanten und
+      persönliche Microsoft-Konten", Redirect URI leer, unter
+      Authentifizierung "Öffentliche Clientflows zulassen" auf Ja.
+
+      Anwendungs-ID: `ddf22ce8-a28e-4da9-bd5f-f723e77140ce`
+
+      Kein Geheimnis, sie gehört später ohnehin in `defaults.ts` und
+      damit in jede Installation. Unter "Zertifikate & Geheimnisse"
+      wurde bewusst nichts angelegt: der Gerätecode-Weg braucht keins,
+      und ein Programm auf fremden Rechnern kann keines hüten.
+
+      Azure warnt auf der Übersicht, dass Endnutzer mehrmandantenfähigen
+      Apps ohne geprüften Herausgeber nicht zustimmen können. Für uns
+      unerheblich, weil der Launcher ausschliesslich den `consumers`-
+      Endpunkt anspricht, also nur persönliche Konten. Sollte sich das
+      doch als Hürde zeigen, ist der Kontotyp "Nur persönliche Konten"
+      der Ausweg, eine Auswahl im selben Aufklappmenü.
 - [ ] **Freigabe bei Mojang beantragen**, mit der neuen Anwendungs-ID:
       https://aka.ms/mce-reviewappid
       Ohne diese Freigabe antwortet `api.minecraftservices.com` mit 403.
