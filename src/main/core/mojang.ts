@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MinecraftVersion } from '@shared/types'
@@ -527,7 +527,22 @@ export async function buildVirtualAssets(version: VersionJson, targetDir: string
     // `name` is an index key, so it is pinned into the virtual tree the same
     // way modpack overrides are.
     const dest = safeJoin(targetDir, name)
-    if (!existsSync(source) || existsSync(dest)) continue
+    if (!existsSync(source)) continue
+    // A copy interrupted mid `copyFile` (crash, kill, power loss) leaves a
+    // partial file behind, and plain `existsSync` cannot tell that apart from
+    // a finished one, so it would be skipped forever after. The index already
+    // carries the object's real size, so comparing that against what actually
+    // landed on disk catches a partial copy without hashing it, the same
+    // size-only fallback `isSatisfied` in net.ts uses when a full hash is not
+    // warranted.
+    if (existsSync(dest)) {
+      try {
+        if (statSync(dest).size === obj.size) continue
+      } catch {
+        // Stat failing on an existing path is itself a sign something is
+        // wrong with it; fall through and recopy rather than trust it.
+      }
+    }
     await mkdir(dirname(dest), { recursive: true })
     await copyFile(source, dest)
   }
