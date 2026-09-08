@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { createWriteStream, mkdirSync, readdirSync, statSync, unlinkSync, type WriteStream } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 type Level = 'debug' | 'info' | 'warn' | 'error'
@@ -8,19 +9,38 @@ const LEVEL_ORDER: Record<Level, number> = { debug: 10, info: 20, warn: 30, erro
 
 let stream: WriteStream | null = null
 let minLevel: Level = 'info'
+let currentDir = ''
+let currentStamp = ''
+let currentPart = 0
+
+/** A single very chatty session had nothing stopping today's file from growing without bound. */
+const MAX_FILE_BYTES = 20 * 1024 * 1024
+
+// Crash reports scrub names and paths before they ever leave the machine
+// (see reports.ts). The plain log file never leaves it on its own, but it is
+// the one thing a user is likely to open and paste into a support message,
+// and on Windows the ordinary paths this logger writes (Java installs, game
+// launches, shortcuts) all sit under the home directory and carry the
+// Windows username with them. A single fixed replacement of that one known
+// prefix is cheap enough for every log line and closes the common case,
+// without running the heavier, pattern-based scrub() built for reports.
+const HOME = homedir()
+
+function redactHome(text: string): string {
+  return HOME ? text.split(HOME).join('~') : text
+}
 
 function logDir(): string {
   return join(app.getPath('userData'), 'logs')
 }
 
-/** Opens today's log file and prunes anything older than a week. */
-export function initLogger(level: Level = 'info'): void {
-  minLevel = level
-  const dir = logDir()
-  mkdirSync(dir, { recursive: true })
+/** File name for the current day and part, `launcher-2026-09-08.log`, `-part2.log`, ... */
+function currentFileName(): string {
+  return currentPart === 0 ? `launcher-${currentStamp}.log` : `launcher-${currentStamp}-part${currentPart}.log`
+}
 
-  const stamp = new Date().toISOString().slice(0, 10)
-  stream = createWriteStream(join(dir, `launcher-${stamp}.log`), { flags: 'a' })
+function openStream(): void {
+  stream = createWriteStream(join(currentDir, currentFileName()), { flags: 'a' })
   // An unhandled 'error' on a stream is a hard throw in Node, so a full disk or
   // a revoked permission would take the whole launcher down over logging.
   stream.on('error', (err) => {
@@ -29,12 +49,22 @@ export function initLogger(level: Level = 'info'): void {
     console.error('Log-Datei konnte nicht geschrieben werden:', err)
     failed?.destroy()
   })
+}
+
+/** Opens today's log file and prunes anything older than a week. */
+export function initLogger(level: Level = 'info'): void {
+  minLevel = level
+  currentDir = logDir()
+  mkdirSync(currentDir, { recursive: true })
+  currentStamp = new Date().toISOString().slice(0, 10)
+  currentPart = 0
+  openStream()
 
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
   try {
-    for (const file of readdirSync(dir)) {
+    for (const file of readdirSync(currentDir)) {
       if (!file.startsWith('launcher-')) continue
-      const full = join(dir, file)
+      const full = join(currentDir, file)
       if (statSync(full).mtimeMs < cutoff) unlinkSync(full)
     }
   } catch {
@@ -57,12 +87,23 @@ function write(level: Level, scope: string, args: unknown[]): void {
     })
     .join(' ')
 
-  const line = `${new Date().toISOString()} [${level.toUpperCase().padEnd(5)}] [${scope}] ${text}`
+  const line = `${new Date().toISOString()} [${level.toUpperCase().padEnd(5)}] [${scope}] ${redactHome(text)}`
 
   if (!app.isPackaged) {
     const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
     sink(line)
   }
+
+  // A session left running for a long time, or one chatty enough to matter,
+  // used to have nothing capping today's file. Rolling to a new part is
+  // cheap and keeps a single file from growing without bound; the part
+  // files sit right next to each other and prune on the same weekly sweep.
+  if (currentDir && stream && stream.bytesWritten > MAX_FILE_BYTES) {
+    stream.end()
+    currentPart += 1
+    openStream()
+  }
+
   stream?.write(line + '\n')
 }
 
