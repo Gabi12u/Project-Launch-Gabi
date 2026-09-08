@@ -48,7 +48,7 @@ import {
   setRunning,
   startingCount
 } from './running'
-import { isRepairing } from './repair'
+import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { removeCustomStartScreen } from './startScreen'
 import { dropLogBuffer, getLogBuffer, pushLog } from './instanceLog'
@@ -152,6 +152,21 @@ function releaseNatives(versionId: string): void {
   const left = (nativesClaims.get(versionId) ?? 1) - 1
   if (left <= 0) nativesClaims.delete(versionId)
   else nativesClaims.set(versionId, left)
+}
+
+/**
+ * True as soon as some launch has claimed this version's natives folder, well
+ * before that launch is registered as running.
+ *
+ * `repair.ts` used to treat a version as unused whenever `activeVersionIds()`
+ * (filled only by `setRunning`) did not list it, which left exactly the same
+ * gap `prepareNatives` above already had to close for two launches of the
+ * same version. A repair running in that gap wiped the shared natives folder
+ * out from under a game that was still starting. The registry itself stays
+ * internal; this only answers yes or no.
+ */
+export function isNativesClaimed(versionId: string): boolean {
+  return (nativesClaims.get(versionId) ?? 0) > 0
 }
 
 async function prepareNatives(

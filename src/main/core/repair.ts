@@ -15,6 +15,9 @@ import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
+import { isRestoring } from './restoreLock'
+import { isNativesClaimed } from './launch'
+import { clearRepairing, isRepairing, markRepairing } from './repairLock'
 import { pushLog } from './instanceLog'
 
 const logger = log('repair')
@@ -47,22 +50,17 @@ export interface RepairReport {
  * Verifies and restores everything an instance needs: folder layout, the
  * version manifest, libraries, assets, the mod loader, managed content files
  * and the Java runtime.
- */
-/**
- * Instances with a repair in progress.
  *
- * The renderer's own "wird repariert" flag lives in component state and is
- * lost the moment the user navigates away, which re-enables the button while
- * the run is still going. Two runs then delete and re-download the same paths
- * and both write the instance record at the end, so whichever finishes last
- * silently discards the other's work.
+ * The "instance with a repair in progress" marker itself lives in
+ * `repairLock.ts`, not here: the renderer's own "wird repariert" flag lives in
+ * component state and is lost the moment the user navigates away, which
+ * re-enables the button while the run is still going. Two runs then delete
+ * and re-download the same paths and both write the instance record at the
+ * end, so whichever finishes last silently discards the other's work. Reusing
+ * `isRepairing` from `repairLock.ts` also lets `backups.ts` see the same
+ * marker without importing this file, see the comment there for why that
+ * matters.
  */
-const repairing = new Set<string>()
-
-/** True while a repair is running, so a launch can refuse to start on top. */
-export function isRepairing(instanceId: string): boolean {
-  return repairing.has(instanceId)
-}
 
 /**
  * True when a content entry still looks exactly as it did when the repair
@@ -126,7 +124,17 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
   }
 
-  if (repairing.has(instanceId)) {
+  // The other half of the guard `restoreBackupUnlocked` has against a repair:
+  // both rewrite the same subfolders (saves, config, possibly mods), and a
+  // restore moves worlds aside and unpacks an archive over them for as long as
+  // `isRestoring` is set.
+  if (isRestoring(instanceId)) {
+    throw new Error(
+      'Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.'
+    )
+  }
+
+  if (isRepairing(instanceId)) {
     throw new Error('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.')
   }
 
@@ -148,11 +156,11 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.')
   }
 
-  repairing.add(instanceId)
+  markRepairing(instanceId)
   try {
     return await runRepair(instanceId, instance)
   } finally {
-    repairing.delete(instanceId)
+    clearRepairing(instanceId)
   }
 }
 
@@ -266,7 +274,15 @@ async function runRepair(
     // Re-read at each point of use rather than captured once. The download
     // steps between here and the natives can run for minutes, and an instance
     // started in that window would otherwise still look idle.
-    const versionInUse = (): boolean => activeVersionIds().includes(versionId)
+    //
+    // `activeVersionIds()` alone is not enough: it only fills in once
+    // `launchInstance` reaches `setRunning`, but `launch.ts` claims a version's
+    // natives folder (`claimNatives`) far earlier, before it even extracts
+    // into it. An instance still in that window looks idle here and had its
+    // shared natives folder wiped out from under it by this very step.
+    // `isNativesClaimed` covers that gap the same way `nativesClaims` covers
+    // it for a second launch of the same version.
+    const versionInUse = (): boolean => activeVersionIds().includes(versionId) || isNativesClaimed(versionId)
 
     if (versionInUse()) {
       step(

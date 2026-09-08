@@ -10,6 +10,12 @@ import { extractAllSlowly, listEntries, zipFolder } from './archive'
 import { getInstance } from './instances'
 import { withRestoreLock } from './restoreLock'
 import { isRunning, isStarting } from './running'
+import { isContentBusy } from './contentLock'
+// Not imported from `repair.ts` directly: that file imports `content.ts`,
+// which imports this one for its own safety copy, so reading the marker
+// straight out of `repair.ts` here would close that loop. See the comment on
+// `repairLock.ts` itself.
+import { isRepairing } from './repairLock'
 
 const logger = log('backups')
 
@@ -290,6 +296,24 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   // was about to write into.
   if (isStarting(instanceId)) {
     throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
+  }
+
+  // A repair rewrites the same subfolders (saves, config, possibly mods) a
+  // restore is about to move aside and overwrite. Without this, the two could
+  // run at the same time and leave half written files behind depending on
+  // timing.
+  if (isRepairing(instanceId)) {
+    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+  }
+
+  // Content work (installing, updating, removing) writes into `mods` while
+  // holding `withContentLock`, which a restore can include in `includes`. The
+  // repair guard above does not cover this: repairing takes its own marker,
+  // but ordinary content operations only take the content lock.
+  if (isContentBusy(instanceId)) {
+    throw new Error(
+      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+    )
   }
 
   const entry = readIndex(instanceId).find((e) => e.id === backupId)
