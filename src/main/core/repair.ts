@@ -15,6 +15,7 @@ import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
+import { clearRepairing, isRepairing, markRepairing } from './repairLock'
 import { pushLog } from './instanceLog'
 
 const logger = log('repair')
@@ -48,22 +49,6 @@ export interface RepairReport {
  * version manifest, libraries, assets, the mod loader, managed content files
  * and the Java runtime.
  */
-/**
- * Instances with a repair in progress.
- *
- * The renderer's own "wird repariert" flag lives in component state and is
- * lost the moment the user navigates away, which re-enables the button while
- * the run is still going. Two runs then delete and re-download the same paths
- * and both write the instance record at the end, so whichever finishes last
- * silently discards the other's work.
- */
-const repairing = new Set<string>()
-
-/** True while a repair is running, so a launch can refuse to start on top. */
-export function isRepairing(instanceId: string): boolean {
-  return repairing.has(instanceId)
-}
-
 /**
  * True when a content entry still looks exactly as it did when the repair
  * started.
@@ -126,7 +111,7 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
   }
 
-  if (repairing.has(instanceId)) {
+  if (isRepairing(instanceId)) {
     throw new Error('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.')
   }
 
@@ -148,11 +133,11 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
     throw new Error('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.')
   }
 
-  repairing.add(instanceId)
+  markRepairing(instanceId)
   try {
     return await runRepair(instanceId, instance)
   } finally {
-    repairing.delete(instanceId)
+    clearRepairing(instanceId)
   }
 }
 

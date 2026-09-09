@@ -22,6 +22,7 @@ import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
 import { isContentBusy } from './contentLock'
 import { isRestoring } from './restoreLock'
+import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
 
 const logger = log('instances')
@@ -305,6 +306,27 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
   const instance = getInstance(id)
   if (instance.installed && !force) return
 
+  // Install rewrites exactly the files `repairInstance` does: libraries,
+  // natives and the mod loader for this instance's version. Without these
+  // guards a "reinstall" button could run right through a launch that was
+  // still downloading the same files, or race a repair rebuilding them at the
+  // same time, and whichever finished last would decide what survived.
+  if (isRunning(id)) {
+    throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie neu einrichtest.')
+  }
+  // A launch can still be downloading files or installing Java when
+  // `isRunning` is false, the same reasoning `repairInstance` already applies
+  // to this exact hazard.
+  if (isStarting(id)) {
+    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
+  }
+  // The other half of the guard `repairInstance` has against `installing`:
+  // a repair verifies and rewrites the very files an install downloads, and
+  // both persist the instance record when they finish.
+  if (isRepairing(id)) {
+    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+  }
+
   persist({ ...instance, installing: true })
 
   try {
@@ -572,6 +594,11 @@ async function folderSize(dir: string): Promise<number> {
 }
 
 export async function listWorlds(id: string): Promise<WorldInfo[]> {
+  // The instance has to exist first: `paths.saves` is a plain `join`, so an id
+  // carrying path segments would otherwise list a folder that was never this
+  // instance's own. `deleteRecording` in recording.ts guards its folder the
+  // same way and for the same reason.
+  getInstance(id)
   const dir = paths.saves(id)
   if (!existsSync(dir)) return []
 
@@ -597,6 +624,8 @@ export async function listWorlds(id: string): Promise<WorldInfo[]> {
 }
 
 export function listScreenshots(id: string, limit = 40): { file: string; takenAt: number }[] {
+  // Same existence check as `listWorlds`, for the same reason.
+  getInstance(id)
   const dir = paths.screenshots(id)
   if (!existsSync(dir)) return []
 

@@ -48,7 +48,7 @@ import {
   setRunning,
   startingCount
 } from './running'
-import { isRepairing } from './repair'
+import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { removeCustomStartScreen } from './startScreen'
 import { dropLogBuffer, getLogBuffer, pushLog } from './instanceLog'
