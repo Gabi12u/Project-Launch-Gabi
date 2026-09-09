@@ -129,6 +129,12 @@ const SORT_INDEX: Record<SearchQuery['sort'], string> = {
   newest: 'newest'
 }
 
+/** Undated entries sort last rather than jumping to the top as NaN would. */
+function time(value?: string): number {
+  const parsed = value ? Date.parse(value) : Number.NaN
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
 function buildFacets(query: SearchQuery): string {
   const facets: string[][] = [[`project_type:${PROJECT_TYPE[query.type]}`]]
 
@@ -201,11 +207,13 @@ export function mapVersion(version: ModrinthVersion): ProjectVersion | null {
     name: version.name,
     versionNumber: version.version_number,
     releaseType: version.version_type,
-    gameVersions: version.game_versions,
-    loaders: version.loaders,
+    // Defaulted like `mapHit` above: one missing field used to throw out of
+    // the whole search instead of costing just this one entry.
+    gameVersions: version.game_versions ?? [],
+    loaders: version.loaders ?? [],
     downloadUrl: file.url,
     fileName: file.filename,
-    sha1: file.hashes.sha1,
+    sha1: file.hashes?.sha1,
     size: file.size,
     releasedAt: version.date_published,
     changelog: version.changelog,
@@ -344,7 +352,7 @@ export async function getVersions(
   const mapped = versions
     .map(mapVersion)
     .filter((v): v is ProjectVersion => v !== null)
-    .sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
+    .sort((a, b) => time(b.releasedAt) - time(a.releasedAt))
 
   await resolveVersionOnlyDependencies(mapped)
   return mapped
