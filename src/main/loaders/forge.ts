@@ -2,10 +2,10 @@ import AdmZip from 'adm-zip'
 import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { LoaderVersion } from '@shared/types'
-import { paths, safeJoin } from '../paths'
+import { paths, safeJoin, sanitizeVersionId } from '../paths'
 import { writeJsonAtomic } from '../store'
 import { downloadAll, downloadFile, fetchJsonCached, fetchText, sha1File} from '../core/net'
 import { extractSubtree, readEntryJson, readEntryText } from '../core/archive'
@@ -20,7 +20,7 @@ import {
 import { resolveJava, requiredJavaMajor } from '../core/java'
 import { getSettings } from '../store'
 import { log } from '../logger'
-import type { Task } from '../tasks'
+import { TaskCancelledError, type Task } from '../tasks'
 
 const logger = log('forge')
 const execFileAsync = promisify(execFile)
@@ -278,7 +278,15 @@ export async function installForgeLike(
   await downloadFile({ url, path: installer, sha1: installerSha1, trustExisting: true })
 
   const profile = await readEntryJson<InstallProfile>(installer, 'install_profile.json')
-  if (!profile) throw new Error(`${label}-Installer enthält kein install_profile.json`)
+  if (!profile) {
+    // No sha1 was available for this download (mavenSha1 above returned
+    // undefined), so a jar left corrupt by an interrupted run was only ever
+    // caught here, downstream, and `trustExisting` would otherwise keep it
+    // marked "done" forever. Removing it means the next attempt downloads a
+    // fresh copy instead of repeating the same broken read.
+    rmSync(installer, { force: true })
+    throw new Error(`${label}-Installer enthält kein install_profile.json`)
+  }
 
   if (!isModern(profile)) {
     return installLegacyForge(profile, installer, mcVersion, task)
@@ -287,9 +295,17 @@ export async function installForgeLike(
   // 1. Version JSON --------------------------------------------------
   const jsonEntry = (profile.json ?? '/version.json').replace(/^\//, '')
   const versionJson = await readEntryJson<VersionJson>(installer, jsonEntry)
-  if (!versionJson) throw new Error(`${label}-Installer enthält kein ${jsonEntry}`)
+  if (!versionJson) {
+    // Same reasoning as the install_profile.json check above: this only fails
+    // when the jar itself cannot be read, so the cached copy is discarded
+    // instead of blocking every future install attempt with the same file.
+    rmSync(installer, { force: true })
+    throw new Error(`${label}-Installer enthält kein ${jsonEntry}`)
+  }
 
-  const versionId = versionJson.id ?? profile.version
+  // The id comes straight out of the installer's own JSON, so it is not
+  // trusted as a path/file name component before sanitizing it.
+  const versionId = sanitizeVersionId(versionJson.id ?? profile.version)
   versionJson.id = versionId
   // Deliberately not written yet. Its mere presence is what repair.ts takes
   // as proof that the loader is installed, so writing it here meant an
@@ -359,15 +375,19 @@ export async function installForgeLike(
         data[key] = raw.slice(1, -1)
       } else if (raw.startsWith('/')) {
         // A path inside the installer jar: extract it and point at the copy.
+        // `entry` comes out of the installer's own install_profile.json, so it
+        // is resolved through safeJoin the same way libraryPath() resolves the
+        // `[...]` branch above, instead of a raw join that ".." could escape.
         const entry = raw.slice(1)
-        const target = join(workDir, ...entry.split('/'))
-        const extracted = extractSubtree(installer, entry.split('/').slice(0, -1).join('/'), join(workDir, ...entry.split('/').slice(0, -1)))
+        const target = safeJoin(workDir, entry)
+        const targetParent = dirname(target)
+        const extracted = extractSubtree(installer, entry.split('/').slice(0, -1).join('/'), targetParent)
         if (extracted === 0) {
           // Single file rather than a subtree.
           const zip = new AdmZip(installer)
           const zipEntry = zip.getEntry(entry)
           if (zipEntry) {
-            mkdirSync(join(target, '..'), { recursive: true })
+            mkdirSync(targetParent, { recursive: true })
             writeFileSync(target, zipEntry.getData())
           }
         }
@@ -419,10 +439,22 @@ export async function installForgeLike(
           const { stdout, stderr } = await execFileAsync(
             java.path,
             ['-cp', classpath.join(process.platform === 'win32' ? ';' : ':'), mainClass, ...args],
-            { cwd: paths.root(), timeout: 10 * 60 * 1000, maxBuffer: 32 * 1024 * 1024, windowsHide: true }
+            {
+              cwd: paths.root(),
+              timeout: 10 * 60 * 1000,
+              maxBuffer: 32 * 1024 * 1024,
+              windowsHide: true,
+              // Lets a cancel kill the processor too, the same way downloadAll
+              // above is already wired to this task's signal.
+              signal: task?.signal
+            }
           )
           logger.debug(`Prozessor ${mainClass} ok`, stdout.slice(-400), stderr.slice(-400))
         } catch (err) {
+          // A killed process surfaces here as a plain execFile failure
+          // (err.killed / err.signal), not as an AbortError, so the task's own
+          // flag is what tells a cancel apart from a genuine processor crash.
+          if (task?.cancelled) throw new TaskCancelledError()
           const detail = err instanceof Error ? err.message : String(err)
           throw new Error(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`)
         }
@@ -480,7 +512,9 @@ async function installLegacyForge(
   task?.update('Forge (Legacy) wird installiert…', null)
 
   const versionJson = profile.versionInfo
-  const versionId = versionJson.id ?? `${mcVersion}-forge-${profile.install.version}`
+  // Same reasoning as the modern path above: this id is not trusted before it
+  // becomes part of a file path.
+  const versionId = sanitizeVersionId(versionJson.id ?? `${mcVersion}-forge-${profile.install.version}`)
   versionJson.id = versionId
   if (!versionJson.inheritsFrom) versionJson.inheritsFrom = mcVersion
 

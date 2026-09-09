@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import type { LoaderVersion } from '@shared/types'
-import { paths } from '../paths'
+import { paths, sanitizeVersionId } from '../paths'
 import { writeJsonAtomic } from '../store'
 import { fetchJson, fetchJsonCached } from '../core/net'
 import type { VersionJson } from '../core/mojang'
@@ -88,7 +88,9 @@ export async function installFabricLike(
     `${encodeURIComponent(loaderVersion)}/profile/json`
 
   const profile = await fetchJson<VersionJson>(url)
-  const versionId = profile.id ?? `${loader}-loader-${loaderVersion}-${mcVersion}`
+  // The id comes straight from the meta server's response, so it is not
+  // trusted as a path/file name component before sanitizing it.
+  const versionId = sanitizeVersionId(profile.id ?? `${loader}-loader-${loaderVersion}-${mcVersion}`)
   profile.id = versionId
 
   writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), profile)
