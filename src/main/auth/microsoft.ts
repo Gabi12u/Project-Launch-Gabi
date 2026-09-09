@@ -207,6 +207,10 @@ export async function loginWithMicrosoft(): Promise<Account> {
         device.message ??
         `Öffne ${device.verification_uri} und gib den Code ${device.user_code} ein.`
     }
+    // Same guard as everywhere else in this function: a login retired by a
+    // newer attempt (see `activeLogins` above) must not push its device code
+    // to the UI, overwriting the code the user is actually looking at.
+    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
     emit(EVENTS.deviceCode, prompt)
     logger.info(`Device-Code ${device.user_code} ausgegeben, gültig ${device.expires_in}s`)
 
