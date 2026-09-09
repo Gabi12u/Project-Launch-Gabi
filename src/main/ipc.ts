@@ -471,15 +471,30 @@ export function registerIpc(): void {
   // exposed onAccountsChanged for exactly this — but nothing ever emitted it,
   // so only the window that made the change saw the new list and every other
   // view kept showing a stale one.
+  //
+  // `removeAccount`/`setActiveAccount` already return the full, current
+  // `Account[]`, so this is exactly what the event contract promises.
   const announce = <T,>(accounts: T): T => {
     emit(EVENTS.accountsChanged, accounts)
     return accounts
   }
 
+  // `loginWithMicrosoft`/`createOfflineAccount` return a single new `Account`,
+  // not the list. The renderer's onAccountsChanged listener always expects
+  // `Account[]` and calls array methods on it right away, so sending the lone
+  // account through `announce` crashed every window as soon as a login
+  // finished. This keeps the handler's own return value (the single account,
+  // which the login dialog needs to know which one just signed in) separate
+  // from the broadcast, which fetches and sends the complete list instead.
+  const announceOne = <T,>(account: T): T => {
+    emit(EVENTS.accountsChanged, listAccounts())
+    return account
+  }
+
   handle(IPC.accountList, () => listAccounts())
-  handle(IPC.accountLoginMicrosoft, async () => announce(await loginWithMicrosoft()))
+  handle(IPC.accountLoginMicrosoft, async () => announceOne(await loginWithMicrosoft()))
   handle(IPC.accountLoginOffline, async (username: string) =>
-    announce(await createOfflineAccount(username))
+    announceOne(await createOfflineAccount(username))
   )
   handle(IPC.accountRemove, async (id: string) => announce(await removeAccount(id)))
   handle(IPC.accountSetActive, async (id: string) => announce(await setActiveAccount(id)))

@@ -140,16 +140,24 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
     next.dataDirectory = current.dataDirectory
   }
 
-  settings = next
+  // Written before the module variable is updated: writeJsonAtomic is
+  // synchronous and can throw (a locked or read-only settings file), and a
+  // caller that catches that error expects the running settings to be
+  // whatever they were before this call. Assigning first would have shown
+  // the new values everywhere in the app while the file on disk still held
+  // the old ones.
   writeJsonAtomic(settingsFile(), next)
+  settings = next
   return next
 }
 
 export function resetSettings(): LauncherSettings {
   const dataDirectory = getSettings().dataDirectory
-  settings = { ...DEFAULT_LAUNCHER_SETTINGS, dataDirectory }
-  writeJsonAtomic(settingsFile(), settings)
-  return settings
+  const next = { ...DEFAULT_LAUNCHER_SETTINGS, dataDirectory }
+  // Same ordering as saveSettings, and for the same reason.
+  writeJsonAtomic(settingsFile(), next)
+  settings = next
+  return next
 }
 
 /* ------------------------------------------------------------------ *
