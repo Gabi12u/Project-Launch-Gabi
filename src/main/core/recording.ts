@@ -601,6 +601,14 @@ export interface StoredRecording {
 }
 
 export async function listRecordings(instanceId: string, limit = 40): Promise<StoredRecording[]> {
+  // The instance has to exist, the same check `deleteRecording` below makes
+  // and for the same reason: `paths.recordings` is a plain `join`, so an id
+  // carrying path segments would otherwise list files from outside this
+  // instance's own folder.
+  if (!tryGetInstance(instanceId)) {
+    throw new Error('Diese Instanz existiert nicht.')
+  }
+
   const dir = paths.recordings(instanceId)
   if (!existsSync(dir)) return []
 

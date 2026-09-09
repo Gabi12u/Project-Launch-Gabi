@@ -502,6 +502,19 @@ export async function deleteBackup(instanceId: string, backupId: string): Promis
   })
 }
 
+/**
+ * Folder holding one instance's backups, for the "open folder" button.
+ *
+ * `paths.instanceBackups` is a plain `join`, with no check that `instanceId`
+ * names a real instance. `getInstance` throws on an unknown id, which is
+ * enough here: a real instance id comes out of `slugify()` in instances.ts and
+ * can never contain a slash or a dot, so nothing crafted to escape the backups
+ * folder ever matches a cached instance. Without this, an id with ".."
+ * segments could resolve to a different launcher-owned folder entirely, and
+ * `shell.openPath` behind this same button runs a `.exe` on Windows instead of
+ * merely showing it.
+ */
 export function backupFolder(instanceId: string): string {
+  getInstance(instanceId)
   return paths.instanceBackups(instanceId)
 }

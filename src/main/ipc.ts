@@ -312,6 +312,14 @@ export function registerIpc(): void {
   })
 
   handle(IPC.instanceOpenFolder, (id: string, sub?: string) => {
+    // The id must belong to a real instance before it is joined into a path at
+    // all. `paths.gameDir`/`paths.instance` are plain `join`s, and an id with
+    // ".." segments can cancel out the "instances" folder and land inside a
+    // different launcher-owned folder (e.g. a managed Java install under
+    // `paths.java()`), which the root check in `openLauncherPath` alone would
+    // not catch. `getInstance` throws on an unknown id, and a real instance id
+    // out of `slugify()` in instances.ts can never contain a slash or a dot.
+    getInstance(id)
     // Both arguments come from the renderer, so `sub` goes through safeJoin and
     // the result is checked against the launcher root by openLauncherPath.
     const gameDir = paths.gameDir(id)

@@ -59,10 +59,10 @@ export interface RepairReport {
  * end, so whichever finishes last silently discards the other's work. Reusing
  * `isRepairing` from `repairLock.ts` also lets `launch.ts`, `instances.ts` and
  * `backups.ts` all see the same marker without importing this file, so a
- * launch, a delete, a duplicate and a restore can each refuse to start on top
- * of a repair without any of them having to import `repair.ts` itself.
+ * launch, an install, a delete, a duplicate and a restore can each refuse to
+ * start on top of a repair without any of them having to import `repair.ts`
+ * itself.
  */
-
 /**
  * True when a content entry still looks exactly as it did when the repair
  * started.

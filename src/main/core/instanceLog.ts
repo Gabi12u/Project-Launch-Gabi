@@ -8,10 +8,10 @@ import { emit } from '../events'
  *
  * `repair.ts` needs to append to the same stream a running game writes to, so
  * a repair shows up as live lines in the exact viewer the "Logs" tab already
- * has, instead of a separate one. `launch.ts` already imports `isRepairing`
- * from `repair.ts`, so `repair.ts` importing this back from `launch.ts`
- * would have closed a cycle between the two; this module has no import from
- * either, so both can depend on it without one.
+ * has, instead of a separate one. `repair.ts` importing this straight from
+ * `launch.ts` would have created a cycle between the two, which already share
+ * several other markers this way (see `repairLock.ts`); this module has no
+ * import from either, so both can depend on it without one.
  */
 
 /** Ring buffer of recent output per instance so the UI can show a log tab. */
