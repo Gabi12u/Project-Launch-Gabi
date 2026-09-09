@@ -92,6 +92,25 @@ export function safeJoin(root: string, relative: string): string {
   return target
 }
 
+/**
+ * Strips a loader version id down to a safe set of characters before it is
+ * used as both a path segment and a file name (`<id>.json`).
+ *
+ * The id comes from external metadata (a Fabric/Quilt meta server, a Forge
+ * installer's own profile) and was previously joined straight into
+ * `paths.version()`, which does no checking of its own. Everything outside
+ * letters, digits, dot, hyphen and underscore is dropped rather than escaped,
+ * so a crafted id cannot smuggle in a path separator. Dots stay allowed since
+ * real ids rely on them ("1.20.1", "fabric-loader-0.15.7-1.20.1"), but a
+ * result of just "." or ".." is rejected too, since either would resolve to
+ * the versions folder itself or its parent once joined.
+ */
+export function sanitizeVersionId(id: string): string {
+  const cleaned = id.replace(/[^A-Za-z0-9._-]/g, '')
+  if (!cleaned || cleaned === '.' || cleaned === '..') return 'version'
+  return cleaned
+}
+
 /** Content folder for a content type inside an instance. */
 export function contentDir(instanceId: string, type: string): string {
   switch (type) {
