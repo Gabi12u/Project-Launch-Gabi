@@ -1478,92 +1478,129 @@ footer a:hover { color: var(--ink); }
       "id": "konten-falscher-typ-nach-login",
       "title": "Nach einer Anmeldung konnte die Kontenliste abstürzen",
       "detail": "Nach einer erfolgreichen Microsoft-Anmeldung oder dem Anlegen eines Offline-Profils schickte der Launcher intern das neue Konto allein statt der vollständigen Kontenliste an die Oberfläche, obwohl genau diese Liste als Ergebnis erwartet wird. Seitenleiste, Kopfzeile und der Einrichtungsassistent lesen aus dieser Liste sofort Dinge wie \"das aktive Konto finden\" oder \"wie viele Konten gibt es\", was bei einem einzelnen Konto statt einer Liste zum Absturz der gesamten Oberfläche führen kann. Betroffen wäre damit ausgerechnet der Moment, den jede neue Person beim ersten Öffnen des Launchers durchläuft.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "forge-installer-pfad-traversal",
       "title": "Ein manipulierter Forge- oder NeoForge-Installer konnte Dateien an beliebiger Stelle ablegen",
       "detail": "Beim Einrichten von Forge oder NeoForge liest der Launcher eine Liste von Datenpfaden aus dem Installer selbst und entpackt sie in einen eigenen Arbeitsordner. Ein Pfad, der mit einem Schrägstrich beginnt, wurde dabei ungeprüft übernommen, während der Launcher an vergleichbaren Stellen im selben Code bewusst eine Schutzfunktion gegen genau solche Pfade einsetzt. Ein Installer mit einem entsprechend präparierten Pfad hätte eine Datei außerhalb des vorgesehenen Ordners ablegen können, zum Beispiel im Autostart-Ordner von Windows. Der Installer selbst kommt von der offiziellen Forge- beziehungsweise NeoForge-Adresse, das Risiko besteht also nur, wenn diese Quelle selbst kompromittiert wäre.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "loader-versionid-pfad-traversal",
       "title": "Eine unbereinigte Kennung aus dem Netz konnte beim Einrichten eines Loaders einen Pfad verlassen",
       "detail": "Fabric, Quilt, Forge und NeoForge liefern beim Einrichten eine Versionskennung, aus der der Launcher sowohl einen Ordnernamen als auch einen Dateinamen bildet, ohne diese Kennung vorher zu bereinigen. Käme diese Kennung von einem kompromittierten Metadatenserver oder einem manipulierten Installer mit eingebauten Schrägstrichen, hätte die dabei erzeugte Datei außerhalb des vorgesehenen Ordners für Versionsdaten landen können.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "ordner-oeffnen-ohne-instanzpruefung",
       "title": "Ordner öffnen prüfte die übergebene Instanz nicht und konnte dadurch ein Programm starten",
       "detail": "Die Befehle zum Öffnen des Sicherungs- oder Instanzordners bauten den Zielpfad direkt aus der übergebenen Kennung, ohne zu prüfen, dass diese Kennung wirklich zu einer bestehenden Instanz gehört. Unter Windows öffnet das verwendete Systemwerkzeug eine ausführbare Datei nicht nur an, es startet sie. Mit einer entsprechend aufgebauten Kennung ließe sich dadurch eine Datei starten, die irgendwo im Datenverzeichnis liegt, etwa eine der vom Launcher selbst verwalteten Java-Versionen. Genau diese Prüfung gibt es an einer benachbarten Stelle im selben Code bereits, dort wurde sie schon einmal bewusst ergänzt, hier fehlte sie noch.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "instanzlisten-ohne-existenzpruefung",
       "title": "Welten, Screenshots und Aufnahmen wurden ohne Prüfung der Instanz aufgelistet",
       "detail": "Anders als fast jeder andere Befehl rund um eine Instanz prüften die Befehle zum Auflisten von Welten, Bildschirmfotos und Aufnahmen nicht zuerst, ob die übergebene Kennung überhaupt zu einer bestehenden Instanz gehört. Bei einer gelöschten Instanz, deren Ordner aus irgendeinem Grund noch auf der Platte liegt, könnten dadurch Inhalte gelesen und angezeigt werden, die eigentlich nicht mehr zugänglich sein sollten.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "installation-ohne-sperre",
       "title": "Eine Instanz neu einrichten prüfte keine der üblichen Sperren",
       "detail": "Reparatur und Wiederherstellung prüfen vor Beginn ausführlich, ob die Instanz gerade läuft, startet oder anderweitig beschäftigt ist, mit der ausdrücklichen Begründung, dass sonst gemeinsam genutzte Dateien beschädigt werden könnten. Die vergleichbare Funktion zum erneuten Einrichten einer Instanz hat keine dieser Prüfungen, obwohl sie dieselben Dateien anfasst. Wird sie ausgelöst, während dieselbe Instanz bereits läuft, könnten Bibliotheken oder native Dateien unter einem laufenden Spiel weggeschrieben werden.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "curseforge-seitengroesse-falsch",
       "title": "Die Versionsabfrage bei CurseForge sah oft nur die letzten fünfzig Dateien",
       "detail": "Beim Abfragen aller Dateien eines Projekts bei CurseForge verlangte der Launcher fälschlich zweihundert Einträge pro Seite. CurseForge liefert an dieser Stelle aber nie mehr als fünfzig, unabhängig davon, wie viele angefragt werden. Dadurch brach die Abfrage immer nach der ersten Seite ab, bei einem Projekt mit vielen Dateien sah der Launcher nur die fünfzig zuletzt hochgeladenen, über alle Minecraft-Versionen und Loader hinweg gemischt. Fehlte die passende Datei für die gewünschte Version darunter, installierte der Launcher entweder eine falsche oder meldete fälschlich, es gebe keine passende Version. Ein Kommentar im selben Code beschreibt genau dieses Problem bereits als behoben, nur eben mit der falschen Zahl.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "einstellungen-vor-speichern-uebernommen",
       "title": "Eine geänderte Einstellung galt schon, bevor sie wirklich gespeichert war",
       "detail": "Beim Speichern einer Einstellung übernahm der Launcher den neuen Stand sofort im Arbeitsspeicher, bevor das Schreiben auf die Festplatte bestätigt war. Schlägt dieses Schreiben fehl, zum Beispiel weil Windows die Datei kurzzeitig durch einen Virenscanner oder die Suchindizierung sperrt, denkt der Launcher für den Rest der Sitzung, die Änderung sei aktiv, obwohl auf der Platte weiterhin der alte Stand liegt. Nach einem Neustart ist die Änderung dann kommentarlos wieder weg. Besonders unangenehm beim Datenverzeichnis: Ein fehlgeschlagenes Schreiben ließ den Launcher sofort so tun, als läge alles am neuen Ort, ohne dass die dafür nötigen Vorbereitungen tatsächlich stattgefunden hätten.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "forge-abbruch-stoppt-prozess-nicht",
       "title": "Abbrechen einer Forge-Installation stoppte den laufenden Java-Prozess nicht",
       "detail": "Während der letzten Schritte einer Forge- oder NeoForge-Installation laufen kurze Java-Prozesse, die Dateien zusammenbauen. Anders als bei Downloads im selben Vorgang wurde ein Abbruch-Wunsch nicht an diese Prozesse weitergereicht. Bricht jemand die Installation währenddessen ab, meldet die Oberfläche den Vorgang zwar als beendet, der Java-Prozess läuft aber im Hintergrund weiter und schreibt dabei in Ordner, die von mehreren Instanzen gemeinsam genutzt werden.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "beschaedigter-installer-blockiert-dauerhaft",
       "title": "Ein beschädigt heruntergeladener Forge-Installer blockierte jeden weiteren Versuch",
       "detail": "Kann die Prüfsumme eines Forge- oder NeoForge-Installers nicht abgerufen werden, lässt der Launcher die Installation bewusst trotzdem weiterlaufen, ungeprüft. War die heruntergeladene Datei dabei tatsächlich beschädigt, aber nicht leer, etwa weil statt der echten Datei eine Fehlerseite passender Größe ausgeliefert wurde, blieb diese beschädigte Datei im Zwischenspeicher liegen und wurde von da an bei jedem weiteren Versuch als bereits vorhanden angenommen. Jeder erneute Versuch schlug dadurch auf dieselbe Weise fehl, bis jemand den Zwischenspeicher von Hand leerte.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "log-dateien-mit-benutzername",
       "title": "Protokolldateien enthalten den Windows-Benutzernamen, anders als Fehlerberichte",
       "detail": "Fehlerberichte entfernen bewusst und ausdrücklich Namen, Pfade und andere persönliche Angaben, bevor sie irgendwohin geschickt werden. Die normale Protokolldatei, die beim Spielstart, bei einer Java-Installation oder beim Anlegen einer Verknüpfung mitschreibt, tut das nicht: Sie enthält volle Dateipfade, und die enthalten unter Windows den Benutzernamen. Wer sein Protokoll für eine Fehlersuche weitergibt, gibt damit unbeabsichtigt auch seinen Windows-Namen preis. Zusätzlich fehlt eine Größenbegrenzung, eine sehr lange Sitzung kann die Datei unbegrenzt wachsen lassen.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "geraetecode-anzeige-vertauscht",
       "title": "Ein angezeigter Anmeldecode konnte zu einer schon abgebrochenen Anmeldung gehören",
       "detail": "Bricht jemand eine gerade laufende Microsoft-Anmeldung ab und startet sofort eine neue, etwa für ein zweites Konto, kann in seltenen Fällen die Antwort der ersten, bereits abgebrochenen Anmeldung noch eintreffen und den bereits angezeigten neuen Anmeldecode überschreiben. Die eigentliche Anmeldung bleibt davon unberührt und läuft weiterhin für das richtige Konto, es kommt zu keiner Vermischung von Konten oder Tokens. Es kann aber kurzzeitig ein Code angezeigt werden, der zu nichts mehr gehört und im Browser eingegeben ins Leere liefe.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "plattform-antwort-unzureichend-abgesichert",
       "title": "Unerwartete Antworten von Modrinth oder CurseForge waren nicht überall abgesichert",
       "detail": "An mehreren Stellen beim Abfragen von Modrinth und CurseForge verließ sich der Launcher darauf, dass bestimmte Felder in der Antwort immer vorhanden und richtig sortierbar sind, obwohl an vergleichbaren Stellen im selben Code bereits bekannt ist, dass das nicht garantiert ist, insbesondere bei älteren Einträgen. Fehlt ein solches Feld, kann die gesamte Versionsliste eines Projekts abbrechen, statt nur den einen betroffenen Eintrag zu verwerfen. Zusätzlich sortierte ein fehlendes Veröffentlichungsdatum die betroffene Version an eine unvorhersehbare Stelle statt zuverlässig ans Ende, und eine Zuordnungstabelle bei CurseForge ordnete eine Abhängigkeitsart falsch zu, was aktuell aber noch keine sichtbare Auswirkung hat.",
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "oberflaeche-ohne-auffangnetz",
+      "title": "Die Oberfläche hat kein Auffangnetz gegen unerwartete Daten aus dem Main-Prozess",
+      "detail": "Der Konten-Fehler weiter oben in dieser Liste hatte eine tiefere Ursache, die für sich genommen bestehen bleibt: Die Oberfläche prüft an keiner Stelle, ob eine über IPC ankommende Antwort wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gibt im gesamten Programm zudem keine Auffangebene für unerwartete Fehler beim Zeichnen der Oberfläche. Wirft irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutrifft, wird der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das ist die Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte, und sie bleibt bestehen für jeden ähnlichen Fall in der Zukunft.",
       "state": "investigating",
-      "since": "2026-09-08"
+      "since": "2026-09-10"
+    },
+    {
+      "id": "update-erneut-suchen-verdeckt-fertiges-update",
+      "title": "Erneut nach Updates suchen konnte ein bereits fertiges Update verdecken",
+      "detail": "Ist ein Update bereits heruntergeladen und wartet auf den Neustart, bleibt der Knopf \"Jetzt suchen\" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hat eine ausdrückliche Absicherung dagegen, ein bereits fertiges Update nicht zurück auf \"wird geprüft\" zu stellen, die manuelle Suche über diesen Knopf hat dieselbe Absicherung nicht. Eine erneute Suche in diesem Moment kann den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden lassen, obwohl das heruntergeladene Update unverändert bereitliegt.",
+      "state": "investigating",
+      "since": "2026-09-10"
+    },
+    {
+      "id": "lokaler-bau-mit-absturzprotokollen",
+      "title": "Ein von Hand erstellter Installer kann Absturzprotokolle mit dem eigenen Benutzernamen enthalten",
+      "detail": "Wird der Launcher nicht über die offizielle Veröffentlichung, sondern von Hand auf dem eigenen Rechner gebaut, während im selben Ordner zufällig Absturzprotokolle liegen (zum Beispiel von der Java-Werkzeugkette des mod-Ordners), schließt die Installer-Erstellung diese Dateien nicht zuverlässig aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. Die offizielle, veröffentlichte Version ist davon nicht betroffen: Sie entsteht auf einem sauberen Rechner über die automatische Veröffentlichung und kann solche Dateien gar nicht erst enthalten.",
+      "state": "investigating",
+      "since": "2026-09-10",
+      "platforms": [
+        "Windows"
+      ]
     }
   ];
   var ISSUE_LABEL = {
@@ -1806,92 +1843,129 @@ footer a:hover { color: var(--ink); }
       "id": "konten-falscher-typ-nach-login",
       "title": "The account list could crash after signing in",
       "detail": "After a successful Microsoft sign-in or creating an offline profile, the launcher internally sent just the new account instead of the full account list to the interface, even though that full list is exactly what is expected as the result. The sidebar, the header and the setup wizard all read from that list immediately for things like \"find the active account\" or \"how many accounts are there,\" which can crash the entire interface when a single account arrives instead of a list. That would hit precisely the moment every new person goes through the first time they open the launcher.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "forge-installer-pfad-traversal",
       "title": "A tampered Forge or NeoForge installer could place files anywhere on disk",
       "detail": "When setting up Forge or NeoForge, the launcher reads a list of data paths out of the installer itself and unpacks them into its own working folder. A path starting with a forward slash was taken over unchecked, while the launcher deliberately applies a safeguard against exactly this kind of path at comparable spots in the same code. An installer with a suitably crafted path could have placed a file outside the intended folder, for instance in Windows’ startup folder. The installer itself comes from the official Forge or NeoForge address, so the risk only exists if that source itself were compromised.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "loader-versionid-pfad-traversal",
       "title": "An unsanitised id from the network could escape a folder while setting up a loader",
       "detail": "Fabric, Quilt, Forge and NeoForge all return a version id while setting up, which the launcher turns into both a folder name and a file name without sanitising that id first. If that id came from a compromised metadata server or a tampered installer with slashes built in, the file it produced could have landed outside the folder meant for version data.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "ordner-oeffnen-ohne-instanzpruefung",
       "title": "Opening a folder did not check the instance it was given, and could launch a program instead",
       "detail": "The commands for opening a backup or instance folder built the target path directly from the id they were given, without checking that the id actually belonged to an existing instance. On Windows, the system tool used for this does not just reveal an executable file, it runs it. With a suitably built id, this could have started a file living anywhere in the data directory, such as one of the Java versions the launcher manages itself. This exact check already exists at a neighbouring spot in the same code, deliberately added there before; it was simply still missing here.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "instanzlisten-ohne-existenzpruefung",
       "title": "Worlds, screenshots and recordings were listed without checking the instance",
       "detail": "Unlike almost every other instance-related command, the commands for listing worlds, screenshots and recordings did not first check whether the given id actually belonged to an existing instance. For a deleted instance whose folder happens to still sit on disk for some reason, this could read and display content that should no longer be reachable.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "installation-ohne-sperre",
       "title": "Setting up an instance again checked none of the usual locks",
       "detail": "Repair and restore both check extensively before starting whether the instance is currently running, starting, or otherwise busy, with the explicit reasoning that shared files could otherwise be damaged. The comparable function for setting up an instance again has none of these checks, even though it touches the same files. Triggered while the same instance is already running, it could write libraries or native files out from under a running game.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "curseforge-seitengroesse-falsch",
       "title": "Querying versions on CurseForge often only saw the last fifty files",
       "detail": "When querying every file of a project on CurseForge, the launcher incorrectly asked for two hundred entries per page. CurseForge never returns more than fifty at this endpoint, no matter how many are requested. This always broke the query off after the first page; for a project with many files, the launcher only ever saw the fifty most recently uploaded ones, mixed across every Minecraft version and loader. If the right file for the wanted version was not among those fifty, the launcher either installed the wrong one or wrongly reported that no matching version existed. A comment in the same code already describes this exact problem as fixed, just with the wrong number.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "einstellungen-vor-speichern-uebernommen",
       "title": "A changed setting took effect before it was actually saved",
       "detail": "When saving a setting, the launcher adopted the new state in memory immediately, before the write to disk was confirmed. If that write failed, for instance because Windows briefly locked the file through a virus scanner or search indexing, the launcher believed for the rest of the session that the change was active, even though the old state still sat on disk. After a restart the change was then quietly gone again. Particularly awkward for the data directory: a failed write made the launcher immediately act as if everything lived at the new location, without the preparation that would actually require having happened.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "forge-abbruch-stoppt-prozess-nicht",
       "title": "Cancelling a Forge install did not stop the running Java process",
       "detail": "During the last steps of a Forge or NeoForge install, short Java processes run that assemble files. Unlike downloads within the same operation, a cancellation was not passed on to these processes. Cancelling the install while one of them runs has the interface report the operation as finished, while the Java process keeps running in the background and keeps writing into folders shared by every instance.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "beschaedigter-installer-blockiert-dauerhaft",
       "title": "A corrupted Forge installer download blocked every further attempt",
       "detail": "If the checksum of a Forge or NeoForge installer cannot be fetched, the launcher deliberately lets the install continue anyway, unchecked. If the downloaded file was actually corrupted but not empty, for instance because an error page of a matching size was served instead of the real file, that corrupted file stayed in the cache and was taken as already present on every further attempt from then on. Every retry then failed the same way, until someone cleared the cache by hand.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "log-dateien-mit-benutzername",
       "title": "Log files carry the Windows username, unlike crash reports",
       "detail": "Crash reports deliberately and explicitly remove names, paths and other personal details before going anywhere. The ordinary log file, which writes while the game starts, while Java installs or while a shortcut gets created, does not: it carries full file paths, and on Windows those paths carry the username. Anyone sharing their log to get help unintentionally hands over their Windows name along with it. On top of that there is no size limit, so a very long session can let the file grow without bound.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "geraetecode-anzeige-vertauscht",
       "title": "A displayed sign-in code could belong to an already cancelled attempt",
       "detail": "Cancelling a running Microsoft sign-in and immediately starting a new one, for instance for a second account, can in rare cases have the reply from the first, already cancelled attempt arrive late and overwrite the new code already on screen. The actual sign-in itself is unaffected and keeps running for the right account, no accounts or tokens ever get mixed up. But a code can briefly be shown that belongs to nothing anymore, and entering it in the browser would lead nowhere.",
-      "state": "investigating",
-      "since": "2026-09-08"
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "plattform-antwort-unzureichend-abgesichert",
       "title": "Unexpected responses from Modrinth or CurseForge were not guarded everywhere",
       "detail": "In several places when querying Modrinth and CurseForge, the launcher relied on certain fields in the response always being present and sortable, even though comparable spots in the same code already account for that not being guaranteed, especially for older entries. A missing field like that can break an entire project’s version list instead of just discarding the one affected entry. On top of that, a missing release date sorted the affected version to an unpredictable spot instead of reliably to the end, and a mapping table on the CurseForge side misclassified one kind of dependency, which currently has no visible effect yet.",
+      "state": "fixed",
+      "since": "2026-09-08",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "oberflaeche-ohne-auffangnetz",
+      "title": "The interface has no safety net against unexpected data from the main process",
+      "detail": "The account bug listed above had a deeper cause that remains on its own: the interface never checks whether a reply arriving over IPC actually has the expected shape before adopting it into the shared state. There is also no catch-all layer anywhere in the program for unexpected errors while drawing the interface. If any spot throws because an assumption about the shape of some data does not hold, the entire screen goes blank, with no way to recover short of a restart. That is the gap through which the now fixed account bug could turn into a crash in the first place, and it remains open for any similar case in the future.",
       "state": "investigating",
-      "since": "2026-09-08"
+      "since": "2026-09-10"
+    },
+    {
+      "id": "update-erneut-suchen-verdeckt-fertiges-update",
+      "title": "Checking for updates again could hide an update that was already ready",
+      "detail": "With an update already downloaded and waiting for a restart, the \"Check now\" button in Settings stays clickable regardless. The automatic background check has an explicit safeguard against putting an already finished update back to \"checking,\" the manual search through this button does not have the same safeguard. Searching again at that moment can make the notice about the waiting update and the restart button disappear, even though the downloaded update still sits there unchanged.",
+      "state": "investigating",
+      "since": "2026-09-10"
+    },
+    {
+      "id": "lokaler-bau-mit-absturzprotokollen",
+      "title": "A hand-built installer can carry crash logs with your own username",
+      "detail": "Building the launcher by hand on your own machine instead of through the official release, while crash logs happen to sit in the same folder (for instance from the mod folder’s Java toolchain), the installer step does not reliably exclude them. Such logs can carry the Windows username and local paths. The official, published version is not affected: it is built on a clean machine through the automated release and cannot contain files like that in the first place.",
+      "state": "investigating",
+      "since": "2026-09-10",
+      "platforms": [
+        "Windows"
+      ]
     }
   ];
   var ISSUE_LABEL_EN = {

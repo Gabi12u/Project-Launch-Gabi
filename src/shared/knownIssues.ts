@@ -443,8 +443,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'oder "wie viele Konten gibt es", was bei einem einzelnen Konto statt einer Liste zum Absturz ' +
       'der gesamten Oberfläche führen kann. Betroffen wäre damit ausgerechnet der Moment, den jede ' +
       'neue Person beim ersten Öffnen des Launchers durchläuft.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'forge-installer-pfad-traversal',
@@ -458,8 +459,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ordners ablegen können, zum Beispiel im Autostart-Ordner von Windows. Der Installer selbst ' +
       'kommt von der offiziellen Forge- beziehungsweise NeoForge-Adresse, das Risiko besteht also nur, ' +
       'wenn diese Quelle selbst kompromittiert wäre.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'loader-versionid-pfad-traversal',
@@ -470,8 +472,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'zu bereinigen. Käme diese Kennung von einem kompromittierten Metadatenserver oder einem ' +
       'manipulierten Installer mit eingebauten Schrägstrichen, hätte die dabei erzeugte Datei ' +
       'außerhalb des vorgesehenen Ordners für Versionsdaten landen können.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'ordner-oeffnen-ohne-instanzpruefung',
@@ -484,8 +487,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'starten, die irgendwo im Datenverzeichnis liegt, etwa eine der vom Launcher selbst verwalteten ' +
       'Java-Versionen. Genau diese Prüfung gibt es an einer benachbarten Stelle im selben Code bereits, ' +
       'dort wurde sie schon einmal bewusst ergänzt, hier fehlte sie noch.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'instanzlisten-ohne-existenzpruefung',
@@ -496,8 +500,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'bestehenden Instanz gehört. Bei einer gelöschten Instanz, deren Ordner aus irgendeinem Grund ' +
       'noch auf der Platte liegt, könnten dadurch Inhalte gelesen und angezeigt werden, die eigentlich ' +
       'nicht mehr zugänglich sein sollten.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'installation-ohne-sperre',
@@ -509,8 +514,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Einrichten einer Instanz hat keine dieser Prüfungen, obwohl sie dieselben Dateien anfasst. Wird ' +
       'sie ausgelöst, während dieselbe Instanz bereits läuft, könnten Bibliotheken oder native Dateien ' +
       'unter einem laufenden Spiel weggeschrieben werden.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'curseforge-seitengroesse-falsch',
@@ -524,8 +530,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Datei für die gewünschte Version darunter, installierte der Launcher entweder eine falsche oder ' +
       'meldete fälschlich, es gebe keine passende Version. Ein Kommentar im selben Code beschreibt ' +
       'genau dieses Problem bereits als behoben, nur eben mit der falschen Zahl.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'einstellungen-vor-speichern-uebernommen',
@@ -539,8 +546,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'wieder weg. Besonders unangenehm beim Datenverzeichnis: Ein fehlgeschlagenes Schreiben ließ den ' +
       'Launcher sofort so tun, als läge alles am neuen Ort, ohne dass die dafür nötigen Vorbereitungen ' +
       'tatsächlich stattgefunden hätten.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'forge-abbruch-stoppt-prozess-nicht',
@@ -551,8 +559,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'nicht an diese Prozesse weitergereicht. Bricht jemand die Installation währenddessen ab, meldet ' +
       'die Oberfläche den Vorgang zwar als beendet, der Java-Prozess läuft aber im Hintergrund weiter ' +
       'und schreibt dabei in Ordner, die von mehreren Instanzen gemeinsam genutzt werden.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'beschaedigter-installer-blockiert-dauerhaft',
@@ -565,8 +574,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'liegen und wurde von da an bei jedem weiteren Versuch als bereits vorhanden angenommen. Jeder ' +
       'erneute Versuch schlug dadurch auf dieselbe Weise fehl, bis jemand den Zwischenspeicher von Hand ' +
       'leerte.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'log-dateien-mit-benutzername',
@@ -579,8 +589,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'für eine Fehlersuche weitergibt, gibt damit unbeabsichtigt auch seinen Windows-Namen preis. ' +
       'Zusätzlich fehlt eine Größenbegrenzung, eine sehr lange Sitzung kann die Datei unbegrenzt ' +
       'wachsen lassen.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'geraetecode-anzeige-vertauscht',
@@ -592,8 +603,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'eigentliche Anmeldung bleibt davon unberührt und läuft weiterhin für das richtige Konto, es ' +
       'kommt zu keiner Vermischung von Konten oder Tokens. Es kann aber kurzzeitig ein Code angezeigt ' +
       'werden, der zu nichts mehr gehört und im Browser eingegeben ins Leere liefe.',
-    state: 'investigating',
-    since: '2026-09-08'
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
   },
   {
     id: 'plattform-antwort-unzureichend-abgesichert',
@@ -607,8 +619,52 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'ein fehlendes Veröffentlichungsdatum die betroffene Version an eine unvorhersehbare Stelle statt ' +
       'zuverlässig ans Ende, und eine Zuordnungstabelle bei CurseForge ordnete eine Abhängigkeitsart ' +
       'falsch zu, was aktuell aber noch keine sichtbare Auswirkung hat.',
+    state: 'fixed',
+    since: '2026-09-08',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'oberflaeche-ohne-auffangnetz',
+    title: 'Die Oberfläche hat kein Auffangnetz gegen unerwartete Daten aus dem Main-Prozess',
+    detail:
+      'Der Konten-Fehler weiter oben in dieser Liste hatte eine tiefere Ursache, die für sich genommen ' +
+      'bestehen bleibt: Die Oberfläche prüft an keiner Stelle, ob eine über IPC ankommende Antwort ' +
+      'wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gibt im ' +
+      'gesamten Programm zudem keine Auffangebene für unerwartete Fehler beim Zeichnen der Oberfläche. ' +
+      'Wirft irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutrifft, ' +
+      'wird der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das ist die ' +
+      'Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte, und sie bleibt ' +
+      'bestehen für jeden ähnlichen Fall in der Zukunft.',
     state: 'investigating',
-    since: '2026-09-08'
+    since: '2026-09-10'
+  },
+  {
+    id: 'update-erneut-suchen-verdeckt-fertiges-update',
+    title: 'Erneut nach Updates suchen konnte ein bereits fertiges Update verdecken',
+    detail:
+      'Ist ein Update bereits heruntergeladen und wartet auf den Neustart, bleibt der Knopf "Jetzt ' +
+      'suchen" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hat eine ' +
+      'ausdrückliche Absicherung dagegen, ein bereits fertiges Update nicht zurück auf "wird geprüft" zu ' +
+      'stellen, die manuelle Suche über diesen Knopf hat dieselbe Absicherung nicht. Eine erneute Suche ' +
+      'in diesem Moment kann den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden ' +
+      'lassen, obwohl das heruntergeladene Update unverändert bereitliegt.',
+    state: 'investigating',
+    since: '2026-09-10'
+  },
+  {
+    id: 'lokaler-bau-mit-absturzprotokollen',
+    title: 'Ein von Hand erstellter Installer kann Absturzprotokolle mit dem eigenen Benutzernamen enthalten',
+    detail:
+      'Wird der Launcher nicht über die offizielle Veröffentlichung, sondern von Hand auf dem eigenen ' +
+      'Rechner gebaut, während im selben Ordner zufällig Absturzprotokolle liegen (zum Beispiel von der ' +
+      'Java-Werkzeugkette des mod-Ordners), schließt die Installer-Erstellung diese Dateien nicht ' +
+      'zuverlässig aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. ' +
+      'Die offizielle, veröffentlichte Version ist davon nicht betroffen: Sie entsteht auf einem ' +
+      'sauberen Rechner über die automatische Veröffentlichung und kann solche Dateien gar nicht erst ' +
+      'enthalten.',
+    state: 'investigating',
+    since: '2026-09-10',
+    platforms: ['Windows']
   }
 ]
 

@@ -23,6 +23,13 @@ files:
   - '!scripts/**'
   - '!mod/**'
   - '!TODO.md'
+  # JVM-Absturzprotokolle (hs_err_pid*.log, replay_pid*.log) landen beim Bauen
+  # des mod/-Ordners direkt im Projektstamm und enthalten lokale Pfade samt
+  # Benutzername. .gitignore haelt sie aus dem Repository heraus, aber
+  # electron-builders eigene Vorgaben kennen nur konkrete Dateinamen wie
+  # npm-debug.log, kein *.log. Ein von Hand angestossener Bau in einem
+  # ungereinigten Arbeitsverzeichnis wuerde sie sonst mit einpacken.
+  - '!*.log'
 
 asarUnpack:
   - resources/**

@@ -416,6 +416,36 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'On top of that, a missing release date sorted the affected version to an unpredictable spot ' +
       'instead of reliably to the end, and a mapping table on the CurseForge side misclassified one kind ' +
       'of dependency, which currently has no visible effect yet.'
+  },
+  'oberflaeche-ohne-auffangnetz': {
+    title: 'The interface has no safety net against unexpected data from the main process',
+    detail:
+      'The account bug listed above had a deeper cause that remains on its own: the interface never ' +
+      'checks whether a reply arriving over IPC actually has the expected shape before adopting it into ' +
+      'the shared state. There is also no catch-all layer anywhere in the program for unexpected errors ' +
+      'while drawing the interface. If any spot throws because an assumption about the shape of some ' +
+      'data does not hold, the entire screen goes blank, with no way to recover short of a restart. That ' +
+      'is the gap through which the now fixed account bug could turn into a crash in the first place, and ' +
+      'it remains open for any similar case in the future.'
+  },
+  'update-erneut-suchen-verdeckt-fertiges-update': {
+    title: 'Checking for updates again could hide an update that was already ready',
+    detail:
+      'With an update already downloaded and waiting for a restart, the "Check now" button in Settings ' +
+      'stays clickable regardless. The automatic background check has an explicit safeguard against ' +
+      'putting an already finished update back to "checking," the manual search through this button does ' +
+      'not have the same safeguard. Searching again at that moment can make the notice about the waiting ' +
+      'update and the restart button disappear, even though the downloaded update still sits there ' +
+      'unchanged.'
+  },
+  'lokaler-bau-mit-absturzprotokollen': {
+    title: 'A hand-built installer can carry crash logs with your own username',
+    detail:
+      'Building the launcher by hand on your own machine instead of through the official release, while ' +
+      'crash logs happen to sit in the same folder (for instance from the mod folder’s Java toolchain), ' +
+      'the installer step does not reliably exclude them. Such logs can carry the Windows username and ' +
+      'local paths. The official, published version is not affected: it is built on a clean machine ' +
+      'through the automated release and cannot contain files like that in the first place.'
   }
 }
 
