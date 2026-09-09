@@ -15,7 +15,11 @@ const logger = log('curseforge')
 
 const API = 'https://api.curseforge.com/v1'
 const GAME_ID = 432
-/** The search endpoint rejects anything larger and silently clamps the rest. */
+/**
+ * Both the search endpoint and the per-mod file list at `/mods/{id}/files`
+ * reject anything larger and silently clamp the rest, confirmed against the
+ * live API rather than assumed from the docs.
+ */
 const CF_MAX_PAGE_SIZE = 50
 
 /** CurseForge class ids for the content types we support. */
@@ -176,6 +180,28 @@ const RELEASE_TYPE: Record<number, ProjectVersion['releaseType']> = {
   3: 'alpha'
 }
 
+/**
+ * CurseForge's `FileRelationType`, mapped onto the four dependency kinds the
+ * shared format knows (mirroring Modrinth's own vocabulary). `Tool` names a
+ * related but non-required companion, so it joins `OptionalDependency`.
+ * `EmbeddedLibrary` and `Include` both mean the other project's content
+ * already ships inside this file, so both become `embedded`.
+ */
+const DEPENDENCY_TYPE: Record<number, ContentDependency['type']> = {
+  1: 'embedded', // EmbeddedLibrary
+  2: 'optional', // OptionalDependency
+  3: 'required', // RequiredDependency
+  4: 'optional', // Tool
+  5: 'incompatible', // Incompatible
+  6: 'embedded' // Include
+}
+
+/** Undated entries sort last rather than jumping to the top as NaN would. */
+function time(value?: string): number {
+  const parsed = value ? Date.parse(value) : Number.NaN
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
 /** CurseForge lists loaders inside `gameVersions` next to the version numbers. */
 function splitGameVersions(values: string[]): { games: string[]; loaders: string[] } {
   const loaderNames = ['forge', 'fabric', 'neoforge', 'quilt']
@@ -211,17 +237,7 @@ function mapFile(file: CfFile): ProjectVersion {
 
   const dependencies: ContentDependency[] = (file.dependencies ?? [])
     .map((dep) => {
-      // 3 = required, 2 = optional, 5 = incompatible, 6 = included
-      const type =
-        dep.relationType === 3
-          ? 'required'
-          : dep.relationType === 2
-            ? 'optional'
-            : dep.relationType === 5
-              ? 'incompatible'
-              : dep.relationType === 6
-                ? 'embedded'
-                : null
+      const type = DEPENDENCY_TYPE[dep.relationType]
       return type ? { projectId: String(dep.modId), type } : null
     })
     .filter((d): d is ContentDependency => d !== null)
@@ -324,8 +340,11 @@ export async function getVersions(
   // carries hundreds of files, and taking only the first page silently hid the
   // exact-version match further down — `bestVersionFor` then either installed a
   // near miss or claimed no version existed at all.
-  const PAGE = 200
-  const MAX_PAGES = 15
+  // This endpoint caps a page at the same 50 as the search endpoint, so
+  // CF_MAX_PAGE_SIZE is reused here rather than a second number that could
+  // drift out of sync with it.
+  const PAGE = CF_MAX_PAGE_SIZE
+  const MAX_PAGES = 15 // 15 * 50 = 750 files, comfortably more than any real project has
 
   const files: CfFile[] = []
   for (let page = 0; page < MAX_PAGES; page++) {
@@ -346,9 +365,7 @@ export async function getVersions(
     if (typeof total === 'number' && files.length >= total) break
   }
 
-  return files
-    .map(mapFile)
-    .sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
+  return files.map(mapFile).sort((a, b) => time(b.releasedAt) - time(a.releasedAt))
 }
 
 export async function bestVersionFor(
