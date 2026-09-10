@@ -665,6 +665,108 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'investigating',
     since: '2026-09-10',
     platforms: ['Windows']
+  },
+  {
+    id: 'aufgabenanzeige-bleibt-stehen',
+    title: 'Die Aufgabenanzeige verschwindet nicht mehr, sobald einmal ein Vorgang fertig ist',
+    detail:
+      'Die kleine Anzeige unten für laufende Vorgänge (Herunterladen, Reparieren, Installieren) soll einen ' +
+      'fertigen Eintrag noch etwa drei Sekunden zeigen und dann ausblenden. Der Timer dafür wird jedoch ' +
+      'durch die eigene Zustandsänderung sofort wieder abgeräumt, bevor er auslösen kann. Ein fertiger oder ' +
+      'abgebrochener Vorgang bleibt dadurch dauerhaft in der Anzeige stehen, und die Anzeige selbst geht für ' +
+      'den Rest der Sitzung nicht mehr weg. Fehlgeschlagene Vorgänge haben zusätzlich keinen Knopf zum ' +
+      'Wegklicken, nur laufende. Der Hauptprozess vergisst einen alten Vorgang zwar nach kurzer Zeit, sagt ' +
+      'das der Oberfläche aber nicht, also wächst die Liste im Hintergrund eine Sitzung lang weiter.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'rechtsklickmenue-beim-scrollen',
+    title: 'Das Rechtsklick-Menü bleibt beim Scrollen stehen und kann die falsche Instanz treffen',
+    detail:
+      'Öffnet man mit Rechtsklick das Menü an einer Instanz oder einem Mod und scrollt dann die Liste, ' +
+      'wandert der Inhalt darunter weg, das Menü bleibt aber an seiner Stelle. Es steht dann über einer ' +
+      'anderen Zeile als der, für die es geöffnet wurde. Wählt man jetzt einen Eintrag wie "Reparieren" ' +
+      'oder "Favorit", wirkt er auf die ursprüngliche Instanz, nicht auf die, über der das Menü gerade zu ' +
+      'sehen ist. Das Menü schließt sich bei einer Größenänderung des Fensters, aber nicht beim Scrollen. ' +
+      'Nebenbei springt die Tastaturauswahl im Menü bei jeder Aktualisierung im Hintergrund zurück auf den ' +
+      'ersten Eintrag.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'konto-entfernen-ohne-rueckfrage',
+    title: 'Ein Konto lässt sich mit einem einzigen Klick ohne Rückfrage entfernen',
+    detail:
+      'Im Konten-Fenster steht neben jedem Konto ein Mülleimer-Symbol. Ein Klick darauf entfernt das Konto ' +
+      'sofort, ohne Sicherheitsabfrage und ohne die Möglichkeit, es rückgängig zu machen. Trifft man das ' +
+      'Symbol versehentlich, ist das Konto weg und muss über die vollständige Microsoft-Anmeldung neu ' +
+      'hinzugefügt werden. Schlägt das Entfernen im Hintergrund fehl, gibt es dazu keine Rückmeldung.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'fehlerbericht-frage-wegklicken',
+    title: 'Die Frage nach Fehlerberichten wegzuklicken schaltet sie dauerhaft ab',
+    detail:
+      'Beim ersten Start nach dem Einrichten fragt der Launcher einmalig, ob Fehlerberichte gesendet werden ' +
+      'dürfen. Schließt man dieses Fenster mit Escape, mit einem Klick daneben oder über das Kreuz, statt ' +
+      'einen der beiden Knöpfe zu benutzen, wird das genauso gewertet wie ein ausdrückliches "Nein, danke": ' +
+      'Fehlerberichte werden abgeschaltet, und die Frage kommt nicht wieder. Wer das Fenster nur wegklicken ' +
+      'und später entscheiden wollte, muss die Einstellung von Hand unter Einstellungen, Fehlerberichte ' +
+      'wieder einschalten.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'einstellungen-schreiben-bei-jeder-aenderung',
+    title: 'Schieberegler und das Feld für JVM-Argumente schreiben bei jeder kleinsten Änderung auf die Festplatte',
+    detail:
+      'Die Schieberegler in den Einstellungen (Arbeitsspeicher, gleichzeitige Downloads, Anzahl ' +
+      'automatischer Sicherungen) und das Textfeld für die JVM-Argumente speichern jede Zwischenstufe ' +
+      'sofort. Einen Regler von einem Ende zum anderen zu ziehen löst dutzende einzelne Schreibvorgänge ' +
+      'aus, jeder Buchstabe im Argumente-Feld einen weiteren. Jeder davon ist ein vollständiges, sicherndes ' +
+      'Neuschreiben der Einstellungsdatei im Hauptprozess. Auf einer langsamen Festplatte oder wenn ein ' +
+      'Virenschutz jede Datei mitprüft, ruckelt der Regler dadurch spürbar und die Oberfläche stockt kurz. ' +
+      'Die Datei geht dabei nicht kaputt, die Schreibvorgänge laufen nacheinander ab.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'escape-schliesst-mehrere-fenster',
+    title: 'Escape schließt zwei übereinanderliegende Fenster auf einmal',
+    detail:
+      'Jedes Fenster im Launcher hört für sich auf die Escape-Taste, ohne zu prüfen, ob es das oberste ist. ' +
+      'Sind zwei Fenster übereinander offen, etwa die Detailansicht eines Mods und darüber die Auswahl ' +
+      'einer bestimmten Version, schließt ein Druck auf Escape beide gleichzeitig, statt nur das obere. Man ' +
+      'landet dann nicht wieder in der Detailansicht, sondern ganz aus dem Vorgang heraus.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'entdecken-modpack-nicht-als-installiert',
+    title: 'In "Entdecken" wird ein bereits installiertes Modpack nicht als installiert erkannt',
+    detail:
+      'Auf der Seite "Entdecken" vergleicht der Launcher die angezeigten Modpacks mit den vorhandenen ' +
+      'Instanzen in zwei unterschiedlichen Schreibweisen der Projektkennung. Der Vergleich geht deshalb nie ' +
+      'auf. Ein Modpack, das man bereits als Instanz installiert hat, wird weiter mit "Installieren" ' +
+      'angezeigt statt mit "Installiert", und der Knopf bleibt anklickbar. Ein zweiter Klick legt eine ' +
+      'zweite, vollständige Instanz desselben Modpacks an.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'loader-abfrage-ohne-fehlerhinweis',
+    title: 'Schlägt die Abfrage der Mod-Loader fehl, erscheinen alle Loader als nicht verfügbar',
+    detail:
+      'Beim Anlegen einer Instanz fragt der Assistent für die gewählte Minecraft-Version ab, welche ' +
+      'Mod-Loader es dafür gibt (Fabric, NeoForge, Forge, Quilt). Schlägt eine dieser Abfragen fehl, zum ' +
+      'Beispiel bei kurzer Netzunterbrechung oder wenn der Metadaten-Dienst nicht erreichbar ist, wird der ' +
+      'betroffene Loader stillschweigend als "keine Version verfügbar" geführt. Fallen alle vier Abfragen ' +
+      'aus, sieht es so aus, als gäbe es für diese Minecraft-Version überhaupt keinen Loader. Einen Hinweis, ' +
+      'dass die Abfrage nur fehlgeschlagen ist und ein erneuter Versuch helfen könnte, gibt es nicht.',
+    state: 'investigating',
+    since: '2026-09-11'
   }
 ]
 

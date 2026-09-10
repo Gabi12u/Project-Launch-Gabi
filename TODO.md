@@ -47,6 +47,24 @@ wenn der Import-Assistent freigegeben ist.
 
 ## Reparatur, Update- und Startfenster (aus 1.0.16, noch nicht veröffentlicht)
 
+**Beim Prüfen des Renderer-Codes am 2026-09-11 gefunden, bevor das hier
+rausgeht zu beheben:**
+
+- [ ] Das Startfenster kann sich festfahren. `startInstance` öffnet das
+      Fenster, bevor der Startbefehl losgeht. Lehnt `launchInstance` den Start
+      noch vor dem ersten Statusschritt ab (Instanz wird repariert, an den Mods
+      wird gearbeitet, eine Sicherung läuft, oder das Spiel läuft schon), dann
+      bekommt das Fenster nie einen Status, bleibt auf `busy` und sperrt
+      Escape, Klick daneben und das Kreuz. Nur ein Neustart hilft. Das Fenster
+      muss erst öffnen, wenn der erste Status da ist, oder der Fehlerfall muss
+      es selbst wieder schließen.
+- [ ] Der Import-Assistent (`startImport` in `lib/actions.ts`) öffnet das
+      Fenster erst nach der Analyse, nicht davor. Der `analyzing`-Zustand im
+      `ImportWizard` ist damit toter Code, nach dem Dateidialog steht die
+      Oberfläche mehrere Sekunden still, und ein zweiter Klick öffnet einen
+      zweiten Dialog. Gehört zum Import-Assistenten weiter oben, wird dort
+      mitbehoben.
+
 Gebaut und typgeprüft, aber **nie gegen einen echten Fehlerfall gelaufen**:
 
 - [ ] Reparatur-Fenster gegen eine wirklich kaputte Instanz testen: fehlende

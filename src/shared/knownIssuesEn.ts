@@ -446,6 +446,80 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'the installer step does not reliably exclude them. Such logs can carry the Windows username and ' +
       'local paths. The official, published version is not affected: it is built on a clean machine ' +
       'through the automated release and cannot contain files like that in the first place.'
+  },
+  'aufgabenanzeige-bleibt-stehen': {
+    title: 'The task panel no longer goes away once any job has finished',
+    detail:
+      'The small panel at the bottom for running jobs (downloading, repairing, installing) is meant to ' +
+      'keep a finished entry on screen for about three seconds and then fade it out. The timer for that is ' +
+      'cleared again by its own state change before it can fire. A finished or cancelled job therefore ' +
+      'stays in the panel for good, and the panel itself does not disappear for the rest of the session. ' +
+      'Failed jobs also have no button to dismiss them, only running ones do. The main process does forget ' +
+      'an old job after a short while, but does not tell the interface, so the list keeps growing in the ' +
+      'background over a session.'
+  },
+  'rechtsklickmenue-beim-scrollen': {
+    title: 'The right-click menu stays put while scrolling and can act on the wrong instance',
+    detail:
+      'Right-clicking an instance or a mod to open its menu and then scrolling the list moves the content ' +
+      'underneath away while the menu stays where it is. It then sits over a different row than the one it ' +
+      'was opened for. Choosing an entry such as "Repair" or "Favourite" at that point acts on the ' +
+      'original instance, not the one the menu now appears over. The menu closes on a window resize, but ' +
+      'not on scroll. Separately, the keyboard selection inside the menu jumps back to the first entry on ' +
+      'every background refresh.'
+  },
+  'konto-entfernen-ohne-rueckfrage': {
+    title: 'An account can be removed with a single click and no confirmation',
+    detail:
+      'The accounts window shows a bin icon next to every account. Clicking it removes the account right ' +
+      'away, with no confirmation and no way to undo it. Hit the icon by accident and the account is gone ' +
+      'and has to be added back through the full Microsoft sign-in. If the removal fails in the ' +
+      'background, there is no feedback about it.'
+  },
+  'fehlerbericht-frage-wegklicken': {
+    title: 'Dismissing the crash-report question turns it off for good',
+    detail:
+      'On the first start after setup the launcher asks once whether crash reports may be sent. Closing ' +
+      'that window with Escape, a click outside it or the X, rather than using one of the two buttons, is ' +
+      'treated exactly like an explicit "No thanks": crash reports are turned off and the question does ' +
+      'not come back. Anyone who only meant to dismiss it and decide later has to turn the setting back on ' +
+      'by hand under Settings, Crash reports.'
+  },
+  'einstellungen-schreiben-bei-jeder-aenderung': {
+    title: 'Sliders and the JVM arguments field write to disk on every smallest change',
+    detail:
+      'The sliders in Settings (memory, concurrent downloads, number of automatic backups) and the text ' +
+      'field for JVM arguments save every intermediate step immediately. Dragging a slider from one end to ' +
+      'the other triggers dozens of separate writes, every character in the arguments field one more. Each ' +
+      'of those is a full, atomic rewrite of the settings file in the main process. On a slow disk, or ' +
+      'with antivirus scanning every file, the slider stutters noticeably and the interface hitches ' +
+      'briefly. The file is not corrupted by this, the writes run one after another.'
+  },
+  'escape-schliesst-mehrere-fenster': {
+    title: 'Escape closes two stacked windows at once',
+    detail:
+      'Every window in the launcher listens for the Escape key on its own, without checking whether it is ' +
+      'the topmost one. With two windows open on top of each other, such as a mod detail view and above it ' +
+      'the picker for a specific version, one press of Escape closes both at once instead of just the top ' +
+      'one. You then do not land back in the detail view but all the way out of the flow.'
+  },
+  'entdecken-modpack-nicht-als-installiert': {
+    title: 'In "Discover" an already installed modpack is not recognised as installed',
+    detail:
+      'On the "Discover" page the launcher compares the listed modpacks against the existing instances ' +
+      'using two different spellings of the project id. The comparison therefore never matches. A modpack ' +
+      'you have already installed as an instance keeps showing "Install" instead of "Installed", and the ' +
+      'button stays clickable. A second click creates a second, complete instance of the same modpack.'
+  },
+  'loader-abfrage-ohne-fehlerhinweis': {
+    title: 'If the mod-loader lookup fails, every loader shows as unavailable',
+    detail:
+      'When creating an instance the wizard looks up which mod loaders exist for the chosen Minecraft ' +
+      'version (Fabric, NeoForge, Forge, Quilt). If one of those lookups fails, for instance during a ' +
+      'brief network drop or when the metadata service is unreachable, the affected loader is silently ' +
+      'listed as "no version available". If all four lookups fail, it looks as though this Minecraft ' +
+      'version has no loader at all. There is no hint that the lookup merely failed and that trying again ' +
+      'might help.'
   }
 }
 
