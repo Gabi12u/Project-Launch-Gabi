@@ -3,6 +3,48 @@
 Was noch aussteht, aufgeschrieben damit es nicht untergeht. Erledigtes wird
 gestrichen oder entfernt, nicht heimlich umgeschrieben.
 
+## Import-Assistent (gebaut, wartet auf Freigabe)
+
+**Stand 2026-09-10: Die neue Oberfläche geht erst raus, wenn Gabriel sie
+gesehen und bestätigt hat.** Bis dahin bleibt sie hier stehen. Wie beim
+Oberflächen-Umbau weiter unten gilt: eine Version, die getaggt wird, darf
+diesen Assistenten nicht nebenbei mitnehmen, solange die Freigabe fehlt.
+
+Was fertig und geprüft ist:
+
+- [x] Analyse getrennt vom Import. `analyzeInstanceFolder()` und
+      `analyzeModpackFile()` lesen nur und liefern Quelle, Version, Loader,
+      Zählungen und Befunde, bevor irgendetwas angelegt wird.
+- [x] Drei zusätzliche Quellformate: Modrinth App, Lunar Client, Feather
+      Client. Die letzten beiden führen keine eigene Beschreibung mit, ihre
+      Version wird geschätzt, und genau das steht dann auch im Bericht.
+- [x] Prüfung nach dem Import (`importCheck.ts`): Versionsprofil, Loader,
+      Mods am richtigen Ort, Kompatibilität. Als Befundliste, nicht als
+      grüner Haken. Repariert absichtlich nichts.
+- [x] Ende-zu-Ende geprüft mit echten Ordnern und echten Archiven:
+      `scripts/test-import-run.mjs` und `scripts/test-import-packs.mjs`.
+      Der Import kopiert nachweislich, und der Quellordner bleibt Byte für
+      Byte unverändert.
+
+Was noch offen ist:
+
+- [ ] **Gabriel schaut sich den Assistenten an und gibt ihn frei.** Ohne das
+      passiert nichts weiter damit.
+- [ ] Die Oberfläche wurde nie im laufenden Launcher gesehen, nur gebaut und
+      typgeprüft. Kein Playwright im Projekt, und dafür eines einzuziehen
+      wäre für diesen einen Zweck zu viel.
+- [ ] Der eigentliche Modpack-Import (nicht die Analyse) lädt jeden Mod
+      einzeln herunter. Ungeprüft, weil dafür Netz und bei CurseForge ein
+      API-Schlüssel gebraucht wird.
+- [ ] Lunar und Feather sind am Pfad erkannt, nicht an einer Datei. Ob das
+      bei echten Installationen dieser beiden Clients trägt, hat noch
+      niemand mit einer echten Installation ausprobiert.
+
+## Mod-Netzwerk-Analyse (geplant, noch nicht angefangen)
+
+Plan liegt vor, Stufe 1 ohne Java-Agent, Stufe 2 mit. Wird erst angefangen,
+wenn der Import-Assistent freigegeben ist.
+
 ## Reparatur, Update- und Startfenster (aus 1.0.16, noch nicht veröffentlicht)
 
 Gebaut und typgeprüft, aber **nie gegen einen echten Fehlerfall gelaufen**:
