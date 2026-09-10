@@ -14,6 +14,8 @@ import type {
   ContentType,
   CreateInstanceOptions,
   DeviceCodePrompt,
+  ImportAnalysis,
+  ImportCheck,
   Instance,
   InstanceSummary,
   JavaRuntime,
@@ -261,6 +263,21 @@ export interface GabiApi {
       instanceId: string,
       fix: NonNullable<CompatibilityIssue['fix']>
     ): Promise<CompatibilityReport>
+  }
+  /**
+   * Looking before importing.
+   *
+   * Separate from `instances.importFolder`/`modpacks.import`, which do the
+   * writing: these three only read, so the wizard can show what was
+   * recognised and let the user decide before an instance exists.
+   */
+  imports: {
+    /** Opens a folder picker when no path is given; `null` when cancelled. */
+    analyzeFolder(sourceDir?: string): Promise<ImportAnalysis | null>
+    /** Opens a file picker when no path is given; `null` when cancelled. */
+    analyzeFile(filePath?: string): Promise<ImportAnalysis | null>
+    /** Checks an instance after it was imported. */
+    verify(instanceId: string): Promise<ImportCheck>
   }
   modpacks: {
     import(filePath?: string): Promise<Instance | null>

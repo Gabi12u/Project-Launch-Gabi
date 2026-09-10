@@ -126,6 +126,12 @@ const api = {
     applyFix: call(IPC.contentApplyFix)
   },
 
+  imports: {
+    analyzeFolder: call(IPC.importAnalyzeFolder),
+    analyzeFile: call(IPC.importAnalyzeFile),
+    verify: call(IPC.importVerify)
+  },
+
   modpacks: {
     import: call(IPC.modpackImport),
     export: call(IPC.modpackExport),

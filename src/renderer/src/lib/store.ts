@@ -4,6 +4,8 @@ import { DEFAULT_LAUNCHER_SETTINGS } from '@shared/defaults'
 import type {
   Account,
   CompatibilityReport,
+  ImportAnalysis,
+  ImportCheck,
   InstanceSummary,
   LauncherSettings,
   LaunchStatus,
@@ -39,6 +41,22 @@ export interface AppState {
   modUpdateGate: { instanceId: string; instanceName: string; count: number } | null
   /** Populated while the repair overlay is open for an instance. */
   repairGate: { instanceId: string; instanceName: string; report: RepairReport | null } | null
+  /**
+   * Drives the import wizard from the moment a folder or file was picked.
+   *
+   * `analysis` is null while the analysis is still running, so the window can
+   * open immediately and show its steps instead of the picker appearing to
+   * hang. `check` fills in once the finished import has been verified.
+   */
+  importGate: {
+    source: 'folder' | 'file'
+    path: string | null
+    analysis: ImportAnalysis | null
+    stage: 'analyzing' | 'report' | 'importing' | 'done' | 'failed'
+    error: string | null
+    instanceId: string | null
+    check: ImportCheck | null
+  } | null
   /** Populated from the moment Play is accepted until the launch overlay is dismissed. */
   launchOverlay: { instanceId: string; instanceName: string } | null
   /** Instances whose launch is currently being prepared in the UI. */
@@ -73,6 +91,7 @@ const initial: AppState = {
   compatGate: null,
   modUpdateGate: null,
   repairGate: null,
+  importGate: null,
   launchOverlay: null,
   starting: [],
   recording: { active: false, instanceId: null, startedAt: null, bytes: 0 },

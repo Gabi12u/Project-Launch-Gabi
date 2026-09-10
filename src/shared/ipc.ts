@@ -28,6 +28,11 @@ export const IPC = {
   instanceDelete: 'instance:delete',
   instanceDuplicate: 'instance:duplicate',
   instanceImportFolder: 'instance:import-folder',
+  /** Looks at a folder or archive and reports what an import would find, writing nothing. */
+  importAnalyzeFolder: 'import:analyze-folder',
+  importAnalyzeFile: 'import:analyze-file',
+  /** Checks a freshly imported instance and reports what would stop it starting. */
+  importVerify: 'import:verify',
   instanceOpenFolder: 'instance:open-folder',
   instanceCreateShortcut: 'instance:create-shortcut',
   instanceRepair: 'instance:repair',

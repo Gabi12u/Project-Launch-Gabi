@@ -107,5 +107,34 @@ export default {
     'Öffne die Seite, melde dich mit deinem Microsoft-Konto an und gib dort den folgenden Code ein. Danach geht es hier automatisch weiter.',
   'account.deviceCode.openPageButton': 'Anmeldeseite öffnen',
   'account.deviceCode.copyCodeLabel': 'Code kopieren',
-  'account.deviceCode.waiting': 'Warte auf Bestätigung… (noch {minutes}:{seconds})'
+  'account.deviceCode.waiting': 'Warte auf Bestätigung… (noch {minutes}:{seconds})',
+
+  // Import wizard
+  'import.title.analysis': 'Import prüfen',
+  'import.title.done': 'Import abgeschlossen',
+  'import.title.failed': 'Import nicht abgeschlossen',
+  'import.subtitle.analyzing': 'Der Ordner wird gelesen…',
+  'import.subtitle.importing': 'Die Instanz wird angelegt und die Dateien werden kopiert…',
+  'import.subtitle.done': 'Die Instanz ist eingerichtet und startbereit.',
+  'import.subtitle.donePartial': 'Die Instanz wurde angelegt, es gibt aber noch offene Punkte.',
+  'import.subtitle.failed': 'Es wurde nichts kaputtgemacht, die Originaldateien sind unberührt.',
+  'import.analyzing': 'Inhalte werden erfasst…',
+  'import.importing': 'Dateien werden übernommen. Das kann bei großen Instanzen dauern.',
+  'import.counts.mods': 'Mods',
+  'import.counts.worlds': 'Welten',
+  'import.counts.resourcePacks': 'Ressourcenpakete',
+  'import.counts.shaderPacks': 'Shader',
+  'import.counts.configs': 'Konfigurationen',
+  'import.create': 'Instanz erstellen',
+  'import.tryAnyway': 'Trotzdem importieren',
+  'import.retry': 'Erneut versuchen',
+  'import.blockerHint':
+    'Ein Import ist trotzdem möglich. Was nicht erkannt wurde, lässt sich anschließend in den Instanz-Einstellungen von Hand setzen.',
+  'import.doneHint':
+    'Die Originaldateien wurden nur gelesen, nichts davon wurde verändert oder gelöscht.',
+  'import.failedTitle': 'Der Import konnte nicht abgeschlossen werden',
+  'import.failedFound': 'Gefunden wurde trotzdem Folgendes:',
+  'import.check.unavailable': 'Die Prüfung nach dem Import lief nicht durch',
+  'import.check.unavailableDetail':
+    'Die Instanz wurde angelegt. Ob alles vollständig ist, zeigt sich beim ersten Start.'
 }

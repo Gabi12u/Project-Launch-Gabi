@@ -79,8 +79,14 @@ import {
 } from './core/recording'
 import { createBackup, deleteBackup, listBackups, restoreBackup, backupFolder } from './core/backups'
 import { repairInstance } from './core/repair'
-import { exportMrpack, importModpack, installModpackFromProvider } from './core/modpack'
-import { importInstanceFolder } from './core/instanceFolder'
+import {
+  analyzeModpackFile,
+  exportMrpack,
+  importModpack,
+  installModpackFromProvider
+} from './core/modpack'
+import { analyzeInstanceFolder, importInstanceFolder } from './core/instanceFolder'
+import { verifyImportedInstance } from './core/importCheck'
 import { createDesktopShortcut } from './core/shortcuts'
 import { getCategories, getProject, getVersions, searchAll } from './providers'
 import {
@@ -626,6 +632,57 @@ export function registerIpc(): void {
       target = result.filePaths[0]
     }
     return importModpack(target)
+  })
+
+  /* ---------------------------------------------------------------- *
+   * Import analysis
+   *
+   * Read-only counterparts to the two importers above: they open the same
+   * pickers but only look, so the wizard can show what was recognised and
+   * let the user decide before an instance exists.
+   * ---------------------------------------------------------------- */
+
+  handle(IPC.importAnalyzeFolder, async (sourceDir?: string) => {
+    let target = sourceDir
+    if (!target) {
+      const win = getMainWindow()
+      const result = await dialog.showOpenDialog(win as BrowserWindow, {
+        title: 'Instanz-Ordner auswählen',
+        message: 'Wähle den Ordner einer Instanz (Prism, MultiMC, CurseForge, Modrinth oder ein .minecraft-Ordner).',
+        buttonLabel: 'Analysieren',
+        properties: ['openDirectory']
+      })
+      if (result.canceled) return null
+      target = result.filePaths[0]
+    }
+    return analyzeInstanceFolder(target)
+  })
+
+  handle(IPC.importAnalyzeFile, async (filePath?: string) => {
+    let target = filePath
+    if (!target) {
+      const win = getMainWindow()
+      const result = await dialog.showOpenDialog(win as BrowserWindow, {
+        title: 'Modpack auswählen',
+        buttonLabel: 'Analysieren',
+        filters: [
+          { name: 'Modpacks', extensions: ['mrpack', 'zip'] },
+          { name: 'Modrinth Modpack', extensions: ['mrpack'] },
+          { name: 'CurseForge Modpack', extensions: ['zip'] }
+        ],
+        properties: ['openFile']
+      })
+      if (result.canceled) return null
+      target = result.filePaths[0]
+    }
+    return analyzeModpackFile(target)
+  })
+
+  handle(IPC.importVerify, (instanceId: string) => {
+    // Throws on an unknown id before any path is built from it, the same
+    // guard every other instance-scoped handler takes.
+    getInstance(instanceId)
+    return verifyImportedInstance(instanceId)
   })
 
   handle(IPC.modpackExport, async (instanceId: string) => {

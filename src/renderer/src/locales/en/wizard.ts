@@ -106,5 +106,33 @@ export default {
     'Open the page, sign in with your Microsoft account and enter the code below there. It will continue automatically here afterwards.',
   'account.deviceCode.openPageButton': 'Open sign-in page',
   'account.deviceCode.copyCodeLabel': 'Copy code',
-  'account.deviceCode.waiting': 'Waiting for confirmation… ({minutes}:{seconds} left)'
+  'account.deviceCode.waiting': 'Waiting for confirmation… ({minutes}:{seconds} left)',
+
+  // Import wizard
+  'import.title.analysis': 'Review import',
+  'import.title.done': 'Import finished',
+  'import.title.failed': 'Import not finished',
+  'import.subtitle.analyzing': 'Reading the folder…',
+  'import.subtitle.importing': 'Creating the instance and copying the files…',
+  'import.subtitle.done': 'The instance is set up and ready to start.',
+  'import.subtitle.donePartial': 'The instance was created, but some points are still open.',
+  'import.subtitle.failed': 'Nothing was broken, the original files are untouched.',
+  'import.analyzing': 'Collecting what is there…',
+  'import.importing': 'Taking the files over. This can take a while for large instances.',
+  'import.counts.mods': 'Mods',
+  'import.counts.worlds': 'Worlds',
+  'import.counts.resourcePacks': 'Resource packs',
+  'import.counts.shaderPacks': 'Shaders',
+  'import.counts.configs': 'Configs',
+  'import.create': 'Create instance',
+  'import.tryAnyway': 'Import anyway',
+  'import.retry': 'Try again',
+  'import.blockerHint':
+    'An import is still possible. Whatever was not recognised can be set by hand afterwards in the instance settings.',
+  'import.doneHint': 'The original files were only read, none of them were changed or deleted.',
+  'import.failedTitle': 'The import could not be finished',
+  'import.failedFound': 'This was found regardless:',
+  'import.check.unavailable': 'The check after the import did not complete',
+  'import.check.unavailableDetail':
+    'The instance was created. Whether everything is complete will show on the first start.'
 }
