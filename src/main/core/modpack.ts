@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import type { ContentItem, ContentType, Instance, LoaderId, ProjectVersion } from '@shared/types'
+import type {
+  ContentItem,
+  ContentType,
+  ImportAnalysis,
+  ImportCounts,
+  ImportFinding,
+  Instance,
+  LoaderId,
+  ProjectVersion
+} from '@shared/types'
 import { ensureInstanceLayout, paths, safeJoin } from '../paths'
 import { log } from '../logger'
 import { notify } from '../events'
@@ -424,6 +433,310 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   })
 
   return instance
+}
+
+/* ------------------------------------------------------------------ *
+ * Analysis
+ * ------------------------------------------------------------------ */
+
+const EMPTY_COUNTS: ImportCounts = {
+  mods: 0,
+  resourcePacks: 0,
+  shaderPacks: 0,
+  worlds: 0,
+  configs: 0
+}
+
+/** Sorts an mrpack's file list into the counts the report shows. */
+function countMrpackFiles(files: MrpackIndex['files']): ImportCounts {
+  const counts = { ...EMPTY_COUNTS }
+  for (const file of files) {
+    const lower = (file.path ?? '').toLowerCase()
+    if (lower.startsWith('mods/')) counts.mods++
+    else if (lower.startsWith('resourcepacks/')) counts.resourcePacks++
+    else if (lower.startsWith('shaderpacks/')) counts.shaderPacks++
+    else if (lower.startsWith('config/')) counts.configs++
+  }
+  return counts
+}
+
+/** Counts what the `overrides/` tree of an archive would contribute. */
+function countOverrides(archivePath: string, prefixes: string[]): ImportCounts {
+  const counts = { ...EMPTY_COUNTS }
+  let entries: ReturnType<typeof listEntries>
+  try {
+    entries = listEntries(archivePath)
+  } catch {
+    return counts
+  }
+
+  for (const entry of entries) {
+    const lower = entry.name.toLowerCase().replace(/\\/g, '/')
+    const prefix = prefixes.find((candidate) => lower.startsWith(`${candidate}/`))
+    if (!prefix) continue
+    const rest = lower.slice(prefix.length + 1)
+    if (rest.startsWith('mods/') && rest.endsWith('.jar')) counts.mods++
+    else if (rest.startsWith('resourcepacks/') && rest.includes('.')) counts.resourcePacks++
+    else if (rest.startsWith('shaderpacks/') && rest.includes('.')) counts.shaderPacks++
+    else if (rest.startsWith('config/')) counts.configs++
+    else if (/^saves\/[^/]+\/level\.dat$/.test(rest)) counts.worlds++
+  }
+  return counts
+}
+
+function addCounts(a: ImportCounts, b: ImportCounts): ImportCounts {
+  return {
+    mods: a.mods + b.mods,
+    resourcePacks: a.resourcePacks + b.resourcePacks,
+    shaderPacks: a.shaderPacks + b.shaderPacks,
+    worlds: a.worlds + b.worlds,
+    configs: a.configs + b.configs
+  }
+}
+
+/**
+ * Looks inside a modpack file and reports what an import would find.
+ *
+ * Same purpose as `analyzeInstanceFolder`: the format detection in
+ * `importModpack` below already knows how to tell an mrpack from a CurseForge
+ * zip, but its answer only ever surfaced as a finished import or a thrown
+ * sentence. This runs the same checks and hands back a report, so a pack whose
+ * format is not recognised can still say what it does contain.
+ */
+export async function analyzeModpackFile(archivePath: string): Promise<ImportAnalysis> {
+  const base: ImportAnalysis = {
+    path: archivePath,
+    kind: 'unknown',
+    sourceLabel: 'Unbekannt',
+    name: basename(archivePath).replace(/\.(mrpack|zip)$/i, ''),
+    mcVersion: null,
+    loader: null,
+    loaderVersion: '',
+    versionGuessed: false,
+    counts: { ...EMPTY_COUNTS },
+    findings: [],
+    estimatedBytes: 0,
+    canImport: false
+  }
+
+  if (!existsSync(archivePath)) {
+    return { ...base, findings: [{ level: 'blocker', title: 'Die Datei existiert nicht.' }] }
+  }
+
+  try {
+    base.estimatedBytes = statSync(archivePath).size
+  } catch {
+    // Size is decoration here, not a reason to give up on the analysis.
+  }
+
+  let entries: { name: string }[] = []
+  try {
+    entries = listEntries(archivePath)
+  } catch (err) {
+    return {
+      ...base,
+      findings: [
+        {
+          level: 'blocker',
+          title: 'Das Archiv konnte nicht gelesen werden',
+          detail: err instanceof Error ? err.message : String(err)
+        }
+      ]
+    }
+  }
+
+  const names = new Set(entries.map((entry) => entry.name))
+
+  /* Modrinth .mrpack ------------------------------------------------- */
+  if (names.has('modrinth.index.json')) {
+    const index = await readEntryJson<MrpackIndex>(archivePath, 'modrinth.index.json')
+    if (!index || !Array.isArray(index.files)) {
+      return {
+        ...base,
+        kind: 'mrpack',
+        sourceLabel: 'Modrinth-Modpack',
+        findings: [
+          {
+            level: 'blocker',
+            title: 'Die Beschreibung im Modpack ist beschädigt',
+            detail: 'Die Datei modrinth.index.json fehlt oder lässt sich nicht lesen.'
+          }
+        ]
+      }
+    }
+
+    const findings: ImportFinding[] = []
+    let mcVersion: string | null = null
+    let loader: LoaderId | null = null
+    let loaderVersion = ''
+
+    try {
+      const resolved = loaderFromDependencies(index.dependencies ?? {})
+      mcVersion = resolved.mcVersion
+      loader = resolved.loader
+      loaderVersion = resolved.loaderVersion
+      findings.push({
+        level: 'ok',
+        title: 'Als Modrinth-Modpack erkannt',
+        detail: `Minecraft ${mcVersion}${loader !== 'vanilla' ? `, ${loader} ${loaderVersion}`.trimEnd() : ''}`
+      })
+    } catch (err) {
+      findings.push({
+        level: 'blocker',
+        title: 'Das Modpack nennt keine Minecraft-Version',
+        detail: err instanceof Error ? err.message : undefined
+      })
+    }
+
+    const counts = addCounts(countMrpackFiles(index.files), countOverrides(archivePath, ['overrides', 'client-overrides']))
+
+    const clientOnly = index.files.filter((file) => file.env?.client === 'unsupported').length
+    if (clientOnly > 0) {
+      findings.push({
+        level: 'warn',
+        title: `${clientOnly} Dateien sind nur für Server gedacht`,
+        detail: 'Sie werden beim Import übersprungen, so wie es das Modpack vorsieht.'
+      })
+    }
+
+    return {
+      ...base,
+      kind: 'mrpack',
+      sourceLabel: 'Modrinth-Modpack',
+      name: index.name?.trim() || base.name,
+      mcVersion,
+      loader,
+      loaderVersion,
+      counts,
+      findings,
+      canImport: mcVersion != null
+    }
+  }
+
+  /* CurseForge zip --------------------------------------------------- */
+  if (names.has('manifest.json')) {
+    const manifest = await readEntryJson<CurseManifest>(archivePath, 'manifest.json')
+    if (!manifest) {
+      return {
+        ...base,
+        kind: 'curseforge-zip',
+        sourceLabel: 'CurseForge-Modpack',
+        findings: [
+          {
+            level: 'blocker',
+            title: 'Die Beschreibung im Modpack ist beschädigt',
+            detail: 'Die Datei manifest.json fehlt oder lässt sich nicht lesen.'
+          }
+        ]
+      }
+    }
+
+    const findings: ImportFinding[] = []
+    const mcVersion = manifest.minecraft?.version ?? null
+    if (!mcVersion) {
+      findings.push({
+        level: 'blocker',
+        title: 'Das Modpack nennt keine Minecraft-Version',
+        detail: 'Die manifest.json ist unvollständig.'
+      })
+    }
+
+    // The manifest names the loader as a single id like "fabric-0.15.7".
+    const loaderId = manifest.minecraft?.modLoaders?.find((entry) => entry.primary)?.id ??
+      manifest.minecraft?.modLoaders?.[0]?.id ??
+      ''
+    let loader: LoaderId | null = null
+    let loaderVersion = ''
+    if (loaderId) {
+      const [rawName, ...rest] = loaderId.split('-')
+      const known: LoaderId[] = ['fabric', 'forge', 'neoforge', 'quilt']
+      const lower = rawName.toLowerCase()
+      loader = known.includes(lower as LoaderId) ? (lower as LoaderId) : null
+      loaderVersion = rest.join('-')
+      if (!loader) {
+        findings.push({
+          level: 'warn',
+          title: `Unbekannter Mod-Loader "${rawName}"`,
+          detail: 'Der Loader muss nach dem Import von Hand gesetzt werden.'
+        })
+      }
+    } else {
+      findings.push({
+        level: 'blocker',
+        title: 'Das Modpack nennt keinen Mod-Loader',
+        detail: 'Die manifest.json ist unvollständig.'
+      })
+    }
+
+    if (mcVersion && loader) {
+      findings.push({
+        level: 'ok',
+        title: 'Als CurseForge-Modpack erkannt',
+        detail: `Minecraft ${mcVersion}, ${loader} ${loaderVersion}`.trimEnd()
+      })
+    }
+
+    const listed = Array.isArray(manifest.files) ? manifest.files.length : 0
+    const overrideFolder = manifest.overrides ?? 'overrides'
+    const counts = addCounts({ ...EMPTY_COUNTS, mods: listed }, countOverrides(archivePath, [overrideFolder.toLowerCase()]))
+
+    if (listed > 0) {
+      findings.push({
+        level: 'warn',
+        title: `${listed} Mods werden beim Import einzeln von CurseForge geladen`,
+        detail:
+          'CurseForge-Modpacks enthalten die Mods nicht selbst, sondern nur eine Liste. Für den Import ' +
+          'wird ein CurseForge-Schlüssel in den Einstellungen und eine Internetverbindung gebraucht.'
+      })
+    }
+
+    return {
+      ...base,
+      kind: 'curseforge-zip',
+      sourceLabel: 'CurseForge-Modpack',
+      name: manifest.name?.trim() || base.name,
+      mcVersion,
+      loader,
+      loaderVersion,
+      counts,
+      findings,
+      canImport: mcVersion != null && loader != null
+    }
+  }
+
+  /* Neither ---------------------------------------------------------- */
+  //
+  // Not a recognised pack, but an archive that carries a mods folder is still
+  // worth offering: the compatibility import treats it as a loose game folder
+  // rather than refusing outright.
+  const loose = countOverrides(archivePath, ['', '.minecraft', 'minecraft', 'overrides'])
+  const anyContent = loose.mods + loose.resourcePacks + loose.shaderPacks + loose.configs > 0
+
+  return {
+    ...base,
+    counts: loose,
+    findings: [
+      {
+        level: 'blocker',
+        title: 'Kein bekanntes Modpack-Format',
+        detail:
+          'Weder eine modrinth.index.json noch eine manifest.json gefunden. Unterstützt werden ' +
+          '.mrpack-Dateien und CurseForge-Zips.'
+      },
+      ...(anyContent
+        ? [
+            {
+              level: 'warn' as const,
+              title: 'Es wurden trotzdem Inhalte gefunden',
+              detail:
+                'Ein Kompatibilitäts-Import kann versucht werden. Minecraft-Version und Loader müssen ' +
+                'dabei von Hand gewählt werden.'
+            }
+          ]
+        : [])
+    ],
+    canImport: false
+  }
 }
 
 /** Dispatches by file extension / archive content. */

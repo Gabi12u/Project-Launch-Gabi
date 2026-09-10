@@ -11,7 +11,13 @@ import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'no
 import { copyFile, mkdir, readdir, readlink, stat, symlink } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import type { Instance, LoaderId } from '@shared/types'
+import type {
+  ImportAnalysis,
+  ImportCounts,
+  ImportFinding,
+  Instance,
+  LoaderId
+} from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { log } from '../logger'
 import { withTask } from '../tasks'
@@ -37,7 +43,15 @@ const SKIP_DIRS = new Set([
   'realms_persistence'
 ])
 
-export type SourceFlavour = 'prism' | 'launchgabi' | 'curseforge' | 'gdlauncher' | 'minecraft'
+export type SourceFlavour =
+  | 'prism'
+  | 'launchgabi'
+  | 'curseforge'
+  | 'gdlauncher'
+  | 'modrinth-app'
+  | 'lunar'
+  | 'feather'
+  | 'minecraft'
 
 export interface DetectedInstance {
   flavour: SourceFlavour
@@ -540,6 +554,67 @@ function readGdLauncherConfig(dir: string): LauncherRead | null {
   }
 }
 
+/**
+ * Reads the Modrinth App's `profile.json`.
+ *
+ * Its instances keep the game files directly in the profile folder, the same
+ * shape CurseForge uses, so the folder itself is the game directory.
+ */
+function readModrinthProfile(dir: string): LauncherRead | null {
+  const file = join(dir, 'profile.json')
+  if (!existsSync(file)) return null
+
+  try {
+    const parsed = JSON.parse(readFileSync(file, 'utf8')) as {
+      name?: unknown
+      game_version?: unknown
+      loader?: unknown
+      loader_version?: { id?: unknown } | string | null
+    }
+    if (typeof parsed.game_version !== 'string' || !parsed.game_version) return null
+
+    const loader = typeof parsed.loader === 'string' ? parsed.loader.toLowerCase() : ''
+    const known: LoaderId[] = ['fabric', 'forge', 'neoforge', 'quilt']
+    // `loader_version` is an object in newer profiles and a plain string in
+    // older ones, so both shapes are read rather than assuming either.
+    const rawVersion =
+      typeof parsed.loader_version === 'string'
+        ? parsed.loader_version
+        : typeof parsed.loader_version?.id === 'string'
+          ? parsed.loader_version.id
+          : ''
+
+    return {
+      name: typeof parsed.name === 'string' ? parsed.name : undefined,
+      mcVersion: parsed.game_version,
+      loader: known.includes(loader as LoaderId) ? (loader as LoaderId) : 'vanilla',
+      loaderVersion: rawVersion
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Recognises a Lunar or Feather Client folder.
+ *
+ * Neither keeps a metadata file worth reading: both are vanilla-based clients
+ * whose own jars live elsewhere, and the folder handed over here is the plain
+ * game directory. The version therefore comes from the same guessing chain a
+ * bare `.minecraft` goes through, and the only thing gained by naming them is
+ * an honest label plus the knowledge that there is no loader to look for.
+ */
+function readVanillaClientFolder(dir: string): { flavour: 'lunar' | 'feather' } | null {
+  const lower = dir.toLowerCase().replace(/\\/g, '/')
+  if (lower.includes('.lunarclient') || existsSync(join(dir, 'lunar-launcher.log'))) {
+    return { flavour: 'lunar' }
+  }
+  if (lower.includes('.feather') || lower.includes('feather-client')) {
+    return { flavour: 'feather' }
+  }
+  return null
+}
+
 /** True when this folder looks like a game directory rather than a wrapper. */
 function looksLikeGameDir(dir: string): boolean {
   return ['mods', 'saves', 'config', 'resourcepacks', 'options.txt'].some((entry) =>
@@ -632,7 +707,8 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   // thing naming a version.
   const external: { read: LauncherRead | null; flavour: SourceFlavour; note: string }[] = [
     { read: readCurseForgeInstance(sourceDir), flavour: 'curseforge', note: 'CurseForge' },
-    { read: readGdLauncherConfig(sourceDir), flavour: 'gdlauncher', note: 'GDLauncher' }
+    { read: readGdLauncherConfig(sourceDir), flavour: 'gdlauncher', note: 'GDLauncher' },
+    { read: readModrinthProfile(sourceDir), flavour: 'modrinth-app', note: 'Modrinth App' }
   ]
   for (const candidate of external) {
     if (!candidate.read) continue
@@ -685,13 +761,210 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     )
   }
 
+  // Lunar and Feather land here too: both are plain game directories, so the
+  // guessing chain above is what finds their version either way. Naming them
+  // only changes the label the import carries afterwards.
+  const client = readVanillaClientFolder(gameDir) ?? readVanillaClientFolder(sourceDir)
+
   return {
-    flavour: 'minecraft',
+    flavour: client?.flavour ?? 'minecraft',
     name: folderName === '.minecraft' ? 'Importiertes Minecraft' : folderName,
     mcVersion: guessed.mcVersion,
     loader: guessed.loader,
     loaderVersion: guessed.loaderVersion,
     gameDir
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Analysis
+ * ------------------------------------------------------------------ */
+
+/** Counts entries in a folder without walking into it. */
+function countEntries(dir: string, filter?: (name: string) => boolean): number {
+  try {
+    const entries = readdirSync(dir, { withFileTypes: true })
+    return entries.filter((entry) => (filter ? filter(entry.name) : true)).length
+  } catch {
+    return 0
+  }
+}
+
+/** Rough size of a folder, capped so a huge tree cannot stall the analysis. */
+function roughSize(dir: string, budgetFiles = 4000): number {
+  let total = 0
+  let seen = 0
+  const stack = [dir]
+
+  while (stack.length > 0 && seen < budgetFiles) {
+    const current = stack.pop() as string
+    let entries: Dirent[]
+    try {
+      entries = readdirSync(current, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (seen >= budgetFiles) break
+      // Symlinks are neither followed nor measured: the import skips the ones
+      // pointing outside the source folder anyway.
+      if (entry.isSymbolicLink()) continue
+      const full = join(current, entry.name)
+      if (entry.isDirectory()) {
+        if (SKIP_DIRS.has(entry.name)) continue
+        stack.push(full)
+        continue
+      }
+      seen++
+      try {
+        total += statSync(full).size
+      } catch {
+        // A file that vanished between listing and measuring is not worth an error.
+      }
+    }
+  }
+  return total
+}
+
+const JAR = (name: string): boolean => name.toLowerCase().endsWith('.jar') || name.toLowerCase().endsWith('.jar.disabled')
+const PACK = (name: string): boolean =>
+  name.toLowerCase().endsWith('.zip') || !name.includes('.')
+
+/** Counts what a game directory holds, for the report shown before importing. */
+function countGameDir(gameDir: string): ImportCounts {
+  return {
+    mods: countEntries(join(gameDir, 'mods'), JAR),
+    resourcePacks: countEntries(join(gameDir, 'resourcepacks'), PACK),
+    shaderPacks: countEntries(join(gameDir, 'shaderpacks'), PACK),
+    worlds: countEntries(join(gameDir, 'saves')),
+    configs: countEntries(join(gameDir, 'config'))
+  }
+}
+
+/**
+ * Looks at a folder and reports what an import would find, writing nothing.
+ *
+ * The import itself used to be the only way to learn whether a folder was
+ * usable at all: `detectInstanceFolder` throws a precise German sentence when
+ * it cannot place a folder, and that sentence only ever reached the user as a
+ * failed import. Here the same detection runs, but a throw becomes a finding,
+ * and the counts are gathered either way, so a folder whose version cannot be
+ * read still shows the worlds and mods that are sitting in it.
+ */
+export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
+  const findings: ImportFinding[] = []
+
+  if (!existsSync(sourceDir) || !statSync(sourceDir).isDirectory()) {
+    return {
+      path: sourceDir,
+      kind: 'unknown',
+      sourceLabel: 'Unbekannt',
+      name: basename(sourceDir) || 'Import',
+      mcVersion: null,
+      loader: null,
+      loaderVersion: '',
+      versionGuessed: false,
+      counts: { mods: 0, resourcePacks: 0, shaderPacks: 0, worlds: 0, configs: 0 },
+      findings: [{ level: 'blocker', title: 'Der gewählte Pfad ist kein Ordner.' }],
+      estimatedBytes: 0,
+      canImport: false
+    }
+  }
+
+  let detected: DetectedInstance | null = null
+  let detectionError: string | null = null
+  try {
+    detected = detectInstanceFolder(sourceDir)
+  } catch (err) {
+    detectionError = err instanceof Error ? err.message : String(err)
+  }
+
+  // Even without a successful detection there may be a game folder worth
+  // counting, so the report can say what is there instead of only what failed.
+  const gameDir =
+    detected?.gameDir ??
+    (looksLikeGameDir(sourceDir)
+      ? sourceDir
+      : ['.minecraft', 'minecraft']
+          .map((name) => join(sourceDir, name))
+          .find((path) => existsSync(path) && looksLikeGameDir(path)) ?? null)
+
+  const counts = gameDir
+    ? countGameDir(gameDir)
+    : { mods: 0, resourcePacks: 0, shaderPacks: 0, worlds: 0, configs: 0 }
+
+  const anyContent =
+    counts.mods + counts.resourcePacks + counts.shaderPacks + counts.worlds + counts.configs > 0
+
+  if (detected) {
+    findings.push({
+      level: 'ok',
+      title: `Als ${FLAVOUR_SOURCE_NAMES[detected.flavour]} erkannt`,
+      detail: `Minecraft ${detected.mcVersion}${
+        detected.loader !== 'vanilla' ? `, ${detected.loader} ${detected.loaderVersion}`.trimEnd() : ', ohne Mod-Loader'
+      }`
+    })
+  } else {
+    findings.push({
+      level: 'blocker',
+      title: 'Der Ordner konnte keinem bekannten Launcher zugeordnet werden',
+      detail: detectionError ?? undefined
+    })
+    if (anyContent) {
+      findings.push({
+        level: 'warn',
+        title: 'Es wurden trotzdem Inhalte gefunden',
+        detail:
+          'Ein Import ist möglich, die Minecraft-Version und der Mod-Loader müssen dann aber von Hand ' +
+          'gewählt werden.'
+      })
+    }
+  }
+
+  // A version read out of a versions folder, a folder name or a saved world is
+  // a good guess, not a fact, and the difference matters enough to say so.
+  const versionGuessed =
+    detected != null && (detected.flavour === 'minecraft' || detected.flavour === 'lunar' || detected.flavour === 'feather')
+
+  if (versionGuessed) {
+    findings.push({
+      level: 'warn',
+      title: 'Die Minecraft-Version wurde geschätzt',
+      detail:
+        'Dieser Ordner führt keine eigene Beschreibung mit, die Version stammt daher aus dem ' +
+        'Ordnerinhalt. Prüfe sie, bevor du importierst.'
+    })
+  }
+
+  if (gameDir && counts.mods > 0 && detected?.loader === 'vanilla') {
+    findings.push({
+      level: 'warn',
+      title: `${counts.mods} Mods gefunden, aber kein Mod-Loader erkannt`,
+      detail: 'Ohne Loader startet Minecraft die Mods nicht. Der Loader lässt sich nachträglich setzen.'
+    })
+  }
+
+  if (gameDir && !anyContent) {
+    findings.push({
+      level: 'blocker',
+      title: 'In diesem Ordner wurden keine Mods, Welten oder Konfigurationen gefunden',
+      detail: 'Es gäbe nichts zu übernehmen.'
+    })
+  }
+
+  return {
+    path: sourceDir,
+    kind: detected?.flavour ?? 'unknown',
+    sourceLabel: detected ? FLAVOUR_SOURCE_NAMES[detected.flavour] : 'Unbekannt',
+    name: detected?.name ?? basename(sourceDir) ?? 'Import',
+    mcVersion: detected?.mcVersion ?? null,
+    loader: detected?.loader ?? null,
+    loaderVersion: detected?.loaderVersion ?? '',
+    versionGuessed,
+    counts,
+    findings,
+    estimatedBytes: gameDir ? roughSize(gameDir) : 0,
+    canImport: Boolean(gameDir) && anyContent
   }
 }
 
@@ -842,7 +1115,22 @@ const FLAVOUR_LABELS: Record<SourceFlavour, string> = {
   launchgabi: 'Aus einem Launch-Gabi-Ordner übernommen',
   curseforge: 'Aus der CurseForge-App übernommen',
   gdlauncher: 'Aus GDLauncher übernommen',
+  'modrinth-app': 'Aus der Modrinth-App übernommen',
+  lunar: 'Aus Lunar Client übernommen',
+  feather: 'Aus Feather Client übernommen',
   minecraft: 'Aus einem Minecraft-Ordner übernommen'
+}
+
+/** Short source names for the analysis screen, without the "übernommen". */
+const FLAVOUR_SOURCE_NAMES: Record<SourceFlavour, string> = {
+  prism: 'Prism / MultiMC',
+  launchgabi: 'Launch Gabi',
+  curseforge: 'CurseForge',
+  gdlauncher: 'GDLauncher',
+  'modrinth-app': 'Modrinth App',
+  lunar: 'Lunar Client',
+  feather: 'Feather Client',
+  minecraft: 'Minecraft-Ordner'
 }
 
 /**

@@ -370,6 +370,85 @@ export interface CompatibilityReport {
 }
 
 /* ------------------------------------------------------------------ *
+ * Import
+ * ------------------------------------------------------------------ */
+
+/** Where an import came from, as far as the detection could tell. */
+export type ImportSourceKind =
+  | 'prism'
+  | 'launchgabi'
+  | 'curseforge'
+  | 'gdlauncher'
+  | 'lunar'
+  | 'feather'
+  | 'modrinth-app'
+  | 'minecraft'
+  | 'mrpack'
+  | 'curseforge-zip'
+  | 'unknown'
+
+/**
+ * One observation about a folder or archive, gathered before anything is
+ * written.
+ *
+ * `blocker` does not mean "refuse": the user is still offered the import,
+ * because a folder we cannot read a version out of may still hold worlds
+ * worth rescuing. It only means the result will be incomplete.
+ */
+export interface ImportFinding {
+  level: 'ok' | 'warn' | 'blocker'
+  /** Short line for the list, already in the user's language. */
+  title: string
+  /** Optional longer explanation shown under the title. */
+  detail?: string
+}
+
+export interface ImportCounts {
+  mods: number
+  resourcePacks: number
+  shaderPacks: number
+  worlds: number
+  configs: number
+}
+
+/**
+ * The result of looking at a folder or a modpack file without touching it.
+ *
+ * Deliberately separate from the import itself: the import used to be one
+ * step with no preview, so nobody saw what had been recognised until an
+ * instance already existed.
+ */
+export interface ImportAnalysis {
+  /** Absolute path of the folder or archive this describes. */
+  path: string
+  kind: ImportSourceKind
+  /** Human label for `kind`, e.g. "Prism / MultiMC". */
+  sourceLabel: string
+  /** Proposed instance name, from the source's own metadata where possible. */
+  name: string
+  mcVersion: string | null
+  loader: LoaderId | null
+  loaderVersion: string
+  /** True when the version was inferred rather than read from metadata. */
+  versionGuessed: boolean
+  counts: ImportCounts
+  findings: ImportFinding[]
+  /** Rough size of what would be copied, for the "this will take a while" case. */
+  estimatedBytes: number
+  /** False only when there is nothing worth importing at all. */
+  canImport: boolean
+}
+
+/** Result of checking an instance right after it was imported. */
+export interface ImportCheck {
+  instanceId: string
+  checkedAt: number
+  findings: ImportFinding[]
+  /** True when nothing found would stop the instance from starting. */
+  looksStartable: boolean
+}
+
+/* ------------------------------------------------------------------ *
  * Backups
  * ------------------------------------------------------------------ */
 
