@@ -286,10 +286,23 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
   // Overlapping checks confuse the state machine and the progress bar.
   if (checking) return status
 
-  // A background poll must not walk over an update that is already downloaded
-  // and waiting, or one still downloading — it would flip the state back to
-  // "checking" and take the "restart to install" prompt off the screen.
-  if (!manual && (status.state === 'ready' || status.state === 'downloading')) {
+  // No check, automatic or manual, may walk over an update that is already
+  // downloaded and waiting, or one still downloading: it would flip the
+  // state back to "checking" and take the "restart to install" prompt off
+  // the screen. This used to only guard the background poll, keyed on
+  // `!manual`; the "Jetzt suchen" button had no such guard at all, so
+  // pressing it while an update sat ready could make it, and the restart
+  // button with it, disappear, even though the download itself never changed.
+  if (status.state === 'ready' || status.state === 'downloading') {
+    if (manual) {
+      notify(
+        'info',
+        status.state === 'ready' ? 'Update bereit' : 'Update wird heruntergeladen',
+        status.state === 'ready'
+          ? 'Ein Update ist bereits heruntergeladen und wartet auf den Neustart.'
+          : 'Ein Update wird gerade heruntergeladen.'
+      )
+    }
     return status
   }
 

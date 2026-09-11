@@ -93,5 +93,13 @@ export default {
   'taskDock.failed.one': '{count} Vorgang fehlgeschlagen',
   'taskDock.failed.other': '{count} Vorgänge fehlgeschlagen',
   'taskDock.cancelled': 'Abgebrochen',
-  'taskDock.failedBadge': 'Fehlgeschlagen'
+  'taskDock.failedBadge': 'Fehlgeschlagen',
+
+  // ErrorBoundary.tsx
+  'errorBoundary.title': 'Hier ist etwas schiefgelaufen',
+  'errorBoundary.message':
+    'Diese Ansicht hat einen Fehler ausgelöst, mit dem nicht gerechnet wurde. Der Rest von Launch Gabi läuft weiter.',
+  'errorBoundary.retry': 'Erneut versuchen',
+  'errorBoundary.goHome': 'Zur Startseite',
+  'errorBoundary.reloadApp': 'Launcher neu laden'
 }

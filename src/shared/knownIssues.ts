@@ -625,27 +625,37 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Der Konten-Fehler weiter oben in dieser Liste hatte eine tiefere Ursache, die für sich genommen ' +
       'bestehen bleibt: Die Oberfläche prüft an keiner Stelle, ob eine über IPC ankommende Antwort ' +
-      'wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gibt im ' +
+      'wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gab im ' +
       'gesamten Programm zudem keine Auffangebene für unerwartete Fehler beim Zeichnen der Oberfläche. ' +
-      'Wirft irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutrifft, ' +
-      'wird der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das ist die ' +
-      'Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte, und sie bleibt ' +
-      'bestehen für jeden ähnlichen Fall in der Zukunft.',
-    state: 'investigating',
-    since: '2026-09-10'
+      'Warf irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutraf, ' +
+      'wurde der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das war die ' +
+      'Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte. Seit 1.0.18 fängt ' +
+      'eine solche Auffangebene jeden Fehler beim Zeichnen ab: die betroffene Ansicht zeigt einen ' +
+      'Hinweis mit der technischen Meldung und einen Weg zurück zur Startseite, der Rest des Fensters ' +
+      '(Navigation, laufende Vorgänge, offene Fenster) bleibt bedienbar. Bricht etwas außerhalb der ' +
+      'eigentlichen Ansicht, fängt eine zweite, äußere Ebene das ganze Fenster auf. Ungelöst bleibt der ' +
+      'andere Teil des ursprünglichen Befunds: einzelne IPC-Antworten werden weiterhin nicht auf ihre Form ' +
+      'geprüft, bevor sie übernommen werden. Ein solcher Fehler führt jetzt also nicht mehr zu einem ' +
+      'leeren Fenster, kann aber weiterhin auftreten.',
+    state: 'fixed',
+    since: '2026-09-10',
+    fixedIn: '1.0.18'
   },
   {
     id: 'update-erneut-suchen-verdeckt-fertiges-update',
     title: 'Erneut nach Updates suchen konnte ein bereits fertiges Update verdecken',
     detail:
-      'Ist ein Update bereits heruntergeladen und wartet auf den Neustart, bleibt der Knopf "Jetzt ' +
-      'suchen" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hat eine ' +
+      'Ist ein Update bereits heruntergeladen und wartet auf den Neustart, blieb der Knopf "Jetzt ' +
+      'suchen" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hatte eine ' +
       'ausdrückliche Absicherung dagegen, ein bereits fertiges Update nicht zurück auf "wird geprüft" zu ' +
-      'stellen, die manuelle Suche über diesen Knopf hat dieselbe Absicherung nicht. Eine erneute Suche ' +
-      'in diesem Moment kann den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden ' +
-      'lassen, obwohl das heruntergeladene Update unverändert bereitliegt.',
-    state: 'investigating',
-    since: '2026-09-10'
+      'stellen, die manuelle Suche über diesen Knopf hatte dieselbe Absicherung nicht. Eine erneute Suche ' +
+      'in diesem Moment konnte den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden ' +
+      'lassen, obwohl das heruntergeladene Update unverändert bereitlag. Die Absicherung gilt jetzt für ' +
+      'beide Wege gleichermaßen, und ein Klick auf "Jetzt suchen" in diesem Zustand meldet stattdessen, ' +
+      'dass ein Update bereits bereitliegt oder gerade lädt.',
+    state: 'fixed',
+    since: '2026-09-10',
+    fixedIn: '1.0.18'
   },
   {
     id: 'lokaler-bau-mit-absturzprotokollen',
@@ -653,13 +663,16 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wird der Launcher nicht über die offizielle Veröffentlichung, sondern von Hand auf dem eigenen ' +
       'Rechner gebaut, während im selben Ordner zufällig Absturzprotokolle liegen (zum Beispiel von der ' +
-      'Java-Werkzeugkette des mod-Ordners), schließt die Installer-Erstellung diese Dateien nicht ' +
-      'zuverlässig aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. ' +
-      'Die offizielle, veröffentlichte Version ist davon nicht betroffen: Sie entsteht auf einem ' +
-      'sauberen Rechner über die automatische Veröffentlichung und kann solche Dateien gar nicht erst ' +
-      'enthalten.',
-    state: 'investigating',
+      'Java-Werkzeugkette des mod-Ordners), schlossen die Bauvorgaben diese Dateien nicht zuverlässig ' +
+      'aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. Nachgemessen ' +
+      'statt vermutet, mit electron-builders eigenem Datei-Filter statt nur gelesenem Muster: Die zuvor ' +
+      'ergänzte Ausschlussregel schließt ein Absturzprotokoll im Projektstamm, dort wo es tatsächlich ' +
+      'entsteht, zuverlässig aus, ebenso eines, das versehentlich im mod-Ordner landet. Die offizielle, ' +
+      'veröffentlichte Version war davon ohnehin nie betroffen: Sie entsteht auf einem sauberen Rechner ' +
+      'über die automatische Veröffentlichung und kann solche Dateien gar nicht erst enthalten.',
+    state: 'fixed',
     since: '2026-09-10',
+    fixedIn: '1.0.18',
     platforms: ['Windows']
   },
   {

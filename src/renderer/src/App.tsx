@@ -10,6 +10,7 @@ import {
   setState,
   useStore
 } from './lib/store'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
@@ -299,33 +300,39 @@ export function App(): JSX.Element {
 
   const topNav = settings.navPosition !== 'side'
 
-  return (
-    <div className="app">
-      <Ambient />
-      {topNav ? <TopBar /> : <TitleBar />}
-      <div className="app-body">
-        {!topNav && <Sidebar />}
-        <main className="main">
-          <div className="view">
-            <div className="view-inner" key={parsed.section + (parsed.param ?? '')}>
-              <RouteView section={parsed.section} param={parsed.param} query={parsed.query} />
-            </div>
-          </div>
-        </main>
-      </div>
+  const routeKey = parsed.section + (parsed.param ?? '')
 
-      <TaskDock />
-      <ReportConsent />
-      <Toasts />
-      <CommandPalette />
-      <CompatibilityGate />
-      <UpdateGate />
-      <UpdateOverlay />
-      <RepairOverlay />
-      <ImportWizard />
-      <LaunchOverlay />
-      <CreateInstanceWizard open={createOpen} onClose={() => setState({ createOpen: false })} />
-    </div>
+  return (
+    <ErrorBoundary variant="app">
+      <div className="app">
+        <Ambient />
+        {topNav ? <TopBar /> : <TitleBar />}
+        <div className="app-body">
+          {!topNav && <Sidebar />}
+          <main className="main">
+            <div className="view">
+              <div className="view-inner" key={routeKey}>
+                <ErrorBoundary variant="view" resetKey={routeKey}>
+                  <RouteView section={parsed.section} param={parsed.param} query={parsed.query} />
+                </ErrorBoundary>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <TaskDock />
+        <ReportConsent />
+        <Toasts />
+        <CommandPalette />
+        <CompatibilityGate />
+        <UpdateGate />
+        <UpdateOverlay />
+        <RepairOverlay />
+        <ImportWizard />
+        <LaunchOverlay />
+        <CreateInstanceWizard open={createOpen} onClose={() => setState({ createOpen: false })} />
+      </div>
+    </ErrorBoundary>
   )
 }
 

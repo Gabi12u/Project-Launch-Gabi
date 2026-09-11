@@ -1582,23 +1582,26 @@ footer a:hover { color: var(--ink); }
     {
       "id": "oberflaeche-ohne-auffangnetz",
       "title": "Die Oberfläche hat kein Auffangnetz gegen unerwartete Daten aus dem Main-Prozess",
-      "detail": "Der Konten-Fehler weiter oben in dieser Liste hatte eine tiefere Ursache, die für sich genommen bestehen bleibt: Die Oberfläche prüft an keiner Stelle, ob eine über IPC ankommende Antwort wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gibt im gesamten Programm zudem keine Auffangebene für unerwartete Fehler beim Zeichnen der Oberfläche. Wirft irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutrifft, wird der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das ist die Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte, und sie bleibt bestehen für jeden ähnlichen Fall in der Zukunft.",
-      "state": "investigating",
-      "since": "2026-09-10"
+      "detail": "Der Konten-Fehler weiter oben in dieser Liste hatte eine tiefere Ursache, die für sich genommen bestehen bleibt: Die Oberfläche prüft an keiner Stelle, ob eine über IPC ankommende Antwort wirklich die erwartete Form hat, bevor sie sie in den gemeinsamen Zustand übernimmt. Es gab im gesamten Programm zudem keine Auffangebene für unerwartete Fehler beim Zeichnen der Oberfläche. Warf irgendeine Stelle einen Fehler, weil eine Annahme über die Form von Daten nicht zutraf, wurde der gesamte Bildschirm leer, ohne Möglichkeit zur Erholung außer einem Neustart. Das war die Lücke, durch die der behobene Konten-Fehler überhaupt zum Absturz werden konnte. Seit 1.0.18 fängt eine solche Auffangebene jeden Fehler beim Zeichnen ab: die betroffene Ansicht zeigt einen Hinweis mit der technischen Meldung und einen Weg zurück zur Startseite, der Rest des Fensters (Navigation, laufende Vorgänge, offene Fenster) bleibt bedienbar. Bricht etwas außerhalb der eigentlichen Ansicht, fängt eine zweite, äußere Ebene das ganze Fenster auf. Ungelöst bleibt der andere Teil des ursprünglichen Befunds: einzelne IPC-Antworten werden weiterhin nicht auf ihre Form geprüft, bevor sie übernommen werden. Ein solcher Fehler führt jetzt also nicht mehr zu einem leeren Fenster, kann aber weiterhin auftreten.",
+      "state": "fixed",
+      "since": "2026-09-10",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "update-erneut-suchen-verdeckt-fertiges-update",
       "title": "Erneut nach Updates suchen konnte ein bereits fertiges Update verdecken",
-      "detail": "Ist ein Update bereits heruntergeladen und wartet auf den Neustart, bleibt der Knopf \"Jetzt suchen\" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hat eine ausdrückliche Absicherung dagegen, ein bereits fertiges Update nicht zurück auf \"wird geprüft\" zu stellen, die manuelle Suche über diesen Knopf hat dieselbe Absicherung nicht. Eine erneute Suche in diesem Moment kann den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden lassen, obwohl das heruntergeladene Update unverändert bereitliegt.",
-      "state": "investigating",
-      "since": "2026-09-10"
+      "detail": "Ist ein Update bereits heruntergeladen und wartet auf den Neustart, blieb der Knopf \"Jetzt suchen\" in den Einstellungen trotzdem anklickbar. Der automatische Hintergrund-Check hatte eine ausdrückliche Absicherung dagegen, ein bereits fertiges Update nicht zurück auf \"wird geprüft\" zu stellen, die manuelle Suche über diesen Knopf hatte dieselbe Absicherung nicht. Eine erneute Suche in diesem Moment konnte den Hinweis auf das wartende Update und den Neustart-Knopf verschwinden lassen, obwohl das heruntergeladene Update unverändert bereitlag. Die Absicherung gilt jetzt für beide Wege gleichermaßen, und ein Klick auf \"Jetzt suchen\" in diesem Zustand meldet stattdessen, dass ein Update bereits bereitliegt oder gerade lädt.",
+      "state": "fixed",
+      "since": "2026-09-10",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "lokaler-bau-mit-absturzprotokollen",
       "title": "Ein von Hand erstellter Installer kann Absturzprotokolle mit dem eigenen Benutzernamen enthalten",
-      "detail": "Wird der Launcher nicht über die offizielle Veröffentlichung, sondern von Hand auf dem eigenen Rechner gebaut, während im selben Ordner zufällig Absturzprotokolle liegen (zum Beispiel von der Java-Werkzeugkette des mod-Ordners), schließt die Installer-Erstellung diese Dateien nicht zuverlässig aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. Die offizielle, veröffentlichte Version ist davon nicht betroffen: Sie entsteht auf einem sauberen Rechner über die automatische Veröffentlichung und kann solche Dateien gar nicht erst enthalten.",
-      "state": "investigating",
+      "detail": "Wird der Launcher nicht über die offizielle Veröffentlichung, sondern von Hand auf dem eigenen Rechner gebaut, während im selben Ordner zufällig Absturzprotokolle liegen (zum Beispiel von der Java-Werkzeugkette des mod-Ordners), schlossen die Bauvorgaben diese Dateien nicht zuverlässig aus. Solche Protokolle können den Windows-Benutzernamen und lokale Pfade enthalten. Nachgemessen statt vermutet, mit electron-builders eigenem Datei-Filter statt nur gelesenem Muster: Die zuvor ergänzte Ausschlussregel schließt ein Absturzprotokoll im Projektstamm, dort wo es tatsächlich entsteht, zuverlässig aus, ebenso eines, das versehentlich im mod-Ordner landet. Die offizielle, veröffentlichte Version war davon ohnehin nie betroffen: Sie entsteht auf einem sauberen Rechner über die automatische Veröffentlichung und kann solche Dateien gar nicht erst enthalten.",
+      "state": "fixed",
       "since": "2026-09-10",
+      "fixedIn": "1.0.18",
       "platforms": [
         "Windows"
       ]
@@ -2012,23 +2015,26 @@ footer a:hover { color: var(--ink); }
     {
       "id": "oberflaeche-ohne-auffangnetz",
       "title": "The interface has no safety net against unexpected data from the main process",
-      "detail": "The account bug listed above had a deeper cause that remains on its own: the interface never checks whether a reply arriving over IPC actually has the expected shape before adopting it into the shared state. There is also no catch-all layer anywhere in the program for unexpected errors while drawing the interface. If any spot throws because an assumption about the shape of some data does not hold, the entire screen goes blank, with no way to recover short of a restart. That is the gap through which the now fixed account bug could turn into a crash in the first place, and it remains open for any similar case in the future.",
-      "state": "investigating",
-      "since": "2026-09-10"
+      "detail": "The account bug listed above had a deeper cause that remains on its own: the interface never checks whether a reply arriving over IPC actually has the expected shape before adopting it into the shared state. There was also no catch-all layer anywhere in the program for unexpected errors while drawing the interface. If any spot threw because an assumption about the shape of some data did not hold, the entire screen went blank, with no way to recover short of a restart. That was the gap through which the now fixed account bug could turn into a crash in the first place. Since 1.0.18 a catch-all layer intercepts any error while drawing: the affected view shows a notice with the technical message and a way back to Home, while the rest of the window (navigation, running tasks, open windows) keeps working. If something breaks outside the view itself, a second, outer layer catches the whole window instead. The other half of the original finding remains open: individual IPC replies still are not checked for shape before being adopted. An error like that no longer blanks the window, but it can still happen.",
+      "state": "fixed",
+      "since": "2026-09-10",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "update-erneut-suchen-verdeckt-fertiges-update",
       "title": "Checking for updates again could hide an update that was already ready",
-      "detail": "With an update already downloaded and waiting for a restart, the \"Check now\" button in Settings stays clickable regardless. The automatic background check has an explicit safeguard against putting an already finished update back to \"checking,\" the manual search through this button does not have the same safeguard. Searching again at that moment can make the notice about the waiting update and the restart button disappear, even though the downloaded update still sits there unchanged.",
-      "state": "investigating",
-      "since": "2026-09-10"
+      "detail": "With an update already downloaded and waiting for a restart, the \"Check now\" button in Settings stayed clickable regardless. The automatic background check had an explicit safeguard against putting an already finished update back to \"checking,\" the manual search through this button did not have the same safeguard. Searching again at that moment could make the notice about the waiting update and the restart button disappear, even though the downloaded update still sat there unchanged. The safeguard now applies to both paths alike, and clicking \"Check now\" in that state instead reports that an update is already waiting or already downloading.",
+      "state": "fixed",
+      "since": "2026-09-10",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "lokaler-bau-mit-absturzprotokollen",
       "title": "A hand-built installer can carry crash logs with your own username",
-      "detail": "Building the launcher by hand on your own machine instead of through the official release, while crash logs happen to sit in the same folder (for instance from the mod folder’s Java toolchain), the installer step does not reliably exclude them. Such logs can carry the Windows username and local paths. The official, published version is not affected: it is built on a clean machine through the automated release and cannot contain files like that in the first place.",
-      "state": "investigating",
+      "detail": "Building the launcher by hand on your own machine instead of through the official release, while crash logs happen to sit in the same folder (for instance from the mod folder’s Java toolchain), the build settings did not reliably exclude them. Such logs can carry the Windows username and local paths. Measured, not assumed, using electron-builder’s own file filter rather than just reading the pattern: the exclusion rule added earlier reliably excludes a crash log in the project root, where it actually appears, and one that accidentally ends up inside the mod folder as well. The official, published version was never affected either way: it is built on a clean machine through the automated release and cannot contain files like that in the first place.",
+      "state": "fixed",
       "since": "2026-09-10",
+      "fixedIn": "1.0.18",
       "platforms": [
         "Windows"
       ]

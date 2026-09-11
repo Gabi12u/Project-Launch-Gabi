@@ -418,29 +418,38 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'The account bug listed above had a deeper cause that remains on its own: the interface never ' +
       'checks whether a reply arriving over IPC actually has the expected shape before adopting it into ' +
-      'the shared state. There is also no catch-all layer anywhere in the program for unexpected errors ' +
-      'while drawing the interface. If any spot throws because an assumption about the shape of some ' +
-      'data does not hold, the entire screen goes blank, with no way to recover short of a restart. That ' +
-      'is the gap through which the now fixed account bug could turn into a crash in the first place, and ' +
-      'it remains open for any similar case in the future.'
+      'the shared state. There was also no catch-all layer anywhere in the program for unexpected errors ' +
+      'while drawing the interface. If any spot threw because an assumption about the shape of some data ' +
+      'did not hold, the entire screen went blank, with no way to recover short of a restart. That was ' +
+      'the gap through which the now fixed account bug could turn into a crash in the first place. Since ' +
+      '1.0.18 a catch-all layer intercepts any error while drawing: the affected view shows a notice with ' +
+      'the technical message and a way back to Home, while the rest of the window (navigation, running ' +
+      'tasks, open windows) keeps working. If something breaks outside the view itself, a second, outer ' +
+      'layer catches the whole window instead. The other half of the original finding remains open: ' +
+      'individual IPC replies still are not checked for shape before being adopted. An error like that no ' +
+      'longer blanks the window, but it can still happen.'
   },
   'update-erneut-suchen-verdeckt-fertiges-update': {
     title: 'Checking for updates again could hide an update that was already ready',
     detail:
       'With an update already downloaded and waiting for a restart, the "Check now" button in Settings ' +
-      'stays clickable regardless. The automatic background check has an explicit safeguard against ' +
-      'putting an already finished update back to "checking," the manual search through this button does ' +
-      'not have the same safeguard. Searching again at that moment can make the notice about the waiting ' +
-      'update and the restart button disappear, even though the downloaded update still sits there ' +
-      'unchanged.'
+      'stayed clickable regardless. The automatic background check had an explicit safeguard against ' +
+      'putting an already finished update back to "checking," the manual search through this button did ' +
+      'not have the same safeguard. Searching again at that moment could make the notice about the ' +
+      'waiting update and the restart button disappear, even though the downloaded update still sat there ' +
+      'unchanged. The safeguard now applies to both paths alike, and clicking "Check now" in that state ' +
+      'instead reports that an update is already waiting or already downloading.'
   },
   'lokaler-bau-mit-absturzprotokollen': {
     title: 'A hand-built installer can carry crash logs with your own username',
     detail:
       'Building the launcher by hand on your own machine instead of through the official release, while ' +
       'crash logs happen to sit in the same folder (for instance from the mod folder’s Java toolchain), ' +
-      'the installer step does not reliably exclude them. Such logs can carry the Windows username and ' +
-      'local paths. The official, published version is not affected: it is built on a clean machine ' +
+      'the build settings did not reliably exclude them. Such logs can carry the Windows username and ' +
+      'local paths. Measured, not assumed, using electron-builder’s own file filter rather than just ' +
+      'reading the pattern: the exclusion rule added earlier reliably excludes a crash log in the project ' +
+      'root, where it actually appears, and one that accidentally ends up inside the mod folder as well. ' +
+      'The official, published version was never affected either way: it is built on a clean machine ' +
       'through the automated release and cannot contain files like that in the first place.'
   },
   'aufgabenanzeige-bleibt-stehen': {

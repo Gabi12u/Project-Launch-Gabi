@@ -87,5 +87,13 @@ export default {
   'taskDock.failed.one': '{count} operation failed',
   'taskDock.failed.other': '{count} operations failed',
   'taskDock.cancelled': 'Cancelled',
-  'taskDock.failedBadge': 'Failed'
+  'taskDock.failedBadge': 'Failed',
+
+  // ErrorBoundary.tsx
+  'errorBoundary.title': 'Something went wrong here',
+  'errorBoundary.message':
+    'This view ran into an error nobody expected. The rest of Launch Gabi keeps running.',
+  'errorBoundary.retry': 'Try again',
+  'errorBoundary.goHome': 'Go to Home',
+  'errorBoundary.reloadApp': 'Reload launcher'
 }
