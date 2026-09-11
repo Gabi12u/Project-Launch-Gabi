@@ -233,8 +233,14 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     list.push(mod)
     byProject.set(key, list)
   }
-  for (const [, duplicates] of byProject) {
-    if (duplicates.length < 2) continue
+  for (const [, unsorted] of byProject) {
+    if (unsorted.length < 2) continue
+    // Sorted once, up front: `contentId` (which entry the UI highlights) and
+    // `fix.contentId` (which entry "Fix" actually deletes) used to be built
+    // from the array in two different states, before and after an in-place
+    // sort, and could end up pointing at two different duplicates. The oldest
+    // is the one the fix removes, so it is also the one shown.
+    const duplicates = [...unsorted].sort((a, b) => a.installedAt - b.installedAt)
     issues.push({
       id: `duplicate-${flattenName(duplicates[0].name)}`,
       severity: 'error',
@@ -242,11 +248,11 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       detail:
         `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: ` +
         duplicates.map((d) => d.fileName).join(', '),
-      contentId: duplicates[1].id,
+      contentId: duplicates[0].id,
       fix: {
         kind: 'remove-content',
         label: 'Ältere Datei entfernen',
-        contentId: duplicates.sort((a, b) => a.installedAt - b.installedAt)[0].id
+        contentId: duplicates[0].id
       }
     })
   }

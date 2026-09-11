@@ -224,8 +224,18 @@ export function syncRecordingHotkey(): void {
  * Start / stop
  * ------------------------------------------------------------------ */
 
-/** Picks what to capture: the game's own window if we can find it. */
-async function pickSource(): Promise<{ id: string; kind: 'window' | 'screen' } | null> {
+/**
+ * Picks what to capture: the game's own window if we can find it.
+ *
+ * `desktopCapturer` exposes no process id, only a window title, so with more
+ * than one instance running at once "the first window with 'minecraft' in
+ * the title" could just as easily be a different instance than the one the
+ * user pressed record for. Preferring a title that carries this instance's
+ * own Minecraft version narrows that considerably, though two instances on
+ * the exact same version running side by side are still indistinguishable
+ * this way: there is nothing left in the title to tell them apart.
+ */
+async function pickSource(instanceId: string): Promise<{ id: string; kind: 'window' | 'screen' } | null> {
   // A thumbnail is a full screen grab per source and we throw them all away,
   // so ask for none of it.
   const sources = await desktopCapturer.getSources({
@@ -233,9 +243,11 @@ async function pickSource(): Promise<{ id: string; kind: 'window' | 'screen' } |
     thumbnailSize: { width: 0, height: 0 }
   })
 
-  const game = sources.find(
+  const windows = sources.filter(
     (source) => source.id.startsWith('window:') && /minecraft/i.test(source.name)
   )
+  const mcVersion = tryGetInstance(instanceId)?.mcVersion
+  const game = (mcVersion && windows.find((source) => source.name.includes(mcVersion))) || windows[0]
   if (game) return { id: game.id, kind: 'window' }
 
   const screenSource = sources.find((source) => source.id.startsWith('screen:'))
@@ -285,7 +297,7 @@ async function startRecording(instanceId: string): Promise<void> {
     return
   }
 
-  const source = await pickSource()
+  const source = await pickSource(instanceId)
   if (!source) {
     notify('error', 'Aufnahme nicht möglich', 'Es wurde keine Bildquelle gefunden.')
     return

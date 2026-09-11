@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import type { JavaRuntime } from '@shared/types'
 import { paths } from '../paths'
 import { log } from '../logger'
+import { notify } from '../events'
 import { downloadFile } from './net'
 import { extractAll, extractTarGz } from './archive'
 import { TaskCancelledError, type Task } from '../tasks'
@@ -571,12 +572,36 @@ export async function resolveJava(options: {
   major: number
   autoManage: boolean
   task?: Task
+  /** Only for the mismatch warning below, to link back to where it was set. */
+  instanceId?: string
 }): Promise<JavaRuntime> {
-  const { explicitPath, major, autoManage, task } = options
+  const { explicitPath, major, autoManage, task, instanceId } = options
 
   if (explicitPath) {
     const runtime = await probeJava(explicitPath)
-    if (runtime) return runtime
+    if (runtime) {
+      // An explicit path always wins, on purpose: someone who set one is
+      // trusted to know their own setup. But the auto-detected path below
+      // warns loudly on exactly this mismatch, and silently launching a
+      // fixed override with the wrong major version produced nothing but a
+      // bare, unexplained UnsupportedClassVersionError once the JVM was
+      // already running. A warning here at least gives the real cause a
+      // chance to reach the person who set the override.
+      if (runtime.major !== major) {
+        logger.warn(
+          `Fest eingestelltes Java ${runtime.major} unter ${explicitPath} passt nicht zur benötigten ` +
+            `Version ${major}, wird aber wie eingestellt verwendet.`
+        )
+        notify(
+          'warning',
+          'Eingestellte Java-Version passt nicht',
+          `Diese Instanz braucht Java ${major}, die fest eingestellte Installation ist aber Java ${runtime.major}. ` +
+            'Das kann den Start mit einem unklaren Fehler abbrechen.',
+          instanceId ? { route: `/instances/${instanceId}?tab=settings` } : undefined
+        )
+      }
+      return runtime
+    }
     logger.warn(`Angegebener Java-Pfad unbrauchbar: ${explicitPath}`)
   }
 

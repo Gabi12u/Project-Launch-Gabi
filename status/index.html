@@ -1669,6 +1669,158 @@ footer a:hover { color: var(--ink); }
       "state": "fixed",
       "since": "2026-09-11",
       "fixedIn": "1.0.18"
+    },
+    {
+      "id": "mod-update-entfernen-wettlauf",
+      "title": "Ein Mod aktualisieren und gleichzeitig entfernen konnte den entfernten Mod zurückbringen",
+      "detail": "Die Sperre, die Änderungen an den Mods einer Instanz koordiniert, ist ein Zähler, kein echtes gegenseitiges Ausschließen: sie sagt nur nach außen, dass gerade etwas läuft, hält aber zwei gleichzeitige Aufrufe für denselben Mod nicht auseinander. Lief ein Update für einen Mod noch, während derselbe Mod entfernt wurde, konnte die bereits heruntergeladene, neue Datei liegen bleiben, ohne dass ein Eintrag in der Mod-Liste noch darauf zeigte. Der nächste Ordner-Abgleich fand diese Datei dann als vermeintlich neuen, lokalen Mod wieder und brachte damit genau den Mod zurück, den der Nutzer gerade entfernt hatte. Das ist ein eigener, bisher unbekannter Weg zu demselben Symptom wie der bereits behobene Fehler \"Ein entfernter Mod konnte von selbst wieder auftauchen\", über einen anderen Auslöser. Update und Entfernen desselben Mods laufen jetzt zwangsläufig nacheinander statt gleichzeitig.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "inhalt-typ-uebergreifende-kollision",
+      "title": "Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten sich gegenseitig löschen",
+      "detail": "Der Abgleich, ob eine neu installierte Datei eine bereits vorhandene ersetzt, verglich nur den bloßen Dateinamen, nicht die Art des Inhalts. Ressourcenpakete, Shaderpakete, Datenpakete und Mods liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie \"pack.zip\". Traf ein solcher Name zufällig auf einen bereits vorhandenen Inhalt eines völlig anderen Typs, wurde dessen Datei gelöscht und sein Eintrag aus der Liste entfernt, obwohl er mit dem gerade installierten Inhalt nichts zu tun hatte. Der Vergleich berücksichtigt jetzt an allen drei betroffenen Stellen auch den Inhaltstyp.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "abhaengigkeit-anbieter-uebergreifend",
+      "title": "Eine fehlende Pflicht-Abhängigkeit eines Mods konnte übersehen werden",
+      "detail": "Beim automatischen Installieren fehlender Abhängigkeiten wurde nur die Projekt-Kennung verglichen, nicht zusätzlich der Anbieter. CurseForge vergibt reine Zahlen als Kennung, Modrinth kurze Zeichenketten; eine zufällige Übereinstimmung zwischen einer CurseForge- und einer Modrinth-Kennung hätte eine tatsächlich fehlende Abhängigkeit fälschlich als bereits installiert gewertet und den Installationsversuch übersprungen, ohne jede Meldung. Genau dieses Risiko wurde an anderer Stelle in der Kompatibilitätsprüfung bereits erkannt und dort entsprechend eingeschränkt, hier aber übersehen. Der Vergleich prüft jetzt auch hier den Anbieter mit.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "absturzerkennung-ignoriert-signal",
+      "title": "Ein echter Absturz unter macOS oder Linux wurde nicht als Absturz erkannt",
+      "detail": "Ob ein beendetes Spiel als Absturz gilt, hing nur am Beendigungscode. Ein Prozess, der durch ein Betriebssystem-Signal beendet wird, etwa bei einem echten Speicherzugriffsfehler oder wenn das Betriebssystem ihm mangels Arbeitsspeicher den Prozess entzieht, liefert dabei keinen Code, sondern den Wert für \"kein Code\". Genau dieser Wert wurde bisher als gewöhnliches, sauberes Ende gewertet. Die Folge: kein Absturz-Hinweis, kein rotes Abzeichen, und in der Sitzungs-Historie stand dauerhaft \"kein Absturz\", obwohl einer stattgefunden hatte. Betroffen sind ausschließlich macOS und Linux, unter Windows gibt es diese Art Signal nicht. Die Prüfung berücksichtigt jetzt auch das Signal, mit einem eigenen Testlauf gegen einen wirklich per Signal beendeten Prozess bestätigt.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    },
+    {
+      "id": "start-meldet-erfolg-vor-fehler",
+      "title": "Ein fehlgeschlagener Start konnte kurzzeitig als erfolgreich gelten",
+      "detail": "Nach dem Start des Java-Prozesses liefen mehrere Schritte, ohne auf irgendetwas zu warten: die Spielzeit-Erfassung, der Status \"läuft\" und die Rückmeldung an den Aufruf, der Start sei geglückt. Schlägt der Start aber tatsächlich fehl, etwa weil eine Wrapper- oder Java-Datei zwischenzeitlich verschoben oder gelöscht wurde, meldet Node diesen Fehler erst einen Schritt später, als es die oben genannten, bereits gelaufenen Schritte erwarten konnten. Dadurch wurde kurzzeitig ein Erfolg gemeldet, der letzte Spielzeitpunkt einer Instanz aktualisiert, obwohl das Spiel nie lief, bevor die Statusanzeige sich kurz darauf selbst korrigierte. Mit einem eigenen Testlauf gegen einen wirklich fehlschlagenden Start bestätigt: der Launcher wartet jetzt, bis der Prozess wirklich angelaufen ist, bevor er das als Erfolg wertet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "eingestellte-java-version-ungeprueft",
+      "title": "Eine fest eingestellte, falsche Java-Version führte zu einem unklaren Absturz ohne Hinweis",
+      "detail": "Hat eine Instanz einen eigenen Java-Pfad eingestellt, wird dieser immer verwendet, sofern die Installation dort überhaupt läuft, unabhängig davon, ob es die von dieser Minecraft-Version benötigte Java-Version ist. Die automatische Java-Auswahl prüft genau das sorgfältig und meldet eine Abweichung deutlich, der fest eingestellte Pfad umging diese Prüfung vollständig. Die Folge war ein unklarer technischer Fehler beim Start, ohne jeden Hinweis auf die eigentliche Ursache. Der fest eingestellte Pfad wird weiterhin verwendet, das ändert sich bewusst nicht, aber eine Abweichung wird jetzt protokolliert und dem Nutzer gemeldet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "instanz-aktualisieren-ungefiltert",
+      "title": "Instanz-Änderungen aus der Oberfläche waren im Hauptprozess nicht auf ungefährliche Felder begrenzt",
+      "detail": "Die Funktion, die Namen, Beschreibung, Aussehen und Einstellungen einer Instanz speichert, nahm dafür ein beliebiges Teilobjekt entgegen und schrieb es ungeprüft in die gespeicherte Instanz. Die heutige Oberfläche schickt hier nur unbedenkliche Felder, ein künftiger Fehler an anderer Stelle hätte über denselben Weg aber auch Version, Loader oder den Installationsstatus verändern können, mitten in einer laufenden Installation oder Reparatur, und die gespeicherten Angaben damit von den tatsächlich installierten Dateien abweichen lassen. Die Funktion akzeptiert jetzt nur noch die tatsächlich vorgesehenen Felder.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "verknuepfung-ueberschreibt-fremde-datei",
+      "title": "Eine Desktop-Verknüpfung konnte eine andere, gleichnamige Datei überschreiben",
+      "detail": "Der Dateiname einer erzeugten Desktop-Verknüpfung richtete sich ausschließlich nach dem Namen der Instanz, ohne zu prüfen, ob am Zielort schon etwas anderes liegt. Zwei Instanzen mit gleichem oder ähnlichem Namen, oder eine bereits vorhandene, unabhängige Datei mit demselben Namen auf dem Schreibtisch, wurden dadurch stillschweigend überschrieben. Die Verknüpfung prüft jetzt, ob eine bereits vorhandene Datei am Zielort schon zur selben Instanz gehört; ist das nicht der Fall, wird stattdessen ein durchnummerierter Name verwendet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "aufnahme-falsches-fenster",
+      "title": "Bei mehreren gleichzeitig laufenden Instanzen konnte die Aufnahme das falsche Fenster erwischen",
+      "detail": "Die Aufnahme sucht sich ihre Bildquelle über den Fenstertitel, das erste Fenster mit \"Minecraft\" darin. Liefen mehrere Instanzen gleichzeitig, konnte das ein anderes Fenster sein als das der Instanz, für die die Aufnahme gestartet wurde, ohne jede Fehlermeldung. Die Auswahl bevorzugt jetzt ein Fenster, dessen Titel die Minecraft-Version der gestarteten Instanz enthält. Das verkleinert das Problem für den häufigen Fall unterschiedlicher Versionen deutlich, löst es aber nicht vollständig: laufen zwei Instanzen mit exakt derselben Minecraft-Version gleichzeitig, lässt sich über den Fenstertitel weiterhin nicht zuverlässig zwischen ihnen unterscheiden.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "curseforge-kategorien-verschluckt-fehler",
+      "title": "Ein fehlender CurseForge-Schlüssel ließ die Kategorie-Liste einfach leer erscheinen",
+      "detail": "Anders als bei der Suche, die einen fehlenden CurseForge-API-Schlüssel ausdrücklich prüft und meldet, wurde derselbe Fehler beim Laden der Kategorien-Liste still zu einer leeren Liste verschluckt. Ohne hinterlegten Schlüssel zeigte der Kategorie-Filter für CurseForge dadurch einfach nichts an, ohne jede Erklärung, warum. Der fehlende Schlüssel wird jetzt genauso wie bei der Suche gemeldet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "netzwerk-fehler-unvollstaendig",
+      "title": "Fehlermeldungen von Modrinth waren unnötig unklar, Wartezeiten bei Anfrage-Begrenzung wurden ignoriert",
+      "detail": "Zwei verwandte Lücken in derselben Stelle: Erstens las die Fehlerauswertung mehrere bekannte Felder aus einer Fehlerantwort aus, aber nicht das Feld, in dem Modrinth seinen eigentlichen Fehlertext mitschickt, sodass jeder Modrinth-Fehler nur als nackter technischer Code erschien. Zweitens wartete der Launcher bei einer Anfrage-Begrenzung (Fehler 429) immer eine feste, kurze Zeit, statt die von Modrinth oder CurseForge im Antwort-Kopf mitgeschickte, tatsächlich nötige Wartezeit zu beachten, und gab nach rund drei Sekunden auf, obwohl der Dienst kurz darauf schon wieder bereit gewesen wäre. Beides ist jetzt korrigiert.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "cache-verwirft-frische-daten",
+      "title": "Ein Schreibfehler beim Zwischenspeichern konnte frisch geladene Daten verwerfen",
+      "detail": "Schlug das Schreiben der zwischengespeicherten Kopie einer Versions-Liste auf die Festplatte fehl, zum Beispiel weil kein Platz mehr da war, wurde das genauso behandelt wie ein fehlgeschlagener Netzwerkabruf: es griff der alte, veraltete Zwischenspeicher, obwohl die eigentliche Abfrage gerade erfolgreich neue Daten geliefert hatte. Ein Schreibfehler beim Zwischenspeichern wird jetzt nur noch protokolliert, die frisch geladenen Daten werden trotzdem verwendet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "datei-import-verwirft-erfolge",
+      "title": "Beim Hinzufügen mehrerer Dateien auf einmal ließ eine kaputte Datei alle anderen verschwinden",
+      "detail": "Wurden mehrere Mod- oder Paket-Dateien auf einmal ausgewählt und schlug der Import einer davon fehl, etwa weil sie beschädigt war, brach der gesamte Vorgang mit einer Fehlermeldung ab. Bereits erfolgreich hinzugefügte Dateien aus derselben Auswahl gingen dabei aus der Rückmeldung verloren, obwohl sie tatsächlich hinzugefügt worden waren. Jede Datei wird jetzt einzeln behandelt: erfolgreiche Dateien werden übernommen, eine fehlgeschlagene wird gemeldet, ohne die anderen zu verwerfen.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "duplikat-fix-zeigt-falsches-element",
+      "title": "Der Hinweis auf einen doppelt installierten Mod konnte ein anderes Element hervorheben als der Fix entfernte",
+      "detail": "Bei doppelt installierten Mods hebt die Kompatibilitätsprüfung eines der beiden Elemente hervor, und der zugehörige automatische Fix entfernt eines von ihnen. Welches Element hervorgehoben wurde und welches der Fix tatsächlich entfernte, konnten wegen der Reihenfolge, in der der Code beide Werte ermittelte, auseinanderfallen. Kein Datenverlust, da ohnehin ein echtes Duplikat entfernt wurde, aber potenziell verwirrend. Beide zeigen jetzt zuverlässig auf dasselbe, ältere Element.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "vorstart-befehl-kein-sigkill",
+      "title": "Ein Vorstart-Befehl, der ein sanftes Beenden ignoriert, konnte als verwaister Prozess weiterlaufen",
+      "detail": "Läuft ein eingestellter Befehl vor dem eigentlichen Start zu lange oder wird der Start abgebrochen, wurde er bisher nur einmal sanft beendet. Ignoriert oder fängt der Befehl dieses Signal ab, blieb er als unsichtbarer Prozess im Hintergrund am Leben, obwohl der Launcher den Start bereits als beendet oder abgebrochen gemeldet hatte. Genau diese Stufe (erst sanft, dann nach kurzer Frist erzwungen beenden) gibt es beim Beenden des Spiels selbst schon lange, hier fehlte sie noch. Ein Vorstart-Befehl bekommt jetzt dieselbe zweite, erzwingende Stufe.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "download-ohne-pruefsumme-vertraut",
+      "title": "Eine unvollständig heruntergeladene Datei ohne Prüfsumme wird dauerhaft für vollständig gehalten",
+      "detail": "Kommt eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, gilt sie als vollständig, sobald sie überhaupt nicht leer ist. Bricht ein Download an dieser Stelle unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wird die kaputte Datei beim nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken ist diese Grenze im Code bereits als bekannt vermerkt, sie gilt aber ebenso für den Download der Java-Laufzeit selbst, wo das bisher nicht vermerkt war. Sichtbar wird das erst viel später, als ein Start, der ohne erkennbaren Zusammenhang zum eigentlichen Downloadfehler fehlschlägt.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "java-installation-abbruch-nicht-verdrahtet",
+      "title": "Ein Abbruch kann bei geteilter Java-Installation wirkungslos bleiben",
+      "detail": "Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen Download. Bricht die zweite Instanz ihren eigenen Start ab, während die erste weiterläuft, ist ihr Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der \"Abbrechen\"-Knopf der zweiten Instanz täuscht dann Wirkung vor, während im Hintergrund weiter heruntergeladen und entpackt wird. Ob das für die zweite Instanz selbst noch spürbar wird, hängt von Code außerhalb dieser Stelle ab und ist nicht abschließend geklärt.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "java-installation-verwirft-bei-umbenennen",
+      "title": "Ein einzelner, vorübergehender Dateifehler kann eine fertige Java-Installation komplett verwerfen",
+      "detail": "Am Ende einer Java-Installation wird der fertig entpackte und geprüfte Ordner an seinen endgültigen Platz verschoben. Schlägt genau dieser letzte Schritt einmal fehl, zum Beispiel weil ein Virenschutz eine der frisch entpackten Dateien kurz geöffnet hält, wird die gesamte, bereits heruntergeladene und entpackte Installation gelöscht und beim nächsten Versuch komplett neu begonnen, statt nur diesen einen Schritt zu wiederholen. Kein falscher Erfolg, aber unnötiger Ärger und Wartezeit bei langsamer Verbindung.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "fehlende-bibliothek-ohne-download-feld",
+      "title": "Die Prüfung auf fehlende Bibliotheken könnte manche Fälle übersehen",
+      "detail": "Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaut nur bei Einträgen nach, die eine Download-Adresse mitbringen. Manche Versions-Angaben, bekannt vor allem von Forge und NeoForge, führen Bibliotheken ohne eigene Adresse, weil sie vom Installer selbst an Ort und Stelle abgelegt werden. Fehlt eine solche Datei tatsächlich, würde sie beim Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren Fehler mitten im Spielstart als Folge. Wie oft dieser genaue Fall bei den unterstützten Loadern tatsächlich vorkommt, ist noch nicht an echten Versions-Dateien geprüft.",
+      "state": "investigating",
+      "since": "2026-09-11"
     }
   ];
   var ISSUE_LABEL = {
@@ -2102,6 +2254,158 @@ footer a:hover { color: var(--ink); }
       "state": "fixed",
       "since": "2026-09-11",
       "fixedIn": "1.0.18"
+    },
+    {
+      "id": "mod-update-entfernen-wettlauf",
+      "title": "Updating a mod while removing it at the same time could bring the removed mod back",
+      "detail": "The lock that coordinates changes to an instance’s mods is a counter, not a real mutual exclusion: it only tells outside code that something is happening, but does not keep two concurrent calls for the same mod apart. If an update for a mod was still running while the same mod was removed, the already-downloaded new file could survive with no record left pointing at it. The next folder reconciliation then found that file and treated it as a new, local mod, bringing back exactly the mod the user had just removed. This is a separate, previously unknown path to the same symptom as the already-fixed \"A removed mod could reappear on its own\" issue, through a different trigger. Updating and removing the same mod now necessarily run one after the other instead of at the same time.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "inhalt-typ-uebergreifende-kollision",
+      "title": "A resource pack, shader pack and datapack with the same name could delete each other",
+      "detail": "The check for whether a newly installed file replaces an existing one compared only the bare file name, not the kind of content. Resource packs, shader packs, datapacks and mods live in separate folders but often carry generic names like \"pack.zip\". If such a name happened to match an existing item of a completely different type, that item’s file was deleted and its record removed from the list, even though it had nothing to do with what was just installed. The comparison now also takes the content type into account everywhere this happened.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "abhaengigkeit-anbieter-uebergreifend",
+      "title": "A missing required dependency of a mod could go unnoticed",
+      "detail": "When automatically installing missing dependencies, only the project id was compared, not the provider as well. CurseForge assigns plain numeric ids, Modrinth short strings; a coincidental match between a CurseForge and a Modrinth id would have made a genuinely missing dependency read as already installed and skipped the install attempt, with no message at all. The same risk was already recognised and guarded against elsewhere, in the compatibility check, but was missed here. The comparison now checks the provider here too.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "absturzerkennung-ignoriert-signal",
+      "title": "A real crash on macOS or Linux was not recognised as a crash",
+      "detail": "Whether an ended game counted as a crash depended only on its exit code. A process terminated by an operating system signal, for instance on a genuine memory access violation or when the operating system kills it for running out of memory, reports no code at all rather than a specific one. That exact value used to be read as an ordinary, clean exit. The result: no crash notice, no red badge, and the session history permanently read \"no crash\" even though one had happened. Only macOS and Linux are affected; Windows has no signal of this kind. The check now also takes the signal into account, confirmed with a dedicated test run against a process genuinely terminated by a signal.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    },
+    {
+      "id": "start-meldet-erfolg-vor-fehler",
+      "title": "A failed launch could briefly read as successful",
+      "detail": "After the Java process started, several steps ran without waiting for anything: recording play time, the \"running\" status, and reporting success back to the caller. If the launch actually failed, for instance because a wrapper or Java file had been moved or deleted in the meantime, Node only reports that failure one step later than those steps could have known about. That briefly reported success, updated an instance’s last-played time even though the game never ran, before the status display corrected itself moments later. Confirmed with a dedicated test run against a genuinely failing launch: the launcher now waits until the process has actually come up before treating it as a success.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "eingestellte-java-version-ungeprueft",
+      "title": "A fixed but wrong Java version led to an unclear crash with no hint why",
+      "detail": "If an instance has its own Java path set, that one is always used as long as the installation there runs at all, regardless of whether it is the Java version this Minecraft version actually needs. Automatic Java selection checks exactly that carefully and reports a mismatch clearly; the fixed path bypassed that check entirely. The result was an unclear technical error on launch, with no hint at the real cause. The fixed path is still used, that stays unchanged on purpose, but a mismatch is now logged and reported to the user.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "instanz-aktualisieren-ungefiltert",
+      "title": "Instance edits from the interface were not limited to safe fields in the main process",
+      "detail": "The function that saves an instance’s name, description, appearance and settings accepted an arbitrary partial object for that and wrote it unchecked into the stored instance. Today’s interface only ever sends harmless fields here, but a future bug elsewhere could have used the same path to change the version, loader or install status too, in the middle of an active install or repair, leaving the stored record out of step with what is actually installed. The function now only accepts the fields it is actually meant for.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "verknuepfung-ueberschreibt-fremde-datei",
+      "title": "A desktop shortcut could overwrite a different, same-named file",
+      "detail": "A created desktop shortcut’s file name was based purely on the instance’s name, with no check for whether something already sat at that location. Two instances with the same or a similar name, or an existing, unrelated file with the same name already on the desktop, were silently overwritten as a result. The shortcut now checks whether a file already at that location already belongs to the same instance; if not, a numbered name is used instead.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "aufnahme-falsches-fenster",
+      "title": "With several instances running at once, recording could grab the wrong window",
+      "detail": "Recording picks its capture source by window title, the first window with \"Minecraft\" in it. With several instances running at the same time, that could be a different window than the one recording was started for, with no error at all. The selection now prefers a window whose title contains the started instance’s own Minecraft version. That considerably narrows the common case of different versions, but does not fully solve it: two instances on the exact same Minecraft version running at once still cannot be told apart reliably by window title.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "curseforge-kategorien-verschluckt-fehler",
+      "title": "A missing CurseForge key made the category list simply look empty",
+      "detail": "Unlike search, which explicitly checks for and reports a missing CurseForge API key, the same failure while loading the category list was silently swallowed into an empty list. Without a key set, CurseForge’s category filter therefore just showed nothing, with no explanation why. A missing key is now reported the same way search already does.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "netzwerk-fehler-unvollstaendig",
+      "title": "Modrinth error messages were needlessly unclear, and rate-limit wait times were ignored",
+      "detail": "Two related gaps in the same spot: first, error parsing read several known fields from an error response, but not the field Modrinth actually sends its error text in, so every Modrinth error showed up as a bare technical code. Second, on a rate limit (error 429) the launcher always waited a fixed, short amount of time instead of honouring the actual wait time Modrinth or CurseForge sent in the response headers, giving up after roughly three seconds even when the service would have been ready again moments later. Both are fixed now.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "cache-verwirft-frische-daten",
+      "title": "A write failure while caching could discard freshly fetched data",
+      "detail": "If writing the cached copy of a version list to disk failed, for instance because there was no space left, that was treated the same as a failed network request: the old, stale cache was used instead, even though the actual request had just successfully delivered fresh data. A write failure while caching is now only logged, the freshly fetched data is used regardless.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "datei-import-verwirft-erfolge",
+      "title": "Adding several files at once could lose every one of them over a single broken file",
+      "detail": "When several mod or pack files were selected at once and importing one of them failed, for instance because it was corrupted, the whole operation aborted with an error. Files from the same selection that had already been added successfully were lost from the response, even though they really had been added. Each file is now handled on its own: successful ones are kept, a failed one is reported without discarding the rest.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "duplikat-fix-zeigt-falsches-element",
+      "title": "The notice about a duplicate mod could highlight a different item than the fix removed",
+      "detail": "For a mod installed twice, the compatibility check highlights one of the two copies, and the matching automatic fix removes one of them. Which copy was highlighted and which one the fix actually removed could end up different, purely because of the order in which the code computed the two values. No data loss, since a genuine duplicate was removed either way, but potentially confusing. Both now reliably point at the same, older copy.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "vorstart-befehl-kein-sigkill",
+      "title": "A pre-launch command that ignores a graceful stop could keep running as an orphan",
+      "detail": "If a configured pre-launch command ran too long, or the launch was cancelled, it used to be stopped gently exactly once. A command that ignores or traps that signal stayed alive as an invisible background process, even though the launcher had already reported the launch as stopped or cancelled. The same two-stage approach (gentle first, forced after a short grace period) has long existed for stopping the game itself; it was missing here. A pre-launch command now gets the same forcing second stage.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
+    },
+    {
+      "id": "download-ohne-pruefsumme-vertraut",
+      "title": "An incompletely downloaded file with no checksum is trusted as complete for good",
+      "detail": "A downloaded file that comes with neither a checksum nor a known size counts as complete as soon as it is not empty. If a download breaks off incomplete at that point, for instance through a hard interruption mid-transfer, the broken file is accepted as present on the next start and never downloaded again. This limit is already noted in the code for loader libraries, but applies equally to downloading the Java runtime itself, where it was not noted before. It only ever surfaces much later, as a launch failing with no visible connection to the original download failure.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "java-installation-abbruch-nicht-verdrahtet",
+      "title": "A cancel can be ineffective for a shared Java installation",
+      "detail": "If two instances wait on the same Java installation at once, they share one download. If the second instance cancels its own launch while the first keeps going, its cancel signal is not connected to the download actually in progress: the second instance’s \"Cancel\" button then looks like it worked while the download and extraction keep running in the background. Whether this is still noticeable for the second instance itself depends on code outside this spot and is not fully settled.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "java-installation-verwirft-bei-umbenennen",
+      "title": "A single, transient file error can discard an entire, finished Java installation",
+      "detail": "At the end of a Java installation, the fully extracted and verified folder is moved into its final place. If exactly that last step fails once, for instance because antivirus software briefly holds one of the freshly extracted files open, the entire already-downloaded and extracted installation is deleted and started completely over on the next attempt, instead of just retrying that one step. Not a false success, but needless frustration and waiting on a slow connection.",
+      "state": "investigating",
+      "since": "2026-09-11"
+    },
+    {
+      "id": "fehlende-bibliothek-ohne-download-feld",
+      "title": "The check for missing libraries may overlook some cases",
+      "detail": "The check for whether Java libraries needed at launch are actually present only looks at entries that carry a download address. Some version definitions, mainly known from Forge and NeoForge, list libraries with no address of their own because the installer places them itself. If such a file is genuinely missing, it would be silently skipped instead of reported as missing, resulting in an unclear error in the middle of launching. How often this exact case actually occurs across the supported loaders has not yet been checked against real version files.",
+      "state": "investigating",
+      "since": "2026-09-11"
     }
   ];
   var ISSUE_LABEL_EN = {

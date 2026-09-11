@@ -1,7 +1,7 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { extname, resolve, sep } from 'node:path'
+import { basename, extname, resolve, sep } from 'node:path'
 import { totalmem } from 'node:os'
 import { IPC, EVENTS} from '@shared/ipc'
 import type {
@@ -9,7 +9,7 @@ import type {
   ContentItem,
   ContentType,
   CreateInstanceOptions,
-  Instance,
+  InstancePatch,
   LauncherSettings,
   LoaderId,
   SearchQuery
@@ -287,7 +287,7 @@ export function registerIpc(): void {
 
   handle(IPC.instanceCreate, (options: CreateInstanceOptions) => createInstance(options))
 
-  handle(IPC.instanceUpdate, (id: string, patch: Partial<Instance>) => updateInstance(id, patch))
+  handle(IPC.instanceUpdate, (id: string, patch: InstancePatch) => updateInstance(id, patch))
 
   handle(IPC.instanceDelete, (id: string) => {
     deleteInstance(id)
@@ -593,9 +593,26 @@ export function registerIpc(): void {
     })
     if (result.canceled) return []
 
+    // Each file stands on its own. One corrupted jar used to throw straight
+    // out of the loop and lose the return value entirely, so files already
+    // imported before it, side effects and all, vanished from what the
+    // caller saw with nothing pointing at what actually happened.
     const items: ContentItem[] = []
+    const failed: string[] = []
     for (const file of result.filePaths) {
-      items.push(await importContentFile(instanceId, file, type))
+      try {
+        items.push(await importContentFile(instanceId, file, type))
+      } catch (err) {
+        logger.error(`Import von ${file} fehlgeschlagen:`, err)
+        failed.push(basename(file))
+      }
+    }
+    if (failed.length > 0) {
+      notify(
+        'warning',
+        items.length > 0 ? 'Nicht alle Dateien importiert' : 'Import fehlgeschlagen',
+        failed.join(', ')
+      )
     }
     return items
   })

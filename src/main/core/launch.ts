@@ -251,7 +251,8 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
       explicitPath: instance.settings.javaPath || undefined,
       major: instance.settings.javaMajorOverride ?? javaMajor,
       // Never trigger a download from the preflight panel.
-      autoManage: false
+      autoManage: false,
+      instanceId: instance.id
     })
     java = { major: runtime.major, version: runtime.version, path: runtime.path, managed: runtime.managed }
   } catch {
@@ -448,7 +449,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       explicitPath: instance.settings.javaPath || undefined,
       major: javaMajor,
       autoManage: settings.javaAutoManage,
-      task
+      task,
+      instanceId: instance.id
     })
     logger.info(`Starte ${instance.name} mit Java ${java.version} (${java.path})`)
 
@@ -710,7 +712,15 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // excused by a stop the user asked for minutes earlier.
       dropNativesClaim()
       const requested = stopRequested.delete(instanceId)
-      const crashed = !requested && code !== 0 && code !== null
+      // `code` alone is not enough: a process killed by a signal (a native
+      // segfault, an OOM kill, anything POSIX) exits with `code === null`, the
+      // exact same value Node reports for other null-code cases. The comment
+      // on `stopRequested` above already says the signal field is what tells
+      // a real POSIX crash apart, but until now nothing here actually read
+      // it: a signal-terminated crash on macOS or Linux passed as an ordinary
+      // exit, with no crash notification, no red badge, and `crashed: false`
+      // recorded into the session history for good.
+      const crashed = !requested && (signal !== null || (code !== 0 && code !== null))
       clearRunning(instanceId)
 
       // A wrapper that hands Minecraft off instead of becoming it.
@@ -774,6 +784,30 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       }
 
       handleWindowRestore()
+    })
+
+    // Confirms the process genuinely came up before anything below treats the
+    // launch as successful. Node only reports a failed spawn (a missing
+    // wrapper executable, a Java binary that got moved or deleted) through
+    // 'error', fired on a later tick than this whole function body runs on.
+    // Without waiting for it here, markPlayed(), the "running" status and
+    // task.done() below all ran and reported success before that failure was
+    // ever seen: the instance's last-played timestamp was bumped for a game
+    // that never started, and the launch resolved without error from the
+    // caller's side. The permanent 'error' handler above still does its own
+    // cleanup either way; this only delays declaring success until it is true.
+    const spawnedProcess = child
+    await new Promise<void>((resolve, reject) => {
+      const onSpawn = (): void => {
+        spawnedProcess.off('error', onSpawnError)
+        resolve()
+      }
+      const onSpawnError = (err: Error): void => {
+        spawnedProcess.off('spawn', onSpawn)
+        reject(err)
+      }
+      spawnedProcess.once('spawn', onSpawn)
+      spawnedProcess.once('error', onSpawnError)
     })
 
     // Past this point the JVM is up and the user is in the game. Anything that
@@ -918,27 +952,45 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
   await new Promise<void>((resolve, reject) => {
     const child = spawn(parts[0], parts.slice(1), { cwd, windowsHide: true })
 
+    const settle = (fn: () => void): void => {
+      clearTimeout(timeout)
+      task.signal.removeEventListener('abort', onAbort)
+      fn()
+    }
+
+    // A plain `child.kill()` is SIGTERM, and a command that ignores or traps
+    // it stayed alive as an orphan even after this already gave up and moved
+    // on. `stopInstance` escalates to SIGKILL for exactly this reason; this
+    // spawn never did.
+    const killHarder = (): void => {
+      setTimeout(() => {
+        if (child.exitCode === null && !child.killed) child.kill('SIGKILL')
+      }, 5000).unref?.()
+    }
+
     const timeout = setTimeout(() => {
-      child.kill()
-      reject(
-        new Error(
-          `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`
+      // Routed through `settle` like every other exit path, not called
+      // directly: left out of it, the 'abort' listener below stayed
+      // registered on `task.signal` for the rest of the launch, doing
+      // nothing useful and never cleaned up.
+      settle(() => {
+        child.kill()
+        killHarder()
+        reject(
+          new Error(
+            `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`
+          )
         )
-      )
+      })
     }, PRE_LAUNCH_TIMEOUT_MS)
 
     // The cancel button reaches every other step in this file through
     // `task.signal`; this was the one spawn that never listened for it.
     const onAbort = (): void => {
       child.kill()
+      killHarder()
     }
     task.signal.addEventListener('abort', onAbort)
-
-    const settle = (fn: () => void): void => {
-      clearTimeout(timeout)
-      task.signal.removeEventListener('abort', onAbort)
-      fn()
-    }
 
     child.on('error', (err) => settle(() => reject(err)))
     child.on('exit', (code) =>

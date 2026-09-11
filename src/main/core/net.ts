@@ -43,18 +43,29 @@ function errorMessageOf(status: number, url: string, body: string): string {
       message?: string
       /** Mojang's own APIs answer with this key instead of `message`. */
       errorMessage?: string
+      /** Modrinth's own error shape: `error` is a short code, this carries the text. */
+      description?: string
       error?: string | { message?: string }
     }
     const detail =
       parsed.error_description ??
       parsed.message ??
       parsed.errorMessage ??
+      parsed.description ??
       (typeof parsed.error === 'object' ? parsed.error?.message : undefined)
     if (detail) return `HTTP ${status}: ${detail}`
   } catch {
     // not a JSON error body
   }
   return `HTTP ${status} für ${url}`
+}
+
+/** Only the plain seconds form of `Retry-After`; the HTTP-date form is rare enough here not to bother with. */
+function retryAfterSecondsOf(res: Response): number | undefined {
+  const header = res.headers.get('retry-after')
+  if (!header) return undefined
+  const seconds = Number(header)
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined
 }
 
 export class HttpError extends Error {
@@ -65,7 +76,9 @@ export class HttpError extends Error {
     readonly status: number,
     readonly url: string,
     /** Raw response body, kept so callers can react to API specific codes. */
-    readonly body = ''
+    readonly body = '',
+    /** Seconds the server asked us to wait, from a `Retry-After` header. */
+    readonly retryAfterSeconds?: number
   ) {
     super(errorMessageOf(status, url, body))
     this.name = 'HttpError'
@@ -75,6 +88,24 @@ export class HttpError extends Error {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * How long to wait before the next attempt.
+ *
+ * A 429 used to always get the same exponential backoff as any other retry,
+ * ignoring the wait time the server itself asked for in `Retry-After`. Both
+ * Modrinth and CurseForge send that header on rate limiting, so guessing
+ * instead of reading it meant giving up after a fixed ~2.8 seconds even when
+ * the server would have accepted the next request one second later.
+ */
+function retryDelayMs(err: unknown, attempt: number): number {
+  if (err instanceof HttpError && err.retryAfterSeconds !== undefined) {
+    // Capped: a server-provided wait time is meant to be respected, not
+    // followed off a cliff by a value some proxy sent by mistake.
+    return Math.min(err.retryAfterSeconds * 1000, 30_000)
+  }
+  return 400 * 2 ** attempt
 }
 
 /** A 4xx other than 408/429 will never succeed on retry. */
@@ -123,7 +154,7 @@ export async function httpRequest(
         } catch {
           // some errors have no readable body
         }
-        throw new HttpError(res.status, url, body)
+        throw new HttpError(res.status, url, body, retryAfterSecondsOf(res))
       }
       return res
     } catch (err) {
@@ -131,8 +162,9 @@ export async function httpRequest(
       if (external?.aborted) throw new TaskCancelledError()
       lastError = err
       if (!isRetryable(err) || attempt === retries) break
-      // Exponential backoff keeps us friendly to the APIs we depend on.
-      await sleep(400 * 2 ** attempt)
+      // Exponential backoff keeps us friendly to the APIs we depend on,
+      // unless the server itself already told us exactly how long to wait.
+      await sleep(retryDelayMs(err, attempt))
     }
   }
   throw lastError
@@ -157,7 +189,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3)
     } catch (err) {
       lastError = err
       if (!isRetryable(err) || attempt === retries) break
-      await sleep(400 * 2 ** attempt)
+      await sleep(retryDelayMs(err, attempt))
     }
   }
   throw lastError
@@ -195,11 +227,9 @@ export async function fetchJsonCached<T>(
     // no usable cache
   }
 
+  let data: T
   try {
-    const data = await fetchJson<T>(url)
-    mkdirSync(dirname(file), { recursive: true })
-    await writeFile(file, JSON.stringify({ fetchedAt: Date.now(), data } satisfies CacheEnvelope<T>))
-    return data
+    data = await fetchJson<T>(url)
   } catch (err) {
     // Stale data beats no data when the network is down.
     try {
@@ -210,6 +240,18 @@ export async function fetchJsonCached<T>(
       throw err
     }
   }
+
+  // Separated from the fetch above on purpose: a disk error writing the
+  // cache (a full disk, a permissions problem) used to fall into the same
+  // catch block and hand back the old cached copy instead, discarding data
+  // that had just arrived successfully over the network.
+  try {
+    mkdirSync(dirname(file), { recursive: true })
+    await writeFile(file, JSON.stringify({ fetchedAt: Date.now(), data } satisfies CacheEnvelope<T>))
+  } catch (err) {
+    logger.warn(`Cache für ${cacheKey} konnte nicht geschrieben werden:`, err)
+  }
+  return data
 }
 
 /* ------------------------------------------------------------------ *

@@ -425,7 +425,13 @@ export async function getCategories(type: ContentType | 'modpack'): Promise<stri
       { headers: headers() }
     )
     return response.data.map((c) => c.name)
-  } catch {
+  } catch (err) {
+    // A missing key is not a fetch failure: `headers()` throws it before any
+    // request goes out. Swallowing it here to a bare empty list, unlike the
+    // explicit, actionable check `searchAll` already does for the same case,
+    // left CurseForge's category filter looking empty with no explanation
+    // for exactly the same reason.
+    if (err instanceof MissingApiKeyError) throw err
     return []
   }
 }

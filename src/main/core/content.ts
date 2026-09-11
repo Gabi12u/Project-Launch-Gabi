@@ -29,6 +29,40 @@ import { withContentLock } from './contentLock'
 const logger = log('content')
 
 /**
+ * Serializes operations on one specific content item, keyed by its id.
+ *
+ * `withContentLock` only signals "something is happening" to code outside
+ * this file (launch, repair, folder scans); it is a reentrant counter, not a
+ * mutex, on purpose, since a batch operation holds it for the whole run
+ * while each step inside takes it again. That leaves nothing to stop two
+ * independent calls from interleaving on the very same item, which is
+ * exactly what an update and a removal of the same mod did when they
+ * overlapped: the file the update had just downloaded and renamed survived
+ * the removal it raced against, with no record left pointing at it, and the
+ * next folder scan discovered it as a "new" mod, undoing the removal.
+ *
+ * Keyed by contentId rather than by instance, so it needs no reentrancy of
+ * its own: nothing in this file ever calls back into the same contentId
+ * while already holding this lock for it. Self-cleaning, so a session with
+ * many installs does not grow this map forever.
+ */
+const itemLocks = new Map<string, Promise<void>>()
+
+function withItemLock<T>(contentId: string, run: () => Promise<T>): Promise<T> {
+  const previous = itemLocks.get(contentId) ?? Promise.resolve()
+  const result = previous.then(run, run)
+  const marker = result.then(
+    () => undefined,
+    () => undefined
+  )
+  itemLocks.set(contentId, marker)
+  void marker.finally(() => {
+    if (itemLocks.get(contentId) === marker) itemLocks.delete(contentId)
+  })
+  return result
+}
+
+/**
  * True when both paths address the same file on this platform.
  *
  * Windows and macOS fold case in the filesystem, so `Mod.jar` and `mod.jar`
@@ -218,10 +252,17 @@ async function installContentOnce(
     (name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name).toLowerCase()
   const wanted = bare(version.fileName)
 
+  // Scoped to the same content type throughout: resource packs, shader
+  // packs, datapacks and mods live in separate folders but were compared
+  // here on bare file name alone. A shader pack and a datapack that happen
+  // to share a generic name like "pack.zip" matched each other, and
+  // installing one deleted the file and record of the completely unrelated
+  // other.
   const previous = getInstance(instanceId).content.find(
     (c) =>
-      (c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName) ||
-      (!c.projectId && bare(c.fileName) === wanted)
+      c.type === type &&
+      ((c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName) ||
+        (!c.projectId && bare(c.fileName) === wanted))
   )
   if (previous) {
     const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
@@ -251,7 +292,15 @@ async function installContentOnce(
     const required = version.dependencies.filter((d) => d.type === 'required')
 
     for (const dependency of required) {
-      const already = getInstance(instanceId).content.some((c) => c.projectId === dependency.projectId)
+      // Scoped to this same provider, matching compat.ts's own dependency
+      // check: a dependency's project id only means anything within the
+      // provider it came from, and CurseForge's plain numeric ids can in
+      // principle collide with a Modrinth id that has nothing to do with it.
+      // Without the scope, such a coincidence would read as "already
+      // installed" and silently skip a genuinely missing requirement.
+      const already = getInstance(instanceId).content.some(
+        (c) => c.projectId === dependency.projectId && c.provider === provider
+      )
       if (already) continue
 
       try {
@@ -299,7 +348,7 @@ async function installContentOnce(
  * finished, undoing the removal without any error to explain why.
  */
 export function removeContent(instanceId: string, contentId: string): Promise<Instance> {
-  return withContentLock(instanceId, () => removeContentOnce(instanceId, contentId))
+  return withContentLock(instanceId, () => withItemLock(contentId, () => removeContentOnce(instanceId, contentId)))
 }
 
 async function removeContentOnce(instanceId: string, contentId: string): Promise<Instance> {
@@ -483,7 +532,7 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
 }
 
 export async function applyUpdate(instanceId: string, contentId: string): Promise<ContentItem | null> {
-  return withContentLock(instanceId, () => applyUpdateOnce(instanceId, contentId))
+  return withContentLock(instanceId, () => withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId)))
 }
 
 async function applyUpdateOnce(instanceId: string, contentId: string): Promise<ContentItem | null> {
@@ -569,7 +618,7 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   // did, so a stray record from an earlier mishap survived the update instead
   // of being absorbed by it.
   const content = getInstance(instanceId)
-    .content.filter((c) => c.id === contentId || c.fileName !== next.fileName)
+    .content.filter((c) => c.id === contentId || c.fileName !== next.fileName || c.type !== next.type)
     .map((c) => (c.id === contentId ? next : c))
   persist({ ...getInstance(instanceId), content })
 

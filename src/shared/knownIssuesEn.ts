@@ -525,6 +525,197 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'listed as "no version available". If all four lookups fail, it looks as though this Minecraft ' +
       'version has no loader at all. There is no hint that the lookup merely failed and that trying again ' +
       'might help.'
+  },
+  'mod-update-entfernen-wettlauf': {
+    title: 'Updating a mod while removing it at the same time could bring the removed mod back',
+    detail:
+      'The lock that coordinates changes to an instance’s mods is a counter, not a real mutual ' +
+      'exclusion: it only tells outside code that something is happening, but does not keep two ' +
+      'concurrent calls for the same mod apart. If an update for a mod was still running while the same ' +
+      'mod was removed, the already-downloaded new file could survive with no record left pointing at ' +
+      'it. The next folder reconciliation then found that file and treated it as a new, local mod, ' +
+      'bringing back exactly the mod the user had just removed. This is a separate, previously unknown ' +
+      'path to the same symptom as the already-fixed "A removed mod could reappear on its own" issue, ' +
+      'through a different trigger. Updating and removing the same mod now necessarily run one after ' +
+      'the other instead of at the same time.'
+  },
+  'inhalt-typ-uebergreifende-kollision': {
+    title: 'A resource pack, shader pack and datapack with the same name could delete each other',
+    detail:
+      'The check for whether a newly installed file replaces an existing one compared only the bare ' +
+      'file name, not the kind of content. Resource packs, shader packs, datapacks and mods live in ' +
+      'separate folders but often carry generic names like "pack.zip". If such a name happened to match ' +
+      'an existing item of a completely different type, that item’s file was deleted and its record ' +
+      'removed from the list, even though it had nothing to do with what was just installed. The ' +
+      'comparison now also takes the content type into account everywhere this happened.'
+  },
+  'abhaengigkeit-anbieter-uebergreifend': {
+    title: 'A missing required dependency of a mod could go unnoticed',
+    detail:
+      'When automatically installing missing dependencies, only the project id was compared, not the ' +
+      'provider as well. CurseForge assigns plain numeric ids, Modrinth short strings; a coincidental ' +
+      'match between a CurseForge and a Modrinth id would have made a genuinely missing dependency read ' +
+      'as already installed and skipped the install attempt, with no message at all. The same risk was ' +
+      'already recognised and guarded against elsewhere, in the compatibility check, but was missed ' +
+      'here. The comparison now checks the provider here too.'
+  },
+  'absturzerkennung-ignoriert-signal': {
+    title: 'A real crash on macOS or Linux was not recognised as a crash',
+    detail:
+      'Whether an ended game counted as a crash depended only on its exit code. A process terminated by ' +
+      'an operating system signal, for instance on a genuine memory access violation or when the ' +
+      'operating system kills it for running out of memory, reports no code at all rather than a ' +
+      'specific one. That exact value used to be read as an ordinary, clean exit. The result: no crash ' +
+      'notice, no red badge, and the session history permanently read "no crash" even though one had ' +
+      'happened. Only macOS and Linux are affected; Windows has no signal of this kind. The check now ' +
+      'also takes the signal into account, confirmed with a dedicated test run against a process ' +
+      'genuinely terminated by a signal.'
+  },
+  'start-meldet-erfolg-vor-fehler': {
+    title: 'A failed launch could briefly read as successful',
+    detail:
+      'After the Java process started, several steps ran without waiting for anything: recording play ' +
+      'time, the "running" status, and reporting success back to the caller. If the launch actually ' +
+      'failed, for instance because a wrapper or Java file had been moved or deleted in the meantime, ' +
+      'Node only reports that failure one step later than those steps could have known about. That ' +
+      'briefly reported success, updated an instance’s last-played time even though the game never ' +
+      'ran, before the status display corrected itself moments later. Confirmed with a dedicated test ' +
+      'run against a genuinely failing launch: the launcher now waits until the process has actually ' +
+      'come up before treating it as a success.'
+  },
+  'eingestellte-java-version-ungeprueft': {
+    title: 'A fixed but wrong Java version led to an unclear crash with no hint why',
+    detail:
+      'If an instance has its own Java path set, that one is always used as long as the installation ' +
+      'there runs at all, regardless of whether it is the Java version this Minecraft version actually ' +
+      'needs. Automatic Java selection checks exactly that carefully and reports a mismatch clearly; the ' +
+      'fixed path bypassed that check entirely. The result was an unclear technical error on launch, ' +
+      'with no hint at the real cause. The fixed path is still used, that stays unchanged on purpose, ' +
+      'but a mismatch is now logged and reported to the user.'
+  },
+  'instanz-aktualisieren-ungefiltert': {
+    title: 'Instance edits from the interface were not limited to safe fields in the main process',
+    detail:
+      'The function that saves an instance’s name, description, appearance and settings accepted an ' +
+      'arbitrary partial object for that and wrote it unchecked into the stored instance. Today’s ' +
+      'interface only ever sends harmless fields here, but a future bug elsewhere could have used the ' +
+      'same path to change the version, loader or install status too, in the middle of an active install ' +
+      'or repair, leaving the stored record out of step with what is actually installed. The function ' +
+      'now only accepts the fields it is actually meant for.'
+  },
+  'verknuepfung-ueberschreibt-fremde-datei': {
+    title: 'A desktop shortcut could overwrite a different, same-named file',
+    detail:
+      'A created desktop shortcut’s file name was based purely on the instance’s name, with no check ' +
+      'for whether something already sat at that location. Two instances with the same or a similar ' +
+      'name, or an existing, unrelated file with the same name already on the desktop, were silently ' +
+      'overwritten as a result. The shortcut now checks whether a file already at that location already ' +
+      'belongs to the same instance; if not, a numbered name is used instead.'
+  },
+  'aufnahme-falsches-fenster': {
+    title: 'With several instances running at once, recording could grab the wrong window',
+    detail:
+      'Recording picks its capture source by window title, the first window with "Minecraft" in it. ' +
+      'With several instances running at the same time, that could be a different window than the one ' +
+      'recording was started for, with no error at all. The selection now prefers a window whose title ' +
+      'contains the started instance’s own Minecraft version. That considerably narrows the common ' +
+      'case of different versions, but does not fully solve it: two instances on the exact same ' +
+      'Minecraft version running at once still cannot be told apart reliably by window title.'
+  },
+  'curseforge-kategorien-verschluckt-fehler': {
+    title: 'A missing CurseForge key made the category list simply look empty',
+    detail:
+      'Unlike search, which explicitly checks for and reports a missing CurseForge API key, the same ' +
+      'failure while loading the category list was silently swallowed into an empty list. Without a key ' +
+      'set, CurseForge’s category filter therefore just showed nothing, with no explanation why. A ' +
+      'missing key is now reported the same way search already does.'
+  },
+  'netzwerk-fehler-unvollstaendig': {
+    title: 'Modrinth error messages were needlessly unclear, and rate-limit wait times were ignored',
+    detail:
+      'Two related gaps in the same spot: first, error parsing read several known fields from an error ' +
+      'response, but not the field Modrinth actually sends its error text in, so every Modrinth error ' +
+      'showed up as a bare technical code. Second, on a rate limit (error 429) the launcher always ' +
+      'waited a fixed, short amount of time instead of honouring the actual wait time Modrinth or ' +
+      'CurseForge sent in the response headers, giving up after roughly three seconds even when the ' +
+      'service would have been ready again moments later. Both are fixed now.'
+  },
+  'cache-verwirft-frische-daten': {
+    title: 'A write failure while caching could discard freshly fetched data',
+    detail:
+      'If writing the cached copy of a version list to disk failed, for instance because there was no ' +
+      'space left, that was treated the same as a failed network request: the old, stale cache was used ' +
+      'instead, even though the actual request had just successfully delivered fresh data. A write ' +
+      'failure while caching is now only logged, the freshly fetched data is used regardless.'
+  },
+  'datei-import-verwirft-erfolge': {
+    title: 'Adding several files at once could lose every one of them over a single broken file',
+    detail:
+      'When several mod or pack files were selected at once and importing one of them failed, for ' +
+      'instance because it was corrupted, the whole operation aborted with an error. Files from the same ' +
+      'selection that had already been added successfully were lost from the response, even though they ' +
+      'really had been added. Each file is now handled on its own: successful ones are kept, a failed ' +
+      'one is reported without discarding the rest.'
+  },
+  'duplikat-fix-zeigt-falsches-element': {
+    title: 'The notice about a duplicate mod could highlight a different item than the fix removed',
+    detail:
+      'For a mod installed twice, the compatibility check highlights one of the two copies, and the ' +
+      'matching automatic fix removes one of them. Which copy was highlighted and which one the fix ' +
+      'actually removed could end up different, purely because of the order in which the code computed ' +
+      'the two values. No data loss, since a genuine duplicate was removed either way, but potentially ' +
+      'confusing. Both now reliably point at the same, older copy.'
+  },
+  'vorstart-befehl-kein-sigkill': {
+    title: 'A pre-launch command that ignores a graceful stop could keep running as an orphan',
+    detail:
+      'If a configured pre-launch command ran too long, or the launch was cancelled, it used to be ' +
+      'stopped gently exactly once. A command that ignores or traps that signal stayed alive as an ' +
+      'invisible background process, even though the launcher had already reported the launch as ' +
+      'stopped or cancelled. The same two-stage approach (gentle first, forced after a short grace ' +
+      'period) has long existed for stopping the game itself; it was missing here. A pre-launch command ' +
+      'now gets the same forcing second stage.'
+  },
+  'download-ohne-pruefsumme-vertraut': {
+    title: 'An incompletely downloaded file with no checksum is trusted as complete for good',
+    detail:
+      'A downloaded file that comes with neither a checksum nor a known size counts as complete as soon ' +
+      'as it is not empty. If a download breaks off incomplete at that point, for instance through a ' +
+      'hard interruption mid-transfer, the broken file is accepted as present on the next start and ' +
+      'never downloaded again. This limit is already noted in the code for loader libraries, but applies ' +
+      'equally to downloading the Java runtime itself, where it was not noted before. It only ever ' +
+      'surfaces much later, as a launch failing with no visible connection to the original download ' +
+      'failure.'
+  },
+  'java-installation-abbruch-nicht-verdrahtet': {
+    title: 'A cancel can be ineffective for a shared Java installation',
+    detail:
+      'If two instances wait on the same Java installation at once, they share one download. If the ' +
+      'second instance cancels its own launch while the first keeps going, its cancel signal is not ' +
+      'connected to the download actually in progress: the second instance’s "Cancel" button then ' +
+      'looks like it worked while the download and extraction keep running in the background. Whether ' +
+      'this is still noticeable for the second instance itself depends on code outside this spot and is ' +
+      'not fully settled.'
+  },
+  'java-installation-verwirft-bei-umbenennen': {
+    title: 'A single, transient file error can discard an entire, finished Java installation',
+    detail:
+      'At the end of a Java installation, the fully extracted and verified folder is moved into its ' +
+      'final place. If exactly that last step fails once, for instance because antivirus software ' +
+      'briefly holds one of the freshly extracted files open, the entire already-downloaded and ' +
+      'extracted installation is deleted and started completely over on the next attempt, instead of ' +
+      'just retrying that one step. Not a false success, but needless frustration and waiting on a slow ' +
+      'connection.'
+  },
+  'fehlende-bibliothek-ohne-download-feld': {
+    title: 'The check for missing libraries may overlook some cases',
+    detail:
+      'The check for whether Java libraries needed at launch are actually present only looks at entries ' +
+      'that carry a download address. Some version definitions, mainly known from Forge and NeoForge, ' +
+      'list libraries with no address of their own because the installer places them itself. If such a ' +
+      'file is genuinely missing, it would be silently skipped instead of reported as missing, resulting ' +
+      'in an unclear error in the middle of launching. How often this exact case actually occurs across ' +
+      'the supported loaders has not yet been checked against real version files.'
   }
 }
 

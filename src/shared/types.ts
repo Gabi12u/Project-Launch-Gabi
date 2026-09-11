@@ -153,6 +153,22 @@ export interface Instance {
   installed: boolean
 }
 
+/**
+ * What `instances.update` is actually allowed to change from the renderer.
+ *
+ * Everything else on `Instance` (`mcVersion`, `loader`, `content`,
+ * `installing`, `installed`, …) has its own dedicated, guarded code path
+ * (install, repair, the content functions) that keeps it consistent with
+ * what is really on disk. This used to accept `Partial<Instance>` outright:
+ * nothing in the main process stopped a patch from touching those fields
+ * too, so a future bug anywhere upstream of this call could silently rewrite
+ * them, for instance mid-install, and leave `instance.json` describing a
+ * version or loader that does not match what is actually installed.
+ */
+export type InstancePatch = Partial<
+  Pick<Instance, 'name' | 'description' | 'group' | 'appearance' | 'settings' | 'favorite'>
+>
+
 /** Lightweight projection used by list views. */
 export interface InstanceSummary {
   id: string

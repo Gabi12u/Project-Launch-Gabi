@@ -8,6 +8,7 @@ import type {
   ContentItem,
   CreateInstanceOptions,
   Instance,
+  InstancePatch,
   InstanceSummary,
   LoaderId
 } from '@shared/types'
@@ -417,7 +418,7 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
  * Mutation
  * ------------------------------------------------------------------ */
 
-export function updateInstance(id: string, patch: Partial<Instance>): Instance {
+export function updateInstance(id: string, patch: InstancePatch): Instance {
   const current = getInstance(id)
 
   const next: Instance = {
@@ -425,11 +426,7 @@ export function updateInstance(id: string, patch: Partial<Instance>): Instance {
     ...patch,
     id: current.id,
     appearance: { ...current.appearance, ...patch.appearance },
-    settings: { ...current.settings, ...patch.settings },
-    // Content and sessions have dedicated code paths; a partial update must
-    // never silently drop them.
-    content: patch.content ?? current.content,
-    sessions: patch.sessions ?? current.sessions
+    settings: { ...current.settings, ...patch.settings }
   }
 
   return persist(next)
@@ -683,7 +680,13 @@ export function setContent(id: string, content: ContentItem[]): Instance {
 
 export function addContent(id: string, item: ContentItem): Instance {
   const instance = getInstance(id)
-  const content = instance.content.filter((c) => c.fileName !== item.fileName && c.id !== item.id)
+  // Scoped to the same content type: without it, a resource pack and a
+  // datapack sharing a generic file name collided here, and adding one
+  // silently dropped the other's record (the file itself stayed on disk,
+  // untracked, until a scan rediscovered it).
+  const content = instance.content.filter(
+    (c) => (c.fileName !== item.fileName || c.type !== item.type) && c.id !== item.id
+  )
   content.push(item)
   return persist({ ...instance, content })
 }

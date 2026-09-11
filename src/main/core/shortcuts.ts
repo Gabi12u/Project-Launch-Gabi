@@ -1,5 +1,5 @@
 import { app, shell } from 'electron'
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { paths } from '../paths'
 import { log } from '../logger'
@@ -23,6 +23,43 @@ function singleLine(value: string): string {
 /** Characters Windows refuses in file names, plus anything line-breaking. */
 function safeFileName(name: string): string {
   return singleLine(name).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
+}
+
+/**
+ * Whether an existing file at `linkPath` is already this instance's own
+ * shortcut, by checking for the `--launch=<id>` argument every shortcut this
+ * function creates carries. Anything else, including a file that fails to
+ * parse as a shortcut at all, counts as unrelated.
+ */
+function belongsToInstance(linkPath: string, instanceId: string): boolean {
+  try {
+    const marker = `--launch=${instanceId}`
+    if (process.platform === 'win32') {
+      return shell.readShortcutLink(linkPath).args?.includes(marker) ?? false
+    }
+    return readFileSync(linkPath, 'utf8').includes(marker)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Only the instance name decided the file name here, with no check for
+ * anything already at that path. Two instances that happen to share a
+ * display name, or a completely unrelated file already on the desktop with
+ * the same name, was silently overwritten: `shell.writeShortcutLink` updates
+ * an existing link in place, and the `.desktop`/`.command` branches just
+ * call `writeFileSync`. Re-running this for the same instance still reuses
+ * its own shortcut instead of piling up numbered duplicates.
+ */
+function resolveLinkPath(desktop: string, fileName: string, ext: string, instanceId: string): string {
+  const initial = join(desktop, `${fileName}${ext}`)
+  if (!existsSync(initial) || belongsToInstance(initial, instanceId)) return initial
+  for (let n = 2; n < 100; n++) {
+    const candidate = join(desktop, `${fileName} (${n})${ext}`)
+    if (!existsSync(candidate) || belongsToInstance(candidate, instanceId)) return candidate
+  }
+  return join(desktop, `${fileName} (${Date.now()})${ext}`)
 }
 
 /**
@@ -118,7 +155,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
   const args = [...baseArgs, `--launch=${instanceId}`].join(' ')
 
   if (process.platform === 'win32') {
-    const linkPath = join(desktop, `${fileName}.lnk`)
+    const linkPath = resolveLinkPath(desktop, fileName, '.lnk', instanceId)
 
     const generated = writeInstanceIcon(instanceId, iconImages)
     const icon = generated ?? appIconPath() ?? target
@@ -138,7 +175,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
   }
 
   if (process.platform === 'linux') {
-    const linkPath = join(desktop, `${fileName}.desktop`)
+    const linkPath = resolveLinkPath(desktop, fileName, '.desktop', instanceId)
     const iconFile = writeInstancePng(instanceId, iconImages) ?? appIconPath()
     const contents = [
       '[Desktop Entry]',
@@ -157,7 +194,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
   }
 
   // macOS: a small shell script is the closest thing to a one-click shortcut.
-  const scriptPath = join(desktop, `${fileName}.command`)
+  const scriptPath = resolveLinkPath(desktop, fileName, '.command', instanceId)
   writeFileSync(scriptPath, `#!/bin/sh\n"${target}" ${args}\n`, { mode: 0o755 })
   logger.info(`Startskript erstellt: ${scriptPath}`)
   return scriptPath

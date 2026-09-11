@@ -17,6 +17,7 @@ import type {
   ImportAnalysis,
   ImportCheck,
   Instance,
+  InstancePatch,
   InstanceSummary,
   JavaRuntime,
   LaunchPreflight,
@@ -170,7 +171,7 @@ export interface GabiApi {
     list(): Promise<InstanceSummary[]>
     get(id: string): Promise<InstanceDetail>
     create(options: CreateInstanceOptions): Promise<Instance>
-    update(id: string, patch: Partial<Instance>): Promise<Instance>
+    update(id: string, patch: InstancePatch): Promise<Instance>
     remove(id: string): Promise<InstanceSummary[]>
     duplicate(id: string, name?: string): Promise<Instance>
     /**

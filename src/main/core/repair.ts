@@ -604,7 +604,8 @@ async function runRepair(
         explicitPath: instance.settings.javaPath || undefined,
         major,
         autoManage: getSettings().javaAutoManage,
-        task
+        task,
+        instanceId: instance.id
       })
       step('Java', 'ok', `Java ${java.major} (${java.version})`)
     } catch (err) {

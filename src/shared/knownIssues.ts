@@ -784,6 +784,287 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-11',
     fixedIn: '1.0.18'
+  },
+  {
+    id: 'mod-update-entfernen-wettlauf',
+    title: 'Ein Mod aktualisieren und gleichzeitig entfernen konnte den entfernten Mod zurückbringen',
+    detail:
+      'Die Sperre, die Änderungen an den Mods einer Instanz koordiniert, ist ein Zähler, kein echtes ' +
+      'gegenseitiges Ausschließen: sie sagt nur nach außen, dass gerade etwas läuft, hält aber zwei ' +
+      'gleichzeitige Aufrufe für denselben Mod nicht auseinander. Lief ein Update für einen Mod noch, ' +
+      'während derselbe Mod entfernt wurde, konnte die bereits heruntergeladene, neue Datei liegen ' +
+      'bleiben, ohne dass ein Eintrag in der Mod-Liste noch darauf zeigte. Der nächste Ordner-Abgleich ' +
+      'fand diese Datei dann als vermeintlich neuen, lokalen Mod wieder und brachte damit genau den Mod ' +
+      'zurück, den der Nutzer gerade entfernt hatte. Das ist ein eigener, bisher unbekannter Weg zu ' +
+      'demselben Symptom wie der bereits behobene Fehler "Ein entfernter Mod konnte von selbst wieder ' +
+      'auftauchen", über einen anderen Auslöser. Update und Entfernen desselben Mods laufen jetzt ' +
+      'zwangsläufig nacheinander statt gleichzeitig.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'inhalt-typ-uebergreifende-kollision',
+    title: 'Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten sich gegenseitig löschen',
+    detail:
+      'Der Abgleich, ob eine neu installierte Datei eine bereits vorhandene ersetzt, verglich nur den ' +
+      'bloßen Dateinamen, nicht die Art des Inhalts. Ressourcenpakete, Shaderpakete, Datenpakete und ' +
+      'Mods liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie "pack.zip". Traf ' +
+      'ein solcher Name zufällig auf einen bereits vorhandenen Inhalt eines völlig anderen Typs, wurde ' +
+      'dessen Datei gelöscht und sein Eintrag aus der Liste entfernt, obwohl er mit dem gerade ' +
+      'installierten Inhalt nichts zu tun hatte. Der Vergleich berücksichtigt jetzt an allen drei ' +
+      'betroffenen Stellen auch den Inhaltstyp.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'abhaengigkeit-anbieter-uebergreifend',
+    title: 'Eine fehlende Pflicht-Abhängigkeit eines Mods konnte übersehen werden',
+    detail:
+      'Beim automatischen Installieren fehlender Abhängigkeiten wurde nur die Projekt-Kennung ' +
+      'verglichen, nicht zusätzlich der Anbieter. CurseForge vergibt reine Zahlen als Kennung, ' +
+      'Modrinth kurze Zeichenketten; eine zufällige Übereinstimmung zwischen einer CurseForge- und ' +
+      'einer Modrinth-Kennung hätte eine tatsächlich fehlende Abhängigkeit fälschlich als bereits ' +
+      'installiert gewertet und den Installationsversuch übersprungen, ohne jede Meldung. Genau dieses ' +
+      'Risiko wurde an anderer Stelle in der Kompatibilitätsprüfung bereits erkannt und dort ' +
+      'entsprechend eingeschränkt, hier aber übersehen. Der Vergleich prüft jetzt auch hier den ' +
+      'Anbieter mit.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'absturzerkennung-ignoriert-signal',
+    title: 'Ein echter Absturz unter macOS oder Linux wurde nicht als Absturz erkannt',
+    detail:
+      'Ob ein beendetes Spiel als Absturz gilt, hing nur am Beendigungscode. Ein Prozess, der durch ein ' +
+      'Betriebssystem-Signal beendet wird, etwa bei einem echten Speicherzugriffsfehler oder wenn das ' +
+      'Betriebssystem ihm mangels Arbeitsspeicher den Prozess entzieht, liefert dabei keinen Code, ' +
+      'sondern den Wert für "kein Code". Genau dieser Wert wurde bisher als gewöhnliches, sauberes ' +
+      'Ende gewertet. Die Folge: kein Absturz-Hinweis, kein rotes Abzeichen, und in der ' +
+      'Sitzungs-Historie stand dauerhaft "kein Absturz", obwohl einer stattgefunden hatte. Betroffen ' +
+      'sind ausschließlich macOS und Linux, unter Windows gibt es diese Art Signal nicht. Die Prüfung ' +
+      'berücksichtigt jetzt auch das Signal, mit einem eigenen Testlauf gegen einen wirklich per ' +
+      'Signal beendeten Prozess bestätigt.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18',
+    platforms: ['macOS', 'Linux']
+  },
+  {
+    id: 'start-meldet-erfolg-vor-fehler',
+    title: 'Ein fehlgeschlagener Start konnte kurzzeitig als erfolgreich gelten',
+    detail:
+      'Nach dem Start des Java-Prozesses liefen mehrere Schritte, ohne auf irgendetwas zu warten: die ' +
+      'Spielzeit-Erfassung, der Status "läuft" und die Rückmeldung an den Aufruf, der Start sei ' +
+      'geglückt. Schlägt der Start aber tatsächlich fehl, etwa weil eine Wrapper- oder Java-Datei ' +
+      'zwischenzeitlich verschoben oder gelöscht wurde, meldet Node diesen Fehler erst einen Schritt ' +
+      'später, als es die oben genannten, bereits gelaufenen Schritte erwarten konnten. Dadurch wurde ' +
+      'kurzzeitig ein Erfolg gemeldet, der letzte Spielzeitpunkt einer Instanz aktualisiert, obwohl das ' +
+      'Spiel nie lief, bevor die Statusanzeige sich kurz darauf selbst korrigierte. Mit einem eigenen ' +
+      'Testlauf gegen einen wirklich fehlschlagenden Start bestätigt: der Launcher wartet jetzt, bis ' +
+      'der Prozess wirklich angelaufen ist, bevor er das als Erfolg wertet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'eingestellte-java-version-ungeprueft',
+    title: 'Eine fest eingestellte, falsche Java-Version führte zu einem unklaren Absturz ohne Hinweis',
+    detail:
+      'Hat eine Instanz einen eigenen Java-Pfad eingestellt, wird dieser immer verwendet, sofern die ' +
+      'Installation dort überhaupt läuft, unabhängig davon, ob es die von dieser Minecraft-Version ' +
+      'benötigte Java-Version ist. Die automatische Java-Auswahl prüft genau das sorgfältig und meldet ' +
+      'eine Abweichung deutlich, der fest eingestellte Pfad umging diese Prüfung vollständig. Die Folge ' +
+      'war ein unklarer technischer Fehler beim Start, ohne jeden Hinweis auf die eigentliche Ursache. ' +
+      'Der fest eingestellte Pfad wird weiterhin verwendet, das ändert sich bewusst nicht, aber eine ' +
+      'Abweichung wird jetzt protokolliert und dem Nutzer gemeldet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'instanz-aktualisieren-ungefiltert',
+    title: 'Instanz-Änderungen aus der Oberfläche waren im Hauptprozess nicht auf ungefährliche Felder begrenzt',
+    detail:
+      'Die Funktion, die Namen, Beschreibung, Aussehen und Einstellungen einer Instanz speichert, nahm ' +
+      'dafür ein beliebiges Teilobjekt entgegen und schrieb es ungeprüft in die gespeicherte Instanz. ' +
+      'Die heutige Oberfläche schickt hier nur unbedenkliche Felder, ein künftiger Fehler an anderer ' +
+      'Stelle hätte über denselben Weg aber auch Version, Loader oder den Installationsstatus verändern ' +
+      'können, mitten in einer laufenden Installation oder Reparatur, und die gespeicherten Angaben ' +
+      'damit von den tatsächlich installierten Dateien abweichen lassen. Die Funktion akzeptiert jetzt ' +
+      'nur noch die tatsächlich vorgesehenen Felder.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'verknuepfung-ueberschreibt-fremde-datei',
+    title: 'Eine Desktop-Verknüpfung konnte eine andere, gleichnamige Datei überschreiben',
+    detail:
+      'Der Dateiname einer erzeugten Desktop-Verknüpfung richtete sich ausschließlich nach dem Namen ' +
+      'der Instanz, ohne zu prüfen, ob am Zielort schon etwas anderes liegt. Zwei Instanzen mit ' +
+      'gleichem oder ähnlichem Namen, oder eine bereits vorhandene, unabhängige Datei mit demselben ' +
+      'Namen auf dem Schreibtisch, wurden dadurch stillschweigend überschrieben. Die Verknüpfung prüft ' +
+      'jetzt, ob eine bereits vorhandene Datei am Zielort schon zur selben Instanz gehört; ist das ' +
+      'nicht der Fall, wird stattdessen ein durchnummerierter Name verwendet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'aufnahme-falsches-fenster',
+    title: 'Bei mehreren gleichzeitig laufenden Instanzen konnte die Aufnahme das falsche Fenster erwischen',
+    detail:
+      'Die Aufnahme sucht sich ihre Bildquelle über den Fenstertitel, das erste Fenster mit ' +
+      '"Minecraft" darin. Liefen mehrere Instanzen gleichzeitig, konnte das ein anderes Fenster sein ' +
+      'als das der Instanz, für die die Aufnahme gestartet wurde, ohne jede Fehlermeldung. Die Auswahl ' +
+      'bevorzugt jetzt ein Fenster, dessen Titel die Minecraft-Version der gestarteten Instanz enthält. ' +
+      'Das verkleinert das Problem für den häufigen Fall unterschiedlicher Versionen deutlich, löst es ' +
+      'aber nicht vollständig: laufen zwei Instanzen mit exakt derselben Minecraft-Version gleichzeitig, ' +
+      'lässt sich über den Fenstertitel weiterhin nicht zuverlässig zwischen ihnen unterscheiden.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'curseforge-kategorien-verschluckt-fehler',
+    title: 'Ein fehlender CurseForge-Schlüssel ließ die Kategorie-Liste einfach leer erscheinen',
+    detail:
+      'Anders als bei der Suche, die einen fehlenden CurseForge-API-Schlüssel ausdrücklich prüft und ' +
+      'meldet, wurde derselbe Fehler beim Laden der Kategorien-Liste still zu einer leeren Liste ' +
+      'verschluckt. Ohne hinterlegten Schlüssel zeigte der Kategorie-Filter für CurseForge dadurch ' +
+      'einfach nichts an, ohne jede Erklärung, warum. Der fehlende Schlüssel wird jetzt genauso wie bei ' +
+      'der Suche gemeldet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'netzwerk-fehler-unvollstaendig',
+    title: 'Fehlermeldungen von Modrinth waren unnötig unklar, Wartezeiten bei Anfrage-Begrenzung wurden ignoriert',
+    detail:
+      'Zwei verwandte Lücken in derselben Stelle: Erstens las die Fehlerauswertung mehrere bekannte ' +
+      'Felder aus einer Fehlerantwort aus, aber nicht das Feld, in dem Modrinth seinen eigentlichen ' +
+      'Fehlertext mitschickt, sodass jeder Modrinth-Fehler nur als nackter technischer Code erschien. ' +
+      'Zweitens wartete der Launcher bei einer Anfrage-Begrenzung (Fehler 429) immer eine feste, kurze ' +
+      'Zeit, statt die von Modrinth oder CurseForge im Antwort-Kopf mitgeschickte, tatsächlich nötige ' +
+      'Wartezeit zu beachten, und gab nach rund drei Sekunden auf, obwohl der Dienst kurz darauf schon ' +
+      'wieder bereit gewesen wäre. Beides ist jetzt korrigiert.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'cache-verwirft-frische-daten',
+    title: 'Ein Schreibfehler beim Zwischenspeichern konnte frisch geladene Daten verwerfen',
+    detail:
+      'Schlug das Schreiben der zwischengespeicherten Kopie einer Versions-Liste auf die Festplatte ' +
+      'fehl, zum Beispiel weil kein Platz mehr da war, wurde das genauso behandelt wie ein ' +
+      'fehlgeschlagener Netzwerkabruf: es griff der alte, veraltete Zwischenspeicher, obwohl die ' +
+      'eigentliche Abfrage gerade erfolgreich neue Daten geliefert hatte. Ein Schreibfehler beim ' +
+      'Zwischenspeichern wird jetzt nur noch protokolliert, die frisch geladenen Daten werden trotzdem ' +
+      'verwendet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'datei-import-verwirft-erfolge',
+    title: 'Beim Hinzufügen mehrerer Dateien auf einmal ließ eine kaputte Datei alle anderen verschwinden',
+    detail:
+      'Wurden mehrere Mod- oder Paket-Dateien auf einmal ausgewählt und schlug der Import einer davon ' +
+      'fehl, etwa weil sie beschädigt war, brach der gesamte Vorgang mit einer Fehlermeldung ab. Bereits ' +
+      'erfolgreich hinzugefügte Dateien aus derselben Auswahl gingen dabei aus der Rückmeldung verloren, ' +
+      'obwohl sie tatsächlich hinzugefügt worden waren. Jede Datei wird jetzt einzeln behandelt: ' +
+      'erfolgreiche Dateien werden übernommen, eine fehlgeschlagene wird gemeldet, ohne die anderen zu ' +
+      'verwerfen.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'duplikat-fix-zeigt-falsches-element',
+    title: 'Der Hinweis auf einen doppelt installierten Mod konnte ein anderes Element hervorheben als der Fix entfernte',
+    detail:
+      'Bei doppelt installierten Mods hebt die Kompatibilitätsprüfung eines der beiden Elemente hervor, ' +
+      'und der zugehörige automatische Fix entfernt eines von ihnen. Welches Element hervorgehoben ' +
+      'wurde und welches der Fix tatsächlich entfernte, konnten wegen der Reihenfolge, in der der Code ' +
+      'beide Werte ermittelte, auseinanderfallen. Kein Datenverlust, da ohnehin ein echtes Duplikat ' +
+      'entfernt wurde, aber potenziell verwirrend. Beide zeigen jetzt zuverlässig auf dasselbe, ältere ' +
+      'Element.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'vorstart-befehl-kein-sigkill',
+    title: 'Ein Vorstart-Befehl, der ein sanftes Beenden ignoriert, konnte als verwaister Prozess weiterlaufen',
+    detail:
+      'Läuft ein eingestellter Befehl vor dem eigentlichen Start zu lange oder wird der Start ' +
+      'abgebrochen, wurde er bisher nur einmal sanft beendet. Ignoriert oder fängt der Befehl dieses ' +
+      'Signal ab, blieb er als unsichtbarer Prozess im Hintergrund am Leben, obwohl der Launcher den ' +
+      'Start bereits als beendet oder abgebrochen gemeldet hatte. Genau diese Stufe (erst sanft, dann ' +
+      'nach kurzer Frist erzwungen beenden) gibt es beim Beenden des Spiels selbst schon lange, hier ' +
+      'fehlte sie noch. Ein Vorstart-Befehl bekommt jetzt dieselbe zweite, erzwingende Stufe.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'download-ohne-pruefsumme-vertraut',
+    title: 'Eine unvollständig heruntergeladene Datei ohne Prüfsumme wird dauerhaft für vollständig gehalten',
+    detail:
+      'Kommt eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, gilt ' +
+      'sie als vollständig, sobald sie überhaupt nicht leer ist. Bricht ein Download an dieser Stelle ' +
+      'unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wird die kaputte Datei ' +
+      'beim nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken ist ' +
+      'diese Grenze im Code bereits als bekannt vermerkt, sie gilt aber ebenso für den Download der ' +
+      'Java-Laufzeit selbst, wo das bisher nicht vermerkt war. Sichtbar wird das erst viel später, als ' +
+      'ein Start, der ohne erkennbaren Zusammenhang zum eigentlichen Downloadfehler fehlschlägt.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'java-installation-abbruch-nicht-verdrahtet',
+    title: 'Ein Abbruch kann bei geteilter Java-Installation wirkungslos bleiben',
+    detail:
+      'Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen ' +
+      'Download. Bricht die zweite Instanz ihren eigenen Start ab, während die erste weiterläuft, ist ' +
+      'ihr Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der "Abbrechen"-Knopf ' +
+      'der zweiten Instanz täuscht dann Wirkung vor, während im Hintergrund weiter heruntergeladen und ' +
+      'entpackt wird. Ob das für die zweite Instanz selbst noch spürbar wird, hängt von Code außerhalb ' +
+      'dieser Stelle ab und ist nicht abschließend geklärt.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'java-installation-verwirft-bei-umbenennen',
+    title: 'Ein einzelner, vorübergehender Dateifehler kann eine fertige Java-Installation komplett verwerfen',
+    detail:
+      'Am Ende einer Java-Installation wird der fertig entpackte und geprüfte Ordner an seinen ' +
+      'endgültigen Platz verschoben. Schlägt genau dieser letzte Schritt einmal fehl, zum Beispiel weil ' +
+      'ein Virenschutz eine der frisch entpackten Dateien kurz geöffnet hält, wird die gesamte, bereits ' +
+      'heruntergeladene und entpackte Installation gelöscht und beim nächsten Versuch komplett neu ' +
+      'begonnen, statt nur diesen einen Schritt zu wiederholen. Kein falscher Erfolg, aber unnötiger ' +
+      'Ärger und Wartezeit bei langsamer Verbindung.',
+    state: 'investigating',
+    since: '2026-09-11'
+  },
+  {
+    id: 'fehlende-bibliothek-ohne-download-feld',
+    title: 'Die Prüfung auf fehlende Bibliotheken könnte manche Fälle übersehen',
+    detail:
+      'Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaut nur ' +
+      'bei Einträgen nach, die eine Download-Adresse mitbringen. Manche Versions-Angaben, bekannt vor ' +
+      'allem von Forge und NeoForge, führen Bibliotheken ohne eigene Adresse, weil sie vom Installer ' +
+      'selbst an Ort und Stelle abgelegt werden. Fehlt eine solche Datei tatsächlich, würde sie beim ' +
+      'Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren ' +
+      'Fehler mitten im Spielstart als Folge. Wie oft dieser genaue Fall bei den unterstützten ' +
+      'Loadern tatsächlich vorkommt, ist noch nicht an echten Versions-Dateien geprüft.',
+    state: 'investigating',
+    since: '2026-09-11'
   }
 ]
 
