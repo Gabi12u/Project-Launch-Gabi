@@ -56,21 +56,17 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
   'login-http-400': {
     title: 'Sign-in ends with error 400',
     detail:
-      'On some accounts, Microsoft sign-in breaks off with error 400. A crash report from 1.0.16 has ' +
-      'since shown what is behind it: Microsoft answers the device-code check with "invalid_grant". ' +
-      'Measured against the real sign-in service, that means either the code has expired or the ' +
-      'sign-in in the browser was never completed. Both are final: the code is not accepted afterwards. ' +
-      'Until now the launcher did not recognise this case and showed the raw technical line instead of ' +
-      'saying what to do. That part is fixed: a plain-language message now appears alongside the ' +
-      'technical code, and the report includes how long the attempt ran. That landed in 1.0.17. A ' +
-      'strong suspicion about the underlying cause has also emerged since: the launcher signs in with ' +
-      'the official Minecraft launcher\u2019s application id, because its own id first needs approval from ' +
-      'Mojang. Microsoft is increasingly refusing that shared application for third-party programs, and ' +
-      'the rejection lands the moment someone finishes signing in in the browser. As of September 8 a ' +
-      'dedicated application exists, and the sign-in path has been measured through by hand once: device ' +
-      'code, sign-in, Xbox Live and the Xbox authorisation all complete cleanly, only Minecraft itself ' +
-      'turns away an application that is not yet approved. The approval has been requested and is still ' +
-      'pending. Until it arrives, the shared application stays in use, and the error can keep occurring.'
+      'On some accounts, Microsoft sign-in broke off with error 400. The cause was that the launcher ' +
+      'signed in with the official Minecraft launcher\u2019s application id: Microsoft is increasingly ' +
+      'refusing that shared application for third-party programs, and the rejection landed the moment ' +
+      'someone finished signing in in the browser. Since 1.0.17 the launcher at least shows this case in ' +
+      'plain language, with a readable message alongside the technical code instead of the raw error ' +
+      'line. A dedicated application has existed since September 8, 2026, and on September 11, 2026 the ' +
+      'full sign-in path was measured through by hand: device code, sign-in, Xbox Live, Xbox ' +
+      'authorisation and Minecraft itself all accept it without issue, with no approval form ever turning ' +
+      'out to be needed. Anyone who already has the launcher installed is switched onto the dedicated ' +
+      'application automatically on the next start. A session that is already signed in is unaffected and ' +
+      'keeps running under the application it originally signed in with.'
   },
   'anmeldung-falsches-system': {
     title: 'A changed setting could break sign-in for good',

@@ -130,69 +130,21 @@ Noch nicht angefasst:
       entfernt, der Code liegt unangetastet in `src/main/core/startScreen.ts`
       und `mod/`. Offen ist, welche Form das Vorhaben überhaupt bekommen soll.
 
-## Eigene Anwendungs-ID bei Microsoft
+## Eigene Anwendungs-ID bei Microsoft, erledigt
 
-Der Launcher benutzt `00000000402b5328`. Das ist die Anwendung des
-offiziellen Minecraft-Launchers, nicht unsere. Microsoft weist sie für
-fremde Programme zunehmend ab, und genau das ist der HTTP-400-Fehler beim
-Anmelden: nach etwa 70 Sekunden, also direkt nachdem der Nutzer im
-Browser fertig ist, verweigert Microsoft das Token mit `invalid_grant`
-und "grant the client application access to the requested scope".
-
-Der Weg dorthin, in dieser Reihenfolge:
-
-- [x] **Ein Azure-Verzeichnis.** Ein privates Microsoft-Konto hat keins.
-      Über `portal.azure.com`, Mandanten verwalten, Erstellen ist es am
-      2026-09-04 nicht gelungen. Über `azure.microsoft.com/free` dann
-      am 2026-09-08 doch: das Konto hat seitdem ein `Default Directory`,
-      und darin wird registriert. Ein neuer Mandant war nie nötig, der
-      kostenlose Zugang legt eins von selbst an. Eine App-Registrierung
-      kostet nichts und braucht kein Abonnement.
-- [x] **Anwendung registrieren.** Am 2026-09-08 erledigt. Name
-      `Launch Gabi`, Kontotypen "Alle Konten von Entra ID-Mandanten und
-      persönliche Microsoft-Konten", Redirect URI leer, unter
-      Authentifizierung "Öffentliche Clientflows zulassen" auf Ja.
-
-      Anwendungs-ID: `ddf22ce8-a28e-4da9-bd5f-f723e77140ce`
-
-      Kein Geheimnis, sie gehört später ohnehin in `defaults.ts` und
-      damit in jede Installation. Unter "Zertifikate & Geheimnisse"
-      wurde bewusst nichts angelegt: der Gerätecode-Weg braucht keins,
-      und ein Programm auf fremden Rechnern kann keines hüten.
-
-      Azure warnt auf der Übersicht, dass Endnutzer mehrmandantenfähigen
-      Apps ohne geprüften Herausgeber nicht zustimmen können. Für uns
-      unerheblich, weil der Launcher ausschliesslich den `consumers`-
-      Endpunkt anspricht, also nur persönliche Konten. Sollte sich das
-      doch als Hürde zeigen, ist der Kontotyp "Nur persönliche Konten"
-      der Ausweg, eine Auswahl im selben Aufklappmenü.
-- [ ] **Freigabe bei Mojang beantragen**, mit der neuen Anwendungs-ID:
-      https://aka.ms/mce-reviewappid
-      Ohne diese Freigabe antwortet `api.minecraftservices.com` mit 403.
-      Der Launcher erklärt diesen Fall seit 1.0.18 im Klartext.
-
-      Am 2026-09-08 nachgemessen statt vermutet, mit
-      `node scripts/test-azure-login.mjs`. Gerätecode, Anmeldung, Xbox
-      Live und XSTS laufen mit der eigenen ID sauber durch, die
-      Registrierung ist also richtig eingestellt. Erst Minecraft lehnt
-      ab, mit genau dieser Antwort:
-
-          403  "Invalid app registration, see
-                https://aka.ms/AppRegInfo for more information"
-
-      Damit ist die Freigabe die einzige verbleibende Hürde, und das
-      Formular ist keine Rateaktion.
-
-      Am 2026-09-08 abgeschickt. Antwort kommt per Mail, dauert Tage bis
-      Wochen. Wenn sie da ist: nochmal `test-azure-login.mjs` laufen
-      lassen, und erst bei fünf grünen Haken weitergehen.
-- [ ] **Erst danach** die ID als Standard in `src/shared/defaults.ts`
-      eintragen. Vorher wäre sie für alle Nutzer eine Verschlechterung.
+Der Launcher meldete sich mit `00000000402b5328` an, der Anwendung des
+offiziellen Minecraft-Launchers, nicht unserer. Microsoft wies sie für
+fremde Programme zunehmend ab, und genau das war der HTTP-400-Fehler
+beim Anmelden. Seit 2026-09-08 gibt es eine eigene Registrierung
+(`ddf22ce8-a28e-4da9-bd5f-f723e77140ce`), am 2026-09-11 von Hand
+nachgemessen statt vermutet, mit `node scripts/test-azure-login.mjs`:
+Gerätecode, Anmeldung, Xbox Live, Xbox-Freigabe und Minecraft selbst
+laufen alle fünf sauber durch. Das erwartete Freigabeformular bei
+Mojang war entgegen der Erwartung gar nicht nötig, der frühere
+403-Fehler war offenbar vorübergehend. Die ID steckt jetzt als Standard
+in `src/shared/defaults.ts`, und wer den Launcher schon installiert
+hat, wird beim nächsten Start automatisch umgestellt
+(`src/main/store.ts`, `sanitize()`). Eintrag `login-http-400` in
+`src/shared/knownIssues.ts` steht auf `fixed`, `fixedIn: '1.0.18'`.
 
 Zum Nachlesen: https://minecraft.wiki/w/Microsoft_authentication
-
-## Länger offen
-
-- [ ] Ursache des HTTP-400-Anmeldefehlers ist damit sehr wahrscheinlich
-      gefunden, aber erst bewiesen, wenn eine eigene, freigegebene
-      Anwendungs-ID läuft. Siehe `src/shared/knownIssues.ts`.

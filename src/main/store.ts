@@ -2,7 +2,7 @@ import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_LAUNCHER_SETTINGS } from '@shared/defaults'
+import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import type { Account, LauncherSettings } from '@shared/types'
 import { log } from './logger'
 
@@ -93,7 +93,17 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   next.defaultJvmArgs = textOr(next.defaultJvmArgs, fallback.defaultJvmArgs)
   next.accentColor = textOr(next.accentColor, fallback.accentColor)
   next.curseForgeApiKey = textOr(next.curseForgeApiKey, fallback.curseForgeApiKey)
-  next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId)
+  // A plain default merge never overwrites a value already on disk, and every
+  // settings file ever written carried the old official client id explicitly,
+  // not as a gap the defaults could fill. Anyone who still has exactly that
+  // value, meaning they never chose one of their own, is moved onto our own
+  // registration here. Already signed in accounts are unaffected: each keeps
+  // refreshing under the client id it actually logged in with (`microsoft.ts`,
+  // `issuerClientId`), so this only changes which id the next new sign in uses.
+  next.microsoftClientId =
+    next.microsoftClientId === LEGACY_MICROSOFT_CLIENT_ID
+      ? fallback.microsoftClientId
+      : textOr(next.microsoftClientId, fallback.microsoftClientId)
   // Not merely cosmetic: registering the hotkey calls `.trim()` on this, so a
   // number in the file threw before a game could ever start.
   next.recordingHotkey = textOr(next.recordingHotkey, fallback.recordingHotkey).trim() || fallback.recordingHotkey

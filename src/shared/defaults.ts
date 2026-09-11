@@ -1,5 +1,13 @@
 import type { InstanceSettings, LauncherSettings, LoaderId } from './types'
 
+/**
+ * Client id of the official Minecraft launcher application. Launch Gabi used
+ * this until its own Azure registration was confirmed working; anyone whose
+ * settings file still carries it exactly, meaning they never chose a client
+ * id of their own, is migrated to the real default in `store.ts`.
+ */
+export const LEGACY_MICROSOFT_CLIENT_ID = '00000000402b5328'
+
 /** JVM flags that behave well for modded Minecraft on modern JDKs. */
 export const DEFAULT_JVM_ARGS = [
   '-XX:+UseG1GC',
@@ -56,9 +64,12 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   lastRunVersion: '',
   lastSeenVersion: '',
   curseForgeApiKey: '',
-  // Client id of the official Minecraft launcher application. Replace it with
-  // your own Azure application id before shipping Launch Gabi publicly.
-  microsoftClientId: '00000000402b5328',
+  // Launch Gabi's own Azure application id, registered 2026-09-08 and
+  // confirmed on 2026-09-11 against the real Microsoft, Xbox Live, XSTS and
+  // Minecraft login chain with scripts/test-azure-login.mjs. Replaces
+  // LEGACY_MICROSOFT_CLIENT_ID, the official Minecraft launcher's id, which
+  // Microsoft was starting to refuse for third-party programs.
+  microsoftClientId: 'ddf22ce8-a28e-4da9-bd5f-f723e77140ce',
   showSnapshots: false,
   discordRichPresence: false,
   onboarded: false

@@ -86,26 +86,22 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'login-http-400',
     title: 'Anmeldung endet mit Fehler 400',
     detail:
-      'Bei einzelnen Konten bricht die Microsoft-Anmeldung mit einem Fehler 400 ab. Aus einem ' +
-      'Fehlerbericht aus 1.0.16 ist jetzt bekannt, was dahintersteckt: Microsoft antwortet beim ' +
-      'Abfragen des Anmeldecodes mit "invalid_grant". Gemessen am echten Anmeldedienst heißt das ' +
-      'entweder, dass der Code abgelaufen ist, oder dass die Anmeldung im Browser nicht bis zum ' +
-      'Ende durchgelaufen ist. Beides ist endgültig, der Code wird danach nicht mehr angenommen. ' +
-      'Der Launcher hat diesen Fall bisher nicht erkannt und die rohe technische Zeile angezeigt, ' +
-      'statt zu sagen, was zu tun ist. Das ist behoben: es erscheint jetzt eine verständliche ' +
-      'Meldung samt technischem Code, und der Bericht enthält, wie lange der Versuch lief. Das ' +
-      'steckt in 1.0.17. Inzwischen liegt auch ein starker Verdacht auf der Ursache vor: der ' +
-      'Launcher meldet sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers an, weil ' +
-      'eine eigene erst von Mojang freigegeben werden muss. Microsoft lässt diese gemeinsame ' +
-      'Anwendung für fremde Programme zunehmend nicht mehr zu, und die Ablehnung kommt genau ' +
-      'dann, wenn jemand die Anmeldung im Browser abgeschlossen hat. Seit dem 8. September gibt ' +
-      'es eine eigene Anwendung, und der Anmeldeweg ist damit einmal von Hand durchgemessen ' +
-      'worden: Gerätecode, Anmeldung, Xbox Live und die Xbox-Freigabe laufen sauber durch, erst ' +
-      'Minecraft selbst weist eine noch nicht freigegebene Anwendung ab. Die Freigabe ist ' +
-      'beantragt und steht noch aus. Solange sie fehlt, bleibt es bei der gemeinsamen Anwendung, ' +
-      'und der Fehler kann weiter auftreten.',
-    state: 'fixing',
-    since: '2026-08-25'
+      'Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab. Ursache war, ' +
+      'dass der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete: ' +
+      'Microsoft lässt diese gemeinsame Anwendung für fremde Programme zunehmend nicht mehr zu, und ' +
+      'die Ablehnung kam genau in dem Moment, in dem jemand die Anmeldung im Browser abgeschlossen ' +
+      'hatte. Seit 1.0.17 zeigt der Launcher diesen Fall wenigstens verständlich an, mit einer ' +
+      'lesbaren Meldung samt technischem Code statt der rohen Fehlerzeile. Seit dem 8. September ' +
+      '2026 gibt es eine eigene Anwendung, und am 11. September 2026 ist von Hand nachgemessen ' +
+      'worden, dass der gesamte Anmeldeweg mit ihr durchläuft: Gerätecode, Anmeldung, Xbox Live, ' +
+      'Xbox-Freigabe und Minecraft selbst nehmen sie ohne Weiteres an, ganz ohne das ursprünglich ' +
+      'erwartete Freigabeformular. Wer den Launcher schon installiert hat, wird beim nächsten Start ' +
+      'automatisch auf die eigene Anwendung umgestellt. Eine bereits angemeldete Sitzung ist davon ' +
+      'nicht betroffen und läuft unter der Anwendung weiter, mit der sie sich ursprünglich angemeldet ' +
+      'hat.',
+    state: 'fixed',
+    since: '2026-08-25',
+    fixedIn: '1.0.18'
   },
   {
     id: 'anmeldung-falsches-system',
