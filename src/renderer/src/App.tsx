@@ -94,6 +94,14 @@ export function App(): JSX.Element {
         })
       }),
 
+      // The main process only sends this once it drops a task for good. Until
+      // this existed, nothing here ever removed a task again: this list only
+      // grew for the life of the session, and a finished or failed task stayed
+      // in it, and in the dock, forever.
+      window.gabi.events.onTaskRemoved((id) => {
+        setState((current) => ({ tasks: current.tasks.filter((t) => t.id !== id) }))
+      }),
+
       window.gabi.events.onInstanceChanged(() => {
         void refreshInstances()
       }),

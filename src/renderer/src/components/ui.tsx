@@ -26,6 +26,17 @@ interface ModalProps {
   busy?: boolean
 }
 
+// Every open modal's id, in the order it opened. Each instance listens for
+// Escape on `window` independently, since that is the only way a portal-
+// rendered dialog can hear it at all, but without this an Escape meant for
+// the top one also closed whatever was open underneath, for instance the
+// account window mid sign in behind a version picker opened on top of it.
+// The backdrop click does not need the same guard: it only ever reaches the
+// element it was clicked on, which is already whichever overlay is drawn on
+// top.
+let openModalIds: number[] = []
+let nextModalId = 1
+
 export function Modal({
   open,
   title,
@@ -36,10 +47,23 @@ export function Modal({
   width = 'normal',
   busy = false
 }: ModalProps): JSX.Element | null {
+  const idRef = useRef<number | null>(null)
+  if (idRef.current === null) idRef.current = nextModalId++
+
+  useEffect(() => {
+    if (!open) return
+    const id = idRef.current as number
+    openModalIds = [...openModalIds, id]
+    return () => {
+      openModalIds = openModalIds.filter((openId) => openId !== id)
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !busy) onClose()
+      const isTop = openModalIds[openModalIds.length - 1] === idRef.current
+      if (event.key === 'Escape' && !busy && isTop) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

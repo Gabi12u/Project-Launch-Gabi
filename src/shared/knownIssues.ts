@@ -673,8 +673,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'den Rest der Sitzung nicht mehr weg. Fehlgeschlagene Vorgänge haben zusätzlich keinen Knopf zum ' +
       'Wegklicken, nur laufende. Der Hauptprozess vergisst einen alten Vorgang zwar nach kurzer Zeit, sagt ' +
       'das der Oberfläche aber nicht, also wächst die Liste im Hintergrund eine Sitzung lang weiter.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'rechtsklickmenue-beim-scrollen',
@@ -687,8 +688,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'sehen ist. Das Menü schließt sich bei einer Größenänderung des Fensters, aber nicht beim Scrollen. ' +
       'Nebenbei springt die Tastaturauswahl im Menü bei jeder Aktualisierung im Hintergrund zurück auf den ' +
       'ersten Eintrag.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'konto-entfernen-ohne-rueckfrage',
@@ -698,8 +700,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'sofort, ohne Sicherheitsabfrage und ohne die Möglichkeit, es rückgängig zu machen. Trifft man das ' +
       'Symbol versehentlich, ist das Konto weg und muss über die vollständige Microsoft-Anmeldung neu ' +
       'hinzugefügt werden. Schlägt das Entfernen im Hintergrund fehl, gibt es dazu keine Rückmeldung.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'fehlerbericht-frage-wegklicken',
@@ -711,8 +714,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Fehlerberichte werden abgeschaltet, und die Frage kommt nicht wieder. Wer das Fenster nur wegklicken ' +
       'und später entscheiden wollte, muss die Einstellung von Hand unter Einstellungen, Fehlerberichte ' +
       'wieder einschalten.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'einstellungen-schreiben-bei-jeder-aenderung',
@@ -725,8 +729,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Neuschreiben der Einstellungsdatei im Hauptprozess. Auf einer langsamen Festplatte oder wenn ein ' +
       'Virenschutz jede Datei mitprüft, ruckelt der Regler dadurch spürbar und die Oberfläche stockt kurz. ' +
       'Die Datei geht dabei nicht kaputt, die Schreibvorgänge laufen nacheinander ab.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'escape-schliesst-mehrere-fenster',
@@ -736,8 +741,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Sind zwei Fenster übereinander offen, etwa die Detailansicht eines Mods und darüber die Auswahl ' +
       'einer bestimmten Version, schließt ein Druck auf Escape beide gleichzeitig, statt nur das obere. Man ' +
       'landet dann nicht wieder in der Detailansicht, sondern ganz aus dem Vorgang heraus.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'entdecken-modpack-nicht-als-installiert',
@@ -748,8 +754,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'auf. Ein Modpack, das man bereits als Instanz installiert hat, wird weiter mit "Installieren" ' +
       'angezeigt statt mit "Installiert", und der Knopf bleibt anklickbar. Ein zweiter Klick legt eine ' +
       'zweite, vollständige Instanz desselben Modpacks an.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'loader-abfrage-ohne-fehlerhinweis',
@@ -761,8 +768,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'betroffene Loader stillschweigend als "keine Version verfügbar" geführt. Fallen alle vier Abfragen ' +
       'aus, sieht es so aus, als gäbe es für diese Minecraft-Version überhaupt keinen Loader. Einen Hinweis, ' +
       'dass die Abfrage nur fehlgeschlagen ist und ein erneuter Versuch helfen könnte, gibt es nicht.',
-    state: 'investigating',
-    since: '2026-09-11'
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   }
 ]
 

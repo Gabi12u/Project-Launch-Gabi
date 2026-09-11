@@ -1607,57 +1607,65 @@ footer a:hover { color: var(--ink); }
       "id": "aufgabenanzeige-bleibt-stehen",
       "title": "Die Aufgabenanzeige verschwindet nicht mehr, sobald einmal ein Vorgang fertig ist",
       "detail": "Die kleine Anzeige unten für laufende Vorgänge (Herunterladen, Reparieren, Installieren) soll einen fertigen Eintrag noch etwa drei Sekunden zeigen und dann ausblenden. Der Timer dafür wird jedoch durch die eigene Zustandsänderung sofort wieder abgeräumt, bevor er auslösen kann. Ein fertiger oder abgebrochener Vorgang bleibt dadurch dauerhaft in der Anzeige stehen, und die Anzeige selbst geht für den Rest der Sitzung nicht mehr weg. Fehlgeschlagene Vorgänge haben zusätzlich keinen Knopf zum Wegklicken, nur laufende. Der Hauptprozess vergisst einen alten Vorgang zwar nach kurzer Zeit, sagt das der Oberfläche aber nicht, also wächst die Liste im Hintergrund eine Sitzung lang weiter.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "rechtsklickmenue-beim-scrollen",
       "title": "Das Rechtsklick-Menü bleibt beim Scrollen stehen und kann die falsche Instanz treffen",
       "detail": "Öffnet man mit Rechtsklick das Menü an einer Instanz oder einem Mod und scrollt dann die Liste, wandert der Inhalt darunter weg, das Menü bleibt aber an seiner Stelle. Es steht dann über einer anderen Zeile als der, für die es geöffnet wurde. Wählt man jetzt einen Eintrag wie \"Reparieren\" oder \"Favorit\", wirkt er auf die ursprüngliche Instanz, nicht auf die, über der das Menü gerade zu sehen ist. Das Menü schließt sich bei einer Größenänderung des Fensters, aber nicht beim Scrollen. Nebenbei springt die Tastaturauswahl im Menü bei jeder Aktualisierung im Hintergrund zurück auf den ersten Eintrag.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "konto-entfernen-ohne-rueckfrage",
       "title": "Ein Konto lässt sich mit einem einzigen Klick ohne Rückfrage entfernen",
       "detail": "Im Konten-Fenster steht neben jedem Konto ein Mülleimer-Symbol. Ein Klick darauf entfernt das Konto sofort, ohne Sicherheitsabfrage und ohne die Möglichkeit, es rückgängig zu machen. Trifft man das Symbol versehentlich, ist das Konto weg und muss über die vollständige Microsoft-Anmeldung neu hinzugefügt werden. Schlägt das Entfernen im Hintergrund fehl, gibt es dazu keine Rückmeldung.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "fehlerbericht-frage-wegklicken",
       "title": "Die Frage nach Fehlerberichten wegzuklicken schaltet sie dauerhaft ab",
       "detail": "Beim ersten Start nach dem Einrichten fragt der Launcher einmalig, ob Fehlerberichte gesendet werden dürfen. Schließt man dieses Fenster mit Escape, mit einem Klick daneben oder über das Kreuz, statt einen der beiden Knöpfe zu benutzen, wird das genauso gewertet wie ein ausdrückliches \"Nein, danke\": Fehlerberichte werden abgeschaltet, und die Frage kommt nicht wieder. Wer das Fenster nur wegklicken und später entscheiden wollte, muss die Einstellung von Hand unter Einstellungen, Fehlerberichte wieder einschalten.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "einstellungen-schreiben-bei-jeder-aenderung",
       "title": "Schieberegler und das Feld für JVM-Argumente schreiben bei jeder kleinsten Änderung auf die Festplatte",
       "detail": "Die Schieberegler in den Einstellungen (Arbeitsspeicher, gleichzeitige Downloads, Anzahl automatischer Sicherungen) und das Textfeld für die JVM-Argumente speichern jede Zwischenstufe sofort. Einen Regler von einem Ende zum anderen zu ziehen löst dutzende einzelne Schreibvorgänge aus, jeder Buchstabe im Argumente-Feld einen weiteren. Jeder davon ist ein vollständiges, sicherndes Neuschreiben der Einstellungsdatei im Hauptprozess. Auf einer langsamen Festplatte oder wenn ein Virenschutz jede Datei mitprüft, ruckelt der Regler dadurch spürbar und die Oberfläche stockt kurz. Die Datei geht dabei nicht kaputt, die Schreibvorgänge laufen nacheinander ab.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "escape-schliesst-mehrere-fenster",
       "title": "Escape schließt zwei übereinanderliegende Fenster auf einmal",
       "detail": "Jedes Fenster im Launcher hört für sich auf die Escape-Taste, ohne zu prüfen, ob es das oberste ist. Sind zwei Fenster übereinander offen, etwa die Detailansicht eines Mods und darüber die Auswahl einer bestimmten Version, schließt ein Druck auf Escape beide gleichzeitig, statt nur das obere. Man landet dann nicht wieder in der Detailansicht, sondern ganz aus dem Vorgang heraus.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "entdecken-modpack-nicht-als-installiert",
       "title": "In \"Entdecken\" wird ein bereits installiertes Modpack nicht als installiert erkannt",
       "detail": "Auf der Seite \"Entdecken\" vergleicht der Launcher die angezeigten Modpacks mit den vorhandenen Instanzen in zwei unterschiedlichen Schreibweisen der Projektkennung. Der Vergleich geht deshalb nie auf. Ein Modpack, das man bereits als Instanz installiert hat, wird weiter mit \"Installieren\" angezeigt statt mit \"Installiert\", und der Knopf bleibt anklickbar. Ein zweiter Klick legt eine zweite, vollständige Instanz desselben Modpacks an.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "loader-abfrage-ohne-fehlerhinweis",
       "title": "Schlägt die Abfrage der Mod-Loader fehl, erscheinen alle Loader als nicht verfügbar",
       "detail": "Beim Anlegen einer Instanz fragt der Assistent für die gewählte Minecraft-Version ab, welche Mod-Loader es dafür gibt (Fabric, NeoForge, Forge, Quilt). Schlägt eine dieser Abfragen fehl, zum Beispiel bei kurzer Netzunterbrechung oder wenn der Metadaten-Dienst nicht erreichbar ist, wird der betroffene Loader stillschweigend als \"keine Version verfügbar\" geführt. Fallen alle vier Abfragen aus, sieht es so aus, als gäbe es für diese Minecraft-Version überhaupt keinen Loader. Einen Hinweis, dass die Abfrage nur fehlgeschlagen ist und ein erneuter Versuch helfen könnte, gibt es nicht.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     }
   ];
   var ISSUE_LABEL = {
@@ -2029,57 +2037,65 @@ footer a:hover { color: var(--ink); }
       "id": "aufgabenanzeige-bleibt-stehen",
       "title": "The task panel no longer goes away once any job has finished",
       "detail": "The small panel at the bottom for running jobs (downloading, repairing, installing) is meant to keep a finished entry on screen for about three seconds and then fade it out. The timer for that is cleared again by its own state change before it can fire. A finished or cancelled job therefore stays in the panel for good, and the panel itself does not disappear for the rest of the session. Failed jobs also have no button to dismiss them, only running ones do. The main process does forget an old job after a short while, but does not tell the interface, so the list keeps growing in the background over a session.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "rechtsklickmenue-beim-scrollen",
       "title": "The right-click menu stays put while scrolling and can act on the wrong instance",
       "detail": "Right-clicking an instance or a mod to open its menu and then scrolling the list moves the content underneath away while the menu stays where it is. It then sits over a different row than the one it was opened for. Choosing an entry such as \"Repair\" or \"Favourite\" at that point acts on the original instance, not the one the menu now appears over. The menu closes on a window resize, but not on scroll. Separately, the keyboard selection inside the menu jumps back to the first entry on every background refresh.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "konto-entfernen-ohne-rueckfrage",
       "title": "An account can be removed with a single click and no confirmation",
       "detail": "The accounts window shows a bin icon next to every account. Clicking it removes the account right away, with no confirmation and no way to undo it. Hit the icon by accident and the account is gone and has to be added back through the full Microsoft sign-in. If the removal fails in the background, there is no feedback about it.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "fehlerbericht-frage-wegklicken",
       "title": "Dismissing the crash-report question turns it off for good",
       "detail": "On the first start after setup the launcher asks once whether crash reports may be sent. Closing that window with Escape, a click outside it or the X, rather than using one of the two buttons, is treated exactly like an explicit \"No thanks\": crash reports are turned off and the question does not come back. Anyone who only meant to dismiss it and decide later has to turn the setting back on by hand under Settings, Crash reports.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "einstellungen-schreiben-bei-jeder-aenderung",
       "title": "Sliders and the JVM arguments field write to disk on every smallest change",
       "detail": "The sliders in Settings (memory, concurrent downloads, number of automatic backups) and the text field for JVM arguments save every intermediate step immediately. Dragging a slider from one end to the other triggers dozens of separate writes, every character in the arguments field one more. Each of those is a full, atomic rewrite of the settings file in the main process. On a slow disk, or with antivirus scanning every file, the slider stutters noticeably and the interface hitches briefly. The file is not corrupted by this, the writes run one after another.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "escape-schliesst-mehrere-fenster",
       "title": "Escape closes two stacked windows at once",
       "detail": "Every window in the launcher listens for the Escape key on its own, without checking whether it is the topmost one. With two windows open on top of each other, such as a mod detail view and above it the picker for a specific version, one press of Escape closes both at once instead of just the top one. You then do not land back in the detail view but all the way out of the flow.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "entdecken-modpack-nicht-als-installiert",
       "title": "In \"Discover\" an already installed modpack is not recognised as installed",
       "detail": "On the \"Discover\" page the launcher compares the listed modpacks against the existing instances using two different spellings of the project id. The comparison therefore never matches. A modpack you have already installed as an instance keeps showing \"Install\" instead of \"Installed\", and the button stays clickable. A second click creates a second, complete instance of the same modpack.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "loader-abfrage-ohne-fehlerhinweis",
       "title": "If the mod-loader lookup fails, every loader shows as unavailable",
       "detail": "When creating an instance the wizard looks up which mod loaders exist for the chosen Minecraft version (Fabric, NeoForge, Forge, Quilt). If one of those lookups fails, for instance during a brief network drop or when the metadata service is unreachable, the affected loader is silently listed as \"no version available\". If all four lookups fail, it looks as though this Minecraft version has no loader at all. There is no hint that the lookup merely failed and that trying again might help.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     }
   ];
   var ISSUE_LABEL_EN = {

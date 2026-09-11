@@ -1,5 +1,5 @@
-import { useEffect, useState, type JSX } from 'react'
-import { useStore } from '../lib/store'
+import { useEffect, useRef, useState, type JSX } from 'react'
+import { setState, useStore } from '../lib/store'
 import { t } from '../lib/i18n'
 import { ProgressBar } from './ui'
 import { IconChevronDown, IconX } from './Icons'
@@ -13,10 +13,17 @@ export function TaskDock(): JSX.Element | null {
   // flips. They used to disappear mid-list with no 100% and no confirmation,
   // which contradicts what App.tsx says this dock does.
   const [lingering, setLingering] = useState<ReadonlySet<string>>(() => new Set())
+  // Tracked outside React state on purpose: this effect must depend only on
+  // `tasks`, never on `lingering` itself. It used to depend on both, so its
+  // own call to `setLingering` triggered the next run before the timeout
+  // below ever fired, and that run's cleanup cancelled the very timer meant
+  // to end the lingering. A finished task never left the dock again, for the
+  // rest of the session.
+  const scheduled = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   useEffect(() => {
     const finished = tasks.filter((t) => t.state === 'done' || t.state === 'cancelled')
-    const fresh = finished.filter((t) => !lingering.has(t.id))
+    const fresh = finished.filter((t) => !scheduled.current.has(t.id))
     if (fresh.length === 0) return
 
     setLingering((current) => {
@@ -24,17 +31,27 @@ export function TaskDock(): JSX.Element | null {
       fresh.forEach((t) => next.add(t.id))
       return next
     })
-    const timers = fresh.map((t) =>
-      setTimeout(() => {
+    fresh.forEach((t) => {
+      const timer = setTimeout(() => {
+        scheduled.current.delete(t.id)
         setLingering((current) => {
           const next = new Set(current)
           next.delete(t.id)
           return next
         })
       }, 2600)
-    )
-    return () => timers.forEach(clearTimeout)
-  }, [tasks, lingering])
+      scheduled.current.set(t.id, timer)
+    })
+  }, [tasks])
+
+  useEffect(() => {
+    const timers = scheduled.current
+    return () => timers.forEach((timer) => clearTimeout(timer))
+  }, [])
+
+  const dismiss = (id: string): void => {
+    setState((current) => ({ tasks: current.tasks.filter((t) => t.id !== id) }))
+  }
 
   const visible = tasks.filter(
     (task) => task.state === 'running' || task.state === 'failed' || lingering.has(task.id)
@@ -98,6 +115,16 @@ export function TaskDock(): JSX.Element | null {
                     style={{ width: 22, height: 22 }}
                     onClick={() => void window.gabi.tasks.cancel(task.id)}
                     aria-label={t('common', 'cancel')}
+                  >
+                    <IconX size={12} />
+                  </button>
+                )}
+                {task.state === 'failed' && (
+                  <button
+                    className="btn ghost icon sm"
+                    style={{ width: 22, height: 22 }}
+                    onClick={() => dismiss(task.id)}
+                    aria-label={t('common', 'close')}
                   >
                     <IconX size={12} />
                   </button>

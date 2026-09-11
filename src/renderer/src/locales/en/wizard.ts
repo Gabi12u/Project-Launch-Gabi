@@ -27,6 +27,9 @@ export default {
   'createInstance.loader.versionCountSingular': 'version',
   'createInstance.loader.versionCountPlural': 'versions',
   'createInstance.loader.notAvailableFor': 'Not available for {version}',
+  'createInstance.loader.checkFailed': 'Lookup failed',
+  'createInstance.loader.checkFailedHint':
+    'The lookup failed for at least one loader, probably due to the internet connection. That does not mean no loader exists.',
   'createInstance.loader.versionLabel': 'Loader version',
   'createInstance.loader.recommended': ' · recommended',
   'createInstance.loader.stable': ' · stable',
@@ -86,6 +89,12 @@ export default {
   'account.toast.loginError': 'Sign-in failed',
   'account.toast.offlineCreatedTitle': 'Offline profile created',
   'account.toast.offlineCreateError': 'Could not create profile',
+  'account.toast.removeError': 'Could not remove account',
+
+  'account.removeConfirm.title': 'Remove account?',
+  'account.removeConfirm.message':
+    '{name} will be removed from this launcher. A Microsoft account can be signed back in at any time; an offline profile cannot be restored afterwards.',
+  'account.removeConfirm.confirm': 'Remove',
 
   'account.loginMicrosoftButton': 'Sign in with Microsoft',
   'account.or': 'or',

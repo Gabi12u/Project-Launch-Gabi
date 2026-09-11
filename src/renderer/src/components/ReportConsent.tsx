@@ -19,6 +19,13 @@ import { IconShield } from './Icons'
 export function ReportConsent(): JSX.Element | null {
   const { settings, ready } = useStore()
   const [configured, setConfigured] = useState<boolean | null>(null)
+  // Escape, the backdrop and the X are a dismissal, not a decision: only the
+  // two buttons below are meant to be final. Without this, closing the
+  // window any other way silently saved "off" for good, and the question
+  // never came back to ask again. This only holds the window shut for the
+  // rest of the session; a restart brings it back, exactly like any other
+  // question nobody has answered yet.
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
     void window.gabi.reports
@@ -31,6 +38,7 @@ export function ReportConsent(): JSX.Element | null {
   // we cannot act on would collect an answer under false pretences.
   if (!ready || !settings.onboarded || settings.crashReports !== 'unset') return null
   if (configured !== true) return null
+  if (dismissed) return null
 
   const answer = (allowed: boolean): void => {
     void saveSettings({ crashReports: allowed ? 'on' : 'off' })
@@ -41,7 +49,7 @@ export function ReportConsent(): JSX.Element | null {
       open
       title={t('instanceSettings', 'reportConsent.title')}
       subtitle={t('instanceSettings', 'reportConsent.subtitle')}
-      onClose={() => answer(false)}
+      onClose={() => setDismissed(true)}
       footer={
         <>
           <button className="btn ghost" onClick={() => answer(false)}>

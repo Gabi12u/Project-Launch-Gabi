@@ -16,6 +16,11 @@ function forget(id: string): void {
   tasks.delete(id)
   handles.delete(id)
   cancelled.delete(id)
+  // Without this, the renderer never learned a task was gone: it only ever
+  // appends or replaces by id, so every finished or failed task piled up in
+  // its list for the rest of the session, and a second repair on the same
+  // instance could even find the old, already done task still sitting there.
+  emit(EVENTS.taskRemoved, id)
 }
 
 export class TaskCancelledError extends Error {

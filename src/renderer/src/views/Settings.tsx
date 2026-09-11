@@ -11,6 +11,7 @@ import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { changelogLocalized, changeKindLabel } from '@shared/changelogEn'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { useDebouncedSetting } from '../lib/hooks'
 import { SUPPORTED_LANGUAGES, t } from '../lib/i18n'
 import { formatBytes, formatDate, formatDateTime, formatMemory, updateHeadline } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
@@ -202,6 +203,23 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   // app info arrives both sides are empty strings and the dot would flicker.
   const changelogUnread = Boolean(info?.version) && settings.lastSeenVersion !== info?.version
   const [clientId, setClientId] = useState(settings.microsoftClientId)
+  // Debounced: these five write straight to a settings file on disk, and
+  // without this every step of a drag or every keystroke was its own
+  // synchronous rewrite.
+  const [defaultMemoryMb, setDefaultMemoryMb] = useDebouncedSetting(settings.defaultMemoryMb, (value) =>
+    void saveSettings({ defaultMemoryMb: value })
+  )
+  const [defaultJvmArgs, setDefaultJvmArgs] = useDebouncedSetting(settings.defaultJvmArgs, (value) =>
+    void saveSettings({ defaultJvmArgs: value })
+  )
+  const [concurrentDownloads, setConcurrentDownloads] = useDebouncedSetting(
+    settings.concurrentDownloads,
+    (value) => void saveSettings({ concurrentDownloads: value })
+  )
+  const [automaticBackupKeep, setAutomaticBackupKeep] = useDebouncedSetting(
+    settings.automaticBackupKeep,
+    (value) => void saveSettings({ automaticBackupKeep: value })
+  )
 
   // A notification that points here can arrive while this view is already
   // open, and then the initial state above has long since been decided. Both
@@ -534,7 +552,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <h3>{t('settings', 'java.defaults.title')}</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-standard-arbeitsspeicher">
-                    {t('settings', 'java.defaults.memoryLabel', { value: formatMemory(settings.defaultMemoryMb) })}
+                    {t('settings', 'java.defaults.memoryLabel', { value: formatMemory(defaultMemoryMb) })}
                   </label>
                   <input
                     id="st-standard-arbeitsspeicher"
@@ -543,10 +561,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     min={1024}
                     max={16384}
                     step={512}
-                    value={settings.defaultMemoryMb}
-                    onChange={(event) =>
-                      void saveSettings({ defaultMemoryMb: Number(event.target.value) })
-                    }
+                    value={defaultMemoryMb}
+                    onChange={(event) => setDefaultMemoryMb(Number(event.target.value))}
                   />
                   {info && (
                     <span className="hint">
@@ -561,8 +577,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   </label>
                   <textarea id="st-jvm-argumente"
                     className="textarea"
-                    value={settings.defaultJvmArgs}
-                    onChange={(event) => void saveSettings({ defaultJvmArgs: event.target.value })}
+                    value={defaultJvmArgs}
+                    onChange={(event) => setDefaultJvmArgs(event.target.value)}
                   />
                 </div>
               </section>
@@ -571,7 +587,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <h3>{t('settings', 'java.downloads.title')}</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-gleichzeitige-downloads">
-                    {t('settings', 'java.downloads.concurrentLabel', { value: settings.concurrentDownloads })}
+                    {t('settings', 'java.downloads.concurrentLabel', { value: concurrentDownloads })}
                   </label>
                   <input
                     id="st-gleichzeitige-downloads"
@@ -579,10 +595,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     type="range"
                     min={1}
                     max={24}
-                    value={settings.concurrentDownloads}
-                    onChange={(event) =>
-                      void saveSettings({ concurrentDownloads: Number(event.target.value) })
-                    }
+                    value={concurrentDownloads}
+                    onChange={(event) => setConcurrentDownloads(Number(event.target.value))}
                   />
                   <span className="hint">
                     {t('settings', 'java.downloads.concurrentHint')}
@@ -645,7 +659,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 />
                 <div className="field mt-16">
                   <label className="label" htmlFor="st-aufbewahrte-sicherungen">
-                    {t('settings', 'content.autoBackups.keepLabel', { value: settings.automaticBackupKeep })}
+                    {t('settings', 'content.autoBackups.keepLabel', { value: automaticBackupKeep })}
                   </label>
                   <input
                     id="st-aufbewahrte-sicherungen"
@@ -653,10 +667,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     type="range"
                     min={1}
                     max={20}
-                    value={settings.automaticBackupKeep}
-                    onChange={(event) =>
-                      void saveSettings({ automaticBackupKeep: Number(event.target.value) })
-                    }
+                    value={automaticBackupKeep}
+                    onChange={(event) => setAutomaticBackupKeep(Number(event.target.value))}
                   />
                 </div>
               </section>
@@ -838,6 +850,10 @@ const QUALITIES: { id: RecordingQuality; labelKey: string; hintKey: string }[] =
 
 function RecordingPanel(): JSX.Element {
   const { settings, recording } = useStore()
+  const [recordingMaxMinutes, setRecordingMaxMinutes] = useDebouncedSetting(
+    settings.recordingMaxMinutes,
+    (value) => void saveSettings({ recordingMaxMinutes: value })
+  )
 
   return (
     <>
@@ -921,7 +937,7 @@ function RecordingPanel(): JSX.Element {
 
         <div className="field mt-16">
           <label className="label" htmlFor="st-aufnahmedauer">
-            {t('settings', 'recording.maxDuration.label', { minutes: settings.recordingMaxMinutes })}
+            {t('settings', 'recording.maxDuration.label', { minutes: recordingMaxMinutes })}
           </label>
           <input
             id="st-aufnahmedauer"
@@ -930,11 +946,9 @@ function RecordingPanel(): JSX.Element {
             min={1}
             max={120}
             step={1}
-            value={settings.recordingMaxMinutes}
+            value={recordingMaxMinutes}
             disabled={!settings.recordingEnabled}
-            onChange={(event) =>
-              void saveSettings({ recordingMaxMinutes: Number(event.target.value) })
-            }
+            onChange={(event) => setRecordingMaxMinutes(Number(event.target.value))}
           />
           <span className="hint">
             {t('settings', 'recording.maxDuration.hint')}

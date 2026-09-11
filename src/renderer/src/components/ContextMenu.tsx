@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type JSX, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 export interface MenuItem {
@@ -42,9 +42,20 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
   // whatever entry was selected for the previous row — and since "Entfernen"
   // is the last entry and asks no confirmation, a stray Enter could delete
   // the wrong mod outright.
+  //
+  // Keyed on this signature rather than on `items` itself: the caller builds
+  // that array inline on every render, so its reference changes on every
+  // unrelated store update while the menu is open, which reset the highlight
+  // back to the first entry constantly. The signature only changes when the
+  // entries themselves actually do (a different row, or one flipping
+  // enabled/disabled), which is the only time a reset makes sense.
+  const signature = useMemo(
+    () => items.map((item) => `${item.label}:${item.disabled ? 1 : 0}`).join('|'),
+    [items]
+  )
   useLayoutEffect(() => {
     setCursor(0)
-  }, [x, y, items])
+  }, [x, y, signature])
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -97,12 +108,19 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
 
     window.addEventListener('pointerdown', onPointer)
     window.addEventListener('keydown', onKey)
-    // Scrolling would leave the menu floating over unrelated content.
     window.addEventListener('resize', onClose)
+    // Capture phase: the menu is anchored to a point on screen, not to the
+    // row it was opened for, so scrolling any list underneath it (most of
+    // them scroll in their own container, which never bubbles a scroll event
+    // up to window) has to close it too. Left open, it kept floating over
+    // whatever row ended up under it, and choosing an entry acted on the
+    // instance it was opened for, not the one now visible underneath.
+    window.addEventListener('scroll', onClose, true)
     return () => {
       window.removeEventListener('pointerdown', onPointer)
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('resize', onClose)
+      window.removeEventListener('scroll', onClose, true)
     }
   }, [items, cursor, onClose])
 

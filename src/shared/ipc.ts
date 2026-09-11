@@ -131,6 +131,8 @@ export const IPC = {
 /** Push channels: main -> renderer. */
 export const EVENTS = {
   taskUpdate: 'evt:task-update',
+  /** The main process has dropped a finished or failed task for good. */
+  taskRemoved: 'evt:task-removed',
   instanceChanged: 'evt:instance-changed',
   launchStatus: 'evt:launch-status',
   logLine: 'evt:log-line',

@@ -56,7 +56,15 @@ export function DiscoverView({
     try {
       const detail = await window.gabi.instances.get(target)
       if (ticket !== installedRequest.current) return
-      setInstalledIds(detail.content.map((c) => c.projectId ?? '').filter(Boolean))
+      // Prefixed with the provider, matching how ContentBrowser compares
+      // these: the bare project id alone could mark a CurseForge result as
+      // installed just because an unrelated Modrinth project happened to
+      // carry the same id, and a mismatched format here meant the "already
+      // installed" badge never showed at all, so the same modpack could be
+      // installed again from a second click.
+      setInstalledIds(
+        detail.content.filter((c) => c.projectId).map((c) => `${c.provider}:${c.projectId}`)
+      )
     } catch {
       if (ticket === installedRequest.current) setInstalledIds([])
     }

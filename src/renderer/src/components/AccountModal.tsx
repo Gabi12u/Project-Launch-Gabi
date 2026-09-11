@@ -3,7 +3,7 @@ import type { Account, DeviceCodePrompt } from '@shared/types'
 import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
 import { t } from '../lib/i18n'
-import { CopyButton, Modal } from './ui'
+import { CopyButton, Confirm, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
 
 export function AccountModal({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element {
@@ -12,6 +12,9 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
   const [busy, setBusy] = useState(false)
   const [offlineName, setOfflineName] = useState('')
   const [creatingOffline, setCreatingOffline] = useState(false)
+  // A trash icon with no confirmation removed a Microsoft account on a single
+  // stray click, forcing the full sign in again to get it back.
+  const [confirmRemove, setConfirmRemove] = useState<Account | null>(null)
 
   useEffect(() => {
     return window.gabi.events.onDeviceCode((next) => setPrompt(next))
@@ -98,9 +101,15 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     await refreshAccounts()
   }
 
-  const remove = async (id: string): Promise<void> => {
-    await window.gabi.accounts.remove(id)
-    await refreshAccounts()
+  const remove = async (): Promise<void> => {
+    if (!confirmRemove) return
+    try {
+      await window.gabi.accounts.remove(confirmRemove.id)
+      await refreshAccounts()
+      setConfirmRemove(null)
+    } catch (err) {
+      toastError(err, t('wizard', 'account.toast.removeError'))
+    }
   }
 
   return (
@@ -130,7 +139,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
                   key={account.id}
                   account={account}
                   onActivate={() => setActive(account.id)}
-                  onRemove={() => remove(account.id)}
+                  onRemove={() => setConfirmRemove(account)}
                 />
               ))}
             </div>
@@ -174,6 +183,20 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
           </div>
         </>
       )}
+
+      <Confirm
+        open={confirmRemove !== null}
+        title={t('wizard', 'account.removeConfirm.title')}
+        danger
+        message={
+          confirmRemove
+            ? t('wizard', 'account.removeConfirm.message', { name: confirmRemove.username })
+            : ''
+        }
+        confirmLabel={t('wizard', 'account.removeConfirm.confirm')}
+        onConfirm={remove}
+        onCancel={() => setConfirmRemove(null)}
+      />
     </Modal>
   )
 }

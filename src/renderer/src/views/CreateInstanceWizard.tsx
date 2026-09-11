@@ -28,11 +28,17 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
   const [mcVersion, setMcVersion] = useState('')
   const [loader, setLoader] = useState<LoaderId>('vanilla')
-  const [loaderVersions, setLoaderVersions] = useState<Record<string, LoaderVersion[]>>({})
+  // 'error' marks a loader whose lookup itself failed (network drop, metadata
+  // service unreachable), kept apart from a genuinely empty array. Without
+  // the distinction, a failed lookup and "no build exists for this version"
+  // looked identical, and a lost connection made every loader show as
+  // permanently unavailable with no hint that trying again could help.
+  const [loaderVersions, setLoaderVersions] = useState<Record<string, LoaderVersion[] | 'error'>>({})
   const [loaderVersion, setLoaderVersion] = useState('')
   const [checkingLoaders, setCheckingLoaders] = useState(false)
   // Bumped by the retry button to run the version lookup again.
   const [versionAttempt, setVersionAttempt] = useState(0)
+  const [loaderAttempt, setLoaderAttempt] = useState(0)
   const loaderRequestId = useRef(0)
 
   const [name, setName] = useState('')
@@ -100,7 +106,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         try {
           return [id, await window.gabi.versions.loader(id, mcVersion)] as const
         } catch {
-          return [id, [] as LoaderVersion[]] as const
+          return [id, 'error' as const] as const
         }
       })
     )
@@ -114,23 +120,31 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         // its highlight while reading "Nicht für x", and the instance was
         // still created with that loader — the failure only surfaced later,
         // in the background install, after the user had already been sent to
-        // the new and unusable instance.
+        // the new and unusable instance. A failed lookup counts the same as
+        // unavailable here, since there is no build to fall back on either way.
         setLoader((current) => {
           if (current === 'vanilla') return current
-          return (found[current]?.length ?? 0) > 0 ? current : 'vanilla'
+          const versions = found[current]
+          return Array.isArray(versions) && versions.length > 0 ? current : 'vanilla'
         })
       })
       .finally(() => {
         if (request === loaderRequestId.current) setCheckingLoaders(false)
       })
-  }, [open, mcVersion, step])
+  }, [open, mcVersion, step, loaderAttempt])
 
   /* --- Default the loader build when the loader changes ------------ */
   useEffect(() => {
-    const list = loaderVersions[loader] ?? []
+    const versions = loaderVersions[loader]
+    const list = Array.isArray(versions) ? versions : []
     const best = list.find((v) => v.recommended) ?? list.find((v) => v.stable) ?? list[0]
     setLoaderVersion(best?.version ?? '')
   }, [loader, loaderVersions])
+
+  const selectedLoaderVersions = useMemo(() => {
+    const versions = loaderVersions[loader]
+    return Array.isArray(versions) ? versions : []
+  }, [loaderVersions, loader])
 
   const filteredVersions = useMemo(() => {
     const term = versionSearch.trim().toLowerCase()
@@ -296,10 +310,25 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
             {t('wizard', 'createInstance.loader.hint', { version: mcVersion })}
           </p>
 
+          {!checkingLoaders &&
+            Object.values(loaderVersions).some((v) => v === 'error') && (
+              // A failed lookup used to look exactly like "no build for this
+              // version," for every loader at once if the whole check failed
+              // together, with no way to tell the difference or try again.
+              <div className="row-between" style={{ padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
+                <span className="hint">{t('wizard', 'createInstance.loader.checkFailedHint')}</span>
+                <button className="btn ghost sm" onClick={() => setLoaderAttempt((n) => n + 1)}>
+                  <IconRefresh size={12} /> {t('common', 'retry')}
+                </button>
+              </div>
+            )}
+
           <div className="option-grid">
             {LOADERS.map((entry) => {
+              const versions = loaderVersions[entry.id]
+              const failed = entry.id !== 'vanilla' && versions === 'error'
               const available =
-                entry.id === 'vanilla' || (loaderVersions[entry.id]?.length ?? 0) > 0
+                entry.id === 'vanilla' || (Array.isArray(versions) && versions.length > 0)
               const unknown = entry.id !== 'vanilla' && checkingLoaders
 
               return (
@@ -339,13 +368,18 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                     * tallest one, so leaving it out left a visible gap under
                     * Vanilla while every neighbour was filled to the bottom.
                     */}
-                  {!unknown && (
+                  {!unknown && failed && (
+                    <div className="hint mt-8" style={{ color: 'var(--danger)' }}>
+                      {t('wizard', 'createInstance.loader.checkFailed')}
+                    </div>
+                  )}
+                  {!unknown && !failed && (
                     <div className="hint mt-8">
                       {entry.id === 'vanilla'
                         ? t('wizard', 'createInstance.loader.alwaysAvailable')
-                        : available
-                          ? `${loaderVersions[entry.id].length} ${pluralise(
-                              loaderVersions[entry.id].length,
+                        : available && Array.isArray(versions)
+                          ? `${versions.length} ${pluralise(
+                              versions.length,
                               t('wizard', 'createInstance.loader.versionCountSingular'),
                               t('wizard', 'createInstance.loader.versionCountPlural')
                             )}`
@@ -357,7 +391,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
             })}
           </div>
 
-          {loader !== 'vanilla' && (loaderVersions[loader]?.length ?? 0) > 0 && (
+          {loader !== 'vanilla' && selectedLoaderVersions.length > 0 && (
             <div className="field">
               <label className="label" htmlFor="ci-loader-version">{t('wizard', 'createInstance.loader.versionLabel')}</label>
               <select id="ci-loader-version"
@@ -365,7 +399,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 value={loaderVersion}
                 onChange={(event) => setLoaderVersion(event.target.value)}
               >
-                {loaderVersions[loader].map((version) => (
+                {selectedLoaderVersions.map((version) => (
                   <option key={version.version} value={version.version}>
                     {version.version}
                     {version.recommended

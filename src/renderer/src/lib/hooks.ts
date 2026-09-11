@@ -39,6 +39,59 @@ export function useCountUp(target: number, duration = 900): number {
   return value
 }
 
+/**
+ * A controlled value that mirrors its source immediately, so a slider or text
+ * field stays responsive, but only calls `save` once the user pauses for
+ * `delayMs`. A pending change is still flushed on unmount rather than dropped.
+ *
+ * Several settings called `saveSettings` straight from `onChange`, which for
+ * a range input fires on every intermediate step of a drag and for a text
+ * field on every keystroke. Each call is a synchronous, atomic rewrite of the
+ * settings file in the main process; dragging a slider end to end fired
+ * dozens of them in under a second, and on a slow disk or with antivirus
+ * scanning every temp file, that was enough to make the slider visibly
+ * stutter and the interface hitch.
+ */
+export function useDebouncedSetting<T>(
+  source: T,
+  save: (value: T) => void,
+  delayMs = 300
+): [T, (value: T) => void] {
+  const [local, setLocal] = useState(source)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pending = useRef(source)
+
+  // Follows the source (a reset, a value loaded from disk, another window)
+  // for as long as nothing typed here is still waiting to be saved.
+  useEffect(() => {
+    if (timer.current === null) setLocal(source)
+  }, [source])
+
+  const set = (value: T): void => {
+    setLocal(value)
+    pending.current = value
+    if (timer.current !== null) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      timer.current = null
+      save(pending.current)
+    }, delayMs)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current)
+        save(pending.current)
+      }
+    }
+    // Deliberately once: this only ever flushes a pending change on unmount,
+    // it must not re-fire for every keystroke that sets up a new timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return [local, set]
+}
+
 /** Ticks once a second so relative timestamps stay honest without a refresh. */
 export function useNow(intervalMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now())

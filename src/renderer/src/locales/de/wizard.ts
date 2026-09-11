@@ -27,6 +27,9 @@ export default {
   'createInstance.loader.versionCountSingular': 'Version',
   'createInstance.loader.versionCountPlural': 'Versionen',
   'createInstance.loader.notAvailableFor': 'Nicht für {version}',
+  'createInstance.loader.checkFailed': 'Abfrage fehlgeschlagen',
+  'createInstance.loader.checkFailedHint':
+    'Die Abfrage ist bei mindestens einem Loader fehlgeschlagen, vermutlich wegen der Internetverbindung. Das bedeutet nicht, dass es keinen Loader gibt.',
   'createInstance.loader.versionLabel': 'Loader-Version',
   'createInstance.loader.recommended': ' · empfohlen',
   'createInstance.loader.stable': ' · stabil',
@@ -87,6 +90,12 @@ export default {
   'account.toast.loginError': 'Anmeldung fehlgeschlagen',
   'account.toast.offlineCreatedTitle': 'Offline-Profil angelegt',
   'account.toast.offlineCreateError': 'Profil konnte nicht angelegt werden',
+  'account.toast.removeError': 'Konto konnte nicht entfernt werden',
+
+  'account.removeConfirm.title': 'Konto entfernen?',
+  'account.removeConfirm.message':
+    '{name} wird aus diesem Launcher entfernt. Ein Microsoft-Konto lässt sich jederzeit erneut anmelden, ein Offline-Profil danach nicht wiederherstellen.',
+  'account.removeConfirm.confirm': 'Entfernen',
 
   'account.loginMicrosoftButton': 'Mit Microsoft anmelden',
   'account.or': 'oder',

@@ -312,6 +312,8 @@ export interface GabiApi {
   }
   events: {
     onTask(fn: (task: TaskProgress) => void): Unsubscribe
+    /** The task is gone for good, id only: drop it from any local list. */
+    onTaskRemoved(fn: (id: string) => void): Unsubscribe
     /**
      * A delete carries only the id — the instance is gone, so there is no
      * summary left to send. Modelled as a union rather than an optional flag

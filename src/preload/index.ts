@@ -164,6 +164,7 @@ const api = {
 
   events: {
     onTask: (fn: (payload: never) => void) => on(EVENTS.taskUpdate, fn),
+    onTaskRemoved: (fn: (payload: never) => void) => on(EVENTS.taskRemoved, fn),
     onInstanceChanged: (fn: (payload: never) => void) => on(EVENTS.instanceChanged, fn),
     onLaunchStatus: (fn: (payload: never) => void) => on(EVENTS.launchStatus, fn),
     onLogLine: (fn: (payload: never) => void) => on(EVENTS.logLine, fn),
