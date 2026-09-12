@@ -716,6 +716,144 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'file is genuinely missing, it would be silently skipped instead of reported as missing, resulting ' +
       'in an unclear error in the middle of launching. How often this exact case actually occurs across ' +
       'the supported loaders has not yet been checked against real version files.'
+  },
+  'ordner-abgleich-typ-uebergreifend': {
+    title: 'A resource pack, shader pack and datapack with the same name could get swapped during disk reconciliation',
+    detail:
+      'The ongoing reconciliation between the mod/pack list and what is actually in the folders (run ' +
+      'before every launch, every repair, and every compatibility check, among others) compared files by ' +
+      'their bare name only, not their type. Resource packs, shader packs and datapacks live in separate ' +
+      'folders but often carry generic names like "pack.zip". If two of them happened to share a name, ' +
+      'their records got swapped: one folder’s file ended up carrying the other’s metadata, with the ' +
+      'wrong type and a shared id. Three related spots with exactly this pattern were already fixed; this ' +
+      'fourth one, responsible for the ongoing reconciliation, was still open.'
+  },
+  'instanz-speichern-vor-bestaetigung-uebernommen': {
+    title: 'An instance edit could take effect in memory even though it never reached disk',
+    detail:
+      'Saving an instance updated the in-memory copy before the actual write to disk was confirmed. If ' +
+      'the write failed, for instance because antivirus or an indexer briefly held the file, the launcher ' +
+      'kept running with the unsaved state for the rest of the session while the file on disk still held ' +
+      'the old one. Only a restart exposed this, when the change had quietly vanished. The exact same ' +
+      'pattern had already been found and fixed once for general settings, but was missed for instances. ' +
+      'The write now happens first, the in-memory copy only afterwards.'
+  },
+  'loeschen-verliert-daten-trotz-fehlermeldung': {
+    title: 'Deleting could irreversibly remove an instance’s game data and still report failure',
+    detail:
+      'Deleting an instance removed the actual instance folder (worlds, mods, screenshots) and its ' +
+      'backups folder in one combined attempt. If only removing the backups folder failed, for instance ' +
+      'because antivirus briefly held a backup file open, the launcher reported the deletion as failed, ' +
+      'even though the actual game data was already irreversibly gone by that point. The instance stayed ' +
+      'visible in the library, with an internal state no longer matching the files that actually existed. ' +
+      'The two steps are now handled separately: if only the backups folder fails, the instance still ' +
+      'counts as deleted, and a leftover backups folder is merely logged.'
+  },
+  'duplizieren-ohne-sperre-waehrend-kopie': {
+    title: 'Deleting or repairing an instance while it was being duplicated could produce a broken copy',
+    detail:
+      'Before duplicating an instance, the launcher checks once whether it is currently running, ' +
+      'starting, being repaired, or having its mods worked on. The actual copy afterwards, which can take ' +
+      'several seconds for a large modpack or world, held no lock of its own. In that window, a delete or ' +
+      'repair of the same source instance could begin while it was still being copied from, potentially ' +
+      'producing an incomplete or inconsistent copy. The copy now marks itself busy for its entire ' +
+      'duration.'
+  },
+  'inhalt-hinzufuegen-gross-kleinschreibung': {
+    title: 'Re-adding a mod with different capitalisation in the file name could create a duplicate entry',
+    detail:
+      'Windows and macOS do not distinguish file names by case, but the comparison when adding a content ' +
+      'item did. Re-importing an already tracked mod under a different capitalisation of its file name ' +
+      '(such as "Mod.jar" instead of "mod.jar", the same physical file) failed to recognise the old ' +
+      'record, leaving two lines for the same file until the next disk reconciliation merged them. The ' +
+      'comparison is now case-insensitive, matching how the same flow already treats it elsewhere.'
+  },
+  'reparatur-uebergeht-beschaedigte-lokale-datei': {
+    title: 'Repair detected a corrupted, hand-added file but did nothing about it and reported no error',
+    detail:
+      'For a hand-added mod file with no known source, repair checks its existing checksum. If the file ' +
+      'was missing, its record was correctly removed. If it was present but simply corrupted (checksum no ' +
+      'longer matches), nothing happened at all: no repair, since there is nothing to re-download for a ' +
+      'file with no known source, but also no mention in the final report. The report could therefore ' +
+      'read "fine" or "repaired" even though a demonstrably corrupted file sat untouched on disk. This ' +
+      'case is now listed in the report as not automatically fixable.'
+  },
+  'reparatur-meldet-installiert-trotz-fehler': {
+    title: 'Repair marked an instance as fully installed even when individual steps had failed',
+    detail:
+      'At the end of a repair, the instance was always saved as fully installed, regardless of whether ' +
+      'any of the eight repair steps itself counted as failed. A network outage in the middle of the core ' +
+      'steps (game files, assets, Java) left the instance genuinely incomplete while the saved state still ' +
+      'said "fully installed", contradicting its own report right below it. The flag now depends on ' +
+      'whether the repair actually completed without a failure; on a failure, the previous state is left ' +
+      'unchanged rather than wrongly set to installed.'
+  },
+  'reparatur-java-pruefung-veralteter-stand': {
+    title: 'A Java setting changed during an active repair is still checked against the old value',
+    detail:
+      'Repair reads an instance’s settings once at the very start and works from that one snapshot for ' +
+      'its entire run, which can take several minutes for a larger instance. If someone changes that ' +
+      'instance’s fixed Java path or Java version override while it is running, the repair’s Java step ' +
+      'still checks against the old setting and can report "Java fine" even though the newly saved ' +
+      'setting was never checked at all.'
+  },
+  'quilt-neueste-version-falsch-ausgewaehlt': {
+    title: 'Setting up an instance with Quilt could pick an old prerelease instead of the latest stable version',
+    detail:
+      'Contrary to what the code assumed, Quilt’s own server for loader versions carries no field marking ' +
+      'a version as stable, and the list does not come back in any meaningful order either. Measured ' +
+      'live: for an ordinary Minecraft version, an old beta build sat first in the list, with genuinely ' +
+      'newer, real releases further back. "Latest stable version" used to be read straight off that first ' +
+      'entry, so setting up a new instance with Quilt effectively depended on luck rather than the actual ' +
+      'newest version. The list is now sorted by version number itself, and a genuine prerelease is ' +
+      'recognised by its name, not by a field Quilt never sends. Fabric is unaffected; its own ' +
+      'designation of the recommended version remains authoritative.'
+  },
+  'forge-installer-url-fuer-alte-versionen-kaputt': {
+    title: 'Forge installation failed for several older, commonly modded Minecraft versions',
+    detail:
+      'Some older Forge releases sit on the official server under a path carrying an extra name suffix. ' +
+      'That suffix was stripped while building the version list, to match the version against Forge’s ' +
+      'separately maintained list of "recommended" versions, but was never added back when actually ' +
+      'downloading the installer. Measured live: the resulting address responded "not found", the ' +
+      'correct one, with the suffix, succeeded. This hit exactly the version Forge itself recommends for ' +
+      'several older, especially widely modded Minecraft versions (among them 1.7.10, 1.8.9, 1.9.4). ' +
+      'Anyone setting up an instance with Forge for one of these versions could not download the ' +
+      'installer.'
+  },
+  'loader-fehler-wird-verschluckt': {
+    title: 'A failed mod-loader version lookup was already swallowed by Fabric, Quilt, Forge and NeoForge themselves',
+    detail:
+      'The instance wizard recently started telling "no loader available for this version" apart from ' +
+      '"the lookup itself failed", with a hint and a retry button for the second case. That distinction ' +
+      'could never actually trigger: the four functions that perform the real lookup for Fabric, Quilt, ' +
+      'Forge and NeoForge each caught every error themselves and silently returned an empty list before ' +
+      'the wizard ever got to see the difference. A genuine network problem therefore still looked like a ' +
+      'plain absence for all four supported loaders, with none of the intended hint. A failure is now ' +
+      'passed through to the wizard instead of being hidden at this point.'
+  },
+  'safejoin-laufwerkswurzel-bricht': {
+    title: 'The central path safeguard could reject every path when the data directory sat directly on a drive root',
+    detail:
+      'The function that checks every path built from untrusted sources (archives, loader metadata) ' +
+      'against escaping its allowed folder compared the result against that folder with a separator ' +
+      'always appended. If the allowed folder itself sits directly on a drive or share root (a dedicated ' +
+      'drive just for Minecraft data, say), its resolved path already carries a separator, doubling it in ' +
+      'the comparison and, as a result, rejecting every path, even a completely harmless one. No known ' +
+      'caller uses such a root folder today, so this had no effect so far, but a dedicated drive as a data ' +
+      'directory is a real, plausible setup. The comparison now works regardless of whether the allowed ' +
+      'folder already carries a trailing separator.'
+  },
+  'versions-id-reservierter-name': {
+    title: 'A version id from a loader metadata server with a reserved Windows name could abort installation hard',
+    detail:
+      'Windows refuses certain names ("con", "aux", "nul", among others) as file or folder names, ' +
+      'regardless of case or file extension. That is already guarded against for instance names, but the ' +
+      'same guard was missing for the version id a Fabric/Quilt metadata server or a Forge installer ' +
+      'profile supplies. Such an id is used directly as a folder and file name; if it happened to match, ' +
+      'or a tampered source deliberately supplied, one of these reserved names, installation aborted on ' +
+      'Windows with a raw, confusing filesystem error instead of one of the clear messages this install ' +
+      'path otherwise gives. The same guard already used for instance names now applies here too.'
   }
 }
 

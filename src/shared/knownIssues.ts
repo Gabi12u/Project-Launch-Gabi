@@ -1065,6 +1065,209 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Loadern tatsächlich vorkommt, ist noch nicht an echten Versions-Dateien geprüft.',
     state: 'investigating',
     since: '2026-09-11'
+  },
+  {
+    id: 'ordner-abgleich-typ-uebergreifend',
+    title: 'Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten beim Ordner-Abgleich vertauscht werden',
+    detail:
+      'Der laufende Abgleich zwischen der Mod-/Paket-Liste und dem tatsächlichen Ordnerinhalt (unter ' +
+      'anderem vor jedem Start, bei jeder Reparatur und jeder Kompatibilitätsprüfung) verglich Dateien ' +
+      'nur nach ihrem bloßen Namen, nicht nach ihrem Typ. Ressourcenpaket, Shaderpaket und Datenpaket ' +
+      'liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie "pack.zip". Trugen zwei ' +
+      'davon zufällig denselben Namen, wurden ihre Datensätze vertauscht: der eine Ordner zeigte auf die ' +
+      'Metadaten des jeweils anderen, mit falschem Typ und geteilter Kennung. Drei verwandte Stellen mit ' +
+      'genau diesem Muster wurden bereits behoben, diese vierte, für den laufenden Abgleich zuständige ' +
+      'Stelle war noch offen.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'instanz-speichern-vor-bestaetigung-uebernommen',
+    title: 'Eine Instanz-Änderung konnte im Speicher gelten, obwohl sie nie auf die Festplatte kam',
+    detail:
+      'Beim Speichern einer Instanz wurde der Stand im Arbeitsspeicher übernommen, bevor der ' +
+      'eigentliche Schreibvorgang auf die Festplatte bestätigt war. Schlug das Schreiben fehl, etwa weil ' +
+      'ein Virenschutz oder Indexdienst die Datei kurz gesperrt hielt, blieb der Launcher für den Rest ' +
+      'der Sitzung mit dem ungespeicherten Stand weiterlaufen, während die Datei auf der Festplatte noch ' +
+      'den alten Stand trug. Erst ein Neustart des Launchers deckte das auf, wenn die Änderung dann ' +
+      'kommentarlos wieder verschwunden war. Genau dieses Muster wurde für die allgemeinen Einstellungen ' +
+      'bereits einmal gefunden und behoben, für Instanzen aber übersehen. Jetzt wird zuerst geschrieben, ' +
+      'erst danach im Speicher übernommen.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'loeschen-verliert-daten-trotz-fehlermeldung',
+    title: 'Löschen konnte die Spieldaten einer Instanz unwiderruflich entfernen und trotzdem "fehlgeschlagen" melden',
+    detail:
+      'Instanz löschen entfernte zuerst den eigentlichen Instanzordner (Welten, Mods, Screenshots) und ' +
+      'danach den zugehörigen Sicherungsordner in einem gemeinsamen Versuch. Schlug ausschließlich das ' +
+      'Entfernen des Sicherungsordners fehl, etwa weil ein Virenschutz gerade eine Sicherungsdatei ' +
+      'offen hielt, meldete der Launcher das Löschen als fehlgeschlagen, obwohl die eigentlichen ' +
+      'Spieldaten zu diesem Zeitpunkt bereits unwiderruflich weg waren. Die Instanz blieb dabei in der ' +
+      'Bibliothek sichtbar, mit einem inneren Stand, der nicht mehr zu den tatsächlich vorhandenen ' +
+      'Dateien passte. Beide Schritte werden jetzt einzeln behandelt: schlägt nur der Sicherungsordner ' +
+      'fehl, gilt die Instanz als gelöscht, und lediglich ein übrig gebliebener Sicherungsordner wird ' +
+      'protokolliert.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'duplizieren-ohne-sperre-waehrend-kopie',
+    title: 'Eine Instanz löschen oder reparieren, während sie gerade dupliziert wird, konnte eine kaputte Kopie erzeugen',
+    detail:
+      'Bevor eine Instanz dupliziert wird, prüft der Launcher einmalig, ob sie gerade läuft, startet, ' +
+      'repariert wird oder an ihren Mods gearbeitet wird. Der eigentliche Kopiervorgang danach, bei ' +
+      'großen Modpacks oder Welten durchaus mehrere Sekunden, hielt aber selbst keine Sperre. In diesem ' +
+      'Fenster konnte ein Löschen oder eine Reparatur derselben Quell-Instanz beginnen, während noch ' +
+      'aus ihrem Ordner kopiert wurde, was eine unvollständige oder inkonsistente Kopie zur Folge haben ' +
+      'konnte. Der Kopiervorgang meldet sich jetzt für seine gesamte Dauer selbst als beschäftigt.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'inhalt-hinzufuegen-gross-kleinschreibung',
+    title: 'Ein erneut hinzugefügter Mod mit anderer Groß-/Kleinschreibung im Dateinamen konnte doppelt geführt werden',
+    detail:
+      'Windows und macOS unterscheiden bei Dateinamen nicht zwischen Groß- und Kleinschreibung, der ' +
+      'Vergleich beim Hinzufügen eines Inhalts tat es aber doch. Wurde ein bereits erfasster Mod erneut ' +
+      'importiert, dabei aber mit anderer Schreibweise seines Dateinamens (etwa "Mod.jar" statt ' +
+      '"mod.jar", tatsächlich dieselbe Datei), erkannte der Vergleich den alten Datensatz nicht wieder, ' +
+      'und zwei Zeilen für dieselbe physische Datei standen in der Liste, bis der nächste Ordner-Abgleich ' +
+      'sie zusammenführte. Der Vergleich ist jetzt wie an anderer Stelle im selben Ablauf ' +
+      'groß-/kleinschreibungsunabhängig.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'reparatur-uebergeht-beschaedigte-lokale-datei',
+    title: 'Die Reparatur erkannte eine beschädigte, von Hand hinzugefügte Datei, tat aber nichts damit und meldete keinen Fehler',
+    detail:
+      'Für eine von Hand hinzugefügte Mod-Datei ohne bekannte Quelle prüft die Reparatur die vorhandene ' +
+      'Prüfsumme. War die Datei nicht auffindbar, wurde ihr Eintrag korrekt entfernt. War sie aber ' +
+      'vorhanden und lediglich beschädigt (Prüfsumme stimmt nicht mehr), geschah gar nichts: keine ' +
+      'Reparatur, da es für eine Datei ohne bekannte Quelle nichts zum erneuten Herunterladen gibt, aber ' +
+      'auch keine Meldung im Abschlussbericht. Der Bericht konnte dadurch "in Ordnung" oder "repariert" ' +
+      'anzeigen, obwohl eine nachweislich beschädigte Datei unangetastet auf der Festplatte blieb. ' +
+      'Dieser Fall wird jetzt im Bericht als nicht automatisch reparierbar aufgeführt.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'reparatur-meldet-installiert-trotz-fehler',
+    title: 'Die Reparatur markierte eine Instanz als vollständig installiert, selbst wenn einzelne Schritte fehlgeschlagen waren',
+    detail:
+      'Am Ende einer Reparatur wurde die Instanz immer als vollständig installiert gespeichert, unabhängig ' +
+      'davon, ob einer der acht Reparaturschritte selbst als fehlgeschlagen galt. Ein Netzwerkausfall ' +
+      'mitten in den Kern-Schritten (Spieldateien, Ressourcen, Java) ließ die Instanz damit tatsächlich ' +
+      'unvollständig zurück, während der gespeicherte Zustand trotzdem "vollständig installiert" sagte, ' +
+      'im Widerspruch zum eigenen Bericht direkt darunter. Die Markierung hängt jetzt davon ab, ob die ' +
+      'Reparatur wirklich ohne Fehlschlag durchlief; bei einem Fehlschlag bleibt der vorherige Stand ' +
+      'unverändert, statt fälschlich auf "installiert" gesetzt zu werden.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'reparatur-java-pruefung-veralteter-stand',
+    title: 'Eine während einer laufenden Reparatur geänderte Java-Einstellung wird noch gegen den alten Stand geprüft',
+    detail:
+      'Die Reparatur liest die Instanz-Einstellungen einmal ganz am Anfang und arbeitet für ihre gesamte ' +
+      'Dauer, bei größeren Instanzen durchaus mehrere Minuten, mit diesem einen Stand weiter. Ändert ' +
+      'jemand währenddessen den fest eingestellten Java-Pfad oder die Java-Versionsvorgabe dieser ' +
+      'Instanz, prüft der Java-Schritt der laufenden Reparatur weiterhin gegen die alte Einstellung und ' +
+      'kann "Java in Ordnung" melden, obwohl die gerade gespeicherte neue Einstellung nie geprüft wurde.',
+    state: 'investigating',
+    since: '2026-09-12'
+  },
+  {
+    id: 'quilt-neueste-version-falsch-ausgewaehlt',
+    title: 'Beim Einrichten mit Quilt konnte eine alte Vorabversion statt der neuesten stabilen ausgewählt werden',
+    detail:
+      'Anders als angenommen liefert Quilts eigener Server für Loader-Versionen kein Feld, das eine ' +
+      'Version als stabil kennzeichnet, und die Liste kommt auch nicht in einer sinnvollen Reihenfolge ' +
+      'zurück. Live nachgemessen: für eine gewöhnliche Minecraft-Version stand eine alte Beta-Version an ' +
+      'erster Stelle, deutlich neuere, echte Veröffentlichungen weiter hinten. Die "neueste stabile ' +
+      'Version" wurde bisher aus genau dieser ersten Stelle gelesen, richtete sich beim Einrichten einer ' +
+      'neuen Instanz mit Quilt also nach Zufall statt nach der tatsächlich neuesten Version. Die Liste ' +
+      'wird jetzt selbst nach Versionsnummer sortiert, und eine echte Vorabversion wird an ihrem ' +
+      'Namen erkannt, nicht an einem Feld, das es bei Quilt gar nicht gibt. Fabric ist davon nicht ' +
+      'betroffen, dessen eigene Kennzeichnung der empfohlenen Version bleibt maßgeblich.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'forge-installer-url-fuer-alte-versionen-kaputt',
+    title: 'Forge-Installation schlug für mehrere ältere, häufig modifizierte Minecraft-Versionen fehl',
+    detail:
+      'Manche älteren Forge-Veröffentlichungen liegen auf dem offiziellen Server unter einem Pfad mit ' +
+      'einem zusätzlichen Namensanhang. Dieser Anhang wurde beim Aufbau der Versionsliste entfernt, um ' +
+      'die Version mit der von Forge getrennt geführten Liste "empfohlener" Versionen abzugleichen, aber ' +
+      'beim eigentlichen Herunterladen des Installers nie wieder ergänzt. Live nachgemessen: die ' +
+      'entstehende Adresse antwortete mit "nicht gefunden", die richtige, mit dem Anhang, mit Erfolg. ' +
+      'Betroffen war ausgerechnet die von Forge selbst empfohlene Version für mehrere ältere, unter ' +
+      'Mod-Nutzern besonders verbreitete Minecraft-Versionen (unter anderem 1.7.10, 1.8.9, 1.9.4). Wer ' +
+      'eine Instanz mit Forge für eine dieser Versionen anlegte, konnte den Installer nicht laden.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'loader-fehler-wird-verschluckt',
+    title: 'Eine fehlgeschlagene Abfrage der Mod-Loader-Versionen wurde von Fabric, Quilt, Forge und NeoForge selbst schon verschluckt',
+    detail:
+      'Der Instanz-Assistent unterscheidet seit Kurzem zwischen "kein Loader für diese Version verfügbar" ' +
+      'und "die Abfrage ist fehlgeschlagen", mit einem Hinweis und einer Wiederholen-Schaltfläche für den ' +
+      'zweiten Fall. Diese Unterscheidung konnte aber nie greifen: Die vier Funktionen, die die ' +
+      'tatsächliche Abfrage für Fabric, Quilt, Forge und NeoForge durchführen, fingen selbst jeden Fehler ' +
+      'ab und lieferten still eine leere Liste zurück, bevor der Assistent den Unterschied überhaupt ' +
+      'sehen konnte. Eine echte Netzwerkstörung sah für alle vier unterstützten Loader also weiterhin wie ' +
+      'ein bloßes Fehlen aus, ganz ohne den vorgesehenen Hinweis. Ein Fehlschlag wird jetzt bis zum ' +
+      'Assistenten durchgereicht statt an dieser Stelle verschwiegen.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'safejoin-laufwerkswurzel-bricht',
+    title: 'Die zentrale Pfad-Absicherung konnte bei einem Datenverzeichnis direkt auf einer Laufwerkswurzel jeden Pfad ablehnen',
+    detail:
+      'Die Funktion, die jeden aus nicht vertrauenswürdigen Quellen (Archive, Loader-Metadaten) ' +
+      'gebauten Pfad gegen ein Verlassen des erlaubten Ordners prüft, verglich das Ergebnis gegen den ' +
+      'erlaubten Ordner mit einem stets angehängten Trennzeichen. Liegt der erlaubte Ordner selbst direkt ' +
+      'auf einer Laufwerks- oder Freigabewurzel (zum Beispiel ein eigenes Laufwerk nur für Minecraft-Daten), ' +
+      'trägt dessen aufgelöster Pfad bereits ein Trennzeichen, wodurch der Vergleich verdoppelt und in ' +
+      'der Folge jeder, auch ein völlig harmloser, Pfad abgelehnt wurde. Kein bekannter Aufrufer nutzt ' +
+      'heute ein solches Wurzelverzeichnis, insofern hatte das bisher keine Auswirkung, aber ein eigenes ' +
+      'Laufwerk als Datenverzeichnis ist eine reale, naheliegende Einrichtung. Der Vergleich funktioniert ' +
+      'jetzt unabhängig davon, ob der erlaubte Ordner selbst schon ein Trennzeichen am Ende trägt.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
+  },
+  {
+    id: 'versions-id-reservierter-name',
+    title: 'Eine von einem Loader-Metadatenserver gelieferte Versions-Kennung mit reserviertem Windows-Namen konnte die Installation hart abbrechen lassen',
+    detail:
+      'Windows verweigert bestimmte Namen (etwa "con", "aux", "nul") als Datei- oder Ordnernamen, ' +
+      'unabhängig von Groß-/Kleinschreibung oder Dateiendung. Für Instanznamen ist das bereits ' +
+      'abgesichert, für die Versions-Kennung, die ein Fabric-/Quilt-Metadatenserver oder ein ' +
+      'Forge-Installer-Profil liefert, fehlte dieselbe Absicherung. Eine solche Kennung wird direkt als ' +
+      'Ordner- und Dateiname verwendet; träfe sie zufällig oder durch eine manipulierte Quelle auf einen ' +
+      'dieser reservierten Namen, bräche die Installation unter Windows mit einer rohen, unverständlichen ' +
+      'Dateisystem-Fehlermeldung ab statt mit einer der sonst üblichen, klaren Meldungen. Dieselbe ' +
+      'Absicherung wie bei Instanznamen gilt jetzt auch hier.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18',
+    platforms: ['Windows']
   }
 ]
 

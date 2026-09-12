@@ -86,7 +86,17 @@ export function safeJoin(root: string, relative: string): string {
   const resolvedRoot = resolve(root)
   const resolvedTarget = resolve(target)
   // Belt and braces: catches anything the segment checks above missed.
-  if (!resolvedTarget.startsWith(resolvedRoot + sep)) {
+  //
+  // `resolve()` already puts a trailing separator on a drive or share root
+  // ("D:\") but never on anything deeper ("D:\instances"), so appending one
+  // unconditionally doubled it whenever `root` itself was a drive root, and
+  // the check below then rejected every single legitimate path underneath.
+  // No caller passes a bare drive root as `root` today, so nothing hits this
+  // in practice, but a data directory sitting directly on its own drive is a
+  // real setup, and the next caller that does pass one would have had every
+  // write rejected.
+  const rootWithSep = resolvedRoot.endsWith(sep) ? resolvedRoot : resolvedRoot + sep
+  if (!resolvedTarget.startsWith(rootWithSep)) {
     throw new Error(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`)
   }
   return target
@@ -105,9 +115,31 @@ export function safeJoin(root: string, relative: string): string {
  * result of just "." or ".." is rejected too, since either would resolve to
  * the versions folder itself or its parent once joined.
  */
+/**
+ * Names Windows refuses to create as a file or a directory, in any casing and
+ * regardless of extension. Shared with `core/instances.ts`, which hit this
+ * for instance names first ("Con" failed at `mkdirSync` with a raw fs error
+ * before it was ever persisted); `sanitizeVersionId` below needed the exact
+ * same guard for the same reason, against a different source of untrusted
+ * text.
+ */
+export const RESERVED_WINDOWS_NAMES = new Set([
+  'con', 'prn', 'aux', 'nul',
+  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
+  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
+])
+
 export function sanitizeVersionId(id: string): string {
   const cleaned = id.replace(/[^A-Za-z0-9._-]/g, '')
   if (!cleaned || cleaned === '.' || cleaned === '..') return 'version'
+  // A Fabric/Quilt meta server or a Forge installer profile is exactly the
+  // kind of source `RESERVED_WINDOWS_NAMES` was written for elsewhere in
+  // this project, external text with no reason to expect it, and this
+  // function's own sanitizing left it untouched: none of these words contain
+  // characters the regex above strips. A version id of "con" would fail
+  // `mkdirSync` on Windows with a raw filesystem error instead of the clear
+  // messages the rest of this install path gives for every other failure.
+  if (RESERVED_WINDOWS_NAMES.has(cleaned.toLowerCase())) return `${cleaned}-version`
   return cleaned
 }
 

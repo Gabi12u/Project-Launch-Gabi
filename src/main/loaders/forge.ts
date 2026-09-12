@@ -167,23 +167,41 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
     }))
 }
 
+// A failed lookup used to return an empty list here, indistinguishable from
+// "this loader genuinely has no build for this version". CreateInstanceWizard.tsx
+// tells the two apart (a "checkFailed" hint plus a retry button) only if this
+// actually throws instead of swallowing the failure, so a network drop no
+// longer looks identical to a real absence.
 export async function listForgeLikeVersions(
   loader: ForgeLikeLoader,
   mcVersion: string
 ): Promise<LoaderVersion[]> {
-  try {
-    return loader === 'forge'
-      ? await listForgeVersions(mcVersion)
-      : await listNeoforgeVersions(mcVersion)
-  } catch (err) {
-    logger.warn(`Keine ${loader}-Versionen für ${mcVersion}:`, err)
-    return []
-  }
+  return loader === 'forge' ? await listForgeVersions(mcVersion) : await listNeoforgeVersions(mcVersion)
 }
 
-function installerUrl(loader: ForgeLikeLoader, mcVersion: string, version: string): string {
+/**
+ * Some old Forge builds publish under a maven directory carrying an extra
+ * branch suffix, `1.7.10-10.13.4.1614-1.7.10` rather than the plain
+ * `1.7.10-10.13.4.1614` every other version uses. `listForgeVersions` strips
+ * that suffix so the version can be compared against `promotions_slim.json`
+ * (which reports the bare form), but the suffix is genuinely part of the
+ * real path: reconstructing the URL as `mcVersion-version` alone, as this
+ * used to, is a 404 for every affected version. Checked live against
+ * `maven.minecraftforge.net`: this is not a rare edge case, it hits the
+ * "recommended" build itself for 1.7.10, 1.8.9, 1.9, 1.9.4 and 1.10, among
+ * the most commonly modded old versions this launcher supports.
+ */
+export async function resolveForgeMavenVersion(mcVersion: string, version: string): Promise<string> {
+  const bare = `${mcVersion}-${version}`
+  const xml = await fetchText(`${FORGE_MAVEN}/net/minecraftforge/forge/maven-metadata.xml`)
+  const all = [...xml.matchAll(/<version>([^<]+)<\/version>/g)].map((m) => m[1])
+  if (all.includes(bare)) return bare
+  return all.find((v) => v.startsWith(`${bare}-`)) ?? bare
+}
+
+async function installerUrl(loader: ForgeLikeLoader, mcVersion: string, version: string): Promise<string> {
   if (loader === 'forge') {
-    const full = `${mcVersion}-${version}`
+    const full = await resolveForgeMavenVersion(mcVersion, version)
     return `${FORGE_MAVEN}/net/minecraftforge/forge/${full}/forge-${full}-installer.jar`
   }
   if (isNeoforgeLegacy(mcVersion)) {
@@ -269,7 +287,7 @@ export async function installForgeLike(
   const label = loader === 'forge' ? 'Forge' : 'NeoForge'
   task?.update(`${label} ${loaderVersion} wird geladen…`, null)
 
-  const url = installerUrl(loader, mcVersion, loaderVersion)
+  const url = await installerUrl(loader, mcVersion, loaderVersion)
   const installer = join(paths.cache(), `${loader}-${mcVersion}-${loaderVersion}-installer.jar`)
 
   // With a hash present `isSatisfied` verifies the cached copy too, so a jar

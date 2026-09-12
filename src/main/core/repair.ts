@@ -437,6 +437,18 @@ async function runRepair(
             survivors.splice(survivors.indexOf(item), 1)
             removed++
             repairLog(instanceId, 'fix', `${item.name} ist eine lokale Datei ohne bekannte Quelle, Eintrag entfernt`)
+          } else {
+            // Present but corrupt, with no known source to re-download from:
+            // there is nothing here that can be fixed automatically. This
+            // used to fall straight through to the next item, counted
+            // nowhere, so the file stayed broken on disk while the final
+            // report still had no reason to say anything had gone wrong.
+            failed.push(item.name)
+            repairLog(
+              instanceId,
+              'warning',
+              `${item.name} ist eine lokale Datei ohne bekannte Quelle und lässt sich nicht automatisch reparieren`
+            )
           }
           continue
         }
@@ -630,9 +642,16 @@ async function runRepair(
       step('Aufräumen', 'failed', err instanceof Error ? err.message : String(err))
     }
 
-    persist({ ...getInstance(instanceId), installed: true })
-
+    // Computed before the write below, not after: this used to persist
+    // `installed: true` unconditionally and only check for a failed step
+    // afterwards, purely to decide which log line to print. A repair that
+    // hit a real failure, a network drop mid-download, unresolvable assets,
+    // Java not found, was then marked fully installed anyway, contradicting
+    // its own report. Left unchanged rather than forced to `false`: a repair
+    // with one failed step does not mean an instance that installed cleanly
+    // before is now uninstalled.
     const anyFailed = report.steps.some((s) => s.status === 'failed')
+    persist({ ...getInstance(instanceId), installed: anyFailed ? getInstance(instanceId).installed : true })
     repairLog(
       instanceId,
       anyFailed ? 'warning' : 'success',

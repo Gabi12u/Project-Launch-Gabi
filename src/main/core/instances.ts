@@ -12,7 +12,7 @@ import type {
   InstanceSummary,
   LoaderId
 } from '@shared/types'
-import { ensureInstanceLayout, paths } from '../paths'
+import { ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { emit } from '../events'
 import { log } from '../logger'
@@ -135,8 +135,16 @@ export function persist(instance: Instance): Instance {
     return instance
   }
 
-  cache.set(instance.id, instance)
+  // Written before the cache is updated: `writeJsonAtomic` is synchronous and
+  // can throw (a virus scanner or indexer briefly holding instance.json, a
+  // full disk), several of them documented as real, recurring cases exactly
+  // in this file. Updating the cache first would have made every reader
+  // (getInstance, tryGetInstance) see the new value for the rest of the
+  // session while the file on disk still held the old one, silently
+  // reverting on the next launcher start. `store.ts` had the same bug for
+  // launcher settings, fixed the same way.
   writeJsonAtomic(paths.instanceFile(instance.id), instance)
+  cache.set(instance.id, instance)
   emit(EVENTS.instanceChanged, toSummary(instance))
   return instance
 }
@@ -191,17 +199,6 @@ export function listSummaries(): InstanceSummary[] {
  * Creation
  * ------------------------------------------------------------------ */
 
-/**
- * Names Windows refuses to create as a file or a directory, in any casing and
- * regardless of extension. An instance called "Con" would otherwise fail at
- * `mkdirSync` with a raw fs error before it was ever persisted.
- */
-const RESERVED_NAMES = new Set([
-  'con', 'prn', 'aux', 'nul',
-  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
-  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
-])
-
 function slugify(name: string): string {
   const base = name
     .toLowerCase()
@@ -211,7 +208,7 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
   if (!base) return 'instanz'
-  return RESERVED_NAMES.has(base) ? `${base}-instanz` : base
+  return RESERVED_WINDOWS_NAMES.has(base) ? `${base}-instanz` : base
 }
 
 function uniqueId(name: string): string {
@@ -499,18 +496,29 @@ export function deleteInstance(id: string): void {
   // cannot slip a `persist()` in between the delete and the cache eviction.
   deleted.add(id)
 
+  // `force` swallows a missing path but not EBUSY/EPERM, which Windows hands
+  // out freely while a virus scanner or the search indexer still holds a
+  // folder. The two removals used to share one try block: if the instance
+  // folder (worlds, mods, screenshots) was already gone but the separate
+  // backups folder then threw, the catch lifted the tombstone and reported
+  // the whole delete as failed, as if nothing had happened, while the actual
+  // instance data was already irreversibly gone, the cache still held the
+  // old record, and the next unrelated write to this id would recreate an
+  // empty folder with a fresh instance.json under it. Split so the two
+  // failures are told apart: the instance folder failing is a genuine
+  // failure and lifts the tombstone as before; the backups folder failing
+  // afterwards does not undo a deletion that has already happened.
   try {
     rmSync(dir, { recursive: true, force: true })
-    rmSync(backupDir, { recursive: true, force: true })
   } catch (err) {
-    // `force` swallows a missing path but not EBUSY/EPERM, which Windows hands
-    // out freely while a virus scanner or the search indexer still holds the
-    // folder. The instance survives that failure, so the tombstone has to be
-    // lifted with it — leaving it in place would silently drop every later
-    // write for this id, and the user's changes would vanish on restart with
-    // nothing but a debug log to show for it.
     deleted.delete(id)
     throw err
+  }
+
+  try {
+    rmSync(backupDir, { recursive: true, force: true })
+  } catch (err) {
+    logger.warn(`Sicherungsordner für ${id} konnte nicht entfernt werden:`, err)
   }
 
   cache.delete(id)
@@ -531,8 +539,15 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
 
   ensureInstanceLayout(newId)
 
+  // `assertInstanceIdle` above only checks the instant duplication starts.
+  // The copy itself can run for seconds on a large modpack or world, and
+  // held no lock of its own for that whole stretch: nothing stopped
+  // `deleteInstance` or `repairInstance`, both synchronous and neither
+  // waiting on this, from running against the very folder this is reading
+  // from partway through the copy. Held on the source id, the same flag
+  // `assertInstanceIdle` already checks.
   const { cp } = await import('node:fs/promises')
-  await cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true })
+  await withContentLock(id, () => cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true }))
 
   const clone: Instance = {
     ...structuredClone(source),
@@ -680,12 +695,21 @@ export function setContent(id: string, content: ContentItem[]): Instance {
 
 export function addContent(id: string, item: ContentItem): Instance {
   const instance = getInstance(id)
+  // Case-insensitive, matching `syncContentWithDisk`'s own reasoning for
+  // doing the same: Windows and macOS fold case in the filesystem, so
+  // re-importing the same physical file under a different capitalisation
+  // (`Mod.jar` written over `mod.jar`) did not match here and left two
+  // records pointing at the one file, until the next disk scan folded them
+  // back into one anyway.
+  //
   // Scoped to the same content type: without it, a resource pack and a
   // datapack sharing a generic file name collided here, and adding one
   // silently dropped the other's record (the file itself stayed on disk,
   // untracked, until a scan rediscovered it).
   const content = instance.content.filter(
-    (c) => (c.fileName !== item.fileName || c.type !== item.type) && c.id !== item.id
+    (c) =>
+      (c.fileName.toLowerCase() !== item.fileName.toLowerCase() || c.type !== item.type) &&
+      c.id !== item.id
   )
   content.push(item)
   return persist({ ...instance, content })
@@ -741,7 +765,14 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
   // update checks and its download link in an exported modpack.
   const bareKey = (name: string): string =>
     (name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name).toLowerCase()
-  const known = new Map(instance.content.map((c) => [bareKey(c.fileName), c]))
+  // Scoped by type as well as name: resource packs, shader packs and
+  // datapacks all end in `.zip` and are scanned from separate folders below,
+  // but shared one map keyed on the bare name alone. Two of them with the
+  // same generic name, "pack.zip" for instance, collided on the same map
+  // entry, and both files then came back tagged with whichever one's
+  // metadata happened to still be in `known`: wrong type, wrong name, and an
+  // id shared between two records that pointed at two different files.
+  const known = new Map(instance.content.map((c) => [`${c.type}:${bareKey(c.fileName)}`, c]))
   const result: ContentItem[] = []
 
   const folders: { dir: string; type: ContentItem['type']; extensions: string[] }[] = [
@@ -770,7 +801,7 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
         continue
       }
 
-      const existing = known.get(bare.toLowerCase())
+      const existing = known.get(`${folder.type}:${bare.toLowerCase()}`)
       if (existing) {
         result.push({ ...existing, fileName, enabled })
         continue
