@@ -1014,57 +1014,68 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'download-ohne-pruefsumme-vertraut',
-    title: 'Eine unvollständig heruntergeladene Datei ohne Prüfsumme wird dauerhaft für vollständig gehalten',
+    title: 'Eine unvollständig heruntergeladene Datei ohne Prüfsumme wurde dauerhaft für vollständig gehalten',
     detail:
-      'Kommt eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, gilt ' +
-      'sie als vollständig, sobald sie überhaupt nicht leer ist. Bricht ein Download an dieser Stelle ' +
-      'unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wird die kaputte Datei ' +
-      'beim nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken ist ' +
-      'diese Grenze im Code bereits als bekannt vermerkt, sie gilt aber ebenso für den Download der ' +
-      'Java-Laufzeit selbst, wo das bisher nicht vermerkt war. Sichtbar wird das erst viel später, als ' +
-      'ein Start, der ohne erkennbaren Zusammenhang zum eigentlichen Downloadfehler fehlschlägt.',
-    state: 'investigating',
-    since: '2026-09-11'
+      'Kam eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, galt sie ' +
+      'als vollständig, sobald sie überhaupt nicht leer war. Brach ein Download an dieser Stelle ' +
+      'unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wurde die kaputte Datei beim ' +
+      'nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken bleibt ' +
+      'diese Grenze bestehen und ist im Code weiterhin als bekannt vermerkt, dort gibt es keine amtliche ' +
+      'Prüfsumme, gegen die verglichen werden könnte. Für den Download der Java-Laufzeit selbst, wo das ' +
+      'bisher ebenso zutraf, wird jetzt vorab die tatsächliche Dateigröße bei Adoptium abgefragt und zur ' +
+      'Prüfung herangezogen, sowohl beim Herunterladen als auch bei einer bereits vorhandenen Datei.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'java-installation-abbruch-nicht-verdrahtet',
-    title: 'Ein Abbruch kann bei geteilter Java-Installation wirkungslos bleiben',
+    title: 'Ein Abbruch konnte bei geteilter Java-Installation wirkungslos bleiben',
     detail:
-      'Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen ' +
-      'Download. Bricht die zweite Instanz ihren eigenen Start ab, während die erste weiterläuft, ist ' +
-      'ihr Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der "Abbrechen"-Knopf ' +
-      'der zweiten Instanz täuscht dann Wirkung vor, während im Hintergrund weiter heruntergeladen und ' +
-      'entpackt wird. Ob das für die zweite Instanz selbst noch spürbar wird, hängt von Code außerhalb ' +
-      'dieser Stelle ab und ist nicht abschließend geklärt.',
-    state: 'investigating',
-    since: '2026-09-11'
+      'Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen Download. ' +
+      'Brach die zweite Instanz ihren eigenen Start ab, während die erste weiterlief, war ihr ' +
+      'Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der "Abbrechen"-Knopf der ' +
+      'zweiten Instanz täuschte Wirkung vor, während im Hintergrund weiter heruntergeladen wurde, und ' +
+      'schlimmer noch, die zweite Instanz wartete selbst einfach weiter, bis die geteilte Installation von ' +
+      'selbst fertig oder fehlgeschlagen war, ganz gleich, was ihr eigener Abbruch-Knopf sagte. Jede ' +
+      'wartende Instanz hat jetzt ihren eigenen, sofort wirksamen Abbruch; die geteilte Installation selbst ' +
+      'läuft weiter, solange noch mindestens eine andere Instanz auf sie wartet, und wird nur dann ' +
+      'tatsächlich gestoppt, wenn niemand mehr auf sie wartet.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'java-installation-verwirft-bei-umbenennen',
-    title: 'Ein einzelner, vorübergehender Dateifehler kann eine fertige Java-Installation komplett verwerfen',
+    title: 'Ein einzelner, vorübergehender Dateifehler konnte eine fertige Java-Installation komplett verwerfen',
     detail:
       'Am Ende einer Java-Installation wird der fertig entpackte und geprüfte Ordner an seinen ' +
-      'endgültigen Platz verschoben. Schlägt genau dieser letzte Schritt einmal fehl, zum Beispiel weil ' +
-      'ein Virenschutz eine der frisch entpackten Dateien kurz geöffnet hält, wird die gesamte, bereits ' +
+      'endgültigen Platz verschoben. Schlug genau dieser letzte Schritt einmal fehl, zum Beispiel weil ein ' +
+      'Virenschutz eine der frisch entpackten Dateien kurz geöffnet hielt, wurde die gesamte, bereits ' +
       'heruntergeladene und entpackte Installation gelöscht und beim nächsten Versuch komplett neu ' +
-      'begonnen, statt nur diesen einen Schritt zu wiederholen. Kein falscher Erfolg, aber unnötiger ' +
-      'Ärger und Wartezeit bei langsamer Verbindung.',
-    state: 'investigating',
-    since: '2026-09-11'
+      'begonnen, statt nur diesen einen Schritt zu wiederholen. Ein solcher Umbenennungs-Versuch wird ' +
+      'jetzt einmal nach kurzer Wartezeit wiederholt, bevor aufgegeben wird, mit einer echten, ' +
+      'kurzzeitig gesperrten Datei nachgewiesen.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'fehlende-bibliothek-ohne-download-feld',
-    title: 'Die Prüfung auf fehlende Bibliotheken könnte manche Fälle übersehen',
+    title: 'Die Prüfung auf fehlende Bibliotheken konnte manche Fälle übersehen',
     detail:
-      'Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaut nur ' +
+      'Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaute nur ' +
       'bei Einträgen nach, die eine Download-Adresse mitbringen. Manche Versions-Angaben, bekannt vor ' +
       'allem von Forge und NeoForge, führen Bibliotheken ohne eigene Adresse, weil sie vom Installer ' +
-      'selbst an Ort und Stelle abgelegt werden. Fehlt eine solche Datei tatsächlich, würde sie beim ' +
-      'Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren ' +
-      'Fehler mitten im Spielstart als Folge. Wie oft dieser genaue Fall bei den unterstützten ' +
-      'Loadern tatsächlich vorkommt, ist noch nicht an echten Versions-Dateien geprüft.',
-    state: 'investigating',
-    since: '2026-09-11'
+      'selbst an Ort und Stelle abgelegt werden. Fehlte eine solche Datei tatsächlich, wurde sie beim ' +
+      'Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren Fehler ' +
+      'mitten im Spielstart als Folge. Mit einem echten Beispiel dieses genauen Musters bestätigt: von ' +
+      'zwei absichtlich fehlenden Bibliotheken meldete die alte Prüfung nur eine, die korrigierte ' +
+      'Prüfung beide. Sie schaut jetzt bei jeder benötigten Bibliothek nach, unabhängig davon, ob eine ' +
+      'Download-Adresse bekannt ist.',
+    state: 'fixed',
+    since: '2026-09-11',
+    fixedIn: '1.0.18'
   },
   {
     id: 'ordner-abgleich-typ-uebergreifend',
@@ -1176,15 +1187,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'reparatur-java-pruefung-veralteter-stand',
-    title: 'Eine während einer laufenden Reparatur geänderte Java-Einstellung wird noch gegen den alten Stand geprüft',
+    title: 'Eine während einer laufenden Reparatur geänderte Java-Einstellung wurde noch gegen den alten Stand geprüft',
     detail:
-      'Die Reparatur liest die Instanz-Einstellungen einmal ganz am Anfang und arbeitet für ihre gesamte ' +
-      'Dauer, bei größeren Instanzen durchaus mehrere Minuten, mit diesem einen Stand weiter. Ändert ' +
+      'Die Reparatur las die Instanz-Einstellungen einmal ganz am Anfang und arbeitete für ihre gesamte ' +
+      'Dauer, bei größeren Instanzen durchaus mehrere Minuten, mit diesem einen Stand weiter. Änderte ' +
       'jemand währenddessen den fest eingestellten Java-Pfad oder die Java-Versionsvorgabe dieser ' +
-      'Instanz, prüft der Java-Schritt der laufenden Reparatur weiterhin gegen die alte Einstellung und ' +
-      'kann "Java in Ordnung" melden, obwohl die gerade gespeicherte neue Einstellung nie geprüft wurde.',
-    state: 'investigating',
-    since: '2026-09-12'
+      'Instanz, prüfte der Java-Schritt der laufenden Reparatur weiterhin gegen die alte Einstellung und ' +
+      'konnte "Java in Ordnung" melden, obwohl die gerade gespeicherte neue Einstellung nie geprüft ' +
+      'wurde. Dieser eine Schritt liest die Einstellungen jetzt unmittelbar vor der eigentlichen Prüfung ' +
+      'erneut, genau wie es der Mod-Schritt derselben Reparatur schon tat.',
+    state: 'fixed',
+    since: '2026-09-12',
+    fixedIn: '1.0.18'
   },
   {
     id: 'quilt-neueste-version-falsch-ausgewaehlt',

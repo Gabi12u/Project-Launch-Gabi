@@ -611,13 +611,21 @@ async function runRepair(
     task.update('Java wird geprüft…', 0.95)
     repairLog(instanceId, 'check', 'Überprüfe Java')
     try {
-      const major = instance.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, instance.mcVersion)
+      // Re-read rather than the `instance` captured at the very start of this
+      // function: a repair can run for minutes, and `instance.settings` is
+      // otherwise unguarded against being changed while it is in progress
+      // (`updateInstance` checks no repair lock). A Java path or version
+      // override changed mid-repair was checked against the value it had
+      // when the repair began, not the one actually saved, and could report
+      // "Java fine" for a setting that was never really checked.
+      const current = getInstance(instanceId)
+      const major = current.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, current.mcVersion)
       const java = await resolveJava({
-        explicitPath: instance.settings.javaPath || undefined,
+        explicitPath: current.settings.javaPath || undefined,
         major,
         autoManage: getSettings().javaAutoManage,
         task,
-        instanceId: instance.id
+        instanceId: current.id
       })
       step('Java', 'ok', `Java ${java.major} (${java.version})`)
     } catch (err) {

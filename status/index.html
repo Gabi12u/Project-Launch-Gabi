@@ -1796,31 +1796,35 @@ footer a:hover { color: var(--ink); }
     },
     {
       "id": "download-ohne-pruefsumme-vertraut",
-      "title": "Eine unvollständig heruntergeladene Datei ohne Prüfsumme wird dauerhaft für vollständig gehalten",
-      "detail": "Kommt eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, gilt sie als vollständig, sobald sie überhaupt nicht leer ist. Bricht ein Download an dieser Stelle unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wird die kaputte Datei beim nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken ist diese Grenze im Code bereits als bekannt vermerkt, sie gilt aber ebenso für den Download der Java-Laufzeit selbst, wo das bisher nicht vermerkt war. Sichtbar wird das erst viel später, als ein Start, der ohne erkennbaren Zusammenhang zum eigentlichen Downloadfehler fehlschlägt.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "Eine unvollständig heruntergeladene Datei ohne Prüfsumme wurde dauerhaft für vollständig gehalten",
+      "detail": "Kam eine heruntergeladene Datei ganz ohne Prüfsumme und ohne bekannte Dateigröße daher, galt sie als vollständig, sobald sie überhaupt nicht leer war. Brach ein Download an dieser Stelle unvollständig ab, etwa durch einen harten Abbruch mitten im Vorgang, wurde die kaputte Datei beim nächsten Start als vorhanden akzeptiert und nie erneut geladen. Für Loader-Bibliotheken bleibt diese Grenze bestehen und ist im Code weiterhin als bekannt vermerkt, dort gibt es keine amtliche Prüfsumme, gegen die verglichen werden könnte. Für den Download der Java-Laufzeit selbst, wo das bisher ebenso zutraf, wird jetzt vorab die tatsächliche Dateigröße bei Adoptium abgefragt und zur Prüfung herangezogen, sowohl beim Herunterladen als auch bei einer bereits vorhandenen Datei.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "java-installation-abbruch-nicht-verdrahtet",
-      "title": "Ein Abbruch kann bei geteilter Java-Installation wirkungslos bleiben",
-      "detail": "Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen Download. Bricht die zweite Instanz ihren eigenen Start ab, während die erste weiterläuft, ist ihr Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der \"Abbrechen\"-Knopf der zweiten Instanz täuscht dann Wirkung vor, während im Hintergrund weiter heruntergeladen und entpackt wird. Ob das für die zweite Instanz selbst noch spürbar wird, hängt von Code außerhalb dieser Stelle ab und ist nicht abschließend geklärt.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "Ein Abbruch konnte bei geteilter Java-Installation wirkungslos bleiben",
+      "detail": "Warten zwei Instanzen gleichzeitig auf dieselbe Java-Installation, teilen sie sich einen Download. Brach die zweite Instanz ihren eigenen Start ab, während die erste weiterlief, war ihr Abbruch-Signal nicht mit dem tatsächlich laufenden Download verbunden: der \"Abbrechen\"-Knopf der zweiten Instanz täuschte Wirkung vor, während im Hintergrund weiter heruntergeladen wurde, und schlimmer noch, die zweite Instanz wartete selbst einfach weiter, bis die geteilte Installation von selbst fertig oder fehlgeschlagen war, ganz gleich, was ihr eigener Abbruch-Knopf sagte. Jede wartende Instanz hat jetzt ihren eigenen, sofort wirksamen Abbruch; die geteilte Installation selbst läuft weiter, solange noch mindestens eine andere Instanz auf sie wartet, und wird nur dann tatsächlich gestoppt, wenn niemand mehr auf sie wartet.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "java-installation-verwirft-bei-umbenennen",
-      "title": "Ein einzelner, vorübergehender Dateifehler kann eine fertige Java-Installation komplett verwerfen",
-      "detail": "Am Ende einer Java-Installation wird der fertig entpackte und geprüfte Ordner an seinen endgültigen Platz verschoben. Schlägt genau dieser letzte Schritt einmal fehl, zum Beispiel weil ein Virenschutz eine der frisch entpackten Dateien kurz geöffnet hält, wird die gesamte, bereits heruntergeladene und entpackte Installation gelöscht und beim nächsten Versuch komplett neu begonnen, statt nur diesen einen Schritt zu wiederholen. Kein falscher Erfolg, aber unnötiger Ärger und Wartezeit bei langsamer Verbindung.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "Ein einzelner, vorübergehender Dateifehler konnte eine fertige Java-Installation komplett verwerfen",
+      "detail": "Am Ende einer Java-Installation wird der fertig entpackte und geprüfte Ordner an seinen endgültigen Platz verschoben. Schlug genau dieser letzte Schritt einmal fehl, zum Beispiel weil ein Virenschutz eine der frisch entpackten Dateien kurz geöffnet hielt, wurde die gesamte, bereits heruntergeladene und entpackte Installation gelöscht und beim nächsten Versuch komplett neu begonnen, statt nur diesen einen Schritt zu wiederholen. Ein solcher Umbenennungs-Versuch wird jetzt einmal nach kurzer Wartezeit wiederholt, bevor aufgegeben wird, mit einer echten, kurzzeitig gesperrten Datei nachgewiesen.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "fehlende-bibliothek-ohne-download-feld",
-      "title": "Die Prüfung auf fehlende Bibliotheken könnte manche Fälle übersehen",
-      "detail": "Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaut nur bei Einträgen nach, die eine Download-Adresse mitbringen. Manche Versions-Angaben, bekannt vor allem von Forge und NeoForge, führen Bibliotheken ohne eigene Adresse, weil sie vom Installer selbst an Ort und Stelle abgelegt werden. Fehlt eine solche Datei tatsächlich, würde sie beim Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren Fehler mitten im Spielstart als Folge. Wie oft dieser genaue Fall bei den unterstützten Loadern tatsächlich vorkommt, ist noch nicht an echten Versions-Dateien geprüft.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "Die Prüfung auf fehlende Bibliotheken konnte manche Fälle übersehen",
+      "detail": "Die Prüfung, ob für den Start benötigte Java-Bibliotheken tatsächlich vorhanden sind, schaute nur bei Einträgen nach, die eine Download-Adresse mitbringen. Manche Versions-Angaben, bekannt vor allem von Forge und NeoForge, führen Bibliotheken ohne eigene Adresse, weil sie vom Installer selbst an Ort und Stelle abgelegt werden. Fehlte eine solche Datei tatsächlich, wurde sie beim Start stillschweigend übergangen, statt als fehlend gemeldet zu werden, mit einem unklaren Fehler mitten im Spielstart als Folge. Mit einem echten Beispiel dieses genauen Musters bestätigt: von zwei absichtlich fehlenden Bibliotheken meldete die alte Prüfung nur eine, die korrigierte Prüfung beide. Sie schaut jetzt bei jeder benötigten Bibliothek nach, unabhängig davon, ob eine Download-Adresse bekannt ist.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "ordner-abgleich-typ-uebergreifend",
@@ -1880,10 +1884,11 @@ footer a:hover { color: var(--ink); }
     },
     {
       "id": "reparatur-java-pruefung-veralteter-stand",
-      "title": "Eine während einer laufenden Reparatur geänderte Java-Einstellung wird noch gegen den alten Stand geprüft",
-      "detail": "Die Reparatur liest die Instanz-Einstellungen einmal ganz am Anfang und arbeitet für ihre gesamte Dauer, bei größeren Instanzen durchaus mehrere Minuten, mit diesem einen Stand weiter. Ändert jemand währenddessen den fest eingestellten Java-Pfad oder die Java-Versionsvorgabe dieser Instanz, prüft der Java-Schritt der laufenden Reparatur weiterhin gegen die alte Einstellung und kann \"Java in Ordnung\" melden, obwohl die gerade gespeicherte neue Einstellung nie geprüft wurde.",
-      "state": "investigating",
-      "since": "2026-09-12"
+      "title": "Eine während einer laufenden Reparatur geänderte Java-Einstellung wurde noch gegen den alten Stand geprüft",
+      "detail": "Die Reparatur las die Instanz-Einstellungen einmal ganz am Anfang und arbeitete für ihre gesamte Dauer, bei größeren Instanzen durchaus mehrere Minuten, mit diesem einen Stand weiter. Änderte jemand währenddessen den fest eingestellten Java-Pfad oder die Java-Versionsvorgabe dieser Instanz, prüfte der Java-Schritt der laufenden Reparatur weiterhin gegen die alte Einstellung und konnte \"Java in Ordnung\" melden, obwohl die gerade gespeicherte neue Einstellung nie geprüft wurde. Dieser eine Schritt liest die Einstellungen jetzt unmittelbar vor der eigentlichen Prüfung erneut, genau wie es der Mod-Schritt derselben Reparatur schon tat.",
+      "state": "fixed",
+      "since": "2026-09-12",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "quilt-neueste-version-falsch-ausgewaehlt",
@@ -2487,31 +2492,35 @@ footer a:hover { color: var(--ink); }
     },
     {
       "id": "download-ohne-pruefsumme-vertraut",
-      "title": "An incompletely downloaded file with no checksum is trusted as complete for good",
-      "detail": "A downloaded file that comes with neither a checksum nor a known size counts as complete as soon as it is not empty. If a download breaks off incomplete at that point, for instance through a hard interruption mid-transfer, the broken file is accepted as present on the next start and never downloaded again. This limit is already noted in the code for loader libraries, but applies equally to downloading the Java runtime itself, where it was not noted before. It only ever surfaces much later, as a launch failing with no visible connection to the original download failure.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "An incompletely downloaded file with no checksum was trusted as complete for good",
+      "detail": "A downloaded file that came with neither a checksum nor a known size counted as complete as soon as it was not empty. If a download broke off incomplete at that point, for instance through a hard interruption mid-transfer, the broken file was accepted as present on the next start and never downloaded again. This limit remains for loader libraries and stays noted in the code as such, there is no official checksum there to compare against. For downloading the Java runtime itself, where the same used to apply, the actual file size is now looked up from Adoptium beforehand and used for verification, both while downloading and when a file already on disk is checked.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "java-installation-abbruch-nicht-verdrahtet",
-      "title": "A cancel can be ineffective for a shared Java installation",
-      "detail": "If two instances wait on the same Java installation at once, they share one download. If the second instance cancels its own launch while the first keeps going, its cancel signal is not connected to the download actually in progress: the second instance’s \"Cancel\" button then looks like it worked while the download and extraction keep running in the background. Whether this is still noticeable for the second instance itself depends on code outside this spot and is not fully settled.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "A cancel could be ineffective for a shared Java installation",
+      "detail": "If two instances wait on the same Java installation at once, they share one download. If the second instance cancelled its own launch while the first kept going, its cancel signal was not connected to the download actually in progress: the second instance’s \"Cancel\" button looked like it worked while the download kept running in the background, and worse, the second instance simply kept waiting until the shared installation finished or failed on its own, regardless of what its own cancel button said. Every waiting instance now has its own, immediately effective cancel; the shared installation itself keeps running as long as at least one other instance is still waiting on it, and only actually stops once nobody is left waiting.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "java-installation-verwirft-bei-umbenennen",
-      "title": "A single, transient file error can discard an entire, finished Java installation",
-      "detail": "At the end of a Java installation, the fully extracted and verified folder is moved into its final place. If exactly that last step fails once, for instance because antivirus software briefly holds one of the freshly extracted files open, the entire already-downloaded and extracted installation is deleted and started completely over on the next attempt, instead of just retrying that one step. Not a false success, but needless frustration and waiting on a slow connection.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "A single, transient file error could discard an entire, finished Java installation",
+      "detail": "At the end of a Java installation, the fully extracted and verified folder is moved into its final place. If exactly that last step failed once, for instance because antivirus software briefly held one of the freshly extracted files open, the entire already-downloaded and extracted installation was deleted and started completely over on the next attempt, instead of just retrying that one step. Such a rename attempt is now retried once after a short wait before giving up, proven with a genuinely, briefly locked file.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "fehlende-bibliothek-ohne-download-feld",
-      "title": "The check for missing libraries may overlook some cases",
-      "detail": "The check for whether Java libraries needed at launch are actually present only looks at entries that carry a download address. Some version definitions, mainly known from Forge and NeoForge, list libraries with no address of their own because the installer places them itself. If such a file is genuinely missing, it would be silently skipped instead of reported as missing, resulting in an unclear error in the middle of launching. How often this exact case actually occurs across the supported loaders has not yet been checked against real version files.",
-      "state": "investigating",
-      "since": "2026-09-11"
+      "title": "The check for missing libraries could overlook some cases",
+      "detail": "The check for whether Java libraries needed at launch are actually present only looked at entries that carry a download address. Some version definitions, mainly known from Forge and NeoForge, list libraries with no address of their own because the installer places them itself. If such a file was genuinely missing, it was silently skipped instead of reported as missing, resulting in an unclear error in the middle of launching. Confirmed with a real example of this exact pattern: of two deliberately missing libraries, the old check reported only one, the corrected check both. It now checks every needed library regardless of whether a download address is known.",
+      "state": "fixed",
+      "since": "2026-09-11",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "ordner-abgleich-typ-uebergreifend",
@@ -2571,10 +2580,11 @@ footer a:hover { color: var(--ink); }
     },
     {
       "id": "reparatur-java-pruefung-veralteter-stand",
-      "title": "A Java setting changed during an active repair is still checked against the old value",
-      "detail": "Repair reads an instance’s settings once at the very start and works from that one snapshot for its entire run, which can take several minutes for a larger instance. If someone changes that instance’s fixed Java path or Java version override while it is running, the repair’s Java step still checks against the old setting and can report \"Java fine\" even though the newly saved setting was never checked at all.",
-      "state": "investigating",
-      "since": "2026-09-12"
+      "title": "A Java setting changed during an active repair was still checked against the old value",
+      "detail": "Repair read an instance’s settings once at the very start and worked from that one snapshot for its entire run, which can take several minutes for a larger instance. If someone changed that instance’s fixed Java path or Java version override while it was running, the repair’s Java step still checked against the old setting and could report \"Java fine\" even though the newly saved setting was never checked at all. This one step now re-reads the settings immediately before the actual check, exactly as the mod step of the same repair already did.",
+      "state": "fixed",
+      "since": "2026-09-12",
+      "fixedIn": "1.0.18"
     },
     {
       "id": "quilt-neueste-version-falsch-ausgewaehlt",

@@ -478,7 +478,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // the extraction, and only announced itself as an unreadable JVM crash
     // about a missing system library — the exact failure this check exists to
     // replace with a sentence.
-    const missing = libraries.filter((l) => l.download && !existsSync(l.path))
+    //
+    // Checked against every library `resolveLibraries` returned, not only
+    // ones carrying a `download` field. Forge and NeoForge version JSONs list
+    // some libraries with no download address of their own, since their own
+    // installer places those files itself rather than fetching them here;
+    // one of those genuinely missing (an interrupted or failed loader
+    // install) used to slip past this check entirely and then vanish
+    // silently at the classpath filter below, with no error until the JVM
+    // itself failed to find the class.
+    const missing = libraries.filter((l) => !existsSync(l.path))
     if (missing.length > 0) {
       const names = missing.slice(0, 3).map((l) => basename(l.path))
       throw new Error(

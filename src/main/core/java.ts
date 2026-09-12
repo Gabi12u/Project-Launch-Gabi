@@ -7,13 +7,35 @@ import type { JavaRuntime } from '@shared/types'
 import { paths } from '../paths'
 import { log } from '../logger'
 import { notify } from '../events'
-import { downloadFile } from './net'
+import { downloadFile, fetchJson } from './net'
 import { extractAll, extractTarGz } from './archive'
 import { TaskCancelledError, type Task } from '../tasks'
 import { osArch, osName, type VersionJson } from './mojang'
 
 const logger = log('java')
 const execFileAsync = promisify(execFile)
+
+/**
+ * Retries a rename once after a short pause before giving up.
+ *
+ * The usual reason a rename fails right after extracting an archive on
+ * Windows is a virus scanner or backup client briefly holding one of the
+ * just-written files open, exactly the kind of transient lock the swap
+ * branch below already retries and rolls back around. The plain first-install
+ * case (nothing existing yet to swap with) had no such retry: one failed
+ * rename discarded the entire already-downloaded, extracted and verified
+ * install, and the whole thing started over from the download. One short
+ * wait covers the common case; a rename that still fails after it almost
+ * certainly needs the retry the caller falls back to anyway.
+ */
+async function renameWithRetry(from: string, to: string): Promise<void> {
+  try {
+    renameSync(from, to)
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    renameSync(from, to)
+  }
+}
 
 const EXE = process.platform === 'win32' ? 'java.exe' : 'java'
 
@@ -339,37 +361,96 @@ function adoptiumArch(): string {
 interface JavaInstall {
   promise: Promise<JavaRuntime>
   listeners: Set<Task>
+  /**
+   * Owns the shared download's actual abort signal. Not any one listener's
+   * own: a second launch joining an install already in progress used to add
+   * itself to `listeners` for progress updates only, while cancellation
+   * stayed wired to whichever task happened to start the install first.
+   * Cancelling the second launch then did nothing to the download itself.
+   * The more serious half of that bug: nothing told the second launch's own
+   * wait to stop either, so its cancel button stayed inert until the shared
+   * install eventually settled on its own. `waitFor` below gives every
+   * listener its own race against this shared one instead.
+   */
+  controller: AbortController
 }
 
 const installing = new Map<number, JavaInstall>()
+
+/**
+ * Lets one listener's own cancellation end its wait immediately, without
+ * disturbing a shared download other launches may still need. Only aborts
+ * the shared install itself once the last listener still waiting on it
+ * cancels, so a single caller with no one else sharing the download behaves
+ * exactly as before.
+ */
+function waitForSharedInstall(entry: JavaInstall, task?: Task): Promise<JavaRuntime> {
+  if (!task?.signal) return entry.promise
+  const signal = task.signal
+  return new Promise<JavaRuntime>((resolve, reject) => {
+    let settled = false
+    const onAbort = (): void => {
+      if (settled) return
+      settled = true
+      signal.removeEventListener('abort', onAbort)
+      entry.listeners.delete(task)
+      if (entry.listeners.size === 0) entry.controller.abort()
+      reject(new TaskCancelledError())
+    }
+    if (signal.aborted) {
+      onAbort()
+      return
+    }
+    signal.addEventListener('abort', onAbort)
+    entry.promise.then(
+      (value) => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (err: unknown) => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        reject(err)
+      }
+    )
+  })
+}
 
 export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   const running = installing.get(major)
   if (running) {
     if (task) running.listeners.add(task)
-    return running.promise
+    return waitForSharedInstall(running, task)
   }
 
   const listeners = new Set<Task>()
   if (task) listeners.add(task)
+  const controller = new AbortController()
 
   // Handed down instead of the caller's own task, so every waiting launch sees
-  // the same progress.
+  // the same progress, and the download is only ever tied to this shared
+  // controller, not to any single listener's own signal.
   const shared = {
     update: (detail: string, progress: number | null): void => {
       for (const listener of listeners) listener.update(detail, progress)
     },
-    throwIfCancelled: (): void => task?.throwIfCancelled(),
-    get signal(): AbortSignal | undefined {
-      return task?.signal
+    throwIfCancelled: (): void => {
+      if (controller.signal.aborted) throw new TaskCancelledError()
+    },
+    get signal(): AbortSignal {
+      return controller.signal
     }
   } as unknown as Task
 
   const promise = installJavaOnce(major, shared).finally(() => {
     installing.delete(major)
   })
-  installing.set(major, { promise, listeners })
-  return promise
+  const entry: JavaInstall = { promise, listeners, controller }
+  installing.set(major, entry)
+  return waitForSharedInstall(entry, task)
 }
 
 /**
@@ -401,6 +482,35 @@ function sweepStagingDirs(): void {
     }
   } catch {
     // best effort
+  }
+}
+
+/**
+ * Looks up the exact byte size Adoptium's own release metadata reports for
+ * the archive this is about to download.
+ *
+ * The download URL below is a redirect endpoint with no size of its own, so
+ * the archive used to carry neither a hash nor a size, and `isSatisfied`
+ * then treated any non-empty file on disk as complete for good. A
+ * connection dropped mid-transfer wrote out a truncated archive that looked
+ * done, with the damage only surfacing much later as a broken Java install.
+ * Adoptium's asset metadata is a separate endpoint with no redirect and no
+ * binary body, so a failure to reach it does not cost anything beyond
+ * falling back to the previous behaviour: the download still proceeds,
+ * verified only by `Content-Length` at transfer time as before.
+ */
+async function adoptiumArchiveSize(major: number, imageType: 'jdk' | 'jre'): Promise<number | undefined> {
+  try {
+    const url =
+      `https://api.adoptium.net/v3/assets/feature_releases/${major}/ga` +
+      `?image_type=${imageType}&os=${adoptiumOs()}&architecture=${adoptiumArch()}` +
+      `&jvm_impl=hotspot&heap_size=normal&page=0&page_size=1&sort_method=DEFAULT&sort_order=DESC`
+    const releases = await fetchJson<Array<{ binaries?: Array<{ package?: { size?: number } }> }>>(url)
+    const size = releases[0]?.binaries?.[0]?.package?.size
+    return typeof size === 'number' && size > 0 ? size : undefined
+  } catch (err) {
+    logger.warn(`Erwartete Dateigröße für Java ${major} nicht abrufbar:`, err)
+    return undefined
   }
 }
 
@@ -436,10 +546,12 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   // as a usable runtime. Nothing else in the app sweeps them.
   sweepStagingDirs()
 
+  const expectedSize = await adoptiumArchiveSize(major, imageType)
+
   try {
     let received = 0
     try {
-      await downloadFile({ url, path: archive }, (delta) => {
+      await downloadFile({ url, path: archive, size: expectedSize }, (delta) => {
         received += delta
         task?.update(`Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`, null)
       }, 3, task?.signal)
@@ -498,7 +610,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
 
       renameSync(targetDir, parked)
       try {
-        renameSync(staging, targetDir)
+        await renameWithRetry(staging, targetDir)
       } catch (swapErr) {
         // The new install could not take the old one's place. Put the old one
         // back so a failed update never costs a working installation, then
@@ -516,8 +628,10 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
         // Leftover old install is harmless once the new one is in place.
       }
     } else {
-      // First install for this major: nothing to swap out.
-      renameSync(staging, targetDir)
+      // First install for this major: nothing to swap out. Still retried,
+      // this rename is exactly as exposed to a transient lock as the swap
+      // branch's own, and had none of its protection.
+      await renameWithRetry(staging, targetDir)
     }
   } catch (err) {
     // The archive carries no checksum, so a truncated one would be treated as

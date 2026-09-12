@@ -677,45 +677,48 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'now gets the same forcing second stage.'
   },
   'download-ohne-pruefsumme-vertraut': {
-    title: 'An incompletely downloaded file with no checksum is trusted as complete for good',
+    title: 'An incompletely downloaded file with no checksum was trusted as complete for good',
     detail:
-      'A downloaded file that comes with neither a checksum nor a known size counts as complete as soon ' +
-      'as it is not empty. If a download breaks off incomplete at that point, for instance through a ' +
-      'hard interruption mid-transfer, the broken file is accepted as present on the next start and ' +
-      'never downloaded again. This limit is already noted in the code for loader libraries, but applies ' +
-      'equally to downloading the Java runtime itself, where it was not noted before. It only ever ' +
-      'surfaces much later, as a launch failing with no visible connection to the original download ' +
-      'failure.'
+      'A downloaded file that came with neither a checksum nor a known size counted as complete as soon ' +
+      'as it was not empty. If a download broke off incomplete at that point, for instance through a hard ' +
+      'interruption mid-transfer, the broken file was accepted as present on the next start and never ' +
+      'downloaded again. This limit remains for loader libraries and stays noted in the code as such, ' +
+      'there is no official checksum there to compare against. For downloading the Java runtime itself, ' +
+      'where the same used to apply, the actual file size is now looked up from Adoptium beforehand and ' +
+      'used for verification, both while downloading and when a file already on disk is checked.'
   },
   'java-installation-abbruch-nicht-verdrahtet': {
-    title: 'A cancel can be ineffective for a shared Java installation',
+    title: 'A cancel could be ineffective for a shared Java installation',
     detail:
       'If two instances wait on the same Java installation at once, they share one download. If the ' +
-      'second instance cancels its own launch while the first keeps going, its cancel signal is not ' +
-      'connected to the download actually in progress: the second instance’s "Cancel" button then ' +
-      'looks like it worked while the download and extraction keep running in the background. Whether ' +
-      'this is still noticeable for the second instance itself depends on code outside this spot and is ' +
-      'not fully settled.'
+      'second instance cancelled its own launch while the first kept going, its cancel signal was not ' +
+      'connected to the download actually in progress: the second instance’s "Cancel" button looked like ' +
+      'it worked while the download kept running in the background, and worse, the second instance simply ' +
+      'kept waiting until the shared installation finished or failed on its own, regardless of what its ' +
+      'own cancel button said. Every waiting instance now has its own, immediately effective cancel; the ' +
+      'shared installation itself keeps running as long as at least one other instance is still waiting on ' +
+      'it, and only actually stops once nobody is left waiting.'
   },
   'java-installation-verwirft-bei-umbenennen': {
-    title: 'A single, transient file error can discard an entire, finished Java installation',
+    title: 'A single, transient file error could discard an entire, finished Java installation',
     detail:
-      'At the end of a Java installation, the fully extracted and verified folder is moved into its ' +
-      'final place. If exactly that last step fails once, for instance because antivirus software ' +
-      'briefly holds one of the freshly extracted files open, the entire already-downloaded and ' +
-      'extracted installation is deleted and started completely over on the next attempt, instead of ' +
-      'just retrying that one step. Not a false success, but needless frustration and waiting on a slow ' +
-      'connection.'
+      'At the end of a Java installation, the fully extracted and verified folder is moved into its final ' +
+      'place. If exactly that last step failed once, for instance because antivirus software briefly held ' +
+      'one of the freshly extracted files open, the entire already-downloaded and extracted installation ' +
+      'was deleted and started completely over on the next attempt, instead of just retrying that one ' +
+      'step. Such a rename attempt is now retried once after a short wait before giving up, proven with a ' +
+      'genuinely, briefly locked file.'
   },
   'fehlende-bibliothek-ohne-download-feld': {
-    title: 'The check for missing libraries may overlook some cases',
+    title: 'The check for missing libraries could overlook some cases',
     detail:
-      'The check for whether Java libraries needed at launch are actually present only looks at entries ' +
+      'The check for whether Java libraries needed at launch are actually present only looked at entries ' +
       'that carry a download address. Some version definitions, mainly known from Forge and NeoForge, ' +
       'list libraries with no address of their own because the installer places them itself. If such a ' +
-      'file is genuinely missing, it would be silently skipped instead of reported as missing, resulting ' +
-      'in an unclear error in the middle of launching. How often this exact case actually occurs across ' +
-      'the supported loaders has not yet been checked against real version files.'
+      'file was genuinely missing, it was silently skipped instead of reported as missing, resulting in an ' +
+      'unclear error in the middle of launching. Confirmed with a real example of this exact pattern: of ' +
+      'two deliberately missing libraries, the old check reported only one, the corrected check both. It ' +
+      'now checks every needed library regardless of whether a download address is known.'
   },
   'ordner-abgleich-typ-uebergreifend': {
     title: 'A resource pack, shader pack and datapack with the same name could get swapped during disk reconciliation',
@@ -789,13 +792,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'unchanged rather than wrongly set to installed.'
   },
   'reparatur-java-pruefung-veralteter-stand': {
-    title: 'A Java setting changed during an active repair is still checked against the old value',
+    title: 'A Java setting changed during an active repair was still checked against the old value',
     detail:
-      'Repair reads an instance’s settings once at the very start and works from that one snapshot for ' +
-      'its entire run, which can take several minutes for a larger instance. If someone changes that ' +
-      'instance’s fixed Java path or Java version override while it is running, the repair’s Java step ' +
-      'still checks against the old setting and can report "Java fine" even though the newly saved ' +
-      'setting was never checked at all.'
+      'Repair read an instance’s settings once at the very start and worked from that one snapshot for ' +
+      'its entire run, which can take several minutes for a larger instance. If someone changed that ' +
+      'instance’s fixed Java path or Java version override while it was running, the repair’s Java step ' +
+      'still checked against the old setting and could report "Java fine" even though the newly saved ' +
+      'setting was never checked at all. This one step now re-reads the settings immediately before the ' +
+      'actual check, exactly as the mod step of the same repair already did.'
   },
   'quilt-neueste-version-falsch-ausgewaehlt': {
     title: 'Setting up an instance with Quilt could pick an old prerelease instead of the latest stable version',
