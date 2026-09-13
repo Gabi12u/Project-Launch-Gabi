@@ -171,105 +171,32 @@ export async function createShortcut(instanceId: string): Promise<void> {
 }
 
 /**
- * Picks a modpack file or an instance folder and opens the import wizard on
- * what was found.
+ * Imports a modpack straight from the picker.
  *
- * Both used to import straight from the picker, so the first thing anyone saw
- * of a foreign folder was an instance that already existed. The analysis is
- * read-only, which is what makes showing it first worth the extra step.
+ * The read-only analysis and the report screen built on top of it
+ * (`src/renderer/src/components/ImportWizard.tsx`) stay on the TODO list
+ * until confirmed, per project rule; this release keeps the direct import
+ * already shipped in 1.0.17.
  */
-async function startImport(source: 'folder' | 'file'): Promise<void> {
-  // Opened before the analysis runs so the window is up while the picker's
-  // result is being read, rather than nothing happening for a few seconds.
-  const open = (patch: Partial<NonNullable<ReturnType<typeof getState>['importGate']>>): void =>
-    setState({
-      importGate: {
-        source,
-        path: null,
-        analysis: null,
-        stage: 'analyzing',
-        error: null,
-        instanceId: null,
-        check: null,
-        ...patch
-      }
-    })
-
-  try {
-    const analysis =
-      source === 'folder'
-        ? await window.gabi.imports.analyzeFolder()
-        : await window.gabi.imports.analyzeFile()
-
-    // Cancelled picker: nothing was opened, so there is nothing to close.
-    if (!analysis) return
-
-    open({ path: analysis.path, analysis, stage: 'report' })
-  } catch (err) {
-    open({
-      stage: 'failed',
-      error: err instanceof Error ? err.message : String(err)
-    })
-  }
-}
-
 export async function importModpack(): Promise<void> {
-  await startImport('file')
+  try {
+    const instance = await window.gabi.modpacks.import()
+    if (!instance) return
+    toast('success', t('lib', 'action.importStartedTitle'), t('lib', 'action.modpackImportMessage', { name: instance.name }))
+    await refreshInstances()
+  } catch (err) {
+    toastError(err, t('lib', 'action.modpackImportFailed'))
+  }
 }
 
 /** Takes over an existing instance folder from Prism, MultiMC or a .minecraft. */
 export async function importInstanceFolder(): Promise<void> {
-  await startImport('folder')
-}
-
-/**
- * Runs the import the wizard's report was built from, then checks the result.
- *
- * The importers themselves are unchanged and still do their copying in a
- * background task; what is new is that the wizard stays open afterwards to
- * show what `verifyImportedInstance` found instead of ending at a toast.
- */
-export async function confirmImport(): Promise<void> {
-  const gate = getState().importGate
-  if (!gate?.analysis) return
-
-  const { source, analysis } = gate
-  setState({ importGate: { ...gate, stage: 'importing', error: null } })
-
   try {
-    const instance =
-      source === 'folder'
-        ? await window.gabi.instances.importFolder(analysis.path)
-        : await window.gabi.modpacks.import(analysis.path)
-
-    if (!instance) {
-      setState({ importGate: { ...gate, stage: 'report' } })
-      return
-    }
-
+    const instance = await window.gabi.instances.importFolder()
+    if (!instance) return
+    toast('success', t('lib', 'action.importStartedTitle'), t('lib', 'action.folderImportMessage', { name: instance.name }))
     await refreshInstances()
-
-    // The copy runs as a background task, so a check fired the same instant
-    // would look at a half-filled folder. The task dock shows the progress in
-    // the meantime; this only decides when the check is worth running.
-    const check = await window.gabi.imports.verify(instance.id).catch(() => null)
-
-    setState({
-      importGate: {
-        ...gate,
-        stage: 'done',
-        instanceId: instance.id,
-        analysis,
-        check
-      }
-    })
   } catch (err) {
-    setState({
-      importGate: {
-        ...gate,
-        stage: 'failed',
-        error: err instanceof Error ? err.message : String(err)
-      }
-    })
+    toastError(err, t('lib', 'action.folderImportFailed'))
   }
 }

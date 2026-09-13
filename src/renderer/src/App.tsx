@@ -21,10 +21,6 @@ import { CommandPalette } from './components/CommandPalette'
 import { Logo } from './components/Logo'
 import { CompatibilityGate } from './components/CompatibilityPanel'
 import { UpdateGate } from './components/UpdateGate'
-import { UpdateOverlay } from './components/UpdateOverlay'
-import { RepairOverlay } from './components/RepairOverlay'
-import { ImportWizard } from './components/ImportWizard'
-import { LaunchOverlay } from './components/LaunchOverlay'
 import { ReportConsent } from './components/ReportConsent'
 import { CreateInstanceWizard } from './views/CreateInstanceWizard'
 import { Onboarding } from './views/Onboarding'
@@ -326,10 +322,6 @@ export function App(): JSX.Element {
         <CommandPalette />
         <CompatibilityGate />
         <UpdateGate />
-        <UpdateOverlay />
-        <RepairOverlay />
-        <ImportWizard />
-        <LaunchOverlay />
         <CreateInstanceWizard open={createOpen} onClose={() => setState({ createOpen: false })} />
       </div>
     </ErrorBoundary>
