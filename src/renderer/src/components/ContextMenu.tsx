@@ -42,7 +42,6 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
   // whatever entry was selected for the previous row — and since "Entfernen"
   // is the last entry and asks no confirmation, a stray Enter could delete
   // the wrong mod outright.
-  //
   // Keyed on this signature rather than on `items` itself: the caller builds
   // that array inline on every render, so its reference changes on every
   // unrelated store update while the menu is open, which reset the highlight

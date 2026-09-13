@@ -1,6 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { navigate } from '../lib/store'
-import { t } from '../lib/i18n'
 import { IconRefresh, IconWarning } from './Icons'
 
 interface Props {
@@ -83,9 +82,10 @@ export class ErrorBoundary extends Component<Props, State> {
         }}
       >
         <IconWarning size={30} />
-        <div style={{ fontSize: 16, fontWeight: 650 }}>{t('overlays', 'errorBoundary.title')}</div>
+        <div style={{ fontSize: 16, fontWeight: 650 }}>Hier ist etwas schiefgelaufen</div>
         <p className="hint" style={{ maxWidth: 440 }}>
-          {t('overlays', 'errorBoundary.message')}
+          Diese Ansicht hat einen Fehler ausgelöst, mit dem nicht gerechnet wurde. Der Rest von
+          Launch Gabi läuft weiter.
         </p>
         <p className="mono hint" style={{ maxWidth: 480, wordBreak: 'break-word', opacity: 0.8 }}>
           {error.message}
@@ -93,15 +93,15 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="row gap-8">
           {full ? (
             <button className="btn primary" onClick={() => window.location.reload()}>
-              <IconRefresh size={14} /> {t('overlays', 'errorBoundary.reloadApp')}
+              <IconRefresh size={14} /> Launcher neu laden
             </button>
           ) : (
             <>
               <button className="btn" onClick={this.retry}>
-                <IconRefresh size={14} /> {t('overlays', 'errorBoundary.retry')}
+                <IconRefresh size={14} /> Erneut versuchen
               </button>
               <button className="btn primary" onClick={this.goHome}>
-                {t('overlays', 'errorBoundary.goHome')}
+                Zur Startseite
               </button>
             </>
           )}

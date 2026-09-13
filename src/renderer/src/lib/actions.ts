@@ -1,46 +1,5 @@
 import { getState, refreshInstances, setState, toast, toastError } from './store'
 import { renderInstanceIcon } from './icon'
-import { pluralise } from './format'
-import { t } from './i18n'
-
-/**
- * Runs a repair and drives the global overlay through it, so the same flow
- * works from the instance page's own button and from "Mods prüfen &
- * reparieren" on a crashed launch, without either one reaching into the
- * other's local component state.
- */
-export async function repairInstanceWithOverlay(instanceId: string, instanceName: string): Promise<void> {
-  if (getState().repairGate) return
-  setState({ repairGate: { instanceId, instanceName, report: null } })
-  try {
-    const result = await window.gabi.instances.repair(instanceId)
-    setState((current) =>
-      current.repairGate?.instanceId === instanceId ? { repairGate: { ...current.repairGate, report: result } } : {}
-    )
-    const failed = result.steps.filter((s) => s.status === 'failed').length
-    toast(
-      failed > 0 ? 'warning' : 'success',
-      t('lib', 'action.repairDoneTitle'),
-      t('lib', 'action.repairSummary', {
-        checked: result.checkedFiles,
-        checkedLabel: pluralise(result.checkedFiles, t('lib', 'action.repairFile'), t('lib', 'action.repairFiles')),
-        repaired: result.repairedFiles
-      }) +
-        (failed > 0
-          ? t('lib', 'action.repairSummaryFailedSuffix', {
-              failed,
-              failedLabel: pluralise(failed, t('lib', 'action.repairStep'), t('lib', 'action.repairSteps'))
-            })
-          : '') +
-        '.',
-      9000
-    )
-    await refreshInstances()
-  } catch (err) {
-    setState((current) => (current.repairGate?.instanceId === instanceId ? { repairGate: null } : {}))
-    toastError(err, t('lib', 'action.repairFailed'))
-  }
-}
 
 /**
  * Starts an instance. The compatibility check runs first so blocking problems
@@ -53,8 +12,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
   if (accounts.length === 0) {
     toast(
       'warning',
-      t('lib', 'action.noAccountTitle'),
-      t('lib', 'action.noAccountMessage'),
+      'Kein Account',
+      'Melde dich zuerst mit Microsoft an oder lege ein Offline-Profil an.',
       7000
     )
     return
@@ -75,8 +34,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          t('lib', 'action.cannotStartTitle', { name: instanceName }),
-          t('lib', 'action.modsProblemMessage'),
+          `${instanceName} kann nicht starten`,
+          'Es gibt Probleme mit den Mods. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
           8000
         )
         return
@@ -97,8 +56,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          t('lib', 'action.cannotStartTitle', { name: instanceName }),
-          t('lib', 'action.outdatedModsMessage'),
+          `${instanceName} kann nicht starten`,
+          'Es gibt veraltete Mods bei einer anderen Instanz. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
           8000
         )
         return
@@ -108,11 +67,10 @@ export async function startInstance(instanceId: string, instanceName: string): P
       return
     }
 
-    setState({ launchOverlay: { instanceId, instanceName } })
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, t('lib', 'action.startFailed', { name: instanceName }))
+    toastError(err, `${instanceName} konnte nicht gestartet werden`)
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -121,12 +79,11 @@ export async function startInstance(instanceId: string, instanceName: string): P
 /** Starts without the compatibility gate, used by the "trotzdem starten" path. */
 export async function startInstanceForced(instanceId: string, instanceName: string): Promise<void> {
   setState((current) => ({ starting: [...current.starting, instanceId] }))
-  setState({ launchOverlay: { instanceId, instanceName } })
   try {
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, t('lib', 'action.startFailed', { name: instanceName }))
+    toastError(err, `${instanceName} konnte nicht gestartet werden`)
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -136,7 +93,7 @@ export async function stopInstance(instanceId: string): Promise<void> {
   try {
     await window.gabi.launch.stop(instanceId)
   } catch (err) {
-    toastError(err, t('lib', 'action.stopFailed'))
+    toastError(err, 'Minecraft konnte nicht beendet werden')
   }
 }
 
@@ -166,26 +123,18 @@ export async function createShortcut(instanceId: string): Promise<void> {
 
     await window.gabi.instances.createShortcut(instanceId, iconImages)
   } catch (err) {
-    toastError(err, t('lib', 'action.shortcutFailed'))
+    toastError(err, 'Verknüpfung konnte nicht erstellt werden')
   }
 }
 
-/**
- * Imports a modpack straight from the picker.
- *
- * The read-only analysis and the report screen built on top of it
- * (`src/renderer/src/components/ImportWizard.tsx`) stay on the TODO list
- * until confirmed, per project rule; this release keeps the direct import
- * already shipped in 1.0.17.
- */
 export async function importModpack(): Promise<void> {
   try {
     const instance = await window.gabi.modpacks.import()
     if (!instance) return
-    toast('success', t('lib', 'action.importStartedTitle'), t('lib', 'action.modpackImportMessage', { name: instance.name }))
+    toast('success', 'Import gestartet', `${instance.name} wird eingerichtet.`)
     await refreshInstances()
   } catch (err) {
-    toastError(err, t('lib', 'action.modpackImportFailed'))
+    toastError(err, 'Modpack konnte nicht importiert werden')
   }
 }
 
@@ -194,9 +143,13 @@ export async function importInstanceFolder(): Promise<void> {
   try {
     const instance = await window.gabi.instances.importFolder()
     if (!instance) return
-    toast('success', t('lib', 'action.importStartedTitle'), t('lib', 'action.folderImportMessage', { name: instance.name }))
+    toast(
+      'success',
+      'Import gestartet',
+      `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`
+    )
     await refreshInstances()
   } catch (err) {
-    toastError(err, t('lib', 'action.folderImportFailed'))
+    toastError(err, 'Ordner konnte nicht importiert werden')
   }
 }

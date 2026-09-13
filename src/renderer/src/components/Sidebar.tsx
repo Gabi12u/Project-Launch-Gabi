@@ -1,11 +1,25 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
-import { NAV_ENTRIES } from '../lib/nav'
-import { t } from '../lib/i18n'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
-import { IconSearch, IconSettings } from './Icons'
+import {
+  IconCompass,
+  IconGrid,
+  IconHome,
+  IconPackage,
+  IconSave,
+  IconSearch,
+  IconSettings
+} from './Icons'
+
+interface NavEntry {
+  id: string
+  label: string
+  icon: JSX.Element
+  route: string
+  badge?: number
+}
 
 export function Sidebar(): JSX.Element {
   const { route, instances, accounts, updateReady } = useStore()
@@ -16,7 +30,13 @@ export function Sidebar(): JSX.Element {
   const active = accounts.find((a) => a.active)
   const running = instances.filter((i) => i.running).length
 
-  const entries = NAV_ENTRIES.filter((entry) => !entry.trailing)
+  const entries: NavEntry[] = [
+    { id: 'home', label: 'Home', icon: <IconHome />, route: '/home' },
+    { id: 'instances', label: 'Instanzen', icon: <IconGrid />, route: '/instances' },
+    { id: 'mods', label: 'Mods', icon: <IconPackage />, route: '/mods', badge: updateCount },
+    { id: 'discover', label: 'Entdecken', icon: <IconCompass />, route: '/discover' },
+    { id: 'backups', label: 'Backups', icon: <IconSave />, route: '/backups' }
+  ]
 
   /* --- Sliding active pill ----------------------------------------- */
   const navRef = useRef<HTMLDivElement | null>(null)
@@ -47,18 +67,14 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="brand-text">
             <span className="brand-name">Launch Gabi</span>
-            <span className="brand-sub">
-              {running > 0
-                ? t('shell', 'sidebar.brandActiveCount', { count: running })
-                : t('shell', 'status.launcherLabel')}
-            </span>
+            <span className="brand-sub">{running > 0 ? `${running} aktiv` : 'Launcher'}</span>
           </div>
         </div>
 
         <button className="nav-search no-drag" onClick={() => setState({ paletteOpen: true })}>
           <IconSearch size={15} />
-          <span>{t('shell', 'sidebar.searchPlaceholder')}</span>
-          <span className="kbd">{t('shell', 'sidebar.searchShortcut')}</span>
+          <span>Suchen…</span>
+          <span className="kbd">Strg K</span>
         </button>
 
         <div className="nav-list" ref={navRef}>
@@ -75,10 +91,8 @@ export function Sidebar(): JSX.Element {
               onClick={() => navigate(entry.route)}
             >
               {entry.icon}
-              <span>{t('nav', entry.id)}</span>
-              {entry.id === 'mods' && updateCount > 0 ? (
-                <span className="nav-badge">{updateCount}</span>
-              ) : null}
+              <span>{entry.label}</span>
+              {entry.badge ? <span className="nav-badge">{entry.badge}</span> : null}
             </button>
           ))}
 
@@ -88,18 +102,14 @@ export function Sidebar(): JSX.Element {
             data-active={section === 'settings'}
             className={`nav-item ${section === 'settings' ? 'active' : ''}`}
             onClick={() => navigate(updateReady ? '/settings?section=updates' : '/settings')}
-            title={
-              updateReady
-                ? t('shell', 'sidebar.updateWaitingRestartTitle', { version: updateReady })
-                : undefined
-            }
+            title={updateReady ? `Update auf ${updateReady} wartet auf einen Neustart` : undefined}
           >
             <IconSettings />
-            <span>{t('common', 'settings')}</span>
+            <span>Einstellungen</span>
             {/* A waiting update announced itself once, in a toast that faded
                 after a few seconds, and nowhere else. This is the standing
                 reminder for everyone who was not looking at that moment. */}
-            {updateReady ? <span className="nav-dot" aria-label={t('shell', 'status.updateReady')} /> : null}
+            {updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
           </button>
         </div>
 
@@ -117,14 +127,14 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="col grow" style={{ overflow: 'hidden' }}>
             <span className="truncate" style={{ fontSize: 13, fontWeight: 620 }}>
-              {active?.username ?? t('shell', 'account.none')}
+              {active?.username ?? 'Kein Account'}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
               {active
                 ? active.type === 'microsoft'
                   ? 'Microsoft'
-                  : t('shell', 'account.offlineProfile')
-                : t('shell', 'account.signInPrompt')}
+                  : 'Offline-Profil'
+                : 'Zum Anmelden klicken'}
             </span>
           </div>
         </button>

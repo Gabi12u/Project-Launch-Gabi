@@ -12,11 +12,21 @@ export function getMainWindow(): BrowserWindow | null {
   return mainWindow
 }
 
-/** Sends an event to the renderer, silently dropping it while no window exists. */
+/**
+ * Sends an event to every open window, not only the main one.
+ *
+ * A game's log lines and status updates used to reach the main window alone,
+ * which was fine while it was the only window that could ever exist. The
+ * separate live-log window opened per launch needs the exact same stream,
+ * and each window's own renderer only ever listens for the channels it
+ * actually renders, so broadcasting the rest to a window that ignores them
+ * costs nothing.
+ */
 export function emit(channel: string, payload: unknown): void {
-  const win = mainWindow
-  if (!win || win.isDestroyed()) return
-  win.webContents.send(channel, payload)
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (win.isDestroyed()) continue
+    win.webContents.send(channel, payload)
+  }
 }
 
 export function notify(

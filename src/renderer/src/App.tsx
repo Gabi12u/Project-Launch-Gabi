@@ -13,7 +13,6 @@ import {
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TitleBar } from './components/TitleBar'
 import { Sidebar } from './components/Sidebar'
-import { TopBar } from './components/TopBar'
 import { Toasts } from './components/Toasts'
 import { TaskDock } from './components/TaskDock'
 import { Ambient } from './components/Ambient'
@@ -30,9 +29,6 @@ import { InstanceDetailView } from './views/InstanceDetail'
 import { ModsView } from './views/Mods'
 import { DiscoverView } from './views/Discover'
 import { BackupsView } from './views/Backups'
-import { InstanceContentView } from './views/InstanceContent'
-import { DownloadsView } from './views/Downloads'
-import { NewsView } from './views/News'
 import { SettingsView } from './views/Settings'
 import { startCapture, stopCapture } from './lib/recorder'
 
@@ -67,10 +63,7 @@ export function App(): JSX.Element {
         // downloading while the window is closed to the tray, and then no
         // event ever reaches this session.
         const update = await window.gabi.updates.status()
-        setState({
-          updateStatus: update,
-          ...(update.state === 'ready' ? { updateReady: update.version ?? '' } : {})
-        })
+        if (update.state === 'ready') setState({ updateReady: update.version ?? '' })
       } catch {
         // no marker, the settings page still shows the truth
       }
@@ -152,10 +145,7 @@ export function App(): JSX.Element {
       window.gabi.events.onRecordingState((recording) => setState({ recording })),
 
       window.gabi.events.onUpdateStatus((status) => {
-        setState({
-          updateReady: status.state === 'ready' ? (status.version ?? '') : null,
-          updateStatus: status
-        })
+        setState({ updateReady: status.state === 'ready' ? (status.version ?? '') : null })
       })
     ]
 
@@ -294,17 +284,15 @@ export function App(): JSX.Element {
     return <Onboarding />
   }
 
-  const topNav = settings.navPosition !== 'side'
-
   const routeKey = parsed.section + (parsed.param ?? '')
 
   return (
     <ErrorBoundary variant="app">
       <div className="app">
         <Ambient />
-        {topNav ? <TopBar /> : <TitleBar />}
+        <TitleBar />
         <div className="app-body">
-          {!topNav && <Sidebar />}
+          <Sidebar />
           <main className="main">
             <div className="view">
               <div className="view-inner" key={routeKey}>
@@ -341,18 +329,7 @@ function RouteView({
     case 'instances':
       return param ? <InstanceDetailView instanceId={param} query={query} /> : <InstancesView />
     case 'mods':
-      return <ModsView query={query} />
-    case 'resourcepacks':
-      return <InstanceContentView type="resourcepack" />
-    case 'shaders':
-      return <InstanceContentView type="shaderpack" />
-    case 'downloads':
-      return <DownloadsView />
-    case 'news':
-      return <NewsView />
-    // Reachable from links and the command palette even though the bar no
-    // longer lists them: "Entdecken" is a tab inside Mods now, backups a
-    // section in the settings.
+      return <ModsView />
     case 'discover':
       return <DiscoverView query={query} />
     case 'backups':

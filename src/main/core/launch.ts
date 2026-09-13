@@ -8,7 +8,8 @@ import { EVENTS } from '@shared/ipc'
 import type { Account, Instance, LaunchPhase, LaunchPreflight, LaunchStatus, LogLine } from '@shared/types'
 import { paths } from '../paths'
 import { getSettings } from '../store'
-import { emit, getMainWindow, notify } from '../events'
+import { emit, getMainWindow, navigate, notify } from '../events'
+import { closeGameLogWindow, openGameLogWindow } from '../gameLogWindow'
 import { log } from '../logger'
 import { Task, TaskCancelledError } from '../tasks'
 import {
@@ -45,6 +46,7 @@ import {
   isStarting,
   listRunning,
   markStarting,
+  runningCount,
   setRunning,
   startingCount
 } from './running'
@@ -398,6 +400,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
   try {
     setStatus(instanceId, 'preparing', 'Vorbereitung…')
+    openGameLogWindow(instanceId, instance.name)
 
     // 1. Account -----------------------------------------------------
     const stored = getActiveAccount()
@@ -792,7 +795,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         }
       }
 
-      handleWindowRestore()
+      handleWindowRestore(instanceId)
     })
 
     // Confirms the process genuinely came up before anything below treats the
@@ -1025,7 +1028,23 @@ function handleWindowBehaviour(instance: Instance): void {
   else if (behaviour === 'close') win.minimize()
 }
 
-function handleWindowRestore(): void {
+/**
+ * Brings the main window back once nothing is running any more, and sends it
+ * straight to the instance's own Log tab: the separate live-log window
+ * (`gameLogWindow.ts`) that carried this while the game played closes at the
+ * same moment, on the same "nothing is running" condition, so the log stays
+ * reachable in the one or the other but never neither.
+ */
+function handleWindowRestore(instanceId: string): void {
+  closeGameLogWindow(instanceId)
+
+  // Called from every instance's own exit handler, so with more than one
+  // game running at once this fires once per game. Showing the window back
+  // up after the first one quits, while a second is still going, would undo
+  // the very hide that game itself is still relying on, and would close that
+  // other game's own still-needed live-log window early.
+  if (runningCount() > 0) return
+  navigate(`/instances/${instanceId}?tab=logs`)
   const win = getMainWindow()
   if (!win || win.isDestroyed()) return
   if (!win.isVisible()) win.show()

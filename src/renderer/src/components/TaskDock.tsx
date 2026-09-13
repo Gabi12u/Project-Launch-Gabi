@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import { setState, useStore } from '../lib/store'
-import { t } from '../lib/i18n'
 import { ProgressBar } from './ui'
 import { IconChevronDown, IconX } from './Icons'
 
@@ -67,16 +66,12 @@ export function TaskDock(): JSX.Element | null {
   // "Fehlgeschlagen" while its own detail line reads "Fertig" is simply wrong.
   const headline =
     running.length > 0
-      ? t('overlays', running.length === 1 ? 'taskDock.running.one' : 'taskDock.running.other', {
-          count: running.length
-        })
+      ? `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`
       : failed.length > 0
-        ? t('overlays', failed.length === 1 ? 'taskDock.failed.one' : 'taskDock.failed.other', {
-            count: failed.length
-          })
-        : visible.every((task) => task.state === 'cancelled')
-          ? t('overlays', 'taskDock.cancelled')
-          : t('common', 'done')
+        ? `${failed.length} ${failed.length === 1 ? 'Vorgang fehlgeschlagen' : 'Vorgänge fehlgeschlagen'}`
+        : visible.every((t) => t.state === 'cancelled')
+          ? 'Abgebrochen'
+          : 'Fertig'
 
   return (
     <div className="task-dock">
@@ -89,7 +84,7 @@ export function TaskDock(): JSX.Element | null {
           className="btn ghost icon sm"
           style={{ width: 24, height: 24 }}
           onClick={() => setCollapsed((value) => !value)}
-          aria-label={collapsed ? t('overlays', 'taskDock.expand') : t('overlays', 'taskDock.collapse')}
+          aria-label={collapsed ? 'Ausklappen' : 'Einklappen'}
         >
           <IconChevronDown
             size={14}
@@ -114,7 +109,7 @@ export function TaskDock(): JSX.Element | null {
                     className="btn ghost icon sm"
                     style={{ width: 22, height: 22 }}
                     onClick={() => void window.gabi.tasks.cancel(task.id)}
-                    aria-label={t('common', 'cancel')}
+                    aria-label="Abbrechen"
                   >
                     <IconX size={12} />
                   </button>
@@ -124,7 +119,7 @@ export function TaskDock(): JSX.Element | null {
                     className="btn ghost icon sm"
                     style={{ width: 22, height: 22 }}
                     onClick={() => dismiss(task.id)}
-                    aria-label={t('common', 'close')}
+                    aria-label="Schließen"
                   >
                     <IconX size={12} />
                   </button>
@@ -135,11 +130,11 @@ export function TaskDock(): JSX.Element | null {
             {task.state === 'running' ? (
               <ProgressBar value={task.progress} />
             ) : task.state === 'failed' ? (
-              <div className="badge danger">{t('overlays', 'taskDock.failedBadge')}</div>
+              <div className="badge danger">Fehlgeschlagen</div>
             ) : task.state === 'cancelled' ? (
-              <div className="badge warn">{t('overlays', 'taskDock.cancelled')}</div>
+              <div className="badge warn">Abgebrochen</div>
             ) : (
-              <div className="badge ok">{t('common', 'done')}</div>
+              <div className="badge ok">Fertig</div>
             )}
 
             <div className="task-detail truncate">{task.detail}</div>

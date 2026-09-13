@@ -1282,6 +1282,21 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-09-12',
     fixedIn: '1.0.18',
     platforms: ['Windows']
+  },
+  {
+    id: 'schliessen-beendet-laufendes-spiel',
+    title: 'Das Launcher-Fenster zu schließen konnte ein laufendes Spiel mit beenden, obwohl es weiterlaufen sollte',
+    detail:
+      'Der Schließen-Knopf des Fensters führte immer zum vollständigen Beenden des Launchers. Lief dabei ' +
+      'gerade eine Instanz, endete Minecraft in der Praxis mit, selbst wenn unter Einstellungen, ' +
+      'Spielstart die Option stand, laufende Spiele weiterlaufen zu lassen. Der Knopf hat die Einstellung ' +
+      'schlicht nie geprüft. Er tut es jetzt: Läuft mindestens eine Instanz und ist nicht ausdrücklich ' +
+      'eingestellt, sie beim Beenden mit zu schließen, wird das Fenster nur noch versteckt statt den ' +
+      'Launcher zu beenden, genau wie es beim automatischen Verstecken während des Spielens schon ' +
+      'funktioniert. Es taucht von selbst wieder auf, sobald das letzte laufende Spiel beendet wurde.',
+    state: 'fixed',
+    since: '2026-09-13',
+    fixedIn: '1.0.18'
   }
 ]
 

@@ -1,6 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
 import { setState, useStore } from '../lib/store'
-import { t } from '../lib/i18n'
 import { IconClose, IconMaximize, IconMinimize, IconRestore, IconSearch } from './Icons'
 
 /** mm:ss since the recording began, or 0:00 before the first tick. */
@@ -41,19 +40,17 @@ export function TitleBar(): JSX.Element {
 
         {running > 0 && (
           <span className="badge ok dot live no-drag">
-            {running === 1
-              ? t('shell', 'status.running')
-              : t('shell', 'titlebar.runningMany', { count: running })}
+            {running === 1 ? 'Minecraft läuft' : `${running} Instanzen laufen`}
           </span>
         )}
         {recording.active && (
           <button
             className="rec-pill"
-            title={t('shell', 'recording.stopTitle')}
+            title="Aufnahme beenden"
             // The visible text is only the elapsed time, and that is what a
             // screen reader would otherwise announce: a bare timestamp with no
             // hint that pressing it stops the recording.
-            aria-label={t('shell', 'recording.stopAriaLabel', { elapsed: elapsed(recording.startedAt) })}
+            aria-label={`Aufnahme beenden, läuft seit ${elapsed(recording.startedAt)}`}
             onClick={() => void window.gabi.recording.toggle()}
           >
             <span className="rec-dot" />
@@ -63,7 +60,7 @@ export function TitleBar(): JSX.Element {
         {activeTasks > 0 && (
           <span className="badge accent no-drag">
             <span className="spinner" style={{ width: 11, height: 11, borderWidth: 1.5 }} />
-            {activeTasks} {activeTasks === 1 ? t('shell', 'titlebar.taskOne') : t('shell', 'titlebar.taskMany')}
+            {activeTasks} {activeTasks === 1 ? 'Vorgang' : 'Vorgänge'}
           </span>
         )}
       </div>
@@ -74,30 +71,22 @@ export function TitleBar(): JSX.Element {
           <button
             className="win-btn wide no-drag"
             onClick={() => setState({ paletteOpen: true })}
-            aria-label={t('shell', 'commandPalette.ariaLabel')}
-            data-tip={t('shell', 'commandPalette.shortcut')}
+            aria-label="Befehle suchen"
+            data-tip="Strg + K"
           >
             <IconSearch size={15} />
           </button>
-          <button
-            className="win-btn"
-            onClick={() => window.gabi.window.minimize()}
-            aria-label={t('shell', 'window.minimize')}
-          >
+          <button className="win-btn" onClick={() => window.gabi.window.minimize()} aria-label="Minimieren">
             <IconMinimize />
           </button>
           <button
             className="win-btn"
             onClick={() => window.gabi.window.maximize()}
-            aria-label={maximized ? t('shell', 'window.restore') : t('shell', 'window.maximize')}
+            aria-label={maximized ? 'Wiederherstellen' : 'Maximieren'}
           >
             {maximized ? <IconRestore /> : <IconMaximize />}
           </button>
-          <button
-            className="win-btn close"
-            onClick={() => window.gabi.window.close()}
-            aria-label={t('common', 'close')}
-          >
+          <button className="win-btn close" onClick={() => window.gabi.window.close()} aria-label="Schließen">
             <IconClose />
           </button>
         </div>

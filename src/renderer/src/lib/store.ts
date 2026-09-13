@@ -4,17 +4,12 @@ import { DEFAULT_LAUNCHER_SETTINGS } from '@shared/defaults'
 import type {
   Account,
   CompatibilityReport,
-  ImportAnalysis,
-  ImportCheck,
   InstanceSummary,
   LauncherSettings,
   LaunchStatus,
   RecordingState,
-  TaskProgress,
-  UpdateStatus
+  TaskProgress
 } from '@shared/types'
-import type { RepairReport } from '@shared/api'
-import { t } from './i18n'
 
 /* ------------------------------------------------------------------ *
  * A minimal external store. React subscribes through useSyncExternalStore,
@@ -39,26 +34,6 @@ export interface AppState {
   compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
   /** Populated when a launch is paused to ask about outdated mods first. */
   modUpdateGate: { instanceId: string; instanceName: string; count: number } | null
-  /** Populated while the repair overlay is open for an instance. */
-  repairGate: { instanceId: string; instanceName: string; report: RepairReport | null } | null
-  /**
-   * Drives the import wizard from the moment a folder or file was picked.
-   *
-   * `analysis` is null while the analysis is still running, so the window can
-   * open immediately and show its steps instead of the picker appearing to
-   * hang. `check` fills in once the finished import has been verified.
-   */
-  importGate: {
-    source: 'folder' | 'file'
-    path: string | null
-    analysis: ImportAnalysis | null
-    stage: 'analyzing' | 'report' | 'importing' | 'done' | 'failed'
-    error: string | null
-    instanceId: string | null
-    check: ImportCheck | null
-  } | null
-  /** Populated from the moment Play is accepted until the launch overlay is dismissed. */
-  launchOverlay: { instanceId: string; instanceName: string } | null
   /** Instances whose launch is currently being prepared in the UI. */
   starting: string[]
   /** What the screen recorder is doing, for the indicator in the title bar. */
@@ -72,8 +47,6 @@ export interface AppState {
    * never saw it again.
    */
   updateReady: string | null
-  /** Live state of the launcher's own updater, pushed from the main process. */
-  updateStatus: UpdateStatus | null
 }
 
 const initial: AppState = {
@@ -90,13 +63,9 @@ const initial: AppState = {
   paletteOpen: false,
   compatGate: null,
   modUpdateGate: null,
-  repairGate: null,
-  importGate: null,
-  launchOverlay: null,
   starting: [],
   recording: { active: false, instanceId: null, startedAt: null, bytes: 0 },
-  updateReady: null,
-  updateStatus: null
+  updateReady: null
 }
 
 let state: AppState = initial
@@ -242,7 +211,7 @@ export function dismissToast(id: string): void {
 }
 
 /** Reports a rejected IPC call without every call site repeating the try/catch. */
-export function toastError(error: unknown, fallback = t('lib', 'action.genericError')): void {
+export function toastError(error: unknown, fallback = 'Es ist ein Fehler aufgetreten'): void {
   const message = error instanceof Error ? error.message : String(error)
   toast('error', fallback, message, 9000)
 }
@@ -255,7 +224,7 @@ export async function refreshInstances(): Promise<void> {
   try {
     setState({ instances: await window.gabi.instances.list() })
   } catch (err) {
-    toastError(err, t('lib', 'action.instancesLoadFailed'))
+    toastError(err, 'Instanzen konnten nicht geladen werden')
   }
 }
 
@@ -263,7 +232,7 @@ export async function refreshAccounts(): Promise<void> {
   try {
     setState({ accounts: await window.gabi.accounts.list() })
   } catch (err) {
-    toastError(err, t('lib', 'action.accountsLoadFailed'))
+    toastError(err, 'Accounts konnten nicht geladen werden')
   }
 }
 
@@ -290,7 +259,7 @@ export async function saveSettings(patch: Partial<LauncherSettings>): Promise<bo
     applyTheme(settings)
     return true
   } catch (err) {
-    toastError(err, t('lib', 'action.settingsSaveFailed'))
+    toastError(err, 'Einstellung konnte nicht gespeichert werden')
     return false
   }
 }

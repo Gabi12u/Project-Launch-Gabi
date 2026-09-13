@@ -1,7 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import type {
   JavaRuntime,
-  LanguageId,
   LaunchBehaviour,
   RecordingQuality,
   ThemeId,
@@ -9,14 +8,12 @@ import type {
 } from '@shared/types'
 import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
-import { changelogLocalized, changeKindLabel } from '@shared/changelogEn'
+import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { useDebouncedSetting } from '../lib/hooks'
-import { SUPPORTED_LANGUAGES, t } from '../lib/i18n'
-import { formatBytes, formatDate, formatDateTime, formatMemory, updateHeadline } from '../lib/format'
+import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
-import { BackupsView } from './Backups'
 import {
   IconDownload,
   IconExternal,
@@ -35,38 +32,49 @@ type Section =
   | 'accounts'
   | 'appearance'
   | 'recording'
-  | 'backups'
   | 'updates'
   | 'changelog'
   | 'reports'
   | 'advanced'
   | 'about'
 
-// Labels are looked up through `sectionLabel()` at render time rather than
-// baked in here, since this array is a module-level constant evaluated once:
-// resolving t() at that point would freeze every nav label in whichever
-// language was active on first load, and the switch on the appearance
-// section would never change them again.
-const SECTIONS: { id: Section; key: string }[] = [
-  { id: 'general', key: 'nav.general' },
-  { id: 'appearance', key: 'nav.appearance' },
-  { id: 'java', key: 'nav.java' },
-  { id: 'content', key: 'nav.content' },
-  { id: 'accounts', key: 'nav.accounts' },
-  { id: 'recording', key: 'nav.recording' },
-  { id: 'backups', key: 'nav.backups' },
-  { id: 'updates', key: 'nav.updates' },
-  { id: 'changelog', key: 'nav.changelog' },
-  { id: 'reports', key: 'nav.reports' },
-  { id: 'advanced', key: 'nav.advanced' },
-  { id: 'about', key: 'nav.about' }
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'general', label: 'Allgemein' },
+  { id: 'appearance', label: 'Darstellung' },
+  { id: 'java', label: 'Java & Leistung' },
+  { id: 'content', label: 'Inhalte' },
+  { id: 'accounts', label: 'Accounts' },
+  { id: 'recording', label: 'Aufnahmen' },
+  { id: 'updates', label: 'Updates' },
+  { id: 'changelog', label: 'Neuerungen' },
+  { id: 'reports', label: 'Fehlerberichte' },
+  { id: 'advanced', label: 'Erweitert' },
+  { id: 'about', label: 'Über' }
 ]
 
-function sectionLabel(id: Section): string {
-  const entry = SECTIONS.find((section) => section.id === id)
-  return entry ? t('settings', entry.key) : id
+/** Human readable state line for the launcher's own updater. */
+function updateHeadline(status: UpdateStatus): string {
+  switch (status.state) {
+    case 'checking':
+      return 'Suche nach Updates…'
+    case 'available':
+      return `Version ${status.version} verfügbar`
+    case 'downloading':
+      return `Wird geladen… ${Math.round(status.percent ?? 0)}%`
+    case 'ready':
+      return `Version ${status.version} ist bereit`
+    case 'installing':
+      return `Version ${status.version} wird installiert, der Launcher startet gleich neu…`
+    case 'up-to-date':
+      return 'Launch Gabi ist aktuell'
+    case 'error':
+      return 'Update-Prüfung fehlgeschlagen'
+    case 'disabled':
+      return 'Updates nur in der installierten Version'
+    default:
+      return `Version ${status.currentVersion}`
+  }
 }
-
 
 function UpdatePanel(): JSX.Element {
   const { settings } = useStore()
@@ -92,8 +100,8 @@ function UpdatePanel(): JSX.Element {
   return (
     <>
       <section className="setting-group">
-        <h3>{t('settings', 'updates.title')}</h3>
-        <p className="hint">{status ? updateHeadline(status) : t('settings', 'updates.statusLoading')}</p>
+        <h3>Launcher-Updates</h3>
+        <p className="hint">{status ? updateHeadline(status) : 'Status wird geladen…'}</p>
 
         {state === 'downloading' && (
           <div className="progress mt-8">
@@ -116,7 +124,7 @@ function UpdatePanel(): JSX.Element {
             onClick={() => run(() => window.gabi.updates.check())}
           >
             <IconRefresh />
-            {t('settings', 'updates.checkNow')}
+            Jetzt suchen
           </button>
 
           {state === 'available' && (
@@ -126,7 +134,7 @@ function UpdatePanel(): JSX.Element {
               onClick={() => run(() => window.gabi.updates.download())}
             >
               <IconDownload />
-              {t('common', 'download')}
+              Herunterladen
             </button>
           )}
 
@@ -136,23 +144,23 @@ function UpdatePanel(): JSX.Element {
               disabled={busy}
               onClick={() => run(() => window.gabi.updates.install())}
             >
-              {t('settings', 'updates.restartAndInstall')}
+              Neu starten & installieren
             </button>
           )}
         </div>
       </section>
 
       <section className="setting-group">
-        <h3>{t('settings', 'updates.behaviour.title')}</h3>
+        <h3>Verhalten</h3>
         <SettingToggle
-          label={t('settings', 'updates.autoDownload.label')}
-          hint={t('settings', 'updates.autoDownload.hint')}
+          label="Updates automatisch herunterladen"
+          hint="Neue Versionen werden still im Hintergrund geladen, während du den Launcher benutzt."
           checked={settings.autoUpdate}
           onChange={(value) => void saveSettings({ autoUpdate: value })}
         />
         <SettingToggle
-          label={t('settings', 'updates.autoInstall.label')}
-          hint={t('settings', 'updates.autoInstall.hint')}
+          label="Beim Start automatisch installieren"
+          hint="Ist ein Update fertig geladen, wird es beim nächsten Öffnen eingespielt und der Launcher startet neu. Es wird dabei nichts heruntergeladen, der Start bleibt schnell."
           checked={settings.autoInstallUpdates}
           onChange={(value) => void saveSettings({ autoInstallUpdates: value })}
         />
@@ -242,8 +250,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   return (
     <div className="col gap-24">
       <header>
-        <h1 className="page-title">{t('settings', 'page.title')}</h1>
-        <p className="page-sub">{t('settings', 'page.subtitle')}</p>
+        <h1 className="page-title">Einstellungen</h1>
+        <p className="page-sub">Alles, was für alle Instanzen gilt.</p>
       </header>
 
       <div className="settings-layout">
@@ -254,7 +262,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               className={section === entry.id ? 'active' : ''}
               onClick={() => setSection(entry.id)}
             >
-              {sectionLabel(entry.id)}
+              {entry.label}
               {/* A dot on the changelog until this version's entry has been
                   read, so an update does not pass by unnoticed. */}
               {entry.id === 'changelog' && changelogUnread && <span className="nav-new" />}
@@ -266,17 +274,15 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           {section === 'general' && (
             <>
               <section className="setting-group">
-                <h3>{t('settings', 'general.start.title')}</h3>
+                <h3>Start</h3>
                 <SettingToggle
-                  label={t('settings', 'general.startMinimized.label')}
-                  hint={t('settings', 'general.startMinimized.hint')}
+                  label="Minimiert starten"
+                  hint="Launch Gabi startet im Hintergrund, ohne Fenster."
                   checked={settings.startMinimized}
                   onChange={(value) => void saveSettings({ startMinimized: value })}
                 />
                 <div className="field mt-16">
-                  <label className="label" htmlFor="st-verhalten-beim-spielstart">
-                    {t('settings', 'general.launchBehaviour.label')}
-                  </label>
+                  <label className="label" htmlFor="st-verhalten-beim-spielstart">Verhalten beim Spielstart</label>
                   <select id="st-verhalten-beim-spielstart"
                     className="select"
                     value={settings.launchBehaviour}
@@ -284,50 +290,48 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                       void saveSettings({ launchBehaviour: event.target.value as LaunchBehaviour })
                     }
                   >
-                    <option value="keep">{t('settings', 'general.launchBehaviour.keep')}</option>
-                    <option value="hide">{t('settings', 'general.launchBehaviour.hide')}</option>
-                    <option value="close">{t('settings', 'general.launchBehaviour.close')}</option>
+                    <option value="keep">Launcher offen lassen</option>
+                    <option value="hide">Launcher ausblenden</option>
+                    <option value="close">Launcher minimieren</option>
                   </select>
                   <span className="hint">
-                    {t('settings', 'general.launchBehaviour.hint')}
+                    Gilt als Voreinstellung; jede Instanz kann davon abweichen.
                   </span>
                 </div>
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'general.notifications.title')}</h3>
+                <h3>Benachrichtigungen</h3>
                 <SettingToggle
-                  label={t('settings', 'general.checkContentUpdatesOnStart.label')}
-                  hint={t('settings', 'general.checkContentUpdatesOnStart.hint')}
+                  label="Beim Start auf Mod-Updates prüfen"
+                  hint="Prüft im Hintergrund alle Instanzen, sobald der Launcher startet."
                   checked={settings.checkContentUpdatesOnStart}
                   onChange={(value) => void saveSettings({ checkContentUpdatesOnStart: value })}
                 />
                 <SettingToggle
-                  label={t('settings', 'general.notifyOnUpdates.label')}
+                  label="Über verfügbare Updates informieren"
                   checked={settings.notifyOnUpdates}
                   onChange={(value) => void saveSettings({ notifyOnUpdates: value })}
                 />
                 <SettingToggle
-                  label={t('settings', 'general.notifyOnGameExit.label')}
-                  hint={t('settings', 'general.notifyOnGameExit.hint')}
+                  label="Melden, wenn Minecraft beendet wird"
+                  hint="Zeigt nach jeder Sitzung eine kurze Zusammenfassung."
                   checked={settings.notifyOnGameExit}
                   onChange={(value) => void saveSettings({ notifyOnGameExit: value })}
                 />
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'general.dataDirectory.title')}</h3>
+                <h3>Speicherort</h3>
                 <p className="hint">
-                  {t('settings', 'general.dataDirectory.hint')}
+                  Hier liegen Instanzen, Versionen, Bibliotheken und Java-Laufzeiten.
                 </p>
                 <div className="row gap-8">
                   <input className="input" value={settings.dataDirectory} readOnly />
                   <button
                     className="btn"
                     onClick={async () => {
-                      const dir = await window.gabi.app.pickDirectory(
-                        t('settings', 'general.dataDirectory.pickerTitle')
-                      )
+                      const dir = await window.gabi.app.pickDirectory('Datenverzeichnis wählen')
                       if (!dir) return
                       // Only report a move once the save actually took. A
                       // rejected path (unwritable, invalid) left the directory
@@ -340,18 +344,18 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                       await refreshInstances()
                       toast(
                         'warning',
-                        t('settings', 'general.dataDirectory.changedToastTitle'),
-                        t('settings', 'general.dataDirectory.changedToastMessage'),
+                        'Verzeichnis geändert',
+                        'Vorhandene Daten wurden nicht verschoben. Kopiere sie bei Bedarf selbst.',
                         10000
                       )
                     }}
                   >
-                    {t('settings', 'general.dataDirectory.changeButton')}
+                    Ändern
                   </button>
                   <button
                     className="btn icon"
                     onClick={() => void window.gabi.app.openPath(settings.dataDirectory)}
-                    aria-label={t('settings', 'general.dataDirectory.openFolderAria')}
+                    aria-label="Ordner öffnen"
                   >
                     <IconFolder size={15} />
                   </button>
@@ -363,47 +367,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           {section === 'appearance' && (
             <>
               <section className="setting-group">
-                <h3>{t('settings', 'language.title')}</h3>
-                <p className="hint">{t('settings', 'language.hint')}</p>
-                <select
-                  value={settings.language}
-                  onChange={(event) =>
-                    void saveSettings({ language: event.target.value as LanguageId })
-                  }
-                  style={{ alignSelf: 'flex-start', marginTop: 10, maxWidth: 220 }}
-                >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-              </section>
-
-              <section className="setting-group">
-                <h3>{t('settings', 'appearance.navigation.title')}</h3>
-                <p className="hint">
-                  {t('settings', 'appearance.navigation.hint')}
-                </p>
-                <div className="segmented" style={{ alignSelf: 'flex-start', marginTop: 10 }}>
-                  <button
-                    className={settings.navPosition !== 'side' ? 'active' : ''}
-                    onClick={() => void saveSettings({ navPosition: 'top' })}
-                  >
-                    {t('settings', 'appearance.navigation.top')}
-                  </button>
-                  <button
-                    className={settings.navPosition === 'side' ? 'active' : ''}
-                    onClick={() => void saveSettings({ navPosition: 'side' })}
-                  >
-                    {t('settings', 'appearance.navigation.side')}
-                  </button>
-                </div>
-              </section>
-
-              <section className="setting-group">
-                <h3>{t('settings', 'appearance.theme.title')}</h3>
-                <p className="hint">{t('settings', 'appearance.theme.hint')}</p>
+                <h3>Theme</h3>
+                <p className="hint">Bestimmt die Hintergrundstimmung des Launchers.</p>
                 <div className="option-grid">
                   {THEMES.map((theme) => (
                     <button
@@ -426,7 +391,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'appearance.accentColor.title')}</h3>
+                <h3>Akzentfarbe</h3>
                 <div className="swatches">
                   {ACCENT_CHOICES.map((color) => (
                     <button
@@ -441,31 +406,30 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'appearance.motion.title')}</h3>
+                <h3>Bewegung</h3>
                 <SettingToggle
-                  label={t('settings', 'appearance.reduceMotion.label')}
-                  hint={t('settings', 'appearance.reduceMotion.hint')}
+                  label="Animationen reduzieren"
+                  hint="Schaltet Übergänge und Effekte ab, hilfreich auf schwächerer Hardware."
                   checked={settings.reduceMotion}
                   onChange={(value) => void saveSettings({ reduceMotion: value })}
                 />
               </section>
-
             </>
           )}
 
           {section === 'java' && (
             <>
               <section className="setting-group">
-                <h3>{t('settings', 'java.management.title')}</h3>
+                <h3>Java-Verwaltung</h3>
                 <SettingToggle
-                  label={t('settings', 'java.autoManage.label')}
-                  hint={t('settings', 'java.autoManage.hint')}
+                  label="Java automatisch verwalten"
+                  hint="Launch Gabi lädt die passende Java-Version selbst herunter. Ohne diese Option musst du Java manuell installieren."
                   checked={settings.javaAutoManage}
                   onChange={(value) => void saveSettings({ javaAutoManage: value })}
                 />
 
                 <div className="row-between mt-20">
-                  <h4 style={{ fontSize: 14 }}>{t('settings', 'java.installations.title')}</h4>
+                  <h4 style={{ fontSize: 14 }}>Gefundene Installationen</h4>
                   <button
                     className="btn sm"
                     disabled={detecting}
@@ -473,37 +437,33 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                       setDetecting(true)
                       try {
                         setRuntimes(await window.gabi.java.detect())
-                        toast('success', t('settings', 'java.installations.scanDoneToast'))
+                        toast('success', 'Suche abgeschlossen')
                       } catch (err) {
                         // Was missing entirely, unlike the install buttons
                         // below: a rejection ended as an unhandled promise and
                         // the spinner simply stopped with no explanation.
-                        toastError(err, t('settings', 'java.installations.scanFailedToast'))
+                        toastError(err, 'Java-Suche fehlgeschlagen')
                       } finally {
                         setDetecting(false)
                       }
                     }}
                   >
                     {detecting ? <span className="spinner" /> : <IconRefresh size={14} />}
-                    {t('settings', 'java.installations.rescan')}
+                    Neu suchen
                   </button>
                 </div>
 
                 <div className="col gap-8 mt-12">
                   {runtimes.length === 0 ? (
-                    <div className="hint">{t('settings', 'java.installations.empty')}</div>
+                    <div className="hint">Noch keine Java-Installation gefunden.</div>
                   ) : (
                     runtimes.map((runtime) => (
                       <div key={runtime.path} className="content-row">
                         <div className="content-icon">☕</div>
                         <div className="grow" style={{ overflow: 'hidden' }}>
                           <div className="content-name">
-                            {t('settings', 'java.installations.entryTitle', { major: runtime.major })}
-                            {runtime.managed && (
-                              <span className="badge accent" style={{ marginLeft: 8 }}>
-                                {t('settings', 'java.installations.managedBadge')}
-                              </span>
-                            )}
+                            Java {runtime.major}
+                            {runtime.managed && <span className="badge accent" style={{ marginLeft: 8 }}>verwaltet</span>}
                           </div>
                           <div className="content-meta">
                             <span>{runtime.version}</span>
@@ -528,31 +488,27 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                         setInstallingJava(major)
                         try {
                           const runtime = await window.gabi.java.install(major)
-                          toast(
-                            'success',
-                            t('settings', 'java.installations.installedToast', { major }),
-                            runtime.version
-                          )
+                          toast('success', `Java ${major} installiert`, runtime.version)
                           setRuntimes(await window.gabi.java.list(true))
                         } catch (err) {
-                          toastError(err, t('settings', 'java.installations.installFailedToast', { major }))
+                          toastError(err, `Java ${major} konnte nicht installiert werden`)
                         } finally {
                           setInstallingJava(null)
                         }
                       }}
                     >
                       {installingJava === major ? <span className="spinner" /> : <IconDownload size={14} />}
-                      {t('settings', 'java.installations.downloadButton', { major })}
+                      Java {major} laden
                     </button>
                   ))}
                 </div>
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'java.defaults.title')}</h3>
+                <h3>Standardwerte für neue Instanzen</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-standard-arbeitsspeicher">
-                    {t('settings', 'java.defaults.memoryLabel', { value: formatMemory(defaultMemoryMb) })}
+                    Arbeitsspeicher: {formatMemory(defaultMemoryMb)}
                   </label>
                   <input
                     id="st-standard-arbeitsspeicher"
@@ -566,15 +522,14 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   />
                   {info && (
                     <span className="hint">
-                      {t('settings', 'java.defaults.memoryHint', { value: formatMemory(info.systemMemoryMb) })}
+                      Dein System hat {formatMemory(info.systemMemoryMb)} RAM. Lass mindestens 2-4 GB für
+                      Windows übrig.
                     </span>
                   )}
                 </div>
 
                 <div className="field mt-16">
-                  <label className="label" htmlFor="st-jvm-argumente">
-                    {t('settings', 'java.defaults.jvmArgsLabel')}
-                  </label>
+                  <label className="label" htmlFor="st-jvm-argumente">JVM-Argumente</label>
                   <textarea id="st-jvm-argumente"
                     className="textarea"
                     value={defaultJvmArgs}
@@ -584,10 +539,10 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'java.downloads.title')}</h3>
+                <h3>Downloads</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-gleichzeitige-downloads">
-                    {t('settings', 'java.downloads.concurrentLabel', { value: concurrentDownloads })}
+                    Gleichzeitige Downloads: {concurrentDownloads}
                   </label>
                   <input
                     id="st-gleichzeitige-downloads"
@@ -599,7 +554,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     onChange={(event) => setConcurrentDownloads(Number(event.target.value))}
                   />
                   <span className="hint">
-                    {t('settings', 'java.downloads.concurrentHint')}
+                    Mehr ist schneller, belastet aber Verbindung und Festplatte stärker.
                   </span>
                 </div>
               </section>
@@ -609,15 +564,15 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           {section === 'content' && (
             <>
               <section className="setting-group">
-                <h3>{t('settings', 'content.modManagement.title')}</h3>
+                <h3>Mod-Verwaltung</h3>
                 <SettingToggle
-                  label={t('settings', 'content.autoInstallDeps.label')}
-                  hint={t('settings', 'content.autoInstallDeps.hint')}
+                  label="Abhängigkeiten automatisch installieren"
+                  hint="Fehlende Bibliotheken wie Fabric API werden ohne Nachfrage mitinstalliert."
                   checked={settings.autoInstallDependencies}
                   onChange={(value) => void saveSettings({ autoInstallDependencies: value })}
                 />
                 <SettingToggle
-                  label={t('settings', 'content.showSnapshots.label')}
+                  label="Snapshots in der Versionsliste zeigen"
                   checked={settings.showSnapshots}
                   onChange={(value) => void saveSettings({ showSnapshots: value })}
                 />
@@ -626,18 +581,19 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               <section className="setting-group">
                 <h3>CurseForge</h3>
                 <p className="hint">
-                  {t('settings', 'content.curseforge.hint')}
+                  Modrinth funktioniert ohne Anmeldung. Für CurseForge verlangt die Plattform einen eigenen
+                  API-Schlüssel, den du kostenlos erstellen kannst.
                 </p>
                 <div className="row gap-8">
                   <input
                     className="input"
                     type="password"
-                    placeholder={t('settings', 'content.curseforge.apiKeyPlaceholder')}
+                    placeholder="API-Schlüssel einfügen"
                     value={apiKey}
                     onChange={(event) => setApiKey(event.target.value)}
                   />
                   <button className="btn primary" onClick={() => void saveSettings({ curseForgeApiKey: apiKey })}>
-                    {t('common', 'save')}
+                    Speichern
                   </button>
                 </div>
                 <button
@@ -645,21 +601,21 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   onClick={() => void window.gabi.app.openExternal('https://console.curseforge.com/')}
                 >
                   <IconExternal size={14} />
-                  {t('settings', 'content.curseforge.createKey')}
+                  Schlüssel erstellen
                 </button>
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'content.autoBackups.title')}</h3>
+                <h3>Automatische Sicherungen</h3>
                 <SettingToggle
-                  label={t('settings', 'content.autoBackups.label')}
-                  hint={t('settings', 'content.autoBackups.hint')}
+                  label="Automatisch sichern"
+                  hint="Legt regelmäßig Sicherungen der Welten an."
                   checked={settings.automaticBackups}
                   onChange={(value) => void saveSettings({ automaticBackups: value })}
                 />
                 <div className="field mt-16">
                   <label className="label" htmlFor="st-aufbewahrte-sicherungen">
-                    {t('settings', 'content.autoBackups.keepLabel', { value: automaticBackupKeep })}
+                    Anzahl aufbewahrter automatischer Sicherungen: {automaticBackupKeep}
                   </label>
                   <input
                     id="st-aufbewahrte-sicherungen"
@@ -677,15 +633,18 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
           {section === 'accounts' && (
             <section className="setting-group">
-              <h3>{t('settings', 'accounts.title')}</h3>
+              <h3>Microsoft-Anmeldung</h3>
               <p className="hint">
-                {t('settings', 'accounts.introBeforeDomain')} <span className="mono">login.live.com</span>
-                {t('settings', 'accounts.introAfterDomain')}
+                Launch Gabi meldet sich über den Geräte-Code-Ablauf an, dein Passwort wird nie im Launcher
+                eingegeben. Voreingestellt ist die Anwendungs-ID des offiziellen Minecraft-Launchers, die
+                über <span className="mono">login.live.com</span> läuft. Trägst du hier stattdessen eine
+                eigene Azure-Anwendungs-ID im GUID-Format ein, wechselt Launch Gabi automatisch auf den
+                Azure-AD-Ablauf.
               </p>
               <div className="row gap-8 mt-12">
                 <input
                   className="input"
-                  placeholder={t('settings', 'accounts.clientIdPlaceholder')}
+                  placeholder="Azure Client-ID"
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
                 />
@@ -693,7 +652,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   className="btn primary"
                   onClick={() => void saveSettings({ microsoftClientId: clientId })}
                 >
-                  {t('common', 'save')}
+                  Speichern
                 </button>
               </div>
               <div className="issue info mt-16">
@@ -701,9 +660,11 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   <IconShield size={16} />
                 </div>
                 <div>
-                  <div className="issue-title">{t('settings', 'accounts.tokenStorage.title')}</div>
+                  <div className="issue-title">Wo werden Tokens gespeichert?</div>
                   <div className="issue-detail">
-                    {t('settings', 'accounts.tokenStorage.detail')}
+                    Zugriffs- und Aktualisierungstoken liegen verschlüsselt in deinem Benutzerprofil und
+                    werden über die Verschlüsselung des Betriebssystems geschützt. Sie verlassen deinen
+                    Rechner nur Richtung Microsoft und Mojang.
                   </div>
                 </div>
               </div>
@@ -713,11 +674,10 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     <IconWarning size={16} />
                   </div>
                   <div>
-                    <div className="issue-title">
-                      {t('settings', 'accounts.tokenStorage.insecureTitle')}
-                    </div>
+                    <div className="issue-title">Ungeschützt gespeichert</div>
                     <div className="issue-detail">
-                      {t('settings', 'accounts.tokenStorage.insecureDetail')}
+                      Bei mindestens einem gespeicherten Konto konnte das Betriebssystem keine
+                      Verschlüsselung anbieten, der Token liegt dort ungeschützt auf der Festplatte.
                     </div>
                   </div>
                 </div>
@@ -726,10 +686,6 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           )}
 
           {section === 'recording' && <RecordingPanel />}
-
-          {/* Its own page before the remodel; the same view, just reached
-              from here now that the navigation no longer lists it. */}
-          {section === 'backups' && <BackupsView />}
 
           {section === 'updates' && <UpdatePanel />}
 
@@ -740,27 +696,28 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           {section === 'advanced' && (
             <>
               <section className="setting-group">
-                <h3>{t('settings', 'advanced.logs.title')}</h3>
+                <h3>Protokolle</h3>
                 <p className="hint">
-                  {t('settings', 'advanced.logs.hint')}
+                  Bei Problemen findest du hier die Launcher-Logs. Sie enthalten keine Zugangsdaten.
                 </p>
                 <button
                   className="btn"
                   onClick={() => info && void window.gabi.app.openPath(info.logDirectory)}
                 >
                   <IconFolder size={15} />
-                  {t('settings', 'advanced.logs.openButton')}
+                  Log-Ordner öffnen
                 </button>
               </section>
 
               <section className="setting-group">
-                <h3>{t('settings', 'advanced.reset.title')}</h3>
+                <h3>Zurücksetzen</h3>
                 <p className="hint">
-                  {t('settings', 'advanced.reset.hint')}
+                  Setzt alle Launcher-Einstellungen auf die Voreinstellung zurück. Instanzen, Welten und
+                  Accounts bleiben erhalten.
                 </p>
                 <button className="btn danger" onClick={() => setConfirmReset(true)}>
                   <IconTrash size={15} />
-                  {t('settings', 'advanced.reset.button')}
+                  Einstellungen zurücksetzen
                 </button>
               </section>
             </>
@@ -774,7 +731,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
               <div className="preflight-grid">
                 <div className="preflight-cell">
-                  <div className="preflight-label">{t('settings', 'about.version')}</div>
+                  <div className="preflight-label">Version</div>
                   <div className="preflight-value">{info.version}</div>
                 </div>
                 <div className="preflight-cell">
@@ -786,19 +743,21 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   <div className="preflight-value">{info.node}</div>
                 </div>
                 <div className="preflight-cell">
-                  <div className="preflight-label">{t('settings', 'about.platform')}</div>
+                  <div className="preflight-label">Plattform</div>
                   <div className="preflight-value">
                     {info.platform} {info.arch}
                   </div>
                 </div>
                 <div className="preflight-cell">
-                  <div className="preflight-label">{t('settings', 'about.memory')}</div>
+                  <div className="preflight-label">Arbeitsspeicher</div>
                   <div className="preflight-value">{formatMemory(info.systemMemoryMb)}</div>
                 </div>
               </div>
 
               <p className="hint mt-20">
-                {t('settings', 'about.disclaimer')}
+                Launch Gabi ist kein offizielles Produkt von Mojang oder Microsoft. Minecraft ist eine Marke
+                von Mojang AB. Mod-Inhalte stammen von Modrinth und CurseForge und unterliegen den Lizenzen
+                der jeweiligen Autoren.
               </p>
             </section>
           )}
@@ -807,15 +766,15 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
       <Confirm
         open={confirmReset}
-        title={t('settings', 'advanced.reset.confirmTitle')}
+        title="Einstellungen zurücksetzen?"
         danger
-        confirmLabel={t('settings', 'advanced.reset.confirmLabel')}
-        message={t('settings', 'advanced.reset.confirmMessage')}
+        confirmLabel="Zurücksetzen"
+        message="Alle Launcher-Einstellungen kehren zur Voreinstellung zurück. Deine Instanzen, Welten und Accounts bleiben unangetastet."
         onConfirm={async () => {
           await window.gabi.settings.reset()
           await refreshSettings()
           setConfirmReset(false)
-          toast('success', t('settings', 'advanced.reset.doneToast'))
+          toast('success', 'Zurückgesetzt')
         }}
         onCancel={() => setConfirmReset(false)}
       />
@@ -830,21 +789,13 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 /** Keys offered for the recording hotkey, in Electron's accelerator notation. */
 const HOTKEYS = ['F6', 'F7', 'F8', 'F9', 'F10', 'Ctrl+Shift+R', 'Alt+R', 'Ctrl+Alt+R']
 
-// Ids and translation key stems only, resolved through t() at render time in
-// RecordingPanel: this is a module-level constant evaluated once, so baking
-// resolved strings in here would freeze them in whatever language was active
-// on first load.
-const QUALITIES: { id: RecordingQuality; labelKey: string; hintKey: string }[] = [
-  { id: 'low', labelKey: 'recording.quality.low.label', hintKey: 'recording.quality.low.hint' },
-  {
-    id: 'medium',
-    labelKey: 'recording.quality.medium.label',
-    hintKey: 'recording.quality.medium.hint'
-  },
+const QUALITIES: { id: RecordingQuality; label: string; hint: string }[] = [
+  { id: 'low', label: 'Sparsam', hint: '30 Bilder, kleine Dateien. Schont den Rechner am meisten.' },
+  { id: 'medium', label: 'Ausgewogen', hint: '30 Bilder in guter Qualität. Kostet wenig Leistung.' },
   {
     id: 'high',
-    labelKey: 'recording.quality.high.label',
-    hintKey: 'recording.quality.high.hint'
+    label: 'Scharf',
+    hint: '60 Bilder. Nur wenn dein Rechner Luft hat, sonst ruckelt die Aufnahme.'
   }
 ]
 
@@ -858,21 +809,22 @@ function RecordingPanel(): JSX.Element {
   return (
     <>
       <section className="setting-group">
-        <h3>{t('settings', 'recording.inGame.title')}</h3>
+        <h3>Aufnehmen im Spiel</h3>
         <p className="hint">
-          {t('settings', 'recording.inGame.hint')}
+          Eine Taste startet die Aufnahme, dieselbe Taste beendet sie wieder. Die fertigen Videos
+          findest du bei der Instanz im Reiter Aufnahmen, zusammen mit deinen Screenshots.
         </p>
 
         <SettingToggle
-          label={t('settings', 'recording.enabled.label')}
-          hint={t('settings', 'recording.enabled.hint')}
+          label="Aufnahmen erlauben"
+          hint="Ist das aus, wird die Taste gar nicht erst belegt und steht anderen Programmen zur Verfügung."
           checked={settings.recordingEnabled}
           onChange={(value) => void saveSettings({ recordingEnabled: value })}
         />
 
         <div className="field mt-16">
           <label className="label" htmlFor="st-aufnahmetaste">
-            {t('settings', 'recording.hotkey.label')}
+            Aufnahmetaste
           </label>
           <select
             id="st-aufnahmetaste"
@@ -894,16 +846,17 @@ function RecordingPanel(): JSX.Element {
             ))}
           </select>
           <span className="hint">
-            {t('settings', 'recording.hotkey.hint')}
+            Die Taste gilt systemweit, aber nur solange eine Instanz läuft. Danach ist sie wieder
+            frei für andere Programme.
           </span>
         </div>
       </section>
 
       <section className="setting-group">
-        <h3>{t('settings', 'recording.quality.title')}</h3>
+        <h3>Qualität</h3>
         <div className="field">
           <label className="label" htmlFor="st-aufnahmequalitaet">
-            {t('settings', 'recording.quality.label')}
+            Bildqualität
           </label>
           <select
             id="st-aufnahmequalitaet"
@@ -916,28 +869,25 @@ function RecordingPanel(): JSX.Element {
           >
             {QUALITIES.map((entry) => (
               <option key={entry.id} value={entry.id}>
-                {t('settings', entry.labelKey)}
+                {entry.label}
               </option>
             ))}
           </select>
           <span className="hint">
-            {(() => {
-              const entry = QUALITIES.find((entry) => entry.id === settings.recordingQuality)
-              return entry ? t('settings', entry.hintKey) : null
-            })()}
+            {QUALITIES.find((entry) => entry.id === settings.recordingQuality)?.hint}
           </span>
         </div>
 
         <SettingToggle
-          label={t('settings', 'recording.audio.label')}
-          hint={t('settings', 'recording.audio.hint')}
+          label="Ton mit aufnehmen"
+          hint="Nimmt auf, was aus den Lautsprechern kommt. Klappt nicht auf jedem System, dann läuft die Aufnahme ohne Ton weiter."
           checked={settings.recordingAudio}
           onChange={(value) => void saveSettings({ recordingAudio: value })}
         />
 
         <div className="field mt-16">
           <label className="label" htmlFor="st-aufnahmedauer">
-            {t('settings', 'recording.maxDuration.label', { minutes: recordingMaxMinutes })}
+            Höchstdauer: {recordingMaxMinutes} Minuten
           </label>
           <input
             id="st-aufnahmedauer"
@@ -951,34 +901,37 @@ function RecordingPanel(): JSX.Element {
             onChange={(event) => setRecordingMaxMinutes(Number(event.target.value))}
           />
           <span className="hint">
-            {t('settings', 'recording.maxDuration.hint')}
+            Danach hört die Aufnahme von selbst auf. Die Bremse für den Fall, dass du das Beenden
+            vergisst.
           </span>
         </div>
       </section>
 
       {recording.active && (
         <section className="setting-group">
-          <h3>{t('settings', 'recording.active.title')}</h3>
+          <h3>Läuft gerade</h3>
           <p className="hint">
-            {t('settings', 'recording.active.hint', { bytes: formatBytes(recording.bytes) })}
+            Es wird aufgenommen, bereits {formatBytes(recording.bytes)} geschrieben.
           </p>
           <button className="btn danger mt-8" onClick={() => void window.gabi.recording.toggle()}>
             <IconRecord size={13} />
-            {t('settings', 'recording.active.stopButton')}
+            Aufnahme beenden
           </button>
         </section>
       )}
 
       <section className="setting-group">
-        <h3>{t('settings', 'recording.tips.title')}</h3>
+        <h3>Gut zu wissen</h3>
         <ul className="hint bullet-list">
           <li>
-            {t('settings', 'recording.tips.windowOpen')}
+            Das Launcher-Fenster muss offen bleiben. Steht bei der Instanz das Verhalten auf
+            Schließen, kann nicht aufgenommen werden.
           </li>
           <li>
-            {t('settings', 'recording.tips.fullscreen')}
+            Im echten Vollbild liefert Minecraft manchmal kein Bild. Der randlose Fenstermodus
+            funktioniert immer.
           </li>
-          <li>{t('settings', 'recording.tips.space')}</li>
+          <li>Videos brauchen viel Platz. Die Höchstdauer oben hält das im Rahmen.</li>
         </ul>
       </section>
     </>
@@ -1004,18 +957,19 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
 
   return (
     <section className="setting-group">
-      <h3>{t('settings', 'changelog.title')}</h3>
+      <h3>Was sich geändert hat</h3>
       <p className="hint">
-        {t('settings', 'changelog.hint')}
+        Nach jedem Update steht hier, was dazugekommen ist und was repariert wurde. Ältere Einträge
+        bleiben stehen.
       </p>
 
       <div className="changelog">
-        {changelogLocalized(settings.language).map((release) => (
+        {CHANGELOG.map((release) => (
           <article key={release.version} className="changelog-entry">
             <header className="changelog-head">
               <span className="changelog-version">{release.version}</span>
               {release.version === currentVersion && (
-                <span className="badge ok dot">{t('settings', 'changelog.yourVersion')}</span>
+                <span className="badge ok dot">Deine Version</span>
               )}
               <span className="changelog-date">{formatDate(release.date)}</span>
             </header>
@@ -1026,7 +980,7 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
               {release.changes.map((change, index) => (
                 <li key={index}>
                   <span className={`changelog-kind ${change.kind}`}>
-                    {changeKindLabel(settings.language, change.kind)}
+                    {CHANGE_KIND_LABEL[change.kind]}
                   </span>
                   <span>{change.text}</span>
                 </li>
@@ -1065,17 +1019,18 @@ function ReportsPanel(): JSX.Element {
   return (
     <>
       <section className="setting-group">
-        <h3>{t('settings', 'reports.title')}</h3>
+        <h3>Fehler melden</h3>
         <p className="hint">
-          {t('settings', 'reports.hint')}
+          Geht im Launcher etwas schief, wird der Fehler hier festgehalten. Auf Wunsch geht er
+          zusätzlich an die Entwicklung, damit Fehler auffallen, von denen sonst niemand erfährt.
         </p>
 
         <SettingToggle
-          label={t('settings', 'reports.autoSend.label')}
+          label="Fehler automatisch senden"
           hint={
             configured
-              ? t('settings', 'reports.autoSend.hintConfigured')
-              : t('settings', 'reports.autoSend.hintNotConfigured')
+              ? 'Ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.'
+              : 'In dieser Version ist kein Empfänger hinterlegt, es wird nichts gesendet. Berichte werden nur bei dir gespeichert.'
           }
           checked={settings.crashReports === 'on'}
           onChange={(value) => void saveSettings({ crashReports: value ? 'on' : 'off' })}
@@ -1083,15 +1038,16 @@ function ReportsPanel(): JSX.Element {
       </section>
 
       <section className="setting-group">
-        <h3>{t('settings', 'reports.local.title')}</h3>
+        <h3>Was bei dir liegt</h3>
         <p className="hint">
-          {t('settings', 'reports.local.hint')}
+          Jeder Bericht wird auch lokal abgelegt, unabhängig davon, ob gesendet wird. So kannst du
+          jederzeit nachlesen, was ein Bericht enthält, und ihn selbst weitergeben.
         </p>
 
         {reports === null ? (
           <div className="skeleton" style={{ height: 80 }} />
         ) : reports.length === 0 ? (
-          <p className="hint">{t('settings', 'reports.local.empty')}</p>
+          <p className="hint">Bisher wurde nichts festgehalten. Das ist die gute Nachricht.</p>
         ) : (
           <div className="col gap-8 mt-8">
             {reports.map((report) => (
@@ -1103,13 +1059,11 @@ function ReportsPanel(): JSX.Element {
                   </div>
                   <div className="content-meta">
                     <span>{formatDateTime(report.at)}</span>
-                    <span>{t('settings', 'reports.local.versionLabel', { version: report.version })}</span>
+                    <span>Version {report.version}</span>
                     <span className="truncate">{report.platform}</span>
                   </div>
                   {open === report.id && (
-                    <pre className="report-detail">
-                      {report.detail || t('settings', 'reports.local.noDetails')}
-                    </pre>
+                    <pre className="report-detail">{report.detail || 'Keine weiteren Angaben.'}</pre>
                   )}
                 </div>
                 <div className="content-actions">
@@ -1117,26 +1071,22 @@ function ReportsPanel(): JSX.Element {
                     className="btn sm ghost"
                     onClick={() => setOpen(open === report.id ? null : report.id)}
                   >
-                    {open === report.id
-                      ? t('settings', 'reports.local.collapse')
-                      : t('settings', 'reports.local.view')}
+                    {open === report.id ? 'Zuklappen' : 'Ansehen'}
                   </button>
                   <button
                     className="btn sm ghost"
-                    title={t('settings', 'reports.local.copyTitle')}
+                    title="Als Text kopieren, zum Weitergeben"
                     onClick={() => {
                       void navigator.clipboard
                         .writeText(
                           `${report.area} | ${report.version} | ${report.platform}\n` +
                             `${report.message}\n\n${report.detail}`
                         )
-                        .then(() => toast('success', t('settings', 'reports.local.copiedToast')))
-                        .catch(() =>
-                          toastError(new Error(t('settings', 'reports.local.clipboardUnavailable')))
-                        )
+                        .then(() => toast('success', 'Bericht kopiert'))
+                        .catch(() => toastError(new Error('Zwischenablage nicht verfügbar')))
                     }}
                   >
-                    {t('common', 'copy')}
+                    Kopieren
                   </button>
                 </div>
               </div>
@@ -1147,7 +1097,7 @@ function ReportsPanel(): JSX.Element {
         <div className="row gap-8 mt-16">
           <button className="btn ghost" onClick={() => void window.gabi.reports.openFolder()}>
             <IconFolder size={14} />
-            {t('settings', 'reports.local.openFolder')}
+            Ordner öffnen
           </button>
           <button
             className="btn ghost danger"
@@ -1156,12 +1106,12 @@ function ReportsPanel(): JSX.Element {
               void window.gabi.reports
                 .clear()
                 .then(load)
-                .then(() => toast('success', t('settings', 'reports.local.deletedToast')))
-                .catch((err: unknown) => toastError(err, t('settings', 'reports.local.deleteFailedToast')))
+                .then(() => toast('success', 'Fehlerberichte gelöscht'))
+                .catch((err: unknown) => toastError(err, 'Löschen fehlgeschlagen'))
             }}
           >
             <IconTrash size={14} />
-            {t('settings', 'reports.local.deleteAll')}
+            Alle löschen
           </button>
         </div>
       </section>

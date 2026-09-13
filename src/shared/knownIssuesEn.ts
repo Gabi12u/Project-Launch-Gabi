@@ -858,6 +858,17 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'or a tampered source deliberately supplied, one of these reserved names, installation aborted on ' +
       'Windows with a raw, confusing filesystem error instead of one of the clear messages this install ' +
       'path otherwise gives. The same guard already used for instance names now applies here too.'
+  },
+  'schliessen-beendet-laufendes-spiel': {
+    title: 'Closing the launcher window could end a running game along with it, even though it was meant to keep going',
+    detail:
+      'The window’s close button always fully quit the launcher. With an instance running at the ' +
+      'time, Minecraft ended up quitting along with it in practice, even when Settings, Game Launch had ' +
+      'the option set to keep a running game going. The button simply never checked that setting. It now ' +
+      'does: with at least one instance running and nothing explicitly set to close it along with the ' +
+      'launcher, the window is now only hidden instead of quitting the launcher, exactly the way it ' +
+      'already works for the automatic hide while playing. It reappears on its own once the last running ' +
+      'game has ended.'
   }
 }
 

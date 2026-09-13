@@ -7,7 +7,7 @@ import { getSettings } from './store'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
-import { adoptRunningFromDisk, pruneAdopted } from './core/running'
+import { adoptRunningFromDisk, pruneAdopted, runningCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
@@ -156,6 +156,20 @@ function createWindow(): BrowserWindow {
   const pushWindowState = (): void => emit(EVENTS.windowState, { maximized: window.isMaximized() })
   window.on('maximize', pushWindowState)
   window.on('unmaximize', pushWindowState)
+
+  // The close button used to always quit the whole app, so a running game
+  // ended up quitting with it regardless of what "Beim Spielstart" says,
+  // since Minecraft is a child of this process. Mirrors the same check
+  // `before-quit` already makes: only a launcher explicitly set to close
+  // along with the game is allowed to actually quit here. Everyone else gets
+  // the same hide the launcher already does the moment a game starts, and
+  // `handleWindowRestore` (launch.ts) brings it back once the last one ends.
+  window.on('close', (event) => {
+    if (runningCount() > 0 && getSettings().launchBehaviour !== 'close') {
+      event.preventDefault()
+      window.hide()
+    }
+  })
 
   window.on('closed', () => setMainWindow(null))
 

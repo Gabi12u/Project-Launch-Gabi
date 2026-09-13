@@ -7,7 +7,6 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
-import { t } from '../lib/i18n'
 import { IconCheck, IconX } from './Icons'
 
 /* ------------------------------------------------------------------ *
@@ -84,12 +83,7 @@ export function Modal({
             <div className="card-title">{title}</div>
             {subtitle && <div className="hint">{subtitle}</div>}
           </div>
-          <button
-            className="btn ghost icon sm"
-            onClick={onClose}
-            disabled={busy}
-            aria-label={t('common', 'close')}
-          >
+          <button className="btn ghost icon sm" onClick={onClose} disabled={busy} aria-label="Schließen">
             <IconX size={16} />
           </button>
         </div>
@@ -120,8 +114,8 @@ export function Confirm({
   open,
   title,
   message,
-  confirmLabel = t('common', 'confirm'),
-  cancelLabel = t('common', 'cancel'),
+  confirmLabel = 'Bestätigen',
+  cancelLabel = 'Abbrechen',
   danger = false,
   onConfirm,
   onCancel

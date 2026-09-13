@@ -11,7 +11,6 @@ import { createPortal } from 'react-dom'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
-import { t } from '../lib/i18n'
 import {
   IconCompass,
   IconCube,
@@ -62,19 +61,13 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `play-${instance.id}`,
-        label: instance.running
-          ? t('overlays', 'palette.stopInstance', { name: instance.name })
-          : t('overlays', 'palette.playInstance', { name: instance.name }),
+        label: instance.running ? `${instance.name} beenden` : `${instance.name} spielen`,
         hint: `${instance.mcVersion} · ${LOADER_LABELS[instance.loader]}${
           instance.modCount > 0
-            ? ` · ${instance.modCount} ${pluralise(
-                instance.modCount,
-                t('overlays', 'mod.singular'),
-                t('overlays', 'mod.plural')
-              )}`
+            ? ` · ${instance.modCount} ${pluralise(instance.modCount, 'Mod', 'Mods')}`
             : ''
         }`,
-        group: t('overlays', 'palette.group.play'),
+        group: 'Spielen',
         icon: instance.running ? <IconStop size={16} /> : <IconPlay size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} start launch`,
         run: () => {
@@ -85,9 +78,9 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `open-${instance.id}`,
-        label: t('overlays', 'palette.openInstance', { name: instance.name }),
-        hint: t('overlays', 'palette.openInstanceHint'),
-        group: t('overlays', 'palette.instances'),
+        label: `${instance.name} öffnen`,
+        hint: 'Mods, Welten, Einstellungen',
+        group: 'Instanzen',
         icon: <IconCube size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} verwalten`,
         run: () => navigate(`/instances/${instance.id}`)
@@ -97,64 +90,58 @@ export function CommandPalette(): JSX.Element | null {
     items.push(
       {
         id: 'new-instance',
-        label: t('overlays', 'palette.newInstance'),
-        hint: t('overlays', 'palette.newInstanceHint'),
-        group: t('overlays', 'palette.group.actions'),
+        label: 'Neue Instanz erstellen',
+        hint: 'Strg N',
+        group: 'Aktionen',
         icon: <IconPlus size={16} />,
         keywords: 'anlegen erstellen create version loader',
         run: () => setState({ createOpen: true })
       },
       {
         id: 'import-modpack',
-        label: t('overlays', 'palette.importModpack'),
-        hint: t('overlays', 'palette.importModpackHint'),
-        group: t('overlays', 'palette.group.actions'),
+        label: 'Modpack importieren',
+        hint: '.mrpack oder .zip',
+        group: 'Aktionen',
         icon: <IconDownload size={16} />,
         keywords: 'mrpack curseforge zip einlesen',
         run: () => void importModpack()
       },
-      {
-        id: 'go-home',
-        label: t('overlays', 'palette.home'),
-        group: t('overlays', 'palette.group.navigation'),
-        icon: <IconHome size={16} />,
-        run: () => navigate('/home')
-      },
+      { id: 'go-home', label: 'Home', group: 'Navigation', icon: <IconHome size={16} />, run: () => navigate('/home') },
       {
         id: 'go-instances',
-        label: t('overlays', 'palette.instances'),
-        group: t('overlays', 'palette.group.navigation'),
+        label: 'Instanzen',
+        group: 'Navigation',
         icon: <IconGrid size={16} />,
         run: () => navigate('/instances')
       },
       {
         id: 'go-mods',
-        label: t('overlays', 'palette.mods'),
-        group: t('overlays', 'palette.group.navigation'),
+        label: 'Mods',
+        group: 'Navigation',
         icon: <IconPackage size={16} />,
         keywords: 'updates inhalte',
         run: () => navigate('/mods')
       },
       {
         id: 'go-discover',
-        label: t('overlays', 'palette.discover'),
-        group: t('overlays', 'palette.group.navigation'),
+        label: 'Entdecken',
+        group: 'Navigation',
         icon: <IconCompass size={16} />,
         keywords: 'modrinth curseforge suchen shader resourcepack',
         run: () => navigate('/discover')
       },
       {
         id: 'go-backups',
-        label: t('overlays', 'palette.backups'),
-        group: t('overlays', 'palette.group.navigation'),
+        label: 'Backups',
+        group: 'Navigation',
         icon: <IconSave size={16} />,
         keywords: 'sicherung wiederherstellen',
         run: () => navigate('/backups')
       },
       {
         id: 'go-settings',
-        label: t('common', 'settings'),
-        group: t('overlays', 'palette.group.navigation'),
+        label: 'Einstellungen',
+        group: 'Navigation',
         icon: <IconSettings size={16} />,
         keywords: 'java ram theme sprache account',
         run: () => navigate('/settings')
@@ -240,13 +227,13 @@ export function CommandPalette(): JSX.Element | null {
         if (event.target === event.currentTarget) close()
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label={t('overlays', 'palette.ariaLabel')}>
+      <div className="palette" role="dialog" aria-modal="true" aria-label="Befehle">
         <div className="palette-input">
           <IconSearch size={17} />
           <input
             ref={inputRef}
             className="input"
-            placeholder={t('overlays', 'palette.placeholder')}
+            placeholder="Instanz starten, Seite öffnen, Aktion ausführen…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
@@ -256,7 +243,7 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-list" ref={listRef}>
           {results.length === 0 ? (
-            <div className="palette-empty">{t('overlays', 'palette.noResults', { query })}</div>
+            <div className="palette-empty">Nichts gefunden für „{query}“</div>
           ) : (
             results.map((command, index) => {
               const header = command.group !== lastGroup ? command.group : null
@@ -285,13 +272,13 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-foot">
           <span>
-            <span className="kbd">↑</span> <span className="kbd">↓</span> {t('overlays', 'palette.navigate')}
+            <span className="kbd">↑</span> <span className="kbd">↓</span> navigieren
           </span>
           <span>
-            <span className="kbd">↵</span> {t('overlays', 'palette.execute')}
+            <span className="kbd">↵</span> ausführen
           </span>
           <span>
-            <span className="kbd">Esc</span> {t('overlays', 'palette.close')}
+            <span className="kbd">Esc</span> schließen
           </span>
         </div>
       </div>

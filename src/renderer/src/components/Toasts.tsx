@@ -1,7 +1,6 @@
 import { useRef, type JSX } from 'react'
 import { dismissToast, navigate, useStore } from '../lib/store'
 import { clickable } from '../lib/a11y'
-import { t } from '../lib/i18n'
 import { IconCheckCircle, IconInfo, IconWarning, IconX } from './Icons'
 
 const ICONS = {
@@ -71,7 +70,7 @@ export function Toasts(): JSX.Element {
                 event.stopPropagation()
                 dismissToast(item.id)
               }}
-              aria-label={t('common', 'close')}
+              aria-label="Schließen"
             >
               <IconX size={13} />
             </button>

@@ -1,6 +1,5 @@
 import { useEffect, useState, type JSX } from 'react'
 import { saveSettings, useStore } from '../lib/store'
-import { t } from '../lib/i18n'
 import { Modal } from './ui'
 import { IconShield } from './Icons'
 
@@ -47,44 +46,46 @@ export function ReportConsent(): JSX.Element | null {
   return (
     <Modal
       open
-      title={t('instanceSettings', 'reportConsent.title')}
-      subtitle={t('instanceSettings', 'reportConsent.subtitle')}
+      title="Dürfen wir Fehler sehen?"
+      subtitle="Einmal entscheiden, jederzeit änderbar."
       onClose={() => setDismissed(true)}
       footer={
         <>
           <button className="btn ghost" onClick={() => answer(false)}>
-            {t('instanceSettings', 'reportConsent.declineButton')}
+            Nein, danke
           </button>
           <button className="btn primary" onClick={() => answer(true)}>
             <IconShield size={14} />
-            {t('instanceSettings', 'reportConsent.acceptButton')}
+            Ja, Fehler senden
           </button>
         </>
       }
     >
       <div className="col gap-12">
         <p>
-          {t('instanceSettings', 'reportConsent.intro')}
+          Wenn im Launcher etwas schiefgeht, kann automatisch ein kurzer Bericht an die
+          Entwicklung gehen. Damit finden wir Fehler, von denen sonst nie jemand erfährt.
         </p>
 
         <div className="setting-group" style={{ margin: 0 }}>
-          <h3>{t('instanceSettings', 'reportConsent.sentTitle')}</h3>
+          <h3>Was gesendet wird</h3>
           <ul className="hint bullet-list">
-            <li>{t('instanceSettings', 'reportConsent.sentItem1')}</li>
-            <li>{t('instanceSettings', 'reportConsent.sentItem2')}</li>
+            <li>Die Fehlermeldung und wo im Programm sie aufgetreten ist</li>
+            <li>Die Version von Launch Gabi und dein Betriebssystem</li>
           </ul>
 
-          <h3 style={{ marginTop: 14 }}>{t('instanceSettings', 'reportConsent.notSentTitle')}</h3>
+          <h3 style={{ marginTop: 14 }}>Was nicht gesendet wird</h3>
           <ul className="hint bullet-list">
-            <li>{t('instanceSettings', 'reportConsent.notSentItem1')}</li>
-            <li>{t('instanceSettings', 'reportConsent.notSentItem2')}</li>
-            <li>{t('instanceSettings', 'reportConsent.notSentItem3')}</li>
-            <li>{t('instanceSettings', 'reportConsent.notSentItem4')}</li>
+            <li>Dein Minecraft-Name, deine UUID und deine Zugangsdaten</li>
+            <li>Dein Windows-Benutzername, auch nicht versteckt in Dateipfaden</li>
+            <li>Deine IP-Adresse wird nicht gespeichert</li>
+            <li>Nichts aus deinen Welten, Mods oder Screenshots</li>
           </ul>
         </div>
 
         <p className="hint">
-          {t('instanceSettings', 'reportConsent.footerHint')}
+          Berichte werden immer auch bei dir gespeichert, damit du selbst nachsehen kannst, was
+          gesendet wurde. Zu finden unter Einstellungen, Fehlerberichte.
         </p>
       </div>
     </Modal>

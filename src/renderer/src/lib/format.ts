@@ -1,36 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { LoaderId, UpdateStatus } from '@shared/types'
-import { t } from './i18n'
-
-/**
- * Human readable state line for the launcher's own updater.
- *
- * Lives here rather than in the settings view it started in, because the
- * update overlay and the downloads page say the same thing and had no
- * business importing a view to do it.
- */
-export function updateHeadline(status: UpdateStatus): string {
-  switch (status.state) {
-    case 'checking':
-      return t('lib', 'update.checking')
-    case 'available':
-      return t('lib', 'update.available', { version: status.version ?? '' })
-    case 'downloading':
-      return t('lib', 'update.downloading', { percent: Math.round(status.percent ?? 0) })
-    case 'ready':
-      return t('lib', 'update.ready', { version: status.version ?? '' })
-    case 'installing':
-      return t('lib', 'update.installing', { version: status.version ?? '' })
-    case 'up-to-date':
-      return t('lib', 'update.upToDate')
-    case 'error':
-      return t('lib', 'update.error')
-    case 'disabled':
-      return t('lib', 'update.disabled')
-    default:
-      return t('lib', 'update.current', { version: status.currentVersion })
-  }
-}
+import type { LoaderId } from '@shared/types'
 
 export function formatBytes(bytes: number, decimals = 1): string {
   if (!bytes || bytes < 0) return '0 B'
@@ -145,10 +114,10 @@ export function loaderColor(loader: LoaderId): string {
 /** "Guten Morgen" / "Guten Tag" / "Guten Abend" depending on the clock. */
 export function greeting(): string {
   const hour = new Date().getHours()
-  if (hour < 5) return t('lib', 'greeting.night')
-  if (hour < 11) return t('lib', 'greeting.morning')
-  if (hour < 18) return t('lib', 'greeting.day')
-  return t('lib', 'greeting.evening')
+  if (hour < 5) return 'Gute Nacht'
+  if (hour < 11) return 'Guten Morgen'
+  if (hour < 18) return 'Guten Tag'
+  return 'Guten Abend'
 }
 
 export function pluralise(count: number, one: string, many: string): string {
@@ -213,8 +182,8 @@ export function contentBlockedReason(instance: {
   starting?: boolean
   contentBusy?: boolean
 }): string | null {
-  if (instance.running) return t('lib', 'contentBlocked.running')
-  if (instance.starting) return t('lib', 'contentBlocked.starting')
-  if (instance.contentBusy) return t('lib', 'contentBlocked.busy')
+  if (instance.running) return 'Nicht möglich, solange Minecraft läuft.'
+  if (instance.starting) return 'Nicht möglich, die Instanz wird gerade gestartet.'
+  if (instance.contentBusy) return 'An den Mods wird gerade gearbeitet. Warte, bis das fertig ist.'
   return null
 }

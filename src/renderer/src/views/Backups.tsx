@@ -2,26 +2,23 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { BackupEntry } from '@shared/types'
 import { navigate, toast, toastError, useStore } from '../lib/store'
 import { formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
-import { t } from '../lib/i18n'
 import { Confirm, EmptyState, Modal } from '../components/ui'
 import { IconFolder, IconRefresh, IconSave, IconTrash, IconUpload } from '../components/Icons'
 
-// Values hold instanceSettings translation keys, not display text, so the
-// lookup happens at render time and stays reactive to a language switch.
 const REASON_LABELS: Record<BackupEntry['reason'], string> = {
-  manual: 'backups.reasonManual',
-  automatic: 'backups.reasonAutomatic',
-  'pre-update': 'backups.reasonPreUpdate',
-  'pre-repair': 'backups.reasonPreRepair'
+  manual: 'Manuell',
+  automatic: 'Automatisch',
+  'pre-update': 'Vor Mod-Update',
+  'pre-repair': 'Vor Reparatur'
 }
 
 const FOLDER_LABELS: Record<string, string> = {
-  saves: 'backups.folderSaves',
-  config: 'backups.folderConfig',
-  mods: 'backups.folderMods',
-  resourcepacks: 'backups.folderResourcepacks',
-  shaderpacks: 'backups.folderShaderpacks',
-  screenshots: 'backups.folderScreenshots'
+  saves: 'Welten',
+  config: 'Konfiguration',
+  mods: 'Mods',
+  resourcepacks: 'Resourcepacks',
+  shaderpacks: 'Shader',
+  screenshots: 'Screenshots'
 }
 
 export function BackupsView(): JSX.Element {
@@ -39,7 +36,7 @@ export function BackupsView(): JSX.Element {
     try {
       setBackups(await window.gabi.backups.list())
     } catch (err) {
-      toastError(err, t('instanceSettings', 'backups.loadFailedToast'))
+      toastError(err, 'Sicherungen konnten nicht geladen werden')
     } finally {
       setLoading(false)
     }
@@ -60,26 +57,18 @@ export function BackupsView(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">{t('instanceSettings', 'backups.pageTitle')}</h1>
+          <h1 className="page-title">Backups</h1>
           <p className="page-sub">
             {backups.length > 0
-              ? t('instanceSettings', 'backups.subtitleCount', {
-                  count: backups.length,
-                  word: pluralise(
-                    backups.length,
-                    t('instanceSettings', 'backups.unitOne'),
-                    t('instanceSettings', 'backups.unitMany')
-                  ),
-                  size: formatBytes(totalSize)
-                })
-              : t('instanceSettings', 'backups.subtitleEmpty')}
+              ? `${backups.length} ${pluralise(backups.length, 'Sicherung', 'Sicherungen')} · ${formatBytes(totalSize)} belegt`
+              : 'Sichere deine Welten, bevor du an Mods schraubst.'}
           </p>
         </div>
 
         <div className="row gap-8">
           <button className="btn" onClick={load} disabled={loading}>
             {loading ? <span className="spinner" /> : <IconRefresh size={16} />}
-            {t('common', 'refresh')}
+            Aktualisieren
           </button>
           <button
             className="btn primary"
@@ -87,7 +76,7 @@ export function BackupsView(): JSX.Element {
             onClick={() => setCreateFor(instances[0]?.id ?? null)}
           >
             <IconSave size={16} />
-            {t('instanceSettings', 'backups.createButton')}
+            Sicherung erstellen
           </button>
         </div>
       </header>
@@ -100,7 +89,7 @@ export function BackupsView(): JSX.Element {
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           >
-            <option value="all">{t('instanceSettings', 'backups.allInstancesOption')}</option>
+            <option value="all">Alle Instanzen</option>
             {instances.map((instance) => (
               <option key={instance.id} value={instance.id}>
                 {instance.name}
@@ -119,17 +108,17 @@ export function BackupsView(): JSX.Element {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<IconSave size={26} />}
-          title={t('instanceSettings', 'backups.emptyTitle')}
-          message={t('instanceSettings', 'backups.emptyMessage')}
+          title="Keine Sicherungen"
+          message="Eine Sicherung packt Welten und Konfiguration einer Instanz in ein Archiv. Praktisch, bevor du Mods aktualisierst oder etwas Größeres umbaust."
           action={
             instances.length > 0 ? (
               <button className="btn primary" onClick={() => setCreateFor(instances[0].id)}>
                 <IconSave size={16} />
-                {t('instanceSettings', 'backups.createFirstButton')}
+                Erste Sicherung erstellen
               </button>
             ) : (
               <button className="btn" onClick={() => navigate('/instances')}>
-                {t('instanceSettings', 'backups.goToInstancesButton')}
+                Zu den Instanzen
               </button>
             )
           }
@@ -145,7 +134,7 @@ export function BackupsView(): JSX.Element {
               <div className="grow" style={{ overflow: 'hidden' }}>
                 <div className="row gap-8">
                   <span className="content-name truncate">{backup.name}</span>
-                  <span className="badge">{t('instanceSettings', REASON_LABELS[backup.reason])}</span>
+                  <span className="badge">{REASON_LABELS[backup.reason]}</span>
                 </div>
                 <div className="content-meta">
                   <button
@@ -157,30 +146,26 @@ export function BackupsView(): JSX.Element {
                   </button>
                   <span>{formatBytes(backup.size)}</span>
                   <span title={formatDateTime(backup.createdAt)}>{formatRelative(backup.createdAt)}</span>
-                  <span>
-                    {backup.includes
-                      .map((key) => (FOLDER_LABELS[key] ? t('instanceSettings', FOLDER_LABELS[key]) : key))
-                      .join(', ')}
-                  </span>
+                  <span>{backup.includes.map((key) => FOLDER_LABELS[key] ?? key).join(', ')}</span>
                 </div>
               </div>
 
               <div className="content-actions">
                 <button className="btn sm primary" onClick={() => setRestoring(backup)}>
                   <IconUpload size={13} />
-                  {t('instanceSettings', 'backups.restoreButton')}
+                  Wiederherstellen
                 </button>
                 <button
                   className="btn ghost icon sm"
                   onClick={() => void window.gabi.backups.openFolder(backup.instanceId)}
-                  aria-label={t('instanceSettings', 'backups.openFolderAria')}
+                  aria-label="Ordner öffnen"
                 >
                   <IconFolder size={14} />
                 </button>
                 <button
                   className="btn ghost icon sm"
                   onClick={() => setDeleting(backup)}
-                  aria-label={t('common', 'delete')}
+                  aria-label="Löschen"
                 >
                   <IconTrash size={14} />
                 </button>
@@ -198,31 +183,17 @@ export function BackupsView(): JSX.Element {
 
       <Confirm
         open={restoring !== null}
-        title={t('instanceSettings', 'backups.restoreConfirmTitle')}
-        confirmLabel={t('instanceSettings', 'backups.restoreButton')}
+        title="Sicherung wiederherstellen?"
+        confirmLabel="Wiederherstellen"
         message={
           restoring ? (
             <>
-              {pluralise(
-                restoring.includes.length,
-                t('instanceSettings', 'backups.folderWordOne'),
-                t('instanceSettings', 'backups.folderWordMany')
-              )}{' '}
-              <strong>
-                {restoring.includes
-                  .map((k) => (FOLDER_LABELS[k] ? t('instanceSettings', FOLDER_LABELS[k]) : k))
-                  .join(', ')}
-              </strong>{' '}
-              {t('instanceSettings', 'backups.inConnector')}{' '}
+              {pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner')}{' '}
+              <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
               <strong>{restoring.instanceName}</strong>{' '}
-              {t('instanceSettings', 'backups.restoreMessageTail', {
-                verb: pluralise(
-                  restoring.includes.length,
-                  t('instanceSettings', 'backups.verbWordOne'),
-                  t('instanceSettings', 'backups.verbWordMany')
-                ),
-                date: formatDateTime(restoring.createdAt)
-              })}
+              {pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom{' '}
+              {formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch
+              gesichert.
             </>
           ) : null
         }
@@ -230,11 +201,11 @@ export function BackupsView(): JSX.Element {
           if (!restoring) return
           try {
             await window.gabi.backups.restore(restoring.instanceId, restoring.id)
-            toast('success', t('instanceSettings', 'backups.restoredToastTitle'), restoring.name)
+            toast('success', 'Wiederhergestellt', restoring.name)
             setRestoring(null)
             await load()
           } catch (err) {
-            toastError(err, t('instanceSettings', 'backups.restoreFailedToast'))
+            toastError(err, 'Wiederherstellung fehlgeschlagen')
           }
         }}
         onCancel={() => setRestoring(null)}
@@ -242,14 +213,13 @@ export function BackupsView(): JSX.Element {
 
       <Confirm
         open={deleting !== null}
-        title={t('instanceSettings', 'backups.deleteConfirmTitle')}
+        title="Sicherung löschen?"
         danger
-        confirmLabel={t('common', 'delete')}
+        confirmLabel="Löschen"
         message={
           deleting ? (
             <>
-              <strong>{deleting.name}</strong>{' '}
-              {t('instanceSettings', 'backups.deleteMessageTail', { size: formatBytes(deleting.size) })}
+              <strong>{deleting.name}</strong> ({formatBytes(deleting.size)}) wird endgültig gelöscht.
             </>
           ) : null
         }
@@ -260,7 +230,7 @@ export function BackupsView(): JSX.Element {
             setDeleting(null)
             await load()
           } catch (err) {
-            toastError(err, t('instanceSettings', 'backups.deleteFailedToast'))
+            toastError(err, 'Löschen fehlgeschlagen')
           }
         }}
         onCancel={() => setDeleting(null)}
@@ -308,15 +278,11 @@ function CreateBackupModal({
         name: name.trim() || undefined,
         includes
       })
-      toast(
-        'success',
-        t('instanceSettings', 'backups.createdToastTitle'),
-        `${entry.name} · ${formatBytes(entry.size)}`
-      )
+      toast('success', 'Sicherung erstellt', `${entry.name} · ${formatBytes(entry.size)}`)
       await onCreated()
       onClose()
     } catch (err) {
-      toastError(err, t('instanceSettings', 'backups.createFailedToast'))
+      toastError(err, 'Sicherung fehlgeschlagen')
     } finally {
       setBusy(false)
     }
@@ -325,25 +291,25 @@ function CreateBackupModal({
   return (
     <Modal
       open={instanceId !== null}
-      title={t('instanceSettings', 'backups.createButton')}
-      subtitle={t('instanceSettings', 'backups.modalSubtitle')}
+      title="Sicherung erstellen"
+      subtitle="Wähle aus, was gesichert werden soll."
       onClose={onClose}
       busy={busy}
       footer={
         <>
           <button className="btn ghost" onClick={onClose} disabled={busy}>
-            {t('common', 'cancel')}
+            Abbrechen
           </button>
           <button className="btn primary" onClick={create} disabled={busy || includes.length === 0}>
             {busy ? <span className="spinner" /> : <IconSave size={15} />}
-            {t('instanceSettings', 'backups.createButton')}
+            Sicherung erstellen
           </button>
         </>
       }
     >
       <div className="col gap-16">
         <div className="field">
-          <label className="label" htmlFor="bk-instanz">{t('instanceSettings', 'backups.instanceLabel')}</label>
+          <label className="label" htmlFor="bk-instanz">Instanz</label>
           <select id="bk-instanz" className="select" value={target} onChange={(event) => setTarget(event.target.value)}>
             {instances.map((instance) => (
               <option key={instance.id} value={instance.id}>
@@ -354,17 +320,17 @@ function CreateBackupModal({
         </div>
 
         <div className="field">
-          <label className="label" htmlFor="bk-bezeichnung-optional">{t('instanceSettings', 'backups.nameLabel')}</label>
+          <label className="label" htmlFor="bk-bezeichnung-optional">Bezeichnung (optional)</label>
           <input id="bk-bezeichnung-optional"
             className="input"
-            placeholder={t('instanceSettings', 'backups.namePlaceholder')}
+            placeholder="z. B. Vor dem großen Umbau"
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
         </div>
 
         <div className="field">
-          <label className="label" id="bk-inhalte">{t('instanceSettings', 'backups.contentsLabel')}</label>
+          <label className="label" id="bk-inhalte">Inhalte</label>
           <div role="group" aria-labelledby="bk-inhalte" className="row gap-8 wrap">
             {Object.entries(FOLDER_LABELS).map(([key, label]) => (
               <button
@@ -373,12 +339,12 @@ function CreateBackupModal({
                 style={{ cursor: 'pointer', height: 30, padding: '0 12px' }}
                 onClick={() => toggle(key)}
               >
-                {t('instanceSettings', label)}
+                {label}
               </button>
             ))}
           </div>
           <span className="hint">
-            {t('instanceSettings', 'backups.contentsHint')}
+            Welten und Konfiguration reichen meist. Mods mitzusichern macht das Archiv deutlich größer.
           </span>
         </div>
       </div>

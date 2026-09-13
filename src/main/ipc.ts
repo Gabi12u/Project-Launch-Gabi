@@ -172,10 +172,17 @@ export function registerIpc(): void {
    * Window
    * ---------------------------------------------------------------- */
 
-  ipcMain.on(IPC.windowMinimize, () => getMainWindow()?.minimize())
-  ipcMain.on(IPC.windowClose, () => getMainWindow()?.close())
-  ipcMain.on(IPC.windowMaximize, () => {
-    const win = getMainWindow()
+  // Resolves to whichever window's renderer actually sent the request rather
+  // than always the main one, so the same three channels also work for the
+  // separate live-log window: without this, its own minimize/close buttons
+  // would have reached right past it and controlled the main window instead.
+  const senderWindow = (event: Electron.IpcMainEvent): BrowserWindow | null =>
+    BrowserWindow.fromWebContents(event.sender) ?? getMainWindow()
+
+  ipcMain.on(IPC.windowMinimize, (event) => senderWindow(event)?.minimize())
+  ipcMain.on(IPC.windowClose, (event) => senderWindow(event)?.close())
+  ipcMain.on(IPC.windowMaximize, (event) => {
+    const win = senderWindow(event)
     if (!win) return
     if (win.isMaximized()) win.unmaximize()
     else win.maximize()
