@@ -44,6 +44,10 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         kind: 'new',
+        text: 'Die Beta-Funktion "Eigene Startseite" ist zurück: sie war für den Menü-Umbau kurzzeitig pausiert und ist jetzt wieder unter Einstellungen, Darstellung zu finden.'
+      },
+      {
+        kind: 'new',
         text: 'Ein eigenes Live-Log-Fenster öffnet sich beim Start jeder Instanz, im Stil eines klassischen Launcher-Konsolenfensters. Es schließt sich von selbst, sobald das Spiel endet, und der Log-Tab der Instanz öffnet sich dann automatisch im Hauptfenster.'
       },
       {
