@@ -22,6 +22,32 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.18': {
+    headline: 'Sign in now runs through its own application, no more error 400.',
+    changes: [
+      'For some accounts, Microsoft sign in aborted with error 400, because the launcher signed in with ' +
+        'the official Minecraft launcher’s own application id, and Microsoft increasingly refuses that ' +
+        'shared application for outside programs. Launch Gabi now has its own application, and the whole ' +
+        'sign-in path was measured by hand against it.',
+      'A dedicated live-log window now opens whenever an instance starts, in the style of a classic ' +
+        'launcher console window. It closes on its own once the game ends, and the instance’s Log tab ' +
+        'then opens automatically in the main window.',
+      'Closing the launcher window could end a running game along with it, even with the setting saying ' +
+        'to keep it going. The window now hides instead, and comes back once no game is running any more.',
+      'A fault in the interface no longer leaves the whole window blank. It now shows a message with a ' +
+        'way to try again or go back to the home page.',
+      'A finished or failed task could get stuck in the task tray instead of disappearing after a moment.',
+      'An account could be removed with no confirmation, and the crash-report privacy dialog answered ' +
+        'itself with No for good if it was merely dismissed rather than answered with one of its two buttons.',
+      'Sliders such as memory or concurrent downloads wrote to the settings file on every single step, ' +
+        'which visibly stuttered on slower drives.',
+      'A deliberately disabled mod could quietly turn itself back on after an automatic update.',
+      'When the operating system cannot offer encryption for a sign-in token, which mostly happens on ' +
+        'some Linux systems, the accounts section of Settings now shows a standing notice about it.',
+      'A number of further, smaller fixes to repair, instance management, and Fabric, Quilt, Forge and ' +
+        'Java installation, listed individually on the status page.'
+    ]
+  },
   '1.0.17': {
     headline: 'Minecraft through Xbox Game Pass now works.',
     changes: [

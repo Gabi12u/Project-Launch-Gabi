@@ -1183,56 +1183,96 @@ footer a:hover { color: var(--ink); }
   // that is the one place it can never drift out of date.
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.17",
-    "date": "2026-09-04",
-    "headline": "Minecraft über den Xbox Game Pass funktioniert jetzt.",
+    "version": "1.0.18",
+    "date": "2026-09-13",
+    "headline": "Die Anmeldung läuft jetzt über eine eigene Anwendung, ohne Fehler 400.",
     "changes": [
       {
         "kind": "fixed",
-        "text": "Wer Minecraft über den Xbox Game Pass hat, konnte sich nicht anmelden: der Launcher meldete, das Konto besitze keine Java-Edition-Lizenz. Das stimmte nicht. Der Launcher fragte bei Microsoft eine Liste der Berechtigungen ab und wertete eine leere Liste als fehlenden Besitz, und diese Liste kommt bei Game Pass nicht verlässlich gefüllt zurück. Entschieden wird es jetzt am Spielerprofil."
+        "text": "Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab, weil der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete und Microsoft diese gemeinsame Anwendung für fremde Programme zunehmend ablehnt. Launch Gabi hat jetzt eine eigene Anwendung, mit der der gesamte Anmeldeweg von Hand nachgemessen wurde."
       },
       {
-        "kind": "improved",
-        "text": "Fehlt einem Konto noch der Spielername für die Java Edition, steht jetzt auch der richtige Weg dabei. Der ist bei Game Pass ein anderer als bei einem Kauf, und vorher bekamen alle dieselbe, für Game Pass falsche Anleitung."
-      },
-      {
-        "kind": "improved",
-        "text": "Bricht die Anmeldung bei Microsoft ab, steht jetzt in normalen Worten da, was passiert ist und was zu tun ist, statt einer rohen technischen Zeile. Der technische Code steht weiterhin dahinter, weil er auf einem Bildschirmfoto weiterhilft."
+        "kind": "new",
+        "text": "Ein eigenes Live-Log-Fenster öffnet sich beim Start jeder Instanz, im Stil eines klassischen Launcher-Konsolenfensters. Es schließt sich von selbst, sobald das Spiel endet, und der Log-Tab der Instanz öffnet sich dann automatisch im Hauptfenster."
       },
       {
         "kind": "fixed",
-        "text": "Der Launcher wartete nach einem endgültig abgelehnten Anmeldecode weiter, statt das zu erkennen und abzubrechen."
+        "text": "Das Launcher-Fenster zu schließen konnte ein laufendes Spiel mit beenden, selbst wenn unter Einstellungen eingetragen war, es weiterlaufen zu lassen. Das Fenster versteckt sich jetzt stattdessen und kommt zurück, sobald kein Spiel mehr läuft."
       },
       {
-        "kind": "improved",
-        "text": "Die Installationsdateien sind kleiner: die Website, die Werkzeuge und der Fabric-Mod landeten bisher versehentlich mit im Installer, obwohl der Launcher sie nie liest."
+        "kind": "new",
+        "text": "Ein Fehler in der Programmoberfläche lässt nicht mehr das ganze Fenster leer zurück, sondern zeigt jetzt einen Hinweis mit der Möglichkeit, es noch einmal zu versuchen oder zur Startseite zurückzukehren."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine fertige oder fehlgeschlagene Aufgabe konnte in der Aufgabenanzeige hängen bleiben, statt nach kurzer Zeit zu verschwinden."
+      },
+      {
+        "kind": "fixed",
+        "text": "Ein Konto ließ sich ohne Rückfrage entfernen, und der Datenschutz-Dialog zu Fehlerberichten beantwortete sich dauerhaft mit Nein, wenn man ihn nur wegklickte statt eine der beiden Schaltflächen zu nutzen."
+      },
+      {
+        "kind": "fixed",
+        "text": "Regler wie Arbeitsspeicher oder gleichzeitige Downloads schrieben bei jedem einzelnen Schritt sofort in die Einstellungsdatei, was auf langsameren Platten spürbar ruckelte."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine bewusst deaktivierte Mod konnte sich nach einer automatischen Aktualisierung unbemerkt wieder einschalten."
+      },
+      {
+        "kind": "new",
+        "text": "Kann das Betriebssystem keine Verschlüsselung für ein Anmeldetoken anbieten, was vor allem auf manchen Linux-Systemen vorkommt, zeigt der Kontobereich der Einstellungen jetzt einen dauerhaften Hinweis darauf."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine ganze Reihe weiterer, kleinerer Fehler bei der Reparatur, der Instanzverwaltung sowie der Fabric-, Quilt-, Forge- und Java-Installation, im Einzelnen auf der Statusseite aufgeführt."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.17",
-    "date": "2026-09-04",
-    "headline": "Minecraft through Xbox Game Pass now works.",
+    "version": "1.0.18",
+    "date": "2026-09-13",
+    "headline": "Sign in now runs through its own application, no more error 400.",
     "changes": [
       {
         "kind": "fixed",
-        "text": "Anyone with Minecraft through Xbox Game Pass could not sign in: the launcher reported that the account did not own a Java Edition licence. That was not true. The launcher asked Microsoft for a list of entitlements and treated an empty list as no ownership, and that list does not come back reliably filled for Game Pass. The decision is now made from the player profile instead."
+        "text": "For some accounts, Microsoft sign in aborted with error 400, because the launcher signed in with the official Minecraft launcher’s own application id, and Microsoft increasingly refuses that shared application for outside programs. Launch Gabi now has its own application, and the whole sign-in path was measured by hand against it."
       },
       {
-        "kind": "improved",
-        "text": "If an account is still missing its Java Edition player name, the message now names the right next step. That step differs for Game Pass compared to a purchase, and everyone used to get the same, wrong instructions for Game Pass."
-      },
-      {
-        "kind": "improved",
-        "text": "If Microsoft sign-in breaks off, the message now says in plain language what happened and what to do, instead of a raw technical line. The technical code still follows, since it helps in a screenshot."
+        "kind": "new",
+        "text": "A dedicated live-log window now opens whenever an instance starts, in the style of a classic launcher console window. It closes on its own once the game ends, and the instance’s Log tab then opens automatically in the main window."
       },
       {
         "kind": "fixed",
-        "text": "The launcher kept waiting after a permanently rejected sign-in code instead of recognising that and stopping."
+        "text": "Closing the launcher window could end a running game along with it, even with the setting saying to keep it going. The window now hides instead, and comes back once no game is running any more."
       },
       {
-        "kind": "improved",
-        "text": "The installer is smaller: the website, the tools and the Fabric mod used to end up inside it by accident, even though the launcher never reads them."
+        "kind": "new",
+        "text": "A fault in the interface no longer leaves the whole window blank. It now shows a message with a way to try again or go back to the home page."
+      },
+      {
+        "kind": "fixed",
+        "text": "A finished or failed task could get stuck in the task tray instead of disappearing after a moment."
+      },
+      {
+        "kind": "fixed",
+        "text": "An account could be removed with no confirmation, and the crash-report privacy dialog answered itself with No for good if it was merely dismissed rather than answered with one of its two buttons."
+      },
+      {
+        "kind": "fixed",
+        "text": "Sliders such as memory or concurrent downloads wrote to the settings file on every single step, which visibly stuttered on slower drives."
+      },
+      {
+        "kind": "fixed",
+        "text": "A deliberately disabled mod could quietly turn itself back on after an automatic update."
+      },
+      {
+        "kind": "new",
+        "text": "When the operating system cannot offer encryption for a sign-in token, which mostly happens on some Linux systems, the accounts section of Settings now shows a standing notice about it."
+      },
+      {
+        "kind": "fixed",
+        "text": "A number of further, smaller fixes to repair, instance management, and Fabric, Quilt, Forge and Java installation, listed individually on the status page."
       }
     ]
   };

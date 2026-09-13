@@ -34,6 +34,53 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.18',
+    date: '2026-09-13',
+    headline: 'Die Anmeldung läuft jetzt über eine eigene Anwendung, ohne Fehler 400.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab, weil der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete und Microsoft diese gemeinsame Anwendung für fremde Programme zunehmend ablehnt. Launch Gabi hat jetzt eine eigene Anwendung, mit der der gesamte Anmeldeweg von Hand nachgemessen wurde.'
+      },
+      {
+        kind: 'new',
+        text: 'Ein eigenes Live-Log-Fenster öffnet sich beim Start jeder Instanz, im Stil eines klassischen Launcher-Konsolenfensters. Es schließt sich von selbst, sobald das Spiel endet, und der Log-Tab der Instanz öffnet sich dann automatisch im Hauptfenster.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Das Launcher-Fenster zu schließen konnte ein laufendes Spiel mit beenden, selbst wenn unter Einstellungen eingetragen war, es weiterlaufen zu lassen. Das Fenster versteckt sich jetzt stattdessen und kommt zurück, sobald kein Spiel mehr läuft.'
+      },
+      {
+        kind: 'new',
+        text: 'Ein Fehler in der Programmoberfläche lässt nicht mehr das ganze Fenster leer zurück, sondern zeigt jetzt einen Hinweis mit der Möglichkeit, es noch einmal zu versuchen oder zur Startseite zurückzukehren.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine fertige oder fehlgeschlagene Aufgabe konnte in der Aufgabenanzeige hängen bleiben, statt nach kurzer Zeit zu verschwinden.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ein Konto ließ sich ohne Rückfrage entfernen, und der Datenschutz-Dialog zu Fehlerberichten beantwortete sich dauerhaft mit Nein, wenn man ihn nur wegklickte statt eine der beiden Schaltflächen zu nutzen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Regler wie Arbeitsspeicher oder gleichzeitige Downloads schrieben bei jedem einzelnen Schritt sofort in die Einstellungsdatei, was auf langsameren Platten spürbar ruckelte.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine bewusst deaktivierte Mod konnte sich nach einer automatischen Aktualisierung unbemerkt wieder einschalten.'
+      },
+      {
+        kind: 'new',
+        text: 'Kann das Betriebssystem keine Verschlüsselung für ein Anmeldetoken anbieten, was vor allem auf manchen Linux-Systemen vorkommt, zeigt der Kontobereich der Einstellungen jetzt einen dauerhaften Hinweis darauf.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine ganze Reihe weiterer, kleinerer Fehler bei der Reparatur, der Instanzverwaltung sowie der Fabric-, Quilt-, Forge- und Java-Installation, im Einzelnen auf der Statusseite aufgeführt.'
+      }
+    ]
+  },
+  {
     version: '1.0.17',
     date: '2026-09-04',
     headline: 'Minecraft über den Xbox Game Pass funktioniert jetzt.',
