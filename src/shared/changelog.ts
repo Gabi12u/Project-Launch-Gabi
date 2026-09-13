@@ -34,6 +34,17 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.19',
+    date: '2026-09-13',
+    headline: 'Kleinere Fehlerbehebung.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Die Beta-Funktion "Eigene Startseite" war unbeabsichtigt deaktiviert und ist jetzt wieder unter Einstellungen, Darstellung zu finden.'
+      }
+    ]
+  },
+  {
     version: '1.0.18',
     date: '2026-09-13',
     headline: 'Die Anmeldung läuft jetzt über eine eigene Anwendung, ohne Fehler 400.',
@@ -41,10 +52,6 @@ export const CHANGELOG: ChangelogRelease[] = [
       {
         kind: 'fixed',
         text: 'Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab, weil der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete und Microsoft diese gemeinsame Anwendung für fremde Programme zunehmend ablehnt. Launch Gabi hat jetzt eine eigene Anwendung, mit der der gesamte Anmeldeweg von Hand nachgemessen wurde.'
-      },
-      {
-        kind: 'new',
-        text: 'Die Beta-Funktion "Eigene Startseite" ist zurück: sie war für den Menü-Umbau kurzzeitig pausiert und ist jetzt wieder unter Einstellungen, Darstellung zu finden.'
       },
       {
         kind: 'new',

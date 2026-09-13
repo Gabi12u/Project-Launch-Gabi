@@ -22,6 +22,13 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.19': {
+    headline: 'Small bug fix.',
+    changes: [
+      'The "custom start screen" beta feature was unintentionally disabled and now lives under Settings, ' +
+        'Appearance again.'
+    ]
+  },
   '1.0.18': {
     headline: 'Sign in now runs through its own application, no more error 400.',
     changes: [
@@ -29,8 +36,6 @@ export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] 
         'the official Minecraft launcher’s own application id, and Microsoft increasingly refuses that ' +
         'shared application for outside programs. Launch Gabi now has its own application, and the whole ' +
         'sign-in path was measured by hand against it.',
-      'The "custom start screen" beta feature is back: it was paused briefly for the menu redesign and ' +
-        'now lives under Settings, Appearance again.',
       'A dedicated live-log window now opens whenever an instance starts, in the style of a classic ' +
         'launcher console window. It closes on its own once the game ends, and the instance’s Log tab ' +
         'then opens automatically in the main window.',
