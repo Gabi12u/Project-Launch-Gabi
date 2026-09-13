@@ -43,9 +43,11 @@ try {
   const shim = join(work, 'electron-shim.js')
   writeFileSync(
     shim,
-    `module.exports = {
+    `const windows = []
+     module.exports = {
        app: { getPath: () => ${JSON.stringify(work)}, getVersion: () => '0.0.0-test', isPackaged: false, getName: () => 'launch-gabi' },
-       BrowserWindow: class {},
+       BrowserWindow: { getAllWindows: () => windows },
+       __registerWindow: (w) => windows.push(w),
        safeStorage: { isEncryptionAvailable: () => false },
        shell: {}, dialog: {}, ipcMain: { handle() {}, on() {} },
        desktopCapturer: {}, globalShortcut: {}, Notification: class {}, net: {}
@@ -57,7 +59,8 @@ try {
     entry,
     `module.exports = {
        ...require(${JSON.stringify(join(root, 'src/main/tasks.ts'))}),
-       ...require(${JSON.stringify(join(root, 'src/main/events.ts'))})
+       ...require(${JSON.stringify(join(root, 'src/main/events.ts'))}),
+       ...require('electron')
      }`
   )
 
@@ -72,17 +75,22 @@ try {
     logLevel: 'error'
   })
 
-  const { Task, listTasks, setMainWindow } = require(out)
+  const { Task, listTasks, setMainWindow, __registerWindow } = require(out)
 
   // A minimal stand-in for the real window: just enough for `emit()` to
   // believe a renderer is listening, recording every channel and payload it
-  // would have sent.
-  setMainWindow({
+  // would have sent. `emit()` broadcasts to every window `BrowserWindow.
+  // getAllWindows()` returns, so the fake window is registered there rather
+  // than only handed to `setMainWindow` (kept too, since other code still
+  // reads `getMainWindow()` directly).
+  const fakeWindow = {
     isDestroyed: () => false,
     webContents: {
       send: (channel, payload) => sent.push({ channel, payload })
     }
-  })
+  }
+  setMainWindow(fakeWindow)
+  __registerWindow(fakeWindow)
 
   /* ------------------------------------------------------------------ *
    * A task that finishes: emits done, then is forgotten a few seconds later.

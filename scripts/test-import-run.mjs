@@ -74,7 +74,7 @@ try {
      module.exports = {
        app: { getPath: () => path, getVersion: () => '0.0.0-test', isPackaged: false, getName: () => 'launch-gabi' },
        safeStorage: { isEncryptionAvailable: () => false },
-       shell: {}, dialog: {}, BrowserWindow: class {},
+       shell: {}, dialog: {}, BrowserWindow: { getAllWindows: () => [] },
        ipcMain: { handle() {}, on() {} },
        desktopCapturer: {}, globalShortcut: {}, Notification: class {},
        net: {}

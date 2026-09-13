@@ -80,7 +80,7 @@ try {
      module.exports = {
        app: { getPath: () => path, getVersion: () => '1.0.17', isPackaged: true, getName: () => 'launch-gabi' },
        safeStorage: { isEncryptionAvailable: () => false },
-       shell: {}, dialog: {}, BrowserWindow: class {},
+       shell: {}, dialog: {}, BrowserWindow: { getAllWindows: () => [] },
        ipcMain: { handle() {}, on() {} },
        desktopCapturer: {}, globalShortcut: {}, Notification: class {}, net: {}
      }`

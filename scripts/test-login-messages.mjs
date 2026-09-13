@@ -37,7 +37,11 @@ try {
   // electron und die Nachbarmodule werden nicht gebraucht, nur die eine
   // Funktion. Ein Stub haelt den Bundler zufrieden.
   const stub = join(work, 'electron.js')
-  writeFileSync(stub, 'export const app = {}; export const safeStorage = {};')
+  writeFileSync(
+    stub,
+    'export const app = {}; export const safeStorage = {}; ' +
+      'export const BrowserWindow = { getAllWindows: () => [] };'
+  )
 
   const out = join(work, 'microsoft.mjs')
   const require = createRequire(import.meta.url)
