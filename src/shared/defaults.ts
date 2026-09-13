@@ -39,7 +39,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   theme: 'midnight',
   accentColor: '#7c5cff',
   reduceMotion: false,
-  navPosition: 'top',
+  navPosition: 'side',
   launchBehaviour: 'keep',
   startMinimized: false,
   launchOnStartup: false,

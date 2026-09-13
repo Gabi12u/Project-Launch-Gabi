@@ -86,6 +86,16 @@ export function announceUpdate(): void {
   const settings = getSettings()
   const previous = settings.lastRunVersion
 
+  // The top navigation was the only default anyone had before 1.0.18, so
+  // every earlier install has 'top' in its settings file whether or not
+  // anyone ever opened that page. 1.0.18 moves the default back to the side
+  // navigation; this carries that switch over for an upgrade coming from
+  // before it, once. Gated to versions up to 1.0.17 specifically so a later
+  // release does not keep undoing someone's own choice to switch back.
+  if (previous && !isNewer(previous, '1.0.17') && settings.navPosition === 'top') {
+    saveSettings({ navPosition: 'side' })
+  }
+
   if (previous !== version) {
     // Written before the notification rather than after, so a crash while the
     // window paints cannot turn this into a message that returns every start.
