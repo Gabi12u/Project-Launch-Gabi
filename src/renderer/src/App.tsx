@@ -21,6 +21,7 @@ import { Logo } from './components/Logo'
 import { CompatibilityGate } from './components/CompatibilityPanel'
 import { UpdateGate } from './components/UpdateGate'
 import { ReportConsent } from './components/ReportConsent'
+import { StartScreenPrompt } from './components/StartScreenPrompt'
 import { CreateInstanceWizard } from './views/CreateInstanceWizard'
 import { Onboarding } from './views/Onboarding'
 import { HomeView } from './views/Home'
@@ -306,6 +307,7 @@ export function App(): JSX.Element {
 
         <TaskDock />
         <ReportConsent />
+        <StartScreenPrompt />
         <Toasts />
         <CommandPalette />
         <CompatibilityGate />

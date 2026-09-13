@@ -52,7 +52,7 @@ import {
 } from './running'
 import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
-import { removeCustomStartScreen } from './startScreen'
+import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
 import { dropLogBuffer, getLogBuffer, pushLog } from './instanceLog'
 
 const logger = log('launch')
@@ -620,17 +620,23 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     const args = [...jvmArgs, versionJson.mainClass, ...gameArgs]
 
-    // The beta itself is pulled pending a real redesign (see startScreen.ts),
-    // but this call stays: someone who opted in before it was pulled still
-    // has the pack referenced in options.txt and sitting on disk, and
-    // nothing else will ever clean that up now that the setting is gone.
+    // Read fresh on every launch rather than only when the setting changes,
+    // the same as the wrapper and pre-launch command below: turning the beta
+    // off takes effect on the next launch, with nothing extra to invalidate.
     // Taken under the same lock a real mod install or update holds while it
     // rewrites this instance's content folder, so the two can never run
     // against resourcepacks/ at the same moment.
     try {
-      await withContentLock(instanceId, async () => removeCustomStartScreen(instanceId))
+      await withContentLock(instanceId, async () => {
+        if (settings.customStartScreen === 'on') {
+          applyCustomStartScreen(instanceId, instance.mcVersion)
+        } else {
+          removeCustomStartScreen(instanceId)
+        }
+      })
     } catch (err) {
-      logger.warn(`Aufräumen der eigenen Startseite für ${instanceId} übersprungen:`, err)
+      // A cosmetic beta feature must never be the reason a launch fails.
+      logger.warn(`Eigene Startseite für ${instanceId} übersprungen:`, err)
     }
 
     // 9. Spawn -------------------------------------------------------

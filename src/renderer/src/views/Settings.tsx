@@ -414,6 +414,24 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   onChange={(value) => void saveSettings({ reduceMotion: value })}
                 />
               </section>
+
+              <section className="setting-group">
+                <h3>Eigene Startseite (Beta)</h3>
+                <p className="hint">
+                  Tauscht Hintergrund und die normalen Knöpfe im Minecraft-Hauptmenü gegen einen
+                  eigenen Stil von Launch Gabi, per Ressourcenpaket, ohne das Spiel selbst zu
+                  verändern. Wirkt ab dem nächsten Start einer Instanz, auf Minecraft 1.20.2 und
+                  neuer. Ein Mod-Knopf, der den normalen Minecraft-Knopf verwendet, sieht
+                  automatisch genauso aus, einer mit eigener Zeichnung nicht. Noch in Arbeit: kein
+                  eigenes Menü mit eigenen Animationen, das bleibt ein größeres, eigenes Vorhaben.
+                </p>
+                <SettingToggle
+                  label="Eigene Startseite verwenden"
+                  hint="Gilt für alle Instanzen und jede Minecraft-Version."
+                  checked={settings.customStartScreen === 'on'}
+                  onChange={(value) => void saveSettings({ customStartScreen: value ? 'on' : 'off' })}
+                />
+              </section>
             </>
           )}
 
