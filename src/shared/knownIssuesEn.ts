@@ -869,6 +869,83 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'launcher, the window is now only hidden instead of quitting the launcher, exactly the way it ' +
       'already works for the automatic hide while playing. It reappears on its own once the last running ' +
       'game has ended.'
+  },
+  'fabric-quilt-pruefsumme-verworfen': {
+    title: 'A checksum Fabric or Quilt supplied was never read',
+    detail:
+      'For libraries that bring their own maven address instead of a ready-made download URL, the usual ' +
+      'case for Fabric and Quilt, the launcher built the download with no checksum and no expected size, ' +
+      'even though both sit right next to each other in the very same loader metadata. The internal data ' +
+      'type for these libraries simply did not know the fields existed. Anyone able to reach or intercept ' +
+      'the Fabric or Quilt maven server could have substituted a wrong file for either of the two most ' +
+      'used loaders without the launcher noticing. The checksum is now carried through and checked ' +
+      'whenever the source supplies one.'
+  },
+  'zip-entpacken-ohne-groessendeckel': {
+    title: 'A modpack with one heavily compressed file could crash the launcher',
+    detail:
+      'When unpacking a modpack’s extra files (for instance custom configs from a .mrpack or a CurseForge ' +
+      'package), every file was fully unpacked into memory without first checking how large it would ' +
+      'actually become. A single, deliberately tiny but extremely heavily compressed file inside an ' +
+      'otherwise ordinary-looking modpack could have demanded several gigabytes of memory during import ' +
+      'and crashed the launcher. Every extraction point in the program now checks the declared size ' +
+      'against a limit first.'
+  },
+  'instanzbild-pfad-nicht-abgesichert': {
+    title: 'A custom instance icon or background could in theory escape its intended folder',
+    detail:
+      'The function that turns a stored icon or background reference into an actual file path used a ' +
+      'plain path join at this one spot instead of the checked function used everywhere else in the ' +
+      'program for exactly this purpose. A reference containing "../" segments could have pointed at a ' +
+      'file outside the icon folder. Nothing in the launcher’s ordinary use could trigger this, only an ' +
+      'unusual value forced in from outside. The spot now uses the same checked function as the rest of ' +
+      'the program.'
+  },
+  'java-test-kanal-ohne-einschraenkung': {
+    title: 'An internal channel never used by the interface could run any file at all',
+    detail:
+      'A technical channel meant to check a Java installation at a given path only checked that some ' +
+      'file existed there, then ran it. There was no check that it was actually a Java installation. ' +
+      'This channel was never called by the launcher’s own interface at any point. Since it still ' +
+      'existed, it was removed entirely rather than merely restricted. The actual Java detection, which ' +
+      'only ever checks paths it found itself, is unaffected.'
+  },
+  'sicherungs-pfad-ohne-instanzpruefung': {
+    title: 'Three backup functions did not check whether the given instance actually exists',
+    detail:
+      'Listing backups, deleting a backup, and restoring a backup built the affected folder path ' +
+      'directly from the given instance id, without first checking, the way a nearby function in the ' +
+      'same area already did, that this id belongs to an instance that genuinely exists. Nothing in the ' +
+      'launcher’s ordinary use could trigger this, since it always already works from an opened or ' +
+      'listed, so genuine, instance there. All three now check that the instance exists first, exactly ' +
+      'like the fourth, comparable spot already did.'
+  },
+  'download-umleitung-ohne-ziel-einschraenkung': {
+    title: 'A download could be redirected to an address on the user’s own network',
+    detail:
+      'When a mod or modpack file is downloaded from an address that redirects to another one, the ' +
+      'launcher followed that redirect without checking where it actually leads. A manipulated download ' +
+      'address could have triggered a request to an address on the user’s own network (for instance the ' +
+      'machine itself or another device on the same network), though nothing beyond a single, harmless ' +
+      'request would have resulted. Redirects to such addresses are now refused.'
+  },
+  'einstellungsdatei-ohne-eingeschraenkte-rechte': {
+    title: 'The settings and account files were saved without restricted file permissions',
+    detail:
+      'The files holding settings and account data were written with the operating system’s default ' +
+      'permissions. On a machine shared between several user accounts, mainly on Linux or macOS, another ' +
+      'account on the same machine could have read these files. On Windows this matters much less, due ' +
+      'to the usual folder inheritance of one’s own user profile. Both files are now written readable ' +
+      'only by the owning account.'
+  },
+  'curseforge-schluessel-unverschluesselt': {
+    title: 'A custom CurseForge API key sits unencrypted in the settings file',
+    detail:
+      'Unlike the Microsoft sign-in data, a custom CurseForge API key that has been entered is not ' +
+      'protected by the operating system’s encryption, only stored as plain text. The field only ' +
+      'matters to anyone who entered their own key in the first place. A real fix would change the ' +
+      'settings file’s storage format and need to carry over already-saved keys, which is still ' +
+      'outstanding.'
   }
 }
 

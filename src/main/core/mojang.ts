@@ -41,6 +41,15 @@ export interface Library {
   }
   /** Maven repository base used by loader manifests that omit `downloads`. */
   url?: string
+  /**
+   * Fabric's and Quilt's own loader profiles put these directly next to
+   * `url` for practically every library. Without a field to read them into,
+   * a checksum the source itself supplied was silently thrown away and the
+   * download went unverified, exactly the case `sha1`/`size` on `Artifact`
+   * exist to prevent for the more common `downloads.artifact` shape.
+   */
+  sha1?: string
+  size?: number
   natives?: Record<string, string>
   extract?: { exclude?: string[] }
   rules?: Rule[]
@@ -388,7 +397,7 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     if (artifact?.url) {
       download = { url: artifact.url, path: absolute, sha1: artifact.sha1, size: artifact.size }
     } else if (library.url) {
-      download = { url: mavenUrl(library.url, relative), path: absolute }
+      download = { url: mavenUrl(library.url, relative), path: absolute, sha1: library.sha1, size: library.size }
     } else if (!artifact) {
       // Forge installers place some libraries on disk themselves; if they are
       // still missing, Mojang's maven mirror is the best guess.

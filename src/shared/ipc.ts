@@ -75,7 +75,6 @@ export const IPC = {
   javaList: 'java:list',
   javaDetect: 'java:detect',
   javaInstall: 'java:install',
-  javaTest: 'java:test',
 
   // accounts
   accountList: 'account:list',

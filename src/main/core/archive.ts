@@ -17,6 +17,28 @@ import { log } from '../logger'
 
 const logger = log('archive')
 
+/**
+ * Upper bound for a single entry's decompressed size.
+ *
+ * Nothing legitimate this launcher ever unpacks (a mod jar, a resource pack,
+ * a single world region file, a JDK class library) comes close to this. A
+ * hand-crafted archive that declares a few kilobytes compressed but many
+ * gigabytes decompressed does, and every extraction path below used to
+ * inflate straight into memory with nothing checking the declared size
+ * first, so a single such entry in an otherwise ordinary-looking modpack or
+ * backup could exhaust memory before the launcher ever got to look at it.
+ */
+const MAX_ENTRY_SIZE = 1024 * 1024 * 1024
+
+/** Throws before `entry.getData()` would inflate something absurd into memory. */
+function assertReasonableSize(entry: { header: { size: number }; entryName: string }): void {
+  if (entry.header.size > MAX_ENTRY_SIZE) {
+    throw new Error(
+      `${entry.entryName} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`
+    )
+  }
+}
+
 export interface ZipEntryInfo {
   name: string
   isDirectory: boolean
@@ -53,9 +75,32 @@ export async function readEntryJson<T>(archivePath: string, entryName: string): 
   }
 }
 
+/**
+ * Unlike every other extraction function here, this used to hand the whole
+ * job to adm-zip's own `extractAllTo`, which neither runs entries through
+ * `safeJoin` nor checks a declared size before inflating it. Harmless while
+ * the only caller was a JDK archive from Adoptium, but the same function
+ * with the same blind spot is one copy-paste away from being pointed at
+ * something less trustworthy. Entries are walked by hand instead, exactly
+ * like the other extraction functions in this file already do.
+ */
 export function extractAll(archivePath: string, targetDir: string, overwrite = true): void {
   mkdirSync(targetDir, { recursive: true })
-  new AdmZip(archivePath).extractAllTo(targetDir, overwrite)
+  const zip = new AdmZip(archivePath)
+
+  for (const entry of zip.getEntries()) {
+    const target = safeJoin(targetDir, entry.entryName)
+
+    if (entry.isDirectory) {
+      mkdirSync(target, { recursive: true })
+      continue
+    }
+
+    if (!overwrite && existsSync(target)) continue
+    assertReasonableSize(entry)
+    mkdirSync(dirname(target), { recursive: true })
+    writeFileSync(target, entry.getData())
+  }
 }
 
 /**
@@ -93,6 +138,7 @@ export async function extractAllSlowly(
     if (entry.isDirectory) {
       mkdirSync(target, { recursive: true })
     } else {
+      assertReasonableSize(entry)
       mkdirSync(join(target, '..'), { recursive: true })
       writeFileSync(target, entry.getData())
     }
@@ -126,6 +172,7 @@ export function extractSubtree(archivePath: string, prefix: string, targetDir: s
     const rel = entry.entryName.slice(normalized.length)
     if (!rel || rel.includes('..')) continue
 
+    assertReasonableSize(entry)
     const dest = join(targetDir, ...rel.split('/'))
     mkdirSync(dirname(dest), { recursive: true })
     writeFileSync(dest, entry.getData())
@@ -152,6 +199,7 @@ export function extractNatives(jarPath: string, targetDir: string, excludes: str
     // Only actual native binaries are useful in the natives folder.
     if (!/\.(dll|so|dylib|jnilib)$/i.test(name)) continue
 
+    assertReasonableSize(entry)
     const dest = join(targetDir, basename(name))
     writeFileSync(dest, entry.getData())
   }

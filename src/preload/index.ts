@@ -94,8 +94,7 @@ const api = {
   java: {
     list: call(IPC.javaList),
     detect: call(IPC.javaDetect),
-    install: call(IPC.javaInstall),
-    test: call(IPC.javaTest)
+    install: call(IPC.javaInstall)
   },
 
   accounts: {

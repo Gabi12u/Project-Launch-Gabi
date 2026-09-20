@@ -118,6 +118,66 @@ function isRetryable(err: unknown): boolean {
 }
 
 /**
+ * True for a loopback, private or link-local address, by literal IP only.
+ *
+ * This does not resolve hostnames, so a domain whose DNS record happens to
+ * point at one of these ranges slips through; closing that fully would mean
+ * resolving the name ourselves and connecting to the checked address
+ * directly, a larger change than this one warrants. What this does stop is
+ * the concrete, verified case: a download or a redirect target naming one of
+ * these addresses directly, which is what a manipulated Location header or a
+ * mod's own declared download URL would realistically contain.
+ */
+function isPrivateAddress(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  if (host === 'localhost') return true
+
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
+  if (v4) {
+    const a = Number(v4[1])
+    const b = Number(v4[2])
+    if (a === 127 || a === 10 || a === 0) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    if (a === 169 && b === 254) return true
+    return false
+  }
+
+  if (host === '::1' || host === '::') return true
+  // Unique local (fc00::/7) and link-local (fe80::/10).
+  if (/^f[cd][0-9a-f]{2}:/i.test(host) || /^fe[89ab][0-9a-f]:/i.test(host)) return true
+
+  return false
+}
+
+/**
+ * `fetch` with `redirect: 'follow'` (the default) hands back only the final
+ * response, with no way to see or reject an intermediate hop. A download or
+ * API URL that redirects to a private address used to be followed without
+ * question, turning a mod's own declared download URL into a way to make the
+ * launcher issue a request to the user's own network. Each hop is checked
+ * here before it is followed, capped well above anything a real redirect
+ * chain needs.
+ */
+async function fetchFollowingSafeRedirects(url: string, init: RequestInit): Promise<Response> {
+  let current = url
+  for (let hop = 0; hop <= 5; hop++) {
+    const parsed = new URL(current)
+    if (isPrivateAddress(parsed.hostname)) {
+      throw new Error(`Adresse "${parsed.hostname}" ist eine lokale/interne Adresse und wird abgelehnt.`)
+    }
+
+    const res = await fetch(current, { ...init, redirect: 'manual' })
+    const isRedirect = res.status >= 300 && res.status < 400
+    const location = res.headers.get('location')
+    if (!isRedirect || !location) return res
+
+    current = new URL(location, current).toString()
+  }
+  throw new Error(`Zu viele Umleitungen für ${url}.`)
+}
+
+/**
  * `httpRequest` covers the whole call including the body, which is what the
  * JSON and text helpers want. Streaming downloads need different handling and
  * manage their own request in `downloadFile`.
@@ -138,7 +198,7 @@ export async function httpRequest(
         ? AbortSignal.any([external, AbortSignal.timeout(60_000)])
         : AbortSignal.timeout(60_000)
 
-      const res = await fetch(url, {
+      const res = await fetchFollowingSafeRedirects(url, {
         ...init,
         signal,
         headers: {
@@ -316,7 +376,7 @@ async function fetchToFile(
 
   try {
     arm()
-    const res = await fetch(item.url, {
+    const res = await fetchFollowingSafeRedirects(item.url, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT }
     })

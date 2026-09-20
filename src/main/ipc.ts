@@ -22,7 +22,7 @@ import { cancelTask, listTasks } from './tasks'
 
 import { listMinecraftVersions } from './core/mojang'
 import { listLoaderVersions } from './loaders'
-import { detectJavaRuntimes, installJava, invalidateJavaCache, probeJava } from './core/java'
+import { detectJavaRuntimes, installJava, invalidateJavaCache } from './core/java'
 import {
   createInstance,
   deleteInstance,
@@ -482,7 +482,6 @@ export function registerIpc(): void {
   handle(IPC.javaList, (force?: boolean) => detectJavaRuntimes(force))
   handle(IPC.javaDetect, () => detectJavaRuntimes(true))
   handle(IPC.javaInstall, (major: number) => installJava(major))
-  handle(IPC.javaTest, (path: string) => probeJava(path))
 
   /* ---------------------------------------------------------------- *
    * Accounts

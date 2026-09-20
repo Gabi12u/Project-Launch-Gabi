@@ -230,7 +230,6 @@ export interface GabiApi {
     list(force?: boolean): Promise<JavaRuntime[]>
     detect(): Promise<JavaRuntime[]>
     install(major: number): Promise<JavaRuntime>
-    test(path: string): Promise<JavaRuntime | null>
   }
   accounts: {
     list(): Promise<Account[]>

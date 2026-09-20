@@ -1297,6 +1297,120 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-13',
     fixedIn: '1.0.18'
+  },
+  {
+    id: 'fabric-quilt-pruefsumme-verworfen',
+    title: 'Eine von Fabric oder Quilt mitgelieferte Prüfsumme wurde nie gelesen',
+    detail:
+      'Für Bibliotheken, die ihre eigene Maven-Adresse statt eine fertige Download-URL mitbringen, ' +
+      'genau der übliche Fall bei Fabric und Quilt, baute der Launcher den Download ohne Prüfsumme und ' +
+      'ohne erwartete Größe auf, obwohl beides im selben Datensatz der Loader-Metadaten direkt daneben ' +
+      'steht. Der interne Datentyp für diese Bibliotheken kannte die Felder schlicht nicht. Wer den ' +
+      'Fabric- oder Quilt-Maven-Server erreichen oder unterwegs abfangen kann, hätte dadurch für die ' +
+      'beiden am häufigsten genutzten Loader eine falsche Datei unterschieben können, ohne dass der ' +
+      'Launcher es bemerkt hätte. Die Prüfsumme wird jetzt mit übernommen und geprüft, wenn die Quelle ' +
+      'sie mitliefert.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'zip-entpacken-ohne-groessendeckel',
+    title: 'Ein Modpack mit einer stark komprimierten Datei konnte den Launcher zum Absturz bringen',
+    detail:
+      'Beim Entpacken der Zusatzdateien eines Modpacks (zum Beispiel eigene Konfigurationen aus einem ' +
+      '.mrpack oder einem CurseForge-Paket) wurde jede Datei vollständig in den Arbeitsspeicher entpackt, ' +
+      'ohne vorher zu prüfen, wie groß sie nach dem Entpacken tatsächlich wird. Eine einzelne, absichtlich ' +
+      'winzige, aber extrem stark komprimierte Datei in einem ganz gewöhnlich aussehenden Modpack hätte so ' +
+      'beim Import mehrere Gigabyte Speicher anfordern und den Launcher zum Absturz bringen können. Jede ' +
+      'Entpackstelle im Programm prüft die deklarierte Größe jetzt vorher gegen eine Obergrenze.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'instanzbild-pfad-nicht-abgesichert',
+    title: 'Ein eigenes Instanz-Icon oder ein eigener Hintergrund konnte theoretisch aus dem vorgesehenen Ordner ausbrechen',
+    detail:
+      'Die Funktion, die aus dem gespeicherten Verweis eines Icons oder Hintergrundbilds den echten ' +
+      'Dateipfad baut, nutzte an dieser einen Stelle einen einfachen Pfad-Zusammenbau statt der im ' +
+      'restlichen Programm überall verwendeten, geprüften Funktion dafür. Ein Verweis mit "../"-Anteilen ' +
+      'hätte auf eine Datei außerhalb des Icon-Ordners zeigen können. Über die normale Bedienung des ' +
+      'Launchers war das nicht auslösbar, nur über einen ungewöhnlichen, von außen erzwungenen Wert. Die ' +
+      'Stelle nutzt jetzt dieselbe geprüfte Funktion wie der Rest des Programms.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'java-test-kanal-ohne-einschraenkung',
+    title: 'Ein interner, in der Oberfläche nirgends verwendeter Kanal konnte jede beliebige Datei ausführen',
+    detail:
+      'Ein technischer Kanal, mit dem sich eine Java-Installation an einem bestimmten Pfad prüfen lässt, ' +
+      'kontrollierte nur, ob am angegebenen Pfad überhaupt eine Datei liegt, danach wurde sie ausgeführt. ' +
+      'Es gab keine Prüfung, ob es sich tatsächlich um eine Java-Installation handelt. Dieser Kanal wurde ' +
+      'zu keinem Zeitpunkt von der Oberfläche des Launchers selbst aufgerufen. Da er trotzdem vorhanden ' +
+      'war, wurde er vollständig entfernt statt nur eingeschränkt. Die eigentliche Java-Erkennung, die ' +
+      'immer nur die eigenen, selbst ermittelten Installationspfade prüft, ist davon nicht betroffen.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'sicherungs-pfad-ohne-instanzpruefung',
+    title: 'Drei Funktionen der Datensicherung prüften nicht, ob die angegebene Instanz überhaupt existiert',
+    detail:
+      'Sicherungen auflisten, eine Sicherung löschen und eine Sicherung wiederherstellen bauten den ' +
+      'betroffenen Ordnerpfad direkt aus der übergebenen Instanz-Kennung, ohne vorher wie an anderer ' +
+      'Stelle im selben Bereich zu prüfen, dass diese Kennung zu einer wirklich vorhandenen Instanz ' +
+      'gehört. Über die normale Bedienung des Launchers war das nicht auslösbar, da dort immer schon eine ' +
+      'geöffnete oder aufgelistete, also echte Instanz zugrunde liegt. Alle drei Stellen prüfen jetzt ' +
+      'zuerst, ob die Instanz existiert, genau wie es an der vierten, vergleichbaren Stelle schon der ' +
+      'Fall war.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'download-umleitung-ohne-ziel-einschraenkung',
+    title: 'Ein Download konnte über eine Umleitung auf eine Adresse im eigenen Netzwerk gelenkt werden',
+    detail:
+      'Wird eine Mod- oder Modpack-Datei von einer Adresse heruntergeladen, die auf eine andere Adresse ' +
+      'umleitet, folgte der Launcher dieser Umleitung ohne zu prüfen, wohin sie tatsächlich zeigt. Eine ' +
+      'manipulierte Downloadadresse hätte so eine Anfrage an eine Adresse im eigenen Netzwerk des Nutzers ' +
+      'auslösen können (zum Beispiel den eigenen Rechner selbst oder ein Gerät im selben Netzwerk), ohne ' +
+      'dass davon mehr als eine einzelne, harmlose Anfrage ausging. Umleitungen auf solche Adressen werden ' +
+      'jetzt abgelehnt.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'einstellungsdatei-ohne-eingeschraenkte-rechte',
+    title: 'Die Einstellungs- und Kontodatei wurden ohne eingeschränkte Dateirechte gespeichert',
+    detail:
+      'Die Dateien, in denen Einstellungen und Kontodaten liegen, wurden mit den vom Betriebssystem ' +
+      'vergebenen Standardrechten geschrieben. Auf einem Rechner, den sich mehrere Benutzerkonten teilen, ' +
+      'vor allem unter Linux oder macOS, hätte dadurch ein anderes Benutzerkonto auf demselben Rechner ' +
+      'diese Dateien lesen können. Unter Windows ist das durch die übliche Ordnervererbung des eigenen ' +
+      'Benutzerprofils deutlich weniger relevant. Beide Dateien werden jetzt nur noch für das eigene ' +
+      'Benutzerkonto lesbar geschrieben.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.20',
+    platforms: ['macOS', 'Linux']
+  },
+  {
+    id: 'curseforge-schluessel-unverschluesselt',
+    title: 'Der eigene CurseForge-API-Schlüssel liegt unverschlüsselt in der Einstellungsdatei',
+    detail:
+      'Anders als die Microsoft-Anmeldedaten wird ein eingetragener eigener CurseForge-API-Schlüssel ' +
+      'nicht über die Verschlüsselung des Betriebssystems geschützt, sondern als Klartext gespeichert. ' +
+      'Das Feld ist nur für Nutzer relevant, die von sich aus einen eigenen Schlüssel eingetragen haben. ' +
+      'Eine echte Behebung würde das Speicherformat der Einstellungsdatei ändern und eine Übernahme ' +
+      'bereits gespeicherter Schlüssel brauchen, das steht noch aus.',
+    state: 'investigating',
+    since: '2026-09-20'
   }
 ]
 

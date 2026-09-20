@@ -12,7 +12,7 @@ import type {
   InstanceSummary,
   LoaderId
 } from '@shared/types'
-import { ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES } from '../paths'
+import { ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES, safeJoin } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { emit } from '../events'
 import { log } from '../logger'
@@ -590,7 +590,18 @@ export function setInstanceImage(id: string, sourceFile: string, kind: 'icon' | 
 /** Resolves an `img:` reference to an absolute path for the renderer. */
 export function resolveInstanceImage(id: string, reference: string | null): string | null {
   if (!reference || !reference.startsWith('img:')) return null
-  const file = join(paths.icons(id), reference.slice(4))
+  // `appearance.icon`/`appearance.background` reach here straight from
+  // `instance:update` with no validation beyond being a string. A plain
+  // `join` let a reference with "../" segments resolve to any file the
+  // launcher process can read, anywhere on disk, and hand its path back to
+  // the renderer as an image. `safeJoin` throws on exactly that, which is
+  // treated the same as a reference that never pointed at a real file.
+  let file: string
+  try {
+    file = safeJoin(paths.icons(id), reference.slice(4))
+  } catch {
+    return null
+  }
   return existsSync(file) ? file : null
 }
 

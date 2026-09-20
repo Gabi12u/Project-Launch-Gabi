@@ -236,7 +236,7 @@ function writeLocally(report: ErrorReport): void {
   try {
     const dir = reportsDir()
     mkdirSync(dir, { recursive: true })
-    writeFileSync(join(dir, `${report.id}.json`), JSON.stringify(report, null, 2), 'utf8')
+    writeFileSync(join(dir, `${report.id}.json`), JSON.stringify(report, null, 2), { encoding: 'utf8', mode: 0o600 })
   } catch (err) {
     // Reporting must never become the thing that breaks.
     logger.warn('Fehlerbericht konnte nicht gespeichert werden:', err)

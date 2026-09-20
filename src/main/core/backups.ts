@@ -60,6 +60,8 @@ function writeIndex(instanceId: string, entries: BackupEntry[]): void {
 
 export function listBackups(instanceId?: string): BackupEntry[] {
   if (instanceId) {
+    // See the identical guard in `restoreBackupUnlocked`/`deleteBackup`.
+    getInstance(instanceId)
     const index = readIndex(instanceId)
     // A hand-edited or truncated backups.json can parse as the wrong shape.
     if (!Array.isArray(index)) return []
@@ -284,6 +286,14 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
 }
 
 async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
+  // Every path below is built from `instanceId` before it is used for
+  // anything else. `paths.instanceBackups` is a plain join, so an id that
+  // never belonged to a real instance would otherwise still resolve
+  // somewhere and let `readIndex`/`backupPath` below act on whatever sits
+  // there. Checked first and its result discarded on purpose: the guard is
+  // that it throws for anything that is not a genuine instance.
+  getInstance(instanceId)
+
   if (isRunning(instanceId)) {
     throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du eine Sicherung einspielst.')
   }
@@ -484,6 +494,9 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
  * of the index and silently dropping a just-created entry.
  */
 export async function deleteBackup(instanceId: string, backupId: string): Promise<void> {
+  // See the identical guard at the top of `restoreBackupUnlocked`: everything
+  // below builds a path from `instanceId` before touching anything else.
+  getInstance(instanceId)
   return withInstanceLock(instanceId, async () => {
     const entries = readIndex(instanceId)
     const entry = entries.find((e) => e.id === backupId)

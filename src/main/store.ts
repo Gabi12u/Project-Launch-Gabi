@@ -16,7 +16,13 @@ export function writeJsonAtomic(file: string, data: unknown): void {
   // data — or fails outright on Windows.
   const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`
   try {
-    writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')
+    // Every file this writes lives in the launcher's own data directory and
+    // is meaningful only to this one user, accounts and settings included.
+    // Without an explicit mode it took whatever the OS default happened to
+    // be, which on a shared Linux or macOS machine can leave it readable by
+    // every other account on that machine. Windows has no equivalent
+    // permission bit, so this is a no-op there, not a regression.
+    writeFileSync(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 })
     renameSync(tmp, file)
   } catch (err) {
     try {

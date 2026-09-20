@@ -40,7 +40,10 @@ function currentFileName(): string {
 }
 
 function openStream(): void {
-  stream = createWriteStream(join(currentDir, currentFileName()), { flags: 'a' })
+  // Log lines can include a raw error body from Microsoft or a file path
+  // under the user's own account name, so the file gets the same owner-only
+  // permission as the settings and account files.
+  stream = createWriteStream(join(currentDir, currentFileName()), { flags: 'a', mode: 0o600 })
   // An unhandled 'error' on a stream is a hard throw in Node, so a full disk or
   // a revoked permission would take the whole launcher down over logging.
   stream.on('error', (err) => {
