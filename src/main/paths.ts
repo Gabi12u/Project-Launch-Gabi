@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
+import { basename, join, resolve, sep } from 'node:path'
 import { getSettings } from './store'
 
 /**
@@ -100,6 +100,33 @@ export function safeJoin(root: string, relative: string): string {
     throw new Error(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`)
   }
   return target
+}
+
+/**
+ * Reduces a content item's stored file name to a bare file name before it is
+ * joined into a mods/resourcepacks/shaderpacks/datapacks folder.
+ *
+ * A `ContentItem.fileName` is meant to be exactly that, a bare name, but it
+ * starts life as a provider's own string or a value that reached
+ * `instance.content` through whatever wrote it, and nothing enforces the
+ * shape at the type level once it round-trips through IPC. Originally only
+ * enforced where a mod is installed or updated; `core/instances.ts`'s own
+ * enable/disable toggle joined the stored name straight in without this,
+ * the one content write path that did not go through `core/content.ts` at
+ * all. Shared here instead of duplicated, since both files need the exact
+ * same rule and neither may import the other without a cycle.
+ */
+export function contentFileName(fileName: string): string {
+  const safe = basename(fileName.replace(/\\/g, '/'))
+  if (!safe || safe === '.' || safe === '..') {
+    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+  }
+  return safe
+}
+
+/** Joins a stored file name into a content folder, pinned to it. */
+export function contentPath(dir: string, fileName: string): string {
+  return join(dir, contentFileName(fileName))
 }
 
 /**

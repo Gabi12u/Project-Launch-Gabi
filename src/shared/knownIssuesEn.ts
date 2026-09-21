@@ -946,6 +946,37 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'matters to anyone who entered their own key in the first place. A real fix would change the ' +
       'settings file’s storage format and need to carry over already-saved keys, which is still ' +
       'outstanding.'
+  },
+  'sicherung-ordner-liste-ohne-pruefung': {
+    title: 'The folder list for backing up and restoring was not limited to the real backup folders',
+    detail:
+      'Which subfolders of an instance a backup covers (worlds, config, mods and so on) is stored as ' +
+      'a short list of folder names and read back both when creating and when restoring a backup. ' +
+      'This list was inserted into file paths unchecked. A list with "../" segments could therefore ' +
+      'have packed a folder outside the instance when creating a backup, and moved a folder outside ' +
+      'the instance when restoring one. Nothing in the launcher’s ordinary use could trigger this, ' +
+      'since only the six intended folder names are ever offered there. Both spots now accept only ' +
+      'those six known names, anything else is dropped.'
+  },
+  'instanz-aktualisieren-ohne-feldbeschraenkung': {
+    title: 'Editing an instance was not limited to the fields meant for it',
+    detail:
+      'An instance’s name, description, group, appearance, settings and favourite status can be ' +
+      'changed through a dedicated edit call. The function behind it, however, actually accepted any ' +
+      'field handed to it, not only those six, because the restriction only existed as a type ' +
+      'declaration, never enforced at runtime. Nothing in the launcher’s ordinary use could trigger ' +
+      'this, since the interface never sends more than those six fields. The function now accepts ' +
+      'only those six fields, regardless of whatever else is sent along with them.'
+  },
+  'inhalt-umbenennen-ohne-pruefung': {
+    title: 'Enabling and disabling a mod or a pack did not check the file name',
+    detail:
+      'Every other spot that touches a mod, resource pack, shader pack or data pack file first reduces ' +
+      'its name to a bare file name with no folder parts. Enabling and disabling one (adding or ' +
+      'removing the extension Minecraft recognises as disabled) did not do that and built the path ' +
+      'straight from the stored name. Nothing in the launcher’s ordinary use could trigger this, since ' +
+      'a file name only ever arrives there already cleaned up. This spot now uses the same check as ' +
+      'the rest of the program.'
   }
 }
 

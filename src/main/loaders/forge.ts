@@ -8,7 +8,7 @@ import type { LoaderVersion } from '@shared/types'
 import { paths, safeJoin, sanitizeVersionId } from '../paths'
 import { writeJsonAtomic } from '../store'
 import { downloadAll, downloadFile, fetchJsonCached, fetchText, sha1File} from '../core/net'
-import { extractSubtree, readEntryJson, readEntryText } from '../core/archive'
+import { assertReasonableSize, extractSubtree, readEntryJson, readEntryText } from '../core/archive'
 import {
   clientJarPath,
   loadVersionJson,
@@ -405,6 +405,7 @@ export async function installForgeLike(
           const zip = new AdmZip(installer)
           const zipEntry = zip.getEntry(entry)
           if (zipEntry) {
+            assertReasonableSize(zipEntry)
             mkdirSync(targetParent, { recursive: true })
             writeFileSync(target, zipEntry.getData())
           }
@@ -545,6 +546,7 @@ async function installLegacyForge(
   const zip = new AdmZip(installer)
   const entry = zip.getEntry(profile.install.filePath)
   if (entry) {
+    assertReasonableSize(entry)
     mkdirSync(join(target, '..'), { recursive: true })
     writeFileSync(target, entry.getData())
   } else {

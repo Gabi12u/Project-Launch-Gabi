@@ -12,7 +12,7 @@ import type {
   InstanceSummary,
   LoaderId
 } from '@shared/types'
-import { ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES, safeJoin } from '../paths'
+import { contentPath, ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES, safeJoin } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { emit } from '../events'
 import { log } from '../logger'
@@ -418,10 +418,19 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
 export function updateInstance(id: string, patch: InstancePatch): Instance {
   const current = getInstance(id)
 
+  // `InstancePatch`'s type only allows six fields, but that is a compile-time
+  // promise: nothing enforced it once `patch` came off IPC as a plain object,
+  // and `...patch` copied whatever the caller actually sent, including
+  // fields like `content`, `installed` or `mcVersion` that this channel was
+  // never meant to touch. Listed explicitly instead of spread, so a field
+  // outside this list is silently ignored rather than silently accepted.
   const next: Instance = {
     ...current,
-    ...patch,
     id: current.id,
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.description !== undefined ? { description: patch.description } : {}),
+    ...(patch.group !== undefined ? { group: patch.group } : {}),
+    ...(patch.favorite !== undefined ? { favorite: patch.favorite } : {}),
     appearance: { ...current.appearance, ...patch.appearance },
     settings: { ...current.settings, ...patch.settings }
   }
@@ -865,14 +874,17 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
     }
 
     const dir = dirMap[item.type]
-    const currentPath = join(dir, item.fileName)
+    // The one content write path that never went through `core/content.ts`,
+    // so it never picked up the `basename()` guard every install/update/
+    // removal there already applies to `fileName`.
+    const currentPath = contentPath(dir, item.fileName)
     const bare = item.fileName.endsWith('.disabled')
       ? item.fileName.slice(0, -'.disabled'.length)
       : item.fileName
     const nextName = enabled ? bare : `${bare}.disabled`
 
     if (existsSync(currentPath) && nextName !== item.fileName) {
-      renameSync(currentPath, join(dir, nextName))
+      renameSync(currentPath, contentPath(dir, nextName))
     }
 
     const content = instance.content.map((c) =>

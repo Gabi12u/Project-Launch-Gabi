@@ -1411,6 +1411,51 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'bereits gespeicherter Schlüssel brauchen, das steht noch aus.',
     state: 'investigating',
     since: '2026-09-20'
+  },
+  {
+    id: 'sicherung-ordner-liste-ohne-pruefung',
+    title: 'Die Ordnerliste beim Sichern und Wiederherstellen war nicht auf die echten Sicherungsordner eingeschränkt',
+    detail:
+      'Welche Unterordner einer Instanz eine Sicherung umfasst (Welten, Konfiguration, Mods und so ' +
+      'weiter) wird als kurze Liste von Ordnernamen gespeichert und beim Sichern wie beim ' +
+      'Wiederherstellen wieder gelesen. Diese Liste wurde ungeprüft in Dateipfade eingesetzt. Eine ' +
+      'Liste mit "../"-Anteilen hätte deshalb sowohl beim Erstellen einer Sicherung einen Ordner ' +
+      'außerhalb der Instanz einpacken als auch beim Wiederherstellen einen Ordner außerhalb der ' +
+      'Instanz verschieben können. Über die normale Bedienung des Launchers war das nicht auslösbar, ' +
+      'da dort immer nur die sechs vorgesehenen Ordnernamen zur Auswahl stehen. Beide Stellen lassen ' +
+      'jetzt ausschließlich diese sechs bekannten Namen zu, alles andere wird verworfen.',
+    state: 'fixed',
+    since: '2026-09-21',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'instanz-aktualisieren-ohne-feldbeschraenkung',
+    title: 'Eine Instanz zu bearbeiten war nicht auf die dafür vorgesehenen Felder eingeschränkt',
+    detail:
+      'Name, Beschreibung, Gruppe, Aussehen, Einstellungen und Favoritenstatus einer Instanz lassen ' +
+      'sich über ein eigenes Bearbeiten-Feld ändern. Die Funktion dahinter übernahm aber tatsächlich ' +
+      'jedes Feld, das ihr übergeben wurde, nicht nur diese sechs, weil die Beschränkung nur als ' +
+      'Typ-Angabe bestand, aber nicht zur Laufzeit erzwungen wurde. Über die normale Bedienung des ' +
+      'Launchers war das nicht auslösbar, da die Oberfläche dort nie mehr als diese sechs Felder ' +
+      'sendet. Die Funktion übernimmt jetzt ausschließlich noch diese sechs Felder, unabhängig davon, ' +
+      'was sonst noch mitgeschickt wird.',
+    state: 'fixed',
+    since: '2026-09-21',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'inhalt-umbenennen-ohne-pruefung',
+    title: 'Einen Mod oder ein Paket ein- und auszuschalten prüfte den Dateinamen nicht ab',
+    detail:
+      'Jede andere Stelle, die eine Mod-, Ressourcenpaket-, Shader- oder Datenpaket-Datei anfasst, ' +
+      'reduziert deren Namen zuerst auf einen reinen Dateinamen ohne Ordneranteile. Das Ein- und ' +
+      'Ausschalten (das Anhängen bzw. Entfernen der Endung, mit der Minecraft eine deaktivierte Datei ' +
+      'erkennt) tat das nicht und baute den Pfad direkt aus dem gespeicherten Namen zusammen. Über die ' +
+      'normale Bedienung des Launchers war das nicht auslösbar, da ein Dateiname dort immer schon ' +
+      'bereinigt zustande kommt. Diese Stelle nutzt jetzt dieselbe Prüfung wie der Rest des Programms.',
+    state: 'fixed',
+    since: '2026-09-21',
+    fixedIn: '1.0.20'
   }
 ]
 

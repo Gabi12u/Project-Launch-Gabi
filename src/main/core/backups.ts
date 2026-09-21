@@ -36,6 +36,31 @@ function backupPath(instanceId: string, fileName: string): string {
   return target
 }
 
+/**
+ * Confirms `instanceId` cannot walk `paths.instanceBackups` outside the
+ * shared backups root, without requiring a live instance to exist for it.
+ *
+ * Deleting an instance removes its folder and its backup folder in two
+ * separate steps, on purpose, because a locked file (a virus scanner, an
+ * indexer) can make the second one fail while the first already succeeded.
+ * The backup folder that is left behind then belongs to no instance any
+ * more, and listing/deleting it from the all-instances backup view is the
+ * only cleanup path a user has for that case. Requiring `getInstance` to
+ * succeed here, the same way `restoreBackupUnlocked` correctly does before
+ * writing into a game folder that must exist, would make that orphaned
+ * folder permanently invisible instead. This checks the one thing that
+ * actually matters for these two read/delete operations: that the id still
+ * resolves inside the backups root, not that it currently names a real
+ * instance.
+ */
+function assertBackupIdSafe(instanceId: string): void {
+  const root = resolve(paths.backups())
+  const dir = resolve(paths.instanceBackups(instanceId))
+  if (dir !== root && !dir.startsWith(root + sep)) {
+    throw new Error(`Ungültige Instanz-Kennung für Sicherungen: ${instanceId}`)
+  }
+}
+
 /** Folders that make sense to snapshot, in the order shown in the UI. */
 export const BACKUP_TARGETS = [
   { key: 'saves', label: 'Welten' },
@@ -45,6 +70,23 @@ export const BACKUP_TARGETS = [
   { key: 'shaderpacks', label: 'Shader' },
   { key: 'screenshots', label: 'Screenshots' }
 ] as const
+
+const BACKUP_TARGET_KEYS = new Set<string>(BACKUP_TARGETS.map((t) => t.key))
+
+/**
+ * Keeps only the folder keys this feature actually knows about.
+ *
+ * `includes` reaches `createBackupUnlocked` straight from `instance:update`'s
+ * neighbour `backups:create`, and `entry.includes` written into `backups.json`
+ * is read back by a restore later. Both used to be handed to `join()`
+ * unchecked; a key with "../" segments packed, and on restore moved aside,
+ * a folder that was never part of the game directory at all. Every real
+ * caller only ever needs one of the six fixed keys below, so anything else
+ * is simply dropped rather than trusted.
+ */
+function sanitizeIncludes(includes: readonly string[]): string[] {
+  return includes.filter((key) => BACKUP_TARGET_KEYS.has(key))
+}
 
 function indexFile(instanceId: string): string {
   return join(paths.instanceBackups(instanceId), 'backups.json')
@@ -60,8 +102,7 @@ function writeIndex(instanceId: string, entries: BackupEntry[]): void {
 
 export function listBackups(instanceId?: string): BackupEntry[] {
   if (instanceId) {
-    // See the identical guard in `restoreBackupUnlocked`/`deleteBackup`.
-    getInstance(instanceId)
+    assertBackupIdSafe(instanceId)
     const index = readIndex(instanceId)
     // A hand-edited or truncated backups.json can parse as the wrong shape.
     if (!Array.isArray(index)) return []
@@ -141,7 +182,8 @@ async function createBackupUnlocked(
   options: CreateBackupOptions = {}
 ): Promise<BackupEntry> {
   const instance = getInstance(instanceId)
-  const includes = options.includes?.length ? options.includes : ['saves', 'config']
+  const requested = options.includes?.length ? sanitizeIncludes(options.includes) : []
+  const includes = requested.length > 0 ? requested : ['saves', 'config']
   const reason = options.reason ?? 'manual'
 
   return withTask(
@@ -286,12 +328,12 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
 }
 
 async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
-  // Every path below is built from `instanceId` before it is used for
-  // anything else. `paths.instanceBackups` is a plain join, so an id that
-  // never belonged to a real instance would otherwise still resolve
-  // somewhere and let `readIndex`/`backupPath` below act on whatever sits
-  // there. Checked first and its result discarded on purpose: the guard is
-  // that it throws for anything that is not a genuine instance.
+  // Unlike `listBackups`/`deleteBackup`, which only need `instanceId` to stay
+  // inside the backups root (see `assertBackupIdSafe`), this one genuinely
+  // needs a live instance: it is about to move that instance's own game
+  // folder aside and unpack into it. `getInstance` throwing for an id that
+  // never belonged to a real instance is exactly the guard wanted here, not
+  // merely a stand-in for a path check.
   getInstance(instanceId)
 
   if (isRunning(instanceId)) {
@@ -333,7 +375,13 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   if (!existsSync(archive)) throw new Error('Die Sicherungsdatei fehlt auf der Festplatte.')
 
   const instance = getInstance(instanceId)
-  const includes = entry.includes?.length ? entry.includes : ['saves', 'config']
+  // `entry.includes` is data written to `backups.json` at an earlier point in
+  // time, potentially by an older build or a hand edit, not necessarily
+  // already-sanitized input. Filtered the same way `createBackupUnlocked`
+  // filters a fresh request, for the same reason: every `join(gameDir, key)`
+  // and `join(parked, key)` below trusts `key` completely.
+  const sanitized = entry.includes?.length ? sanitizeIncludes(entry.includes) : []
+  const includes = sanitized.length > 0 ? sanitized : ['saves', 'config']
 
   // Held for the whole restore, not just the safety-copy step: the archive is
   // not opened until `extractAll` near the end.
@@ -494,9 +542,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
  * of the index and silently dropping a just-created entry.
  */
 export async function deleteBackup(instanceId: string, backupId: string): Promise<void> {
-  // See the identical guard at the top of `restoreBackupUnlocked`: everything
-  // below builds a path from `instanceId` before touching anything else.
-  getInstance(instanceId)
+  assertBackupIdSafe(instanceId)
   return withInstanceLock(instanceId, async () => {
     const entries = readIndex(instanceId)
     const entry = entries.find((e) => e.id === backupId)

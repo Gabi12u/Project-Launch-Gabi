@@ -8,7 +8,7 @@ import type {
   Instance,
   ProjectVersion
 } from '@shared/types'
-import { contentDir } from '../paths'
+import { contentDir, contentFileName, contentPath } from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
@@ -102,27 +102,6 @@ function targetDir(instanceId: string, type: ContentType): string {
   return dir
 }
 
-/**
- * Strips any directory part from a provider-supplied file name.
- *
- * `fileName` comes straight from the Modrinth/CurseForge API, so a crafted
- * release could name its file `../../../autostart/evil.jar` and escape the
- * mods folder — on install, and just as badly later on update (overwrite) or
- * removal (delete). A content file only ever needs a bare name, so anything
- * else is dropped rather than trusted.
- */
-function contentFileName(fileName: string): string {
-  const safe = basename(fileName.replace(/\\/g, '/'))
-  if (!safe || safe === '.' || safe === '..') {
-    throw new Error(`Ungültiger Dateiname aus der Quelle: "${fileName}"`)
-  }
-  return safe
-}
-
-/** Joins a provider-supplied file name into a content folder, pinned to it. */
-function contentPath(dir: string, fileName: string): string {
-  return join(dir, contentFileName(fileName))
-}
 
 function toContentItem(
   version: ProjectVersion,

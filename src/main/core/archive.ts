@@ -31,7 +31,7 @@ const logger = log('archive')
 const MAX_ENTRY_SIZE = 1024 * 1024 * 1024
 
 /** Throws before `entry.getData()` would inflate something absurd into memory. */
-function assertReasonableSize(entry: { header: { size: number }; entryName: string }): void {
+export function assertReasonableSize(entry: { header: { size: number }; entryName: string }): void {
   if (entry.header.size > MAX_ENTRY_SIZE) {
     throw new Error(
       `${entry.entryName} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`
@@ -245,8 +245,13 @@ export async function zipFolder(
 ): Promise<number> {
   const zip = new AdmZip()
 
+  // `include` names folders relative to `sourceDir` (backups.ts passes the
+  // fixed `BACKUP_TARGETS` keys, but nothing here enforced that): a plain
+  // `join` let an entry with "../" segments walk out of `sourceDir` entirely
+  // and pack an arbitrary, unrelated folder into the archive. `safeJoin`
+  // throws for exactly that instead of silently resolving outside.
   const roots = options.include?.length
-    ? options.include.map((p) => join(sourceDir, p))
+    ? options.include.map((p) => safeJoin(sourceDir, p))
     : [sourceDir]
 
   const files: string[] = []
