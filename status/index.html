@@ -1183,10 +1183,50 @@ footer a:hover { color: var(--ink); }
   // that is the one place it can never drift out of date.
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.19",
+    "version": "1.0.18 und 1.0.19",
     "date": "2026-09-13",
-    "headline": "Kleinere Fehlerbehebung.",
+    "headline": "Die Anmeldung läuft jetzt über eine eigene Anwendung, ohne Fehler 400.",
     "changes": [
+      {
+        "kind": "fixed",
+        "text": "Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab, weil der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete und Microsoft diese gemeinsame Anwendung für fremde Programme zunehmend ablehnt. Launch Gabi hat jetzt eine eigene Anwendung, mit der der gesamte Anmeldeweg von Hand nachgemessen wurde."
+      },
+      {
+        "kind": "new",
+        "text": "Ein eigenes Live-Log-Fenster öffnet sich beim Start jeder Instanz, im Stil eines klassischen Launcher-Konsolenfensters. Es schließt sich von selbst, sobald das Spiel endet, und der Log-Tab der Instanz öffnet sich dann automatisch im Hauptfenster."
+      },
+      {
+        "kind": "fixed",
+        "text": "Das Launcher-Fenster zu schließen konnte ein laufendes Spiel mit beenden, selbst wenn unter Einstellungen eingetragen war, es weiterlaufen zu lassen. Das Fenster versteckt sich jetzt stattdessen und kommt zurück, sobald kein Spiel mehr läuft."
+      },
+      {
+        "kind": "new",
+        "text": "Ein Fehler in der Programmoberfläche lässt nicht mehr das ganze Fenster leer zurück, sondern zeigt jetzt einen Hinweis mit der Möglichkeit, es noch einmal zu versuchen oder zur Startseite zurückzukehren."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine fertige oder fehlgeschlagene Aufgabe konnte in der Aufgabenanzeige hängen bleiben, statt nach kurzer Zeit zu verschwinden."
+      },
+      {
+        "kind": "fixed",
+        "text": "Ein Konto ließ sich ohne Rückfrage entfernen, und der Datenschutz-Dialog zu Fehlerberichten beantwortete sich dauerhaft mit Nein, wenn man ihn nur wegklickte statt eine der beiden Schaltflächen zu nutzen."
+      },
+      {
+        "kind": "fixed",
+        "text": "Regler wie Arbeitsspeicher oder gleichzeitige Downloads schrieben bei jedem einzelnen Schritt sofort in die Einstellungsdatei, was auf langsameren Platten spürbar ruckelte."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine bewusst deaktivierte Mod konnte sich nach einer automatischen Aktualisierung unbemerkt wieder einschalten."
+      },
+      {
+        "kind": "new",
+        "text": "Kann das Betriebssystem keine Verschlüsselung für ein Anmeldetoken anbieten, was vor allem auf manchen Linux-Systemen vorkommt, zeigt der Kontobereich der Einstellungen jetzt einen dauerhaften Hinweis darauf."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine ganze Reihe weiterer, kleinerer Fehler bei der Reparatur, der Instanzverwaltung sowie der Fabric-, Quilt-, Forge- und Java-Installation, im Einzelnen auf der Statusseite aufgeführt."
+      },
       {
         "kind": "fixed",
         "text": "Die Beta-Funktion \"Eigene Startseite\" war unbeabsichtigt deaktiviert und ist jetzt wieder unter Einstellungen, Darstellung zu finden."
@@ -1194,10 +1234,50 @@ footer a:hover { color: var(--ink); }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.19",
+    "version": "1.0.18 und 1.0.19",
     "date": "2026-09-13",
-    "headline": "Small bug fix.",
+    "headline": "Sign in now runs through its own application, no more error 400.",
     "changes": [
+      {
+        "kind": "fixed",
+        "text": "For some accounts, Microsoft sign in aborted with error 400, because the launcher signed in with the official Minecraft launcher’s own application id, and Microsoft increasingly refuses that shared application for outside programs. Launch Gabi now has its own application, and the whole sign-in path was measured by hand against it."
+      },
+      {
+        "kind": "new",
+        "text": "A dedicated live-log window now opens whenever an instance starts, in the style of a classic launcher console window. It closes on its own once the game ends, and the instance’s Log tab then opens automatically in the main window."
+      },
+      {
+        "kind": "fixed",
+        "text": "Closing the launcher window could end a running game along with it, even with the setting saying to keep it going. The window now hides instead, and comes back once no game is running any more."
+      },
+      {
+        "kind": "new",
+        "text": "A fault in the interface no longer leaves the whole window blank. It now shows a message with a way to try again or go back to the home page."
+      },
+      {
+        "kind": "fixed",
+        "text": "A finished or failed task could get stuck in the task tray instead of disappearing after a moment."
+      },
+      {
+        "kind": "fixed",
+        "text": "An account could be removed with no confirmation, and the crash-report privacy dialog answered itself with No for good if it was merely dismissed rather than answered with one of its two buttons."
+      },
+      {
+        "kind": "fixed",
+        "text": "Sliders such as memory or concurrent downloads wrote to the settings file on every single step, which visibly stuttered on slower drives."
+      },
+      {
+        "kind": "fixed",
+        "text": "A deliberately disabled mod could quietly turn itself back on after an automatic update."
+      },
+      {
+        "kind": "new",
+        "text": "When the operating system cannot offer encryption for a sign-in token, which mostly happens on some Linux systems, the accounts section of Settings now shows a standing notice about it."
+      },
+      {
+        "kind": "fixed",
+        "text": "A number of further, smaller fixes to repair, instance management, and Fabric, Quilt, Forge and Java installation, listed individually on the status page."
+      },
       {
         "kind": "fixed",
         "text": "The \"custom start screen\" beta feature was unintentionally disabled and now lives under Settings, Appearance again."

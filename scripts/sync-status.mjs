@@ -54,10 +54,47 @@ async function bundleModule(sourceFile, outName) {
 const CHANGE_KINDS = ['new', 'improved', 'fixed']
 const ISSUE_STATES = ['investigating', 'fixing', 'fixed', 'limitation']
 
+/**
+ * Merges the newest run of same-day releases into one combined entry.
+ *
+ * A quick follow-up version shipped hours after the one before it (fixing a
+ * regression, or a single small thing spotted right away) got its own,
+ * separate "latest" box on the status page, and if its own changelog is a
+ * single short line, that box replaced a substantial release with what
+ * looks like the only thing that happened that day. `CHANGELOG` is sorted
+ * newest first, so this walks forward only as long as the date keeps
+ * matching the newest entry's, then presents the whole run as one release.
+ * An ordinary release with nothing else on the same day is a run of one and
+ * comes back unchanged.
+ */
+function combineSameDayReleases(list) {
+  const newest = list[0]
+  const run = []
+  for (const entry of list) {
+    if (entry.date !== newest.date) break
+    run.push(entry)
+  }
+  if (run.length <= 1) return newest
+
+  // Oldest of the run first, so the combined list reads as the story of the
+  // day rather than backwards.
+  const oldestFirst = [...run].reverse()
+  // The headline of whichever release in the run has the most to say, since
+  // a one-line hotfix headline should not stand in for the rest of the day.
+  const headlineSource = run.reduce((a, b) => (b.changes.length > a.changes.length ? b : a))
+
+  return {
+    version: oldestFirst.map((entry) => entry.version).join(' und '),
+    date: newest.date,
+    headline: headlineSource.headline,
+    changes: oldestFirst.flatMap((entry) => entry.changes)
+  }
+}
+
 try {
   const { CHANGELOG } = await bundleModule('changelog.ts', 'changelog.mjs')
-  const latest = CHANGELOG[0]
-  if (!latest) throw new Error('CHANGELOG ist leer.')
+  if (!CHANGELOG[0]) throw new Error('CHANGELOG ist leer.')
+  const latest = combineSameDayReleases(CHANGELOG)
 
   // The known-issues list travels the same way, so the page can never claim a
   // problem is solved while the list in the repository still says otherwise.
@@ -75,7 +112,7 @@ try {
     'issues-en.mjs'
   )
 
-  const latestEn = changelogLocalized('en')[0]
+  const latestEn = combineSameDayReleases(changelogLocalized('en'))
   const issuesEn = knownIssuesLocalized('en')
 
   const kindLabelEn = Object.fromEntries(
