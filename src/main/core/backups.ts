@@ -7,7 +7,7 @@ import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
 import { withTask } from '../tasks'
-import { extractAllSlowly, listEntries, zipFolder } from './archive'
+import { extractAllSlowly, listEntries, zipFolder, ZIP_TEMP_SUFFIX } from './archive'
 import { getInstance } from './instances'
 import { withRestoreLock } from './restoreLock'
 import { isRunning, isStarting } from './running'
@@ -382,6 +382,180 @@ export function pruneAllAutomaticBackups(): void {
   }
 }
 
+/**
+ * What a restore has done so far, written before it touches a single folder.
+ *
+ * `moved` is only the folders that actually existed and were parked aside;
+ * `newKeys` are folders the archive is about to create that the instance did
+ * not have before. Both are exactly what `recoverInterruptedRestores` needs
+ * to undo the parking and remove what the interrupted extraction created,
+ * without having to guess from whatever state the folders happen to be in.
+ */
+interface RestoreJournal {
+  moved: { key: string; from: string; to: string }[]
+  newKeys: string[]
+}
+
+function journalFile(stagingDir: string): string {
+  return join(stagingDir, 'journal.json')
+}
+
+/**
+ * Sweeps `zipFolder`'s own leftover temp files after a crash mid backup.
+ *
+ * Only ever removes a file ending in the exact suffix `zipFolder` writes
+ * itself (see `ZIP_TEMP_SUFFIX`); nothing else under the backups root is
+ * touched here, deliberately, so this can never grow into a general
+ * "delete old backups" cleanup, which is not what this is for.
+ */
+function cleanupTempBackupFiles(): void {
+  const root = paths.backups()
+  if (!existsSync(root)) return
+
+  let instanceIds: string[]
+  try {
+    instanceIds = readdirSync(root)
+  } catch (err) {
+    logger.warn('Sicherungsordner konnte für das Aufräumen von Zwischendateien nicht gelesen werden:', err)
+    return
+  }
+
+  for (const instanceId of instanceIds) {
+    const instanceDir = join(root, instanceId)
+    let entries: string[]
+    try {
+      if (!statSync(instanceDir).isDirectory()) continue
+      entries = readdirSync(instanceDir)
+    } catch (err) {
+      logger.warn(`Sicherungsordner von ${instanceId} nicht lesbar:`, err)
+      continue
+    }
+
+    for (const name of entries) {
+      if (!name.endsWith(ZIP_TEMP_SUFFIX)) continue
+      try {
+        rmSync(join(instanceDir, name), { force: true })
+        logger.info(`Unvollständige Sicherungsdatei ${name} von ${instanceId} entfernt`)
+      } catch (err) {
+        logger.warn(`Zwischendatei ${name} von ${instanceId} nicht entfernt:`, err)
+      }
+    }
+  }
+}
+
+/**
+ * Puts back whatever a restore parked aside but never got to finish, because
+ * the launcher died between moving the originals out of the way and cleaning
+ * up after itself (a crash, a forced update, a power loss). Also sweeps
+ * leftover temp files from an interrupted backup write (see
+ * `cleanupTempBackupFiles`); bundled into this one function rather than a
+ * second startup call, since both are the same kind of "the process died
+ * mid write" cleanup over the same backups folder tree.
+ *
+ * Called once at startup, before instances are loaded or a window exists, so
+ * nothing ever reads a game folder while it is still in this half moved
+ * state. Every failure is caught per staging folder: one instance's stuck
+ * restore must not stop another's from being recovered, and must not take
+ * startup down with it.
+ */
+export function recoverInterruptedRestores(): string[] {
+  cleanupTempBackupFiles()
+
+  const recovered: string[] = []
+  const root = paths.backups()
+  if (!existsSync(root)) return recovered
+
+  let instanceIds: string[]
+  try {
+    instanceIds = readdirSync(root)
+  } catch (err) {
+    logger.warn('Sicherungsordner konnte für die Wiederherstellungsprüfung nicht gelesen werden:', err)
+    return recovered
+  }
+
+  for (const instanceId of instanceIds) {
+    const instanceDir = join(root, instanceId)
+    let stagingNames: string[]
+    try {
+      if (!statSync(instanceDir).isDirectory()) continue
+      stagingNames = readdirSync(instanceDir).filter((name) => name.startsWith('restore-'))
+    } catch (err) {
+      logger.warn(`Sicherungsordner von ${instanceId} nicht lesbar:`, err)
+      continue
+    }
+
+    for (const name of stagingNames) {
+      try {
+        if (recoverOneInterruptedRestore(instanceId, join(instanceDir, name))) recovered.push(instanceId)
+      } catch (err) {
+        logger.error(`Wiederherstellung nach Absturz für ${instanceId}/${name} fehlgeschlagen:`, err)
+      }
+    }
+  }
+  return recovered
+}
+
+function recoverOneInterruptedRestore(instanceId: string, staging: string): boolean {
+  if (!existsSync(staging) || !statSync(staging).isDirectory()) return false
+
+  const file = journalFile(staging)
+  // No journal means either an older build's leftover or a folder some other
+  // process is still writing to; neither is something this function can
+  // safely interpret, so it is left alone rather than guessed at.
+  if (!existsSync(file)) return false
+
+  const journal = readJson<RestoreJournal | null>(file, null)
+  if (!journal || !Array.isArray(journal.moved) || !Array.isArray(journal.newKeys)) {
+    logger.warn(`Journal in ${staging} ist beschädigt oder unvollständig, wird übersprungen`)
+    return false
+  }
+
+  let ok = true
+  for (const item of journal.moved) {
+    // The parked copy missing means the rename that would have created it
+    // never ran, so `from`, whatever is there, is the untouched original.
+    if (!existsSync(item.to)) continue
+    try {
+      if (existsSync(item.from)) rmSync(item.from, { recursive: true, force: true })
+      renameSync(item.to, item.from)
+    } catch (err) {
+      ok = false
+      logger.error(
+        `${item.key} von ${instanceId} konnte nach einem Absturz nicht zurückgeholt werden, ` +
+          `die gesicherte Kopie bleibt in ${staging} liegen:`,
+        err
+      )
+    }
+  }
+
+  const gameDir = paths.gameDir(instanceId)
+  for (const key of journal.newKeys) {
+    try {
+      rmSync(join(gameDir, key), { recursive: true, force: true })
+    } catch (err) {
+      // Only a leftover new folder, not lost data, so this alone does not
+      // hold back deleting the staging folder below.
+      logger.warn(`${key} von ${instanceId} nach Absturz nicht aufgeräumt:`, err)
+    }
+  }
+
+  // Something above could not be undone: the staging folder, journal
+  // included, is the only record of it and stays put for the next startup
+  // to try again, instead of being deleted here and losing that record.
+  if (!ok) return false
+
+  try {
+    rmSync(staging, { recursive: true, force: true })
+  } catch (err) {
+    logger.warn(`Staging-Ordner ${staging} konnte nicht entfernt werden:`, err)
+    return false
+  }
+
+  logger.info(`Abgebrochene Wiederherstellung für ${instanceId} nach Absturz rückgängig gemacht`)
+
+  return true
+}
+
 export async function restoreBackup(instanceId: string, backupId: string): Promise<void> {
   // The marker is what `launch.ts` and `instances.ts` read. The instance lock
   // below only keeps two backup operations apart; it says nothing to the rest
@@ -506,12 +680,19 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
         const parked = join(paths.instanceBackups(instanceId), `restore-${randomUUID().slice(0, 8)}`)
         const moved: { key: string; from: string; to: string }[] = []
 
+        // Written before a single folder is touched: if the process dies
+        // anywhere below, this is what tells `recoverInterruptedRestores` on
+        // the next startup what was about to happen and how to undo it,
+        // instead of the parked originals sitting there forever unexplained.
+        const plan = includes.map((key) => ({ key, from: join(gameDir, key), to: join(parked, key) }))
+        writeJsonAtomic(journalFile(parked), {
+          moved: plan.filter((item) => existsSync(item.from)),
+          newKeys: includes.filter((key) => !existsSync(join(gameDir, key)))
+        } satisfies RestoreJournal)
+
         try {
-          for (const key of includes) {
-            const from = join(gameDir, key)
+          for (const { key, from, to } of plan) {
             if (!existsSync(from)) continue
-            const to = join(parked, key)
-            mkdirSync(parked, { recursive: true })
             renameSync(from, to)
             moved.push({ key, from, to })
           }

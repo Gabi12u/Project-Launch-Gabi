@@ -1884,8 +1884,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'liest Datapacks aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 ' +
       'fragt der Launcher beim Installieren, in welche Welt ein Datapack soll, und bereits installierte ' +
       'Datapacks lassen sich nachträglich einer Welt zuordnen.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-grosse-welten-speicher',
@@ -1894,8 +1895,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Beim Erstellen einer Sicherung wurde der gesamte Inhalt gleichzeitig in den Arbeitsspeicher geladen ' +
       'und erst am Ende geschrieben. Bei Welten mit mehreren Gigabyte reichte der Speicher dafür nicht. Ab ' +
       '1.0.20 wird Datei für Datei geschrieben, unabhängig von der Größe.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'wiederherstellung-absturz-daten-versteckt',
@@ -1905,8 +1907,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Rechner genau dann ab, blieben diese Ordner in einem versteckten Zwischenordner liegen, und nichts ' +
       'holte sie zurück. Für den Nutzer sah das wie verlorene Welten aus. Ab 1.0.20 erkennt der Launcher ' +
       'das beim nächsten Start und stellt den vorherigen Stand wieder her.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-ohne-fortschritt',
@@ -1914,8 +1917,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Während eine Sicherung erstellt oder wiederhergestellt wurde, drehte sich nur ein Kreis. Bei großen ' +
       'Welten wirkte das wie ein eingefrorenes Fenster. Ab 1.0.20 zeigt die Aufgabenanzeige den Fortschritt.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'jvm-argumente-anfuehrungszeichen',
@@ -1924,8 +1928,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein Argument wie -Dpfad="C:\\Program Files\\x" wurde mit einem übrig gebliebenen Anführungszeichen ' +
       'an Java übergeben, und der Start schlug ohne verständlichen Grund fehl. Ab 1.0.20 werden ' +
       'Anführungszeichen überall im Argument richtig entfernt.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'datenordner-wechsel-waehrend-spiel',
@@ -1934,8 +1939,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde der Datenordner in den Einstellungen geändert, während Minecraft lief, verlor der Launcher den ' +
       'Bezug zum laufenden Spiel: Stoppen und das Live-Log funktionierten nicht mehr. Ab 1.0.20 ist der ' +
       'Wechsel erst möglich, wenn kein Spiel mehr läuft.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'ordner-oeffnen-laufwerkswurzel',
@@ -1943,9 +1949,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Lag der Datenordner direkt auf einem Laufwerk wie D:\\, meldeten alle Knöpfe zum Öffnen eines Ordners, ' +
       'der Pfad liege außerhalb der Launcher-Ordner. Ab 1.0.20 funktionieren sie auch dort.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-24',
-    platforms: ['Windows']
+    platforms: ['Windows'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'curseforge-download-gesperrt-rohe-meldung',
@@ -1954,8 +1961,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Manche Autoren erlauben auf CurseForge keine Downloads über andere Programme. Beim Installieren ' +
       'eines solchen Mods erschien nur eine rohe HTTP-Meldung. Ab 1.0.20 erklärt der Launcher, dass der Mod ' +
       'nur über die CurseForge-Seite erhältlich ist.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'kompatibilitaet-einzeln-waehrend-alle',
@@ -1964,8 +1972,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Während „Alle automatisch beheben“ lief, blieben die einzelnen Knöpfe zum Beheben klickbar. Beide ' +
       'Abläufe kamen sich dann in die Quere, und die Anzeige konnte einen falschen Stand zeigen. Ab 1.0.20 ' +
       'sind die Knöpfe gesperrt, solange eine Korrektur läuft.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'startseite-spielen-tastatur',
@@ -1973,8 +1982,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Auf den Kacheln unter „Zuletzt gespielt“ ließ sich eine Instanz nur mit der Maus direkt starten oder ' +
       'stoppen. Ab 1.0.20 geht das auch mit der Tastatur.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'log-datei-tageswechsel',
@@ -1983,8 +1993,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Blieb der Launcher über Mitternacht geöffnet, schrieb er weiter in die Protokolldatei des Vortags. ' +
       'Nach einem kurzen Schreibfehler, etwa einer vollen Festplatte, protokollierte er bis zum Neustart gar ' +
       'nichts mehr. Ab 1.0.20 beginnt jeden Tag eine neue Datei, und nach einem Fehler wird es erneut versucht.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'versionsauswahl-hervorhebung-fehlt',
@@ -1992,8 +2003,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Die gerade installierte Version sollte in der Liste farblich markiert sein, die Markierung fehlte ' +
       'aber. Ab 1.0.20 ist sie sichtbar.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'einstellungen-ungespeichert-blitzt',
@@ -2001,8 +2013,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde beim Speichern ein Wert korrigiert, etwa eine leere Fensterbreite, erschien kurz die Leiste für ' +
       'ungespeicherte Änderungen, obwohl alles gespeichert war. Ab 1.0.20 nicht mehr.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'startseite-snapshot-paketformat',
@@ -2011,8 +2024,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Bei Snapshot-Versionen von Minecraft wurde das Startseiten-Paket mit einem zu alten Paketformat ' +
       'erstellt, und Minecraft zeigte dazu einen Hinweis. Ab 1.0.20 wird auch bei Snapshots das passende ' +
       'Format gewählt.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   }
 ]
 

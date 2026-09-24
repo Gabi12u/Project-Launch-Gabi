@@ -109,6 +109,12 @@ const PACK_FORMATS: [minVersion: string, format: number][] = [
   ['26.2', 88]
 ]
 
+/** Snapshot ids like "26w03a", "25w31a": two-digit year, two-digit week, build letter. */
+const SNAPSHOT_ID = /^(\d\d)w(\d\d)[a-z]$/
+
+/** Pre-release / release-candidate ids like "1.21.5-pre1", "1.21.5-rc1". */
+const PRE_RELEASE_ID = /^(.+?)-(?:pre|rc)\d+$/i
+
 /** `true` when `a` is older than `b`; equal versions compare as not-older. */
 function isOlder(a: string, b: string): boolean {
   const pa = a.split('.').map((n) => Number.parseInt(n, 10) || 0)
@@ -121,10 +127,26 @@ function isOlder(a: string, b: string): boolean {
   return false
 }
 
-function packFormatFor(mcVersion: string): number {
+export function packFormatFor(mcVersion: string): number {
+  // A snapshot id ("26w03a") is not a dotted version at all, so splitting it
+  // on dots and parseInt-ing the pieces used to compare as version "0", the
+  // lowest possible, and got the oldest format in the table instead of the
+  // newest. The table above carries no snapshot entries of its own to compare
+  // by year and week against, and a snapshot is always at or ahead of the
+  // newest listed release, so it gets that newest format outright.
+  if (SNAPSHOT_ID.test(mcVersion)) {
+    return PACK_FORMATS[PACK_FORMATS.length - 1][1]
+  }
+
+  // A pre-release or release candidate ("1.21.5-pre1", "1.21.5-rc1") ships
+  // the same pack_format as its eventual release, so it is compared by that
+  // base version instead of failing the dotted-number parse below.
+  const preRelease = mcVersion.match(PRE_RELEASE_ID)
+  const version = preRelease ? preRelease[1] : mcVersion
+
   let format = PACK_FORMATS[0][1]
   for (const [minVersion, value] of PACK_FORMATS) {
-    if (isOlder(mcVersion, minVersion)) break
+    if (isOlder(version, minVersion)) break
     format = value
   }
   return format

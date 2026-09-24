@@ -7,6 +7,7 @@ import { getSettings } from './store'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
+import { recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, pruneAdopted, runningCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
@@ -296,6 +297,16 @@ function bootstrap(): void {
       logger.error('Datenverzeichnis konnte nicht angelegt werden:', err)
     }
 
+    // Before instances are loaded or a window exists, so a restore the
+    // previous session never finished is put back together before anything
+    // else can read that instance's game folder in its half moved state.
+    let recoveredRestores: string[] = []
+    try {
+      recoveredRestores = recoverInterruptedRestores()
+    } catch (err) {
+      logger.error('Prüfung auf abgebrochene Wiederherstellungen fehlgeschlagen:', err)
+    }
+
     registerProtocol()
     registerIpc()
     // Before the instances are read, so their `running` flag reflects a game
@@ -330,6 +341,16 @@ function bootstrap(): void {
     // Give the renderer a moment to subscribe before anything is pushed.
     setTimeout(() => {
       bootSettled = true
+
+      // Told only now: at recovery time no window existed to show it in.
+      for (const instanceId of recoveredRestores) {
+        const name = tryGetInstance(instanceId)?.name ?? instanceId
+        notify(
+          'warning',
+          'Wiederherstellung rückgängig gemacht',
+          `Eine abgebrochene Wiederherstellung für „${name}“ wurde rückgängig gemacht, der vorherige Stand ist zurück.`
+        )
+      }
 
       // Each step stands alone. These write files and talk to the OS, so any
       // of them can throw on a machine with a locked config or a hostile

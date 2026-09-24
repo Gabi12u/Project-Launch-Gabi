@@ -1,4 +1,6 @@
 import AdmZip from 'adm-zip'
+import { ZipFile } from 'yazl'
+import { randomUUID } from 'node:crypto'
 import {
   copyFileSync,
   createWriteStream,
@@ -7,13 +9,16 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  renameSync,
+  rmSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { safeJoin } from '../paths'
 import { log } from '../logger'
+import { TaskCancelledError } from '../tasks'
 
 const logger = log('archive')
 
@@ -236,7 +241,20 @@ export interface ZipFolderOptions {
    * either way, so it is only worth a warning, not aborting the whole backup.
    */
   onSkipLink?: (file: string) => void
+  /** Throws `TaskCancelledError` at the next file boundary once aborted. */
+  signal?: AbortSignal
 }
+
+/**
+ * Marks a backup archive that `zipFolder` is still streaming into.
+ *
+ * The write goes to a file with this suffix next to the real target and is
+ * renamed on top of it only once complete, so a temp file still carrying this
+ * suffix means the process died mid write. Startup sweeps those away; a
+ * finished archive never has this suffix, so nothing else is ever at risk of
+ * matching it.
+ */
+export const ZIP_TEMP_SUFFIX = '.zip-part'
 
 function walk(dir: string, out: string[] = [], onSymlink?: (full: string) => void): string[] {
   if (!existsSync(dir)) return out
@@ -262,14 +280,20 @@ function walk(dir: string, out: string[] = [], onSymlink?: (full: string) => voi
   return out
 }
 
+/**
+ * Packs a folder into a zip archive, streaming both the read and the write
+ * side so that a multi-gigabyte world never has to sit fully in memory at
+ * once. `adm-zip`, used everywhere else in this file, only ever offered
+ * `getData()`/`toBuffer()` (whole entry, whole archive), which for a backup
+ * of a large world used to inflate the entire thing into memory before
+ * writing a single byte out. `yazl` streams straight from disk instead.
+ */
 export async function zipFolder(
   sourceDir: string,
   targetFile: string,
   options: ZipFolderOptions = {},
   onProgress?: (done: number, total: number) => void
 ): Promise<number> {
-  const zip = new AdmZip()
-
   // `include` names folders relative to `sourceDir` (backups.ts passes the
   // fixed `BACKUP_TARGETS` keys, but nothing here enforced that): a plain
   // `join` let an entry with "../" segments walk out of `sourceDir` entirely
@@ -295,8 +319,22 @@ export async function zipFolder(
     return true
   })
 
+  const zip = new ZipFile()
+  // An entry's data stream can still fail after it has been handed to yazl
+  // (the file vanishes mid read, a lock reappears), and once that happens
+  // yazl stops pumping entries for good. Captured here instead of left to
+  // throw as an unhandled 'error' event on the next tick; checked below to
+  // stop early and reported like any other failure of this function.
+  let streamError: unknown = null
+  zip.on('error', (err) => {
+    streamError = streamError ?? err
+  })
+
   let done = 0
   for (const file of filtered) {
+    if (streamError) break
+    if (options.signal?.aborted) throw new TaskCancelledError()
+
     const rel = relative(sourceDir, file).split(sep).join('/')
     // Defensive: `walk` no longer follows links, so this should be
     // unreachable, but an entry name escaping `sourceDir` is exactly what
@@ -310,7 +348,13 @@ export async function zipFolder(
     }
     const entryName = options.prefix ? `${options.prefix}/${rel}` : rel
     try {
-      zip.addFile(entryName, await readFile(file))
+      // Opened by hand rather than left to `addFile` itself, so a file
+      // Minecraft still has locked fails right here and reaches `onSkip`
+      // exactly like the old `readFile` call did, instead of surfacing much
+      // later as an opaque stream error with nothing to skip past.
+      const handle = await open(file, 'r')
+      const stats = await handle.stat()
+      zip.addReadStream(handle.createReadStream(), entryName, { size: stats.size, mtime: stats.mtime })
     } catch (err) {
       logger.warn(`Überspringe ${file}:`, err)
       options.onSkip?.(rel, err)
@@ -319,24 +363,46 @@ export async function zipFolder(
     if (done % 25 === 0) onProgress?.(done, filtered.length)
   }
 
+  if (streamError) throw streamError instanceof Error ? streamError : new Error(String(streamError))
+
   for (const extra of options.extraFiles ?? []) {
-    zip.addFile(extra.name, Buffer.isBuffer(extra.content) ? extra.content : Buffer.from(extra.content, 'utf8'))
+    zip.addBuffer(
+      Buffer.isBuffer(extra.content) ? extra.content : Buffer.from(extra.content, 'utf8'),
+      extra.name
+    )
   }
 
   onProgress?.(filtered.length, filtered.length)
 
   mkdirSync(dirname(targetFile), { recursive: true })
-  await new Promise<void>((resolve, reject) => {
-    zip.toBuffer(
-      (buffer) => {
-        const stream = createWriteStream(targetFile)
-        stream.on('error', reject)
-        stream.on('finish', () => resolve())
-        stream.end(buffer)
-      },
-      (err) => reject(err)
-    )
-  })
+  // Written into a temp file next to the target first, renamed onto it only
+  // once the whole archive is down: a crash or a killed process mid write
+  // then leaves an obviously-temporary file instead of a truncated archive
+  // sitting under the real backup name. `ZIP_TEMP_SUFFIX` is what a startup
+  // sweep looks for to clean those up.
+  const tempTarget = `${targetFile}.${process.pid}.${randomUUID().slice(0, 8)}${ZIP_TEMP_SUFFIX}`
+  try {
+    await new Promise<void>((resolvePromise, reject) => {
+      if (streamError) {
+        reject(streamError)
+        return
+      }
+      zip.on('error', reject)
+      const out = createWriteStream(tempTarget)
+      out.on('error', reject)
+      out.on('finish', () => resolvePromise())
+      zip.outputStream.pipe(out)
+      zip.end()
+    })
+    renameSync(tempTarget, targetFile)
+  } catch (err) {
+    try {
+      rmSync(tempTarget, { force: true })
+    } catch {
+      // best effort
+    }
+    throw err
+  }
 
   return filtered.length
 }

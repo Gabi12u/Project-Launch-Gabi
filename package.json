@@ -28,6 +28,7 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/yazl": "^3.3.1",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
@@ -39,6 +40,7 @@
     "adm-zip": "^0.6.0",
     "electron-updater": "^6.8.9",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "yazl": "^3.3.1"
   }
 }

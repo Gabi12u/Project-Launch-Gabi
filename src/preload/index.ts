@@ -122,7 +122,8 @@ const api = {
     updateAll: call(IPC.contentUpdateAll),
     importFile: call(IPC.contentImportFile),
     compatibility: call(IPC.contentCompatibility),
-    applyFix: call(IPC.contentApplyFix)
+    applyFix: call(IPC.contentApplyFix),
+    setDatapackWorlds: call(IPC.contentSetDatapackWorlds)
   },
 
   imports: {

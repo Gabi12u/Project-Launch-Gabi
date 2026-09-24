@@ -12,9 +12,13 @@ let minLevel: Level = 'info'
 let currentDir = ''
 let currentStamp = ''
 let currentPart = 0
+let lastReopenAttempt = 0
 
 /** A single very chatty session had nothing stopping today's file from growing without bound. */
 const MAX_FILE_BYTES = 20 * 1024 * 1024
+
+/** After a failed open (full disk, revoked permission), how long to wait before trying again. */
+const REOPEN_RETRY_MS = 5000
 
 // Crash reports scrub names and paths before they ever leave the machine
 // (see reports.ts). The plain log file never leaves it on its own, but it is
@@ -97,14 +101,34 @@ function write(level: Level, scope: string, args: unknown[]): void {
     sink(line)
   }
 
-  // A session left running for a long time, or one chatty enough to matter,
-  // used to have nothing capping today's file. Rolling to a new part is
-  // cheap and keeps a single file from growing without bound; the part
-  // files sit right next to each other and prune on the same weekly sweep.
-  if (currentDir && stream && stream.bytesWritten > MAX_FILE_BYTES) {
-    stream.end()
-    currentPart += 1
-    openStream()
+  if (currentDir) {
+    // currentStamp used to be set once in initLogger and never rechecked, so
+    // a session still running past midnight kept appending to yesterday's file.
+    const today = new Date().toISOString().slice(0, 10)
+    if (today !== currentStamp) {
+      stream?.end()
+      currentStamp = today
+      currentPart = 0
+      openStream()
+    }
+
+    // A stream that failed once (full disk, revoked permission) used to stay
+    // null forever. Retried on the next write instead, but throttled so a
+    // permanent failure does not reopen (and fail again) on every line.
+    if (!stream && Date.now() - lastReopenAttempt >= REOPEN_RETRY_MS) {
+      lastReopenAttempt = Date.now()
+      openStream()
+    }
+
+    // A session left running for a long time, or one chatty enough to matter,
+    // used to have nothing capping today's file. Rolling to a new part is
+    // cheap and keeps a single file from growing without bound; the part
+    // files sit right next to each other and prune on the same weekly sweep.
+    if (stream && stream.bytesWritten > MAX_FILE_BYTES) {
+      stream.end()
+      currentPart += 1
+      openStream()
+    }
   }
 
   stream?.write(line + '\n')

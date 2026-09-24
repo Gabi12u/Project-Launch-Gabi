@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { BackupEntry } from '@shared/types'
 import { navigate, toast, toastError, useStore } from '../lib/store'
 import { formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
-import { Confirm, EmptyState, Modal } from '../components/ui'
+import { Confirm, EmptyState, Modal, ProgressBar } from '../components/ui'
 import { IconFolder, IconRefresh, IconSave, IconTrash, IconUpload } from '../components/Icons'
 
 const REASON_LABELS: Record<BackupEntry['reason'], string> = {
@@ -22,7 +22,7 @@ const FOLDER_LABELS: Record<string, string> = {
 }
 
 export function BackupsView(): JSX.Element {
-  const { instances } = useStore()
+  const { instances, tasks } = useStore()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,6 +30,18 @@ export function BackupsView(): JSX.Element {
   const [createFor, setCreateFor] = useState<string | null>(null)
   const [restoring, setRestoring] = useState<BackupEntry | null>(null)
   const [deleting, setDeleting] = useState<BackupEntry | null>(null)
+
+  // `restoreBackup` already runs under `withTask`, with real progress from
+  // `extractAllSlowly`, the same one the TaskDock shows. Matched by instance
+  // and title rather than kept as a returned id, because the confirm dialog
+  // fires the restore itself and only learns about the task the way every
+  // other view does, through the store.
+  const restoreTask = restoring
+    ? tasks.find(
+        (t) =>
+          t.instanceId === restoring.instanceId && t.state === 'running' && t.title === 'Sicherung wird eingespielt'
+      )
+    : undefined
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -187,14 +199,21 @@ export function BackupsView(): JSX.Element {
         confirmLabel="Wiederherstellen"
         message={
           restoring ? (
-            <>
-              {pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner')}{' '}
-              <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
-              <strong>{restoring.instanceName}</strong>{' '}
-              {pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom{' '}
-              {formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch
-              gesichert.
-            </>
+            restoreTask ? (
+              <div className="col gap-8">
+                <div>{restoreTask.detail}</div>
+                <ProgressBar value={restoreTask.progress} />
+              </div>
+            ) : (
+              <>
+                {pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner')}{' '}
+                <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
+                <strong>{restoring.instanceName}</strong>{' '}
+                {pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom{' '}
+                {formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch
+                gesichert.
+              </>
+            )
           ) : null
         }
         onConfirm={async () => {
@@ -250,11 +269,22 @@ function CreateBackupModal({
   onClose: () => void
   onCreated: () => Promise<void>
 }): JSX.Element {
-  const { instances } = useStore()
+  const { instances, tasks } = useStore()
   const [target, setTarget] = useState(instanceId ?? '')
   const [name, setName] = useState('')
   const [includes, setIncludes] = useState<string[]>(['saves', 'config'])
   const [busy, setBusy] = useState(false)
+
+  // `createBackup` already runs under `withTask`, with real progress from
+  // `zipFolder`, the same one the TaskDock shows. Matched by instance and
+  // title, since this modal only ever learns about the task through the
+  // store, the same way the rest of the app does.
+  const targetName = instances.find((i) => i.id === target)?.name
+  const createTask = busy
+    ? tasks.find(
+        (t) => t.instanceId === target && t.state === 'running' && t.title === `Sicherung von ${targetName}`
+      )
+    : undefined
 
   useEffect(() => {
     if (instanceId) {
@@ -347,6 +377,13 @@ function CreateBackupModal({
             Welten und Konfiguration reichen meist. Mods mitzusichern macht das Archiv deutlich größer.
           </span>
         </div>
+
+        {createTask && (
+          <div className="col gap-8">
+            <div className="hint">{createTask.detail}</div>
+            <ProgressBar value={createTask.progress} />
+          </div>
+        )}
       </div>
     </Modal>
   )

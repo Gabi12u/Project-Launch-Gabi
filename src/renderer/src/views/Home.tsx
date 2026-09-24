@@ -304,14 +304,20 @@ function FeaturedInstance({
 }
 
 function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolean }): JSX.Element {
-  const spotlight = useSpotlight<HTMLButtonElement>()
+  const spotlight = useSpotlight<HTMLElement>()
   const quickIcon = useInstanceIcon(instance)
 
+  // A `<span onClick>` inside a `<button>` is invisible to the keyboard, and
+  // nesting one interactive element inside another is invalid HTML besides.
+  // The card itself becomes the clickable surface via `clickable()` (see
+  // NewsCard below), and play/stop is its own real, focusable button; a
+  // stopPropagation on it keeps its click from also opening the instance.
   return (
-    <button
+    <article
       className="quick-card"
       style={{ ['--card-accent' as string]: instance.appearance.accent }}
-      onClick={() => navigate(`/instances/${instance.id}`)}
+      aria-label={instance.name}
+      {...clickable(() => navigate(`/instances/${instance.id}`))}
       {...spotlight}
     >
       <div className="quick-icon">
@@ -330,8 +336,10 @@ function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolea
         </span>
       </div>
 
-      <span
+      <button
+        type="button"
         className="quick-play-btn"
+        aria-label={instance.running ? `${instance.name} stoppen` : `${instance.name} starten`}
         onClick={(event) => {
           event.stopPropagation()
           if (instance.running) void stopInstance(instance.id)
@@ -345,8 +353,8 @@ function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolea
         ) : (
           <IconPlay size={13} />
         )}
-      </span>
-    </button>
+      </button>
+    </article>
   )
 }
 

@@ -100,6 +100,8 @@ export const IPC = {
   contentImportFile: 'content:import-file',
   contentCompatibility: 'content:compatibility',
   contentApplyFix: 'content:apply-fix',
+  /** Adds/removes a datapack's copies in the given worlds' own datapacks folders. */
+  contentSetDatapackWorlds: 'content:set-datapack-worlds',
 
   // modpacks
   modpackImport: 'modpack:import',

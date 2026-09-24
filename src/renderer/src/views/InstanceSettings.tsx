@@ -41,15 +41,63 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
     void window.gabi.java.list().then(setRuntimes).catch(() => undefined)
   }, [])
 
-  // Any edit marks the form dirty so the save bar appears. The first run is
-  // the mount effect, which must not count as an edit.
+  // Snapshot of the fields as of the last save (or the initial load), used to
+  // compute `dirty` instead of just flipping it to true on any change. A ref,
+  // not state, so a save() can update it without an extra render. Order must
+  // match the values built below and in save().
+  const baseline = useRef(
+    JSON.stringify([
+      instance.name,
+      instance.description,
+      instance.group,
+      instance.appearance.icon,
+      instance.appearance.accent,
+      instance.settings.memoryMb,
+      instance.settings.jvmArgs,
+      instance.settings.envVars,
+      instance.settings.preLaunchCommand,
+      instance.settings.wrapperCommand,
+      instance.settings.javaPath,
+      instance.settings.fullscreen,
+      instance.settings.windowWidth,
+      instance.settings.windowHeight,
+      instance.settings.launchBehaviour,
+      instance.settings.backupBeforeUpdates
+    ])
+  )
+
+  const fieldsSnapshot = (): string =>
+    JSON.stringify([
+      name,
+      description,
+      group,
+      icon,
+      accent,
+      memory,
+      jvmArgs,
+      envVars,
+      preLaunch,
+      wrapper,
+      javaPath,
+      fullscreen,
+      width,
+      height,
+      behaviour,
+      backupBeforeUpdates
+    ])
+
+  // Dirty is a comparison against the baseline, not a flag any edit flips on.
+  // That is what lets save() below update the baseline together with a
+  // corrected value (trimmed name, clamped size) without the bar flashing on
+  // for a frame: once both move together, the comparison stays negative. The
+  // first run is the mount effect, which must not count as an edit.
   const mounted = useRef(false)
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true
       return
     }
-    setDirty(true)
+    setDirty(fieldsSnapshot() !== baseline.current)
   }, [
     name,
     description,
@@ -84,11 +132,12 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
       const safeHeight = Number.isFinite(height) && height >= 480 ? Math.round(height) : 480
       // The stored name is the one the toast should report, not the raw field.
       const savedName = name.trim() || instance.name
+      const savedGroup = group.trim()
 
       await window.gabi.instances.update(instance.id, {
         name: savedName,
         description,
-        group: group.trim(),
+        group: savedGroup,
         appearance: { ...instance.appearance, icon, accent },
         settings: {
           ...instance.settings,
@@ -106,9 +155,35 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
         }
       })
 
+      // Move the baseline to what was actually stored before touching the
+      // fields it was corrected from. refreshInstances()/onChanged() below are
+      // awaited, which gives the dirty effect a chance to run on the
+      // corrected values before setDirty(false) further down is reached; with
+      // the baseline already matching them, that effect finds no difference
+      // instead of flashing the bar on for a frame.
+      baseline.current = JSON.stringify([
+        savedName,
+        description,
+        savedGroup,
+        icon,
+        accent,
+        memory,
+        jvmArgs,
+        envVars,
+        preLaunch,
+        wrapper,
+        javaPath,
+        fullscreen,
+        safeWidth,
+        safeHeight,
+        behaviour,
+        backupBeforeUpdates
+      ])
+
       // Reflect whatever was actually stored, so the form never shows a value
       // the backend rejected.
       setName(savedName)
+      setGroup(savedGroup)
       setWidth(safeWidth)
       setHeight(safeHeight)
 

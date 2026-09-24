@@ -48,7 +48,7 @@ import {
   preflight,
   stopInstance
 } from './core/launch'
-import { isRunning } from './core/running'
+import { isRunning, runningCount, startingCount } from './core/running'
 import {
   applyFix,
   applyUpdate,
@@ -56,6 +56,7 @@ import {
   importContentFile,
   installContent,
   removeContent,
+  setDatapackWorlds,
   updateAll
 } from './core/content'
 import { checkCompatibility } from './core/compat'
@@ -141,7 +142,7 @@ function openLauncherPath(target: string): Promise<string> {
   // directory, so it needs naming here or the button to open it is refused.
   const roots = [paths.root(), getLogDirectory(), reportsFolder()].map((dir) => resolve(dir))
 
-  const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir + sep))
+  const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir.endsWith(sep) ? dir : dir + sep))
   if (!inside) {
     throw new Error('Dieser Pfad liegt außerhalb der Launcher-Ordner.')
   }
@@ -251,6 +252,15 @@ export function registerIpc(): void {
 
   handle(IPC.settingsSet, (patch: Partial<LauncherSettings>) => {
     const previous = getSettings()
+    // A running game keeps its files under the old root; switching underneath
+    // it leaves the launcher unable to find, stop or log it.
+    if (
+      patch.dataDirectory !== undefined &&
+      patch.dataDirectory !== previous.dataDirectory &&
+      runningCount() + startingCount() > 0
+    ) {
+      throw new Error('Der Datenordner lässt sich nur wechseln, solange kein Spiel läuft.')
+    }
     const next = saveSettings(patch)
 
     // Compared against the stored result rather than the patch: `saveSettings`
@@ -580,6 +590,7 @@ export function registerIpc(): void {
       versionId?: string
       type?: ContentType
       skipDependencies?: boolean
+      worlds?: string[]
     }) => {
       requireStopped(options.instanceId, 'Mods installieren')
       const installed = await installContent(options)
@@ -602,6 +613,11 @@ export function registerIpc(): void {
   handle(IPC.contentToggle, (instanceId: string, contentId: string, enabled: boolean) => {
     requireStopped(instanceId, enabled ? 'Aktivieren' : 'Deaktivieren')
     return toggleContent(instanceId, contentId, enabled)
+  })
+
+  handle(IPC.contentSetDatapackWorlds, (instanceId: string, contentId: string, worlds: string[]) => {
+    requireStopped(instanceId, 'Welten zuordnen')
+    return setDatapackWorlds(instanceId, contentId, worlds)
   })
 
   handle(IPC.contentCheckUpdates, (instanceId: string) => checkUpdates(instanceId))

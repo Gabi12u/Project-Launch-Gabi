@@ -15,11 +15,15 @@ const ISSUE_ICON = {
 export function IssueRow({
   issue,
   onFix,
-  fixing
+  fixing,
+  disabled
 }: {
   issue: CompatibilityIssue
   onFix?: (issue: CompatibilityIssue) => void
   fixing?: boolean
+  // Whether this button should be inert because some fix, not necessarily
+  // this row's own, is currently running.
+  disabled?: boolean
 }): JSX.Element {
   const Icon = ISSUE_ICON[issue.severity]
 
@@ -36,7 +40,7 @@ export function IssueRow({
         <button
           className="btn sm primary"
           onClick={() => onFix(issue)}
-          disabled={fixing}
+          disabled={disabled}
           style={{ alignSelf: 'center', flexShrink: 0 }}
         >
           {fixing ? <span className="spinner" /> : <IconSparkle size={14} />}
@@ -59,7 +63,9 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
   const [fixing, setFixing] = useState<string | null>(null)
 
   const applyFix = async (issue: CompatibilityIssue): Promise<void> => {
-    if (!issue.fix) return
+    // Also blocked while a fix-all is running, not just another single fix,
+    // since the button below stays disabled the same way for both.
+    if (!issue.fix || fixing !== null) return
     setFixing(issue.id)
     try {
       const next = await window.gabi.content.applyFix(instanceId, issue.fix)
@@ -68,12 +74,15 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
     } catch (err) {
       toastError(err, 'Das Problem konnte nicht behoben werden')
     } finally {
-      setFixing(null)
+      // Clear only this row's own run. If a fix-all took over `fixing` in the
+      // meantime this would otherwise reset it to null while the loop is
+      // still going, making the panel look idle mid run.
+      setFixing((current) => (current === issue.id ? null : current))
     }
   }
 
   const fixAll = async (): Promise<void> => {
-    if (!report) return
+    if (!report || fixing !== null) return
     const fixable = report.issues.filter((i) => i.fix)
     setFixing('all')
     // Reported after every step, not only once the whole run finishes. Each
@@ -103,7 +112,7 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
           : 'Nicht alle Probleme konnten behoben werden'
       )
     } finally {
-      setFixing(null)
+      setFixing((current) => (current === 'all' ? null : current))
     }
   }
 
@@ -160,7 +169,13 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
 
       <div className="col gap-8">
         {report.issues.map((issue) => (
-          <IssueRow key={issue.id} issue={issue} onFix={applyFix} fixing={fixing === issue.id} />
+          <IssueRow
+            key={issue.id}
+            issue={issue}
+            onFix={applyFix}
+            fixing={fixing === issue.id}
+            disabled={fixing !== null}
+          />
         ))}
       </div>
     </div>

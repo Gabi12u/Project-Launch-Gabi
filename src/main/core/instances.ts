@@ -12,7 +12,15 @@ import type {
   InstanceSummary,
   LoaderId
 } from '@shared/types'
-import { contentPath, ensureInstanceLayout, paths, RESERVED_WINDOWS_NAMES, safeJoin } from '../paths'
+import {
+  contentPath,
+  copyDatapackIntoWorld,
+  ensureInstanceLayout,
+  paths,
+  removeDatapackFromWorld,
+  RESERVED_WINDOWS_NAMES,
+  safeJoin
+} from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { emit } from '../events'
 import { log } from '../logger'
@@ -989,6 +997,19 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
 
       if (existsSync(currentPath) && nextName !== item.fileName) {
         renameSync(currentPath, contentPath(dir, nextName))
+      }
+
+      // Minecraft has no ".disabled" convention for a datapack sitting inside
+      // a world, only for the staging copy renamed just above. Disabling one
+      // removes its world copies outright; enabling restores them from the
+      // staged file that now sits at `bare`.
+      if (item.type === 'datapack' && item.worlds && item.worlds.length > 0) {
+        if (enabled) {
+          const source = contentPath(dir, bare)
+          for (const world of item.worlds) copyDatapackIntoWorld(id, world, source, bare)
+        } else {
+          for (const world of item.worlds) removeDatapackFromWorld(id, world, bare)
+        }
       }
 
       const content = instance.content.map((c) =>

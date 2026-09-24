@@ -102,6 +102,12 @@ export interface ContentItem {
   releasedAt?: string
   /** Populated by the update checker. */
   update?: AvailableUpdate | null
+  /**
+   * World folder names (under saves/) a datapack's copy lives in. Only
+   * meaningful for `type: 'datapack'`; undefined on content installed before
+   * this existed, which the interface reads the same as an empty list.
+   */
+  worlds?: string[]
 }
 
 export interface AvailableUpdate {

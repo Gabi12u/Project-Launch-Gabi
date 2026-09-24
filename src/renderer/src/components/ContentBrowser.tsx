@@ -12,6 +12,7 @@ import { refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { formatNumber, formatRelative, plainText } from '../lib/format'
 import { clickable } from '../lib/a11y'
 import { EmptyState, Modal, Segmented } from '../components/ui'
+import { WorldPickerModal } from './WorldPickerModal'
 import {
   IconCheck,
   IconDownload,
@@ -79,6 +80,11 @@ export function ContentBrowser({
   // the indicator for the one still in flight.
   const [installing, setInstalling] = useState<ReadonlySet<string>>(() => new Set())
   const [detail, setDetail] = useState<SearchResultItem | null>(null)
+  // A datapack asks which world(s) it should go into before it installs, the
+  // same thing Prism does. Everything else installs straight away.
+  const [worldPickFor, setWorldPickFor] = useState<{ item: SearchResultItem; versionId?: string } | null>(
+    null
+  )
 
   const requestId = useRef(0)
 
@@ -141,7 +147,7 @@ export function ContentBrowser({
     void search(0, false)
   }, [search])
 
-  const install = async (item: SearchResultItem, versionId?: string): Promise<void> => {
+  const install = async (item: SearchResultItem, versionId?: string, worlds?: string[]): Promise<void> => {
     if (!instanceId) return
     // Guards against a double click landing twice before the first render.
     if (installing.has(item.projectId)) return
@@ -157,7 +163,8 @@ export function ContentBrowser({
           provider: item.provider,
           projectId: item.projectId,
           versionId,
-          type: item.type
+          type: item.type,
+          worlds
         })
         toast(
           'success',
@@ -314,7 +321,9 @@ export function ContentBrowser({
                 installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
                 installing={installing.has(item.projectId)}
                 canInstall={Boolean(instanceId) && !blockedReason}
-                onInstall={() => void install(item)}
+                onInstall={() =>
+                  item.type === 'datapack' ? setWorldPickFor({ item }) : void install(item)
+                }
                 onOpen={() => setDetail(item)}
               />
             ))}
@@ -344,8 +353,26 @@ export function ContentBrowser({
           mcVersion={mcVersion}
           loader={loader}
           onClose={() => setDetail(null)}
-          onInstall={(versionId) => void install(detail, versionId)}
+          onInstall={(versionId) =>
+            detail.type === 'datapack'
+              ? setWorldPickFor({ item: detail, versionId })
+              : void install(detail, versionId)
+          }
           installing={installing.has(detail.projectId)}
+        />
+      )}
+
+      {worldPickFor && instanceId && (
+        <WorldPickerModal
+          instanceId={instanceId}
+          title={`Welten für ${worldPickFor.item.name}`}
+          onClose={() => setWorldPickFor(null)}
+          onConfirm={async (worlds) => {
+            const target = worldPickFor
+            if (!target) return
+            await install(target.item, target.versionId, worlds)
+            setWorldPickFor(null)
+          }}
         />
       )}
     </div>

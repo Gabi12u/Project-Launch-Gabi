@@ -572,6 +572,12 @@
   opacity: 0.5;
 }
 
+/* The version already installed on disk, in the version picker list. */
+.content-row.is-you {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
 .content-icon {
   width: 44px;
   height: 44px;

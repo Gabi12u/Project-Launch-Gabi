@@ -26,6 +26,7 @@ import {
 import { Confirm, EmptyState, ProgressBar } from '../components/ui'
 import { CompatibilityPanel } from '../components/CompatibilityPanel'
 import { ContentBrowser } from '../components/ContentBrowser'
+import { WorldPickerModal } from '../components/WorldPickerModal'
 import { InstanceSettingsPanel } from './InstanceSettings'
 import {
   IconChevronLeft,
@@ -568,6 +569,7 @@ function ContentTab({
   const menu = useContextMenu<ContentItem>()
   const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
   const [confirmUpdate, setConfirmUpdate] = useState<ContentItem | null>(null)
+  const [worldsFor, setWorldsFor] = useState<ContentItem | null>(null)
 
   const items = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -712,6 +714,7 @@ function ContentTab({
               updating={updating === item.id}
               onContextMenu={(event) => menu.onContextMenu(event, item)}
               onUpdate={() => setConfirmUpdate(item)}
+              onEditWorlds={() => setWorldsFor(item)}
               onToggle={async (enabled) => {
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
                 await onChanged()
@@ -788,6 +791,25 @@ function ContentTab({
         }}
         onCancel={() => setConfirmUpdate(null)}
       />
+
+      {worldsFor && (
+        <WorldPickerModal
+          instanceId={instance.id}
+          title={`Welten für ${worldsFor.name}`}
+          initialSelected={worldsFor.worlds ?? []}
+          onClose={() => setWorldsFor(null)}
+          onConfirm={async (worlds) => {
+            try {
+              await window.gabi.content.setDatapackWorlds(instance.id, worldsFor.id, worlds)
+              toast('success', 'Welten aktualisiert', worldsFor.name)
+              setWorldsFor(null)
+              await onChanged()
+            } catch (err) {
+              toastError(err, 'Welten konnten nicht aktualisiert werden')
+            }
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -863,7 +885,8 @@ function ContentRow({
   onUpdate,
   onToggle,
   onRemove,
-  onContextMenu
+  onContextMenu,
+  onEditWorlds
 }: {
   item: ContentItem
   instanceId: string
@@ -873,6 +896,7 @@ function ContentRow({
   onToggle: (enabled: boolean) => void
   onRemove: () => void
   onContextMenu: (event: MouseEvent<HTMLDivElement>) => void
+  onEditWorlds: () => void
 }): JSX.Element {
   // Every change is refused by the main process while the game is up, so the
   // buttons say so up front instead of letting the click fail.
@@ -907,6 +931,13 @@ function ContentRow({
             <span style={{ color: 'var(--warn)' }}>→ {item.update.versionNumber}</span>
           )}
           {item.size ? <span>{formatBytes(item.size)}</span> : null}
+          {item.type === 'datapack' && (
+            <span>
+              {item.worlds && item.worlds.length > 0
+                ? `Welten: ${item.worlds.join(', ')}`
+                : 'Keiner Welt zugeordnet'}
+            </span>
+          )}
           <span className="truncate mono" style={{ opacity: 0.6 }}>
             {item.fileName}
           </span>
@@ -914,6 +945,16 @@ function ContentRow({
       </div>
 
       <div className="content-actions">
+        {item.type === 'datapack' && (
+          <button
+            className="btn sm"
+            onClick={onEditWorlds}
+            disabled={blocked}
+            title={blocked ? reason : undefined}
+          >
+            <IconCube size={13} /> Welten wählen
+          </button>
+        )}
         {item.update && (
           <button
             className="btn sm primary"

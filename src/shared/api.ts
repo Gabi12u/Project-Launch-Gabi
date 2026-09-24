@@ -143,6 +143,8 @@ export interface InstallContentRequest {
   versionId?: string
   type?: ContentType
   skipDependencies?: boolean
+  /** Worlds (folder names under saves/) a datapack should be copied into. */
+  worlds?: string[]
 }
 
 export type Unsubscribe = () => void
@@ -263,6 +265,8 @@ export interface GabiApi {
       instanceId: string,
       fix: NonNullable<CompatibilityIssue['fix']>
     ): Promise<CompatibilityReport>
+    /** Changes which worlds a datapack's copy lives in. */
+    setDatapackWorlds(instanceId: string, contentId: string, worlds: string[]): Promise<ContentItem | null>
   }
   /**
    * Looking before importing.

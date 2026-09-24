@@ -8,12 +8,19 @@ import type {
   Instance,
   ProjectVersion
 } from '@shared/types'
-import { contentDir, contentFileName, contentPath } from '../paths'
+import {
+  assertWorldExists,
+  contentDir,
+  contentFileName,
+  contentPath,
+  copyDatapackIntoWorld,
+  removeDatapackFromWorld
+} from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
 import { Task, withTask } from '../tasks'
-import { downloadFile, sha1File } from './net'
+import { downloadFile, HttpError, sha1File } from './net'
 import {
   addContent,
   getInstance,
@@ -115,6 +122,8 @@ export interface InstallContentOptions {
   task?: Task
   /** Skip dependency installation (used when the user picked "nur diese Datei"). */
   skipDependencies?: boolean
+  /** Worlds (folder names under saves/) a datapack should be copied into. Ignored for every other content type. */
+  worlds?: string[]
 }
 
 /**
@@ -158,6 +167,14 @@ async function installContentOnce(
 
   const type = options.type ?? typeFromProjectType(project.type)
 
+  // Datapacks: validated up front, before any network request, so a bad world
+  // name fails fast instead of after a download that then has nowhere to go.
+  // Every other content type ignores `options.worlds` outright.
+  let worlds = type === 'datapack' ? Array.from(new Set(options.worlds ?? [])) : undefined
+  if (worlds) {
+    for (const world of worlds) assertWorldExists(instanceId, world)
+  }
+
   // Pick the version -------------------------------------------------
   let version: ProjectVersion | null = null
   if (options.versionId) {
@@ -179,12 +196,26 @@ async function installContentOnce(
 
   options.task?.update(`${project.name} wird geladen…`, null)
 
-  await downloadFile({
-    url: version.downloadUrl,
-    path: destination,
-    sha1: version.sha1,
-    size: version.size
-  })
+  try {
+    await downloadFile({
+      url: version.downloadUrl,
+      path: destination,
+      sha1: version.sha1,
+      size: version.size
+    })
+  } catch (err) {
+    // CurseForge answers with a fallback CDN link when an author disabled
+    // third-party distribution (see `curseforge.ts`'s `fallbackDownloadUrl`),
+    // and that link reliably 403s. The raw "HTTP 403 ..." otherwise reached
+    // the user with nothing pointing at why.
+    if (provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
+      throw new Error(
+        `${project.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+        { cause: err }
+      )
+    }
+    throw err
+  }
 
   // Replace an older file of the same project ------------------------
   //
@@ -238,6 +269,15 @@ async function installContentOnce(
         }
       }
     }
+    // A datapack swapped for another version through "Version wählen" keeps
+    // its worlds; the old file's world copies go, the new one takes their place.
+    if (previous.type === 'datapack' && previous.worlds && previous.worlds.length > 0) {
+      const oldName = previous.fileName.endsWith('.disabled')
+        ? previous.fileName.slice(0, -'.disabled'.length)
+        : previous.fileName
+      for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
+      if (!worlds || worlds.length === 0) worlds = previous.worlds
+    }
     removeContentRecord(instanceId, previous.id)
   }
 
@@ -248,10 +288,15 @@ async function installContentOnce(
     summary: project.summary,
     pageUrl: project.pageUrl
   })
+  if (worlds) item.worlds = worlds
 
   addContent(instanceId, item)
   installed.push(item)
   logger.info(`${project.name} ${version.versionNumber} in ${instanceId} installiert`)
+
+  if (worlds && worlds.length > 0) {
+    for (const world of worlds) copyDatapackIntoWorld(instanceId, world, destination, item.fileName)
+  }
 
   // Dependencies -----------------------------------------------------
   if (!options.skipDependencies && getSettings().autoInstallDependencies) {
@@ -356,6 +401,11 @@ async function removeContentOnce(instanceId: string, contentId: string): Promise
         { cause: err }
       )
     }
+  }
+
+  if (item.type === 'datapack' && item.worlds && item.worlds.length > 0) {
+    const bare = item.fileName.endsWith('.disabled') ? item.fileName.slice(0, -'.disabled'.length) : item.fileName
+    for (const world of item.worlds) removeDatapackFromWorld(instanceId, world, bare)
   }
 
   logger.info(`${item.name} aus ${instanceId} entfernt`)
@@ -537,12 +587,24 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   // sure until after the download, so this is only a staging location.
   const downloadPath = contentPath(dir, item.update.fileName)
 
-  await downloadFile({
-    url: item.update.downloadUrl,
-    path: downloadPath,
-    sha1: item.update.sha1,
-    size: item.update.size
-  })
+  try {
+    await downloadFile({
+      url: item.update.downloadUrl,
+      path: downloadPath,
+      sha1: item.update.sha1,
+      size: item.update.size
+    })
+  } catch (err) {
+    // Same distribution lock as on install: an author can disable third-party
+    // downloads for a later file of an already installed mod.
+    if (item.provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
+      throw new Error(
+        `Das Update für ${item.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+        { cause: err }
+      )
+    }
+    throw err
+  }
 
   // Re-read: the download above took time, and the entry may have been
   // toggled meanwhile. Working from the snapshot taken before it would undo
@@ -581,6 +643,18 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
 
   const oldPath = contentPath(dir, current.fileName)
   const stale = samePath(oldPath, destination) ? null : oldPath
+
+  // World copies: only touched while the item is enabled. A disabled datapack
+  // has none to begin with, since `toggleContent` removes them on disable and
+  // only restores them the next time it is switched back on.
+  if (next.type === 'datapack' && current.enabled && current.worlds && current.worlds.length > 0) {
+    const bare = (name: string): string =>
+      name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
+    for (const world of current.worlds) {
+      removeDatapackFromWorld(instanceId, world, bare(current.fileName))
+      copyDatapackIntoWorld(instanceId, world, destination, bare(next.fileName))
+    }
+  }
 
   // Dependencies can change between versions.
   try {
@@ -641,6 +715,67 @@ function removeStaleFile(path: string): void {
   } catch (err) {
     logger.warn(`Alte Datei ${path} konnte nicht entfernt werden:`, err)
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * Datapack world assignment
+ * ------------------------------------------------------------------ */
+
+/**
+ * Changes which worlds a datapack's copy lives in.
+ *
+ * The staged file in the datapacks folder is untouched either way; only the
+ * per-world copies are added or removed, and only while the item is enabled.
+ * A disabled datapack has no world copies at all (`toggleContent` already
+ * removes them), so the new list simply takes effect the next time it is
+ * switched back on.
+ */
+export async function setDatapackWorlds(
+  instanceId: string,
+  contentId: string,
+  worlds: string[]
+): Promise<ContentItem | null> {
+  return withContentLock(instanceId, () =>
+    withItemLock(contentId, () => setDatapackWorldsOnce(instanceId, contentId, worlds))
+  )
+}
+
+async function setDatapackWorldsOnce(
+  instanceId: string,
+  contentId: string,
+  worlds: string[]
+): Promise<ContentItem | null> {
+  assertNotCopying(instanceId)
+  const instance = getInstance(instanceId)
+  const item = instance.content.find((c) => c.id === contentId)
+  if (!item) return null
+  if (item.type !== 'datapack') {
+    throw new Error('Nur Data Packs können Welten zugeordnet werden.')
+  }
+
+  const next = Array.from(new Set(worlds))
+  for (const world of next) assertWorldExists(instanceId, world)
+
+  if (item.enabled) {
+    const previous = item.worlds ?? []
+    const bare = item.fileName.endsWith('.disabled') ? item.fileName.slice(0, -'.disabled'.length) : item.fileName
+    const source = contentPath(targetDir(instanceId, 'datapack'), item.fileName)
+
+    for (const world of previous) {
+      if (!next.includes(world)) removeDatapackFromWorld(instanceId, world, bare)
+    }
+    for (const world of next) {
+      if (!previous.includes(world)) copyDatapackIntoWorld(instanceId, world, source, bare)
+    }
+  }
+  // If disabled, no copies exist to add or remove; the assignment is only
+  // recorded and takes effect once the datapack is enabled again.
+
+  const updated: ContentItem = { ...item, worlds: next }
+  const content = instance.content.map((c) => (c.id === contentId ? updated : c))
+  persist({ ...instance, content })
+  logger.info(`${item.name}: Welten aktualisiert (${next.length})`)
+  return updated
 }
 
 export async function updateAll(instanceId: string): Promise<number> {

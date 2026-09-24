@@ -221,10 +221,15 @@ function windowSize(value: number, fallback: number): number {
   return Number.isFinite(rounded) && rounded >= 100 ? rounded : fallback
 }
 
-function splitUserArgs(raw: string): string[] {
+export function splitUserArgs(raw: string): string[] {
   // Respects quoted segments so paths with spaces survive.
   const matches = userText(raw).match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
-  return matches.map((a) => a.replace(/^["']|["']$/g, '')).filter(Boolean)
+  // Every quoted run inside a token is unwrapped, not just a quote sitting at
+  // the token's own start/end, so `-Dfoo="C:\Program Files\x"` becomes
+  // `-Dfoo=C:\Program Files\x` instead of keeping a stray leading quote.
+  return matches
+    .map((a) => a.replace(/"([^"]*)"|'([^']*)'/g, (_m, d, s) => d ?? s ?? ''))
+    .filter(Boolean)
 }
 
 /* ------------------------------------------------------------------ *

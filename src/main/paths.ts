@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import { getSettings } from './store'
 
@@ -212,6 +212,63 @@ export function contentDir(instanceId: string, type: string): string {
       return join(paths.gameDir(instanceId), 'datapacks')
     default:
       return paths.gameDir(instanceId)
+  }
+}
+
+/**
+ * Validates a world folder name and confirms the world actually exists.
+ *
+ * A world name reaches this from `content.ts`'s install/update/toggle paths
+ * and from the dedicated `content:set-datapack-worlds` IPC call, with nothing
+ * enforced beyond "some string that arrived over IPC" by the time it gets
+ * here. Rejected outright rather than silently dropped: the renderer only
+ * ever offers names read from `listWorlds`, so anything that fails this check
+ * did not come from there.
+ */
+export function assertWorldExists(instanceId: string, world: string): void {
+  if (!world || world.includes('/') || world.includes('\\') || world === '.' || world === '..') {
+    throw new Error(`Ungültiger Weltname: "${world}"`)
+  }
+  const dir = join(paths.saves(instanceId), world)
+  if (!existsSync(dir) || !statSync(dir).isDirectory()) {
+    throw new Error(`Die Welt "${world}" wurde nicht gefunden.`)
+  }
+}
+
+/** Datapacks folder inside one specific world. */
+export function worldDatapacksDir(instanceId: string, world: string): string {
+  return safeJoin(paths.saves(instanceId), join(world, 'datapacks'))
+}
+
+/**
+ * Copies a datapack into one world's datapacks folder, creating it if needed.
+ *
+ * Best effort: a world that was deleted or renamed outside the launcher since
+ * it was last assigned is skipped rather than failing the whole operation, the
+ * same reasoning `syncContentWithDisk` applies to files that vanish mid-scan.
+ */
+export function copyDatapackIntoWorld(
+  instanceId: string,
+  world: string,
+  sourceFile: string,
+  fileName: string
+): void {
+  try {
+    const dir = worldDatapacksDir(instanceId, world)
+    mkdirSync(dir, { recursive: true })
+    copyFileSync(sourceFile, contentPath(dir, fileName))
+  } catch {
+    // world removed or renamed outside the launcher; nothing to copy into
+  }
+}
+
+/** Removes one datapack's copy from a world, if it is there at all. */
+export function removeDatapackFromWorld(instanceId: string, world: string, fileName: string): void {
+  try {
+    const dir = worldDatapacksDir(instanceId, world)
+    rmSync(contentPath(dir, fileName), { force: true })
+  } catch {
+    // ignore: nothing to remove
   }
 }
 
