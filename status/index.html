@@ -2899,16 +2899,31 @@ footer a:hover { color: var(--ink); }
   // actually out yet or still waiting for the next version.
   var releasedVersion = null;
 
-  function isNewerThanReleased(version) {
-    if (!releasedVersion) return false;
-    var a = String(version).split('.').map(Number);
-    var b = String(releasedVersion).replace(/^v/, '').split('.').map(Number);
+  function compareVersions(x, y) {
+    var a = String(x).replace(/^v/, '').split('.').map(Number);
+    var b = String(y).replace(/^v/, '').split('.').map(Number);
     for (var i = 0; i < Math.max(a.length, b.length); i++) {
       var left = a[i] || 0;
       var right = b[i] || 0;
-      if (left !== right) return left > right;
+      if (left !== right) return left > right ? 1 : -1;
     }
-    return false;
+    return 0;
+  }
+
+  // Until the release list has arrived (or if it never does), the newest
+  // version in the changelog stands in for "what is out". Otherwise every
+  // old fix would flash up first and stay for good after a failed request.
+  function baselineVersion() {
+    var found = String(LATEST.version).match(/\d+\.\d+\.\d+/g) || [];
+    return found.reduce(function (best, v) {
+      return best === null || compareVersions(v, best) > 0 ? v : best;
+    }, null);
+  }
+
+  function isNewerThanReleased(version) {
+    var out = releasedVersion || baselineVersion();
+    if (!version || !out) return false;
+    return compareVersions(version, out) > 0;
   }
 
   function renderIssues() {
@@ -2919,12 +2934,18 @@ footer a:hover { color: var(--ink); }
     // Cleared first: this runs again once the versions are known, and again
     // on every language switch.
     host.innerHTML = '';
-    var open = issues.filter(function (i) { return i.state !== 'fixed'; });
+    // A fix that is already in a published version lives in "Zuletzt
+    // behoben" below. Only the ones still waiting for the next release stay
+    // here, next to what is open.
+    var visible = issues.filter(function (i) {
+      return i.state !== 'fixed' || isNewerThanReleased(i.fixedIn);
+    });
+    var open = visible.filter(function (i) { return i.state !== 'fixed'; });
 
     document.getElementById('issues-count').textContent =
       open.length === 0 ? t('issuesNone') : t('issuesOpenCount')(open.length);
 
-    if (issues.length === 0) {
+    if (visible.length === 0) {
       host.innerHTML = '<div class="issues-none">' + ICONS.fixed +
         '<span>' + t('issuesNoneDetail') + '</span></div>';
       return;
@@ -2932,7 +2953,7 @@ footer a:hover { color: var(--ink); }
 
     // Open items first, and within those the ones actively being worked on.
     var order = { fixing: 0, investigating: 1, limitation: 2, fixed: 3 };
-    issues.slice()
+    visible.slice()
       .sort(function (a, b) { return order[a.state] - order[b.state]; })
       .forEach(function (issue) {
         var meta = [t('since')(date(issue.since))];
