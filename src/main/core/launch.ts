@@ -1143,7 +1143,9 @@ export function stopInstance(instanceId: string, immediate = false): void {
       logger.error(`taskkill für ${instanceId} beendete sich mit Code ${code}`)
       game.process.kill('SIGKILL')
       setTimeout(() => {
-        if (!isRunning(instanceId)) return
+        // Compared by process, not id: a relaunch within these seconds is a
+        // different game and must not be reported as the one that would not die.
+        if (getRunning(instanceId)?.process !== game.process) return
         stopRequested.delete(instanceId)
         pushLog({
           instanceId,

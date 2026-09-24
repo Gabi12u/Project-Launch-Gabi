@@ -55,7 +55,7 @@ export function CommandPalette(): JSX.Element | null {
   // Registers the palette on the same overlay stack as Modal, so a modal
   // open underneath (e.g. the account window mid sign in) no longer counts
   // as the topmost surface and does not also close on Escape.
-  useOverlayId(paletteOpen)
+  const isTop = useOverlayId(paletteOpen)
 
   const close = (): void => setState({ paletteOpen: false })
 
@@ -220,7 +220,7 @@ export function CommandPalette(): JSX.Element | null {
       runAt(cursor)
     } else if (event.key === 'Escape') {
       event.preventDefault()
-      close()
+      if (isTop()) close()
     }
   }
 

@@ -188,7 +188,7 @@ export function sanitizeVersionId(id: string): string {
  * or half-escaped folder behind.
  */
 export function isValidVersionString(value: string): boolean {
-  if (typeof value !== 'string' || !value || value.length > 64) return false
+  if (typeof value !== 'string' || !value || value === '.' || value.length > 64) return false
   if (value.includes('/') || value.includes('\\') || value.includes('..')) return false
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i)

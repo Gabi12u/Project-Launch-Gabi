@@ -276,15 +276,27 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         }
       })
     } else {
+      // Hand-placed jars carry neither a project id nor a hash, so two copies
+      // of the same mod can never be proven identical. The fix is still
+      // offered for them, but it names the exact file, so removing it is a
+      // choice the user makes knowingly rather than a blind "fix".
+      const allLocal = duplicates.every((d) => !d.projectId)
       issues.push({
         id: `duplicate-name-${key}`,
         severity: 'warning',
         title: `${duplicates[0].name}: Name mehrfach vergeben`,
         detail:
-          `${duplicates.length} Mods tragen den Namen "${duplicates[0].name}": ` +
+          `${duplicates.length} Mods tragen den Namen „${duplicates[0].name}“: ` +
           duplicates.map((d) => d.fileName).join(', ') +
           `. Das können auch zwei unterschiedliche Mods sein, prüfe von Hand, ob einer davon ein Duplikat ist.`,
-        contentId: duplicates[0].id
+        contentId: duplicates[0].id,
+        fix: allLocal
+          ? {
+              kind: 'remove-content',
+              label: `${duplicates[0].fileName} entfernen`,
+              contentId: duplicates[0].id
+            }
+          : undefined
       })
     }
   }

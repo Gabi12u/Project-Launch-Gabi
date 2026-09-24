@@ -1,6 +1,5 @@
-import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import AdmZip from 'adm-zip'
 import type { ContentItem } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
@@ -77,6 +76,31 @@ export interface RepairReport {
  */
 function rethrowIfCancelled(err: unknown): void {
   if (err instanceof TaskCancelledError) throw err
+}
+
+const ZIP_END_MARKER = Buffer.from([0x50, 0x4b, 0x05, 0x06])
+
+/**
+ * Whether a jar still ends in a zip directory. Reads only the tail, since a
+ * full parse reads the whole file synchronously on the main thread, once per
+ * library. A file that cannot be read right now (a scanner holding it) counts
+ * as intact, so a brief lock never gets a good file deleted.
+ */
+function jarLooksIntact(file: string): boolean {
+  let fd: number | undefined
+  try {
+    fd = openSync(file, 'r')
+    const size = fstatSync(fd).size
+    if (size < 22) return false
+    const length = Math.min(size, 65_557)
+    const tail = Buffer.alloc(length)
+    readSync(fd, tail, 0, length, size - length)
+    return tail.lastIndexOf(ZIP_END_MARKER) !== -1
+  } catch {
+    return true
+  } finally {
+    if (fd !== undefined) closeSync(fd)
+  }
 }
 
 /**
@@ -284,6 +308,17 @@ async function runRepair(
       // missing file already does, instead of failing the whole repair over
       // damage a plain reinstall would fix without anyone noticing.
       repairLog(instanceId, 'warning', `Versionsdatei ${versionId}.json ist beschädigt`)
+      // Rebuilding reruns the loader installer, which rewrites shared library
+      // jars; a running instance on the same version has those open.
+      if (activeVersionIds().includes(versionId) || isNativesClaimed(versionId)) {
+        step(
+          'Minecraft & Bibliotheken',
+          'failed',
+          `Die Versionsdatei ${versionId}.json ist beschädigt. Sie wird nicht neu erstellt, solange eine ` +
+            'andere Instanz mit derselben Version läuft. Beende sie und starte die Reparatur erneut.'
+        )
+        return report
+      }
       try {
         rmSync(join(paths.version(versionId), `${versionId}.json`), { force: true })
         if (instance.loader !== 'vanilla') {
@@ -351,11 +386,7 @@ async function runRepair(
       // treats it like a missing file instead of trusting it as-is.
       for (const item of items) {
         if (item.sha1 || !item.path.toLowerCase().endsWith('.jar') || !existsSync(item.path)) continue
-        try {
-          new AdmZip(item.path).getEntries()
-        } catch {
-          rmSync(item.path, { force: true })
-        }
+        if (!jarLooksIntact(item.path)) rmSync(item.path, { force: true })
       }
 
       let broken = 0
@@ -527,11 +558,7 @@ async function runRepair(
           // .jar without a hash gets one more look: it must at least open as
           // a zip.
           if (!corrupt && !item.sha1 && file.toLowerCase().endsWith('.jar')) {
-            try {
-              new AdmZip(file).getEntries()
-            } catch {
-              corrupt = true
-            }
+            corrupt = !jarLooksIntact(file)
           }
         }
 

@@ -698,6 +698,12 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
     const gameDir = join(sourceDir, 'minecraft')
     if (parsed && parsed.mcVersion && existsSync(gameDir)) {
+      if (!isValidVersionString(parsed.mcVersion)) {
+        throw new Error('Die Minecraft-Version in der instance.json ist ungültig.')
+      }
+      if (parsed.loaderVersion && !isValidVersionString(parsed.loaderVersion)) {
+        throw new Error('Die Mod-Loader-Version in der instance.json ist ungültig.')
+      }
       return {
         flavour: 'launchgabi',
         name: parsed.name?.trim() || folderName,
@@ -717,7 +723,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   const external: { read: LauncherRead | null; flavour: SourceFlavour; note: string }[] = [
     { read: readCurseForgeInstance(sourceDir), flavour: 'curseforge', note: 'CurseForge' },
     { read: readGdLauncherConfig(sourceDir), flavour: 'gdlauncher', note: 'GDLauncher' },
-    { read: readModrinthProfile(sourceDir), flavour: 'modrinth-app', note: 'Modrinth App' }
+    { read: readModrinthProfile(sourceDir), flavour: 'modrinth-app', note: 'der Modrinth App' }
   ]
   for (const candidate of external) {
     if (!candidate.read) continue

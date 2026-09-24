@@ -246,15 +246,17 @@ function libraryPath(coords: string): string {
  * artifacts, so a few retries absorb an ordinary blip, and if it still cannot
  * be read the installer is refused rather than run unverified.
  */
-async function mavenSha1(url: string): Promise<string> {
+async function mavenSha1(url: string, signal?: AbortSignal): Promise<string> {
   const attempts = 3
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    signal?.throwIfAborted()
     try {
-      const body = await fetchText(`${url}.sha1`)
+      const body = await fetchText(`${url}.sha1`, { signal })
       const match = /\b[a-f0-9]{40}\b/i.exec(body)
       if (match) return match[0].toLowerCase()
       logger.warn(`Prüfsummendatei zu ${url} ist unlesbar (Versuch ${attempt}/${attempts})`)
     } catch (err) {
+      if (signal?.aborted) throw err
       logger.warn(`Prüfsumme zu ${url} nicht abrufbar (Versuch ${attempt}/${attempts}):`, err)
     }
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -316,8 +318,8 @@ export async function installForgeLike(
   // verifies the cached copy too: a jar left corrupt by an interrupted run,
   // or one that never matched what maven actually publishes, is re-fetched
   // instead of reused.
-  const installerSha1 = await mavenSha1(url)
-  await downloadFile({ url, path: installer, sha1: installerSha1 })
+  const installerSha1 = await mavenSha1(url, task?.signal)
+  await downloadFile({ url, path: installer, sha1: installerSha1 }, undefined, undefined, task?.signal)
 
   const profile = await readEntryJson<InstallProfile>(installer, 'install_profile.json')
   if (!profile) {

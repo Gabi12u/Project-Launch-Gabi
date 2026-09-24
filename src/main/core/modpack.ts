@@ -252,6 +252,12 @@ async function installMrpackFiles(
   task.update('Mods werden erfasst…', 0.95)
   await syncContentWithDisk(instanceId)
 
+  // The base setup (libraries, assets, the client jar) that `createInstance`
+  // started in the background may still be running or may have failed by now;
+  // marking the instance installed without checking would hide that. Awaited
+  // before the instance is read, so a rename during that wait is not undone.
+  const baseSetupOk = await waitForInstanceSetup(instanceId)
+
   const instance = getInstance(instanceId)
   const enriched: ContentItem[] = instance.content.map((item) => {
     const match = clientFiles.find((f) => basename(f.path) === item.fileName)
@@ -275,10 +281,6 @@ async function installMrpackFiles(
     }
   })
 
-  // The base setup (libraries, assets, the client jar) that `createInstance`
-  // started in the background may still be running or may have failed by now;
-  // marking the instance installed without checking would hide that.
-  const baseSetupOk = await waitForInstanceSetup(instanceId)
   if (!baseSetupOk) {
     persist({ ...instance, content: enriched, installing: false, installed: false })
     throw new Error(
@@ -426,7 +428,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
         'warning',
         `${missing.length} ${missing.length === 1 ? 'Mod fehlt' : 'Mods fehlen'} im Modpack`,
         `${name}: CurseForge konnte ${missing.length} ${missing.length === 1 ? 'Mod' : 'Mods'} nicht laden ` +
-          `(Projekt-ID ${ids.join(', ')}${missing.length > 5 ? ` und ${missing.length - 5} weitere` : ''}).`,
+          `(${ids.length === 1 ? 'Projekt-ID' : 'Projekt-IDs'} ${ids.join(', ')}${missing.length > 5 ? ` und ${missing.length - 5} weitere` : ''}).`,
         { route: `/instances/${instance.id}` }
       )
     }

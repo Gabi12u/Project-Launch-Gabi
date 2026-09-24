@@ -20,11 +20,17 @@ export function formatBytes(bytes: number, decimals = 1): string {
     value /= 1024
     unit++
   }
+  // 1023,97 MB would round to "1.024 MB"; show it as the next unit instead.
+  if (Math.round(value) >= 1024 && unit < units.length - 1) {
+    value /= 1024
+    unit++
+  }
   return `${formatDecimal(value, value >= 100 ? 0 : decimals)} ${units[unit]}`
 }
 
 export function formatNumber(value: number): string {
-  if (value >= 1_000_000) return `${formatDecimal(value / 1_000_000, value >= 10_000_000 ? 0 : 1)}M`
+  // From 999.500 on, the K branch would round to "1.000K".
+  if (value >= 999_500) return `${formatDecimal(value / 1_000_000, value >= 10_000_000 ? 0 : 1)}M`
   if (value >= 1_000) return `${formatDecimal(value / 1_000, value >= 10_000 ? 0 : 1)}K`
   return String(value)
 }

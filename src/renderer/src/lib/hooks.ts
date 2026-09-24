@@ -166,7 +166,7 @@ const MEMORY_FALLBACK_MAX_MB = 16384
  */
 export function memorySliderMax(systemMemoryMb: number | null | undefined): number {
   if (!systemMemoryMb || systemMemoryMb < MEMORY_STEP_MB) return MEMORY_FALLBACK_MAX_MB
-  return Math.floor(systemMemoryMb / MEMORY_STEP_MB) * MEMORY_STEP_MB
+  return Math.max(1024, Math.floor(systemMemoryMb / MEMORY_STEP_MB) * MEMORY_STEP_MB)
 }
 
 let cachedSystemMemoryMb: number | null = null
@@ -190,7 +190,12 @@ export function useMemorySliderMax(): number {
           cachedSystemMemoryMb = info.systemMemoryMb
           return info.systemMemoryMb
         })
-        .catch(() => null)
+        .catch(() => {
+          // Forgotten again, so the next slider that mounts gets another try
+          // instead of the fallback for the rest of the session.
+          systemMemoryRequest = null
+          return null
+        })
     }
 
     let cancelled = false

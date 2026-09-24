@@ -39,7 +39,7 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
 
   // On the same overlay stack as Modal and the command palette: a menu opened
   // over a modal must not let Escape also close that modal underneath.
-  useOverlayId(true)
+  const isTop = useOverlayId(true)
 
   // Reset whenever the menu is re-anchored, which is what happens when the
   // user right-clicks a different row without closing first. The component
@@ -79,6 +79,9 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
       if (!ref.current?.contains(event.target as Node)) onClose()
     }
     const onKey = (event: KeyboardEvent): void => {
+      // Something opened on top (the command palette) owns the keyboard, so
+      // neither Escape nor Enter may act on this menu underneath it.
+      if (!isTop()) return
       if (event.key === 'Escape') {
         event.preventDefault()
         onClose()
@@ -127,7 +130,7 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
       window.removeEventListener('resize', onClose)
       window.removeEventListener('scroll', onClose, true)
     }
-  }, [items, cursor, onClose])
+  }, [items, cursor, onClose, isTop])
 
   return createPortal(
     <div

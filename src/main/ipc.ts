@@ -289,8 +289,16 @@ export function registerIpc(): void {
   })
 
   handle(IPC.settingsReset, () => {
+    const previous = getSettings()
     const next = resetSettings()
     syncRecordingHotkey()
+    if (next.automaticBackupKeep < previous.automaticBackupKeep) {
+      try {
+        pruneAllAutomaticBackups()
+      } catch (err) {
+        logger.warn('Automatische Sicherungen nach Zurücksetzen nicht aufgeräumt:', err)
+      }
+    }
     return next
   })
 
