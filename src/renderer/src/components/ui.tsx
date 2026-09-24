@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -8,6 +9,44 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { IconCheck, IconX } from './Icons'
+
+/* ------------------------------------------------------------------ *
+ * Overlay stack
+ * ------------------------------------------------------------------ */
+
+// Every open overlay's id, in the order it opened. A modal, the command
+// palette and a context menu each listen for Escape on `window`
+// independently, since that is the only way a portal-rendered surface can
+// hear it at all, but without this an Escape meant for the top one also
+// closed whatever was open underneath, for instance the account window mid
+// sign in behind a version picker opened on top of it, or a modal behind the
+// command palette. The backdrop click does not need the same guard: it only
+// ever reaches the element it was clicked on, which is already whichever
+// overlay is drawn on top.
+let openOverlayIds: number[] = []
+let nextOverlayId = 1
+
+/**
+ * Registers a surface on the shared overlay stack while `open` is true and
+ * hands back a check for whether it is currently the topmost one. Used by
+ * Modal, the command palette and context menus so only the frontmost of them
+ * reacts to a global key like Escape.
+ */
+export function useOverlayId(open: boolean): () => boolean {
+  const idRef = useRef<number | null>(null)
+  if (idRef.current === null) idRef.current = nextOverlayId++
+
+  useEffect(() => {
+    if (!open) return
+    const id = idRef.current as number
+    openOverlayIds = [...openOverlayIds, id]
+    return () => {
+      openOverlayIds = openOverlayIds.filter((openId) => openId !== id)
+    }
+  }, [open])
+
+  return useCallback(() => openOverlayIds[openOverlayIds.length - 1] === idRef.current, [])
+}
 
 /* ------------------------------------------------------------------ *
  * Modal
@@ -25,17 +64,6 @@ interface ModalProps {
   busy?: boolean
 }
 
-// Every open modal's id, in the order it opened. Each instance listens for
-// Escape on `window` independently, since that is the only way a portal-
-// rendered dialog can hear it at all, but without this an Escape meant for
-// the top one also closed whatever was open underneath, for instance the
-// account window mid sign in behind a version picker opened on top of it.
-// The backdrop click does not need the same guard: it only ever reaches the
-// element it was clicked on, which is already whichever overlay is drawn on
-// top.
-let openModalIds: number[] = []
-let nextModalId = 1
-
 export function Modal({
   open,
   title,
@@ -46,27 +74,16 @@ export function Modal({
   width = 'normal',
   busy = false
 }: ModalProps): JSX.Element | null {
-  const idRef = useRef<number | null>(null)
-  if (idRef.current === null) idRef.current = nextModalId++
-
-  useEffect(() => {
-    if (!open) return
-    const id = idRef.current as number
-    openModalIds = [...openModalIds, id]
-    return () => {
-      openModalIds = openModalIds.filter((openId) => openId !== id)
-    }
-  }, [open])
+  const isTop = useOverlayId(open)
 
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      const isTop = openModalIds[openModalIds.length - 1] === idRef.current
-      if (event.key === 'Escape' && !busy && isTop) onClose()
+      if (event.key === 'Escape' && !busy && isTop()) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose, busy])
+  }, [open, onClose, busy, isTop])
 
   if (!open) return null
 

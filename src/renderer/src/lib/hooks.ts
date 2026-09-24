@@ -154,6 +154,57 @@ export function useDebouncedSetting<T>(
   return [local, set]
 }
 
+/** Slider step for memory pickers, and the assumed installed RAM before it is known. */
+const MEMORY_STEP_MB = 512
+const MEMORY_FALLBACK_MAX_MB = 16384
+
+/**
+ * Highest value a memory slider should offer: the installed RAM rounded down
+ * to the slider step, or the fallback while that is not known yet. Without a
+ * shared ceiling, the four memory sliders in the app disagreed with each
+ * other and happily offered more RAM than the machine actually had.
+ */
+export function memorySliderMax(systemMemoryMb: number | null | undefined): number {
+  if (!systemMemoryMb || systemMemoryMb < MEMORY_STEP_MB) return MEMORY_FALLBACK_MAX_MB
+  return Math.floor(systemMemoryMb / MEMORY_STEP_MB) * MEMORY_STEP_MB
+}
+
+let cachedSystemMemoryMb: number | null = null
+let systemMemoryRequest: Promise<number | null> | null = null
+
+/**
+ * Fetches installed RAM once and shares it between every slider on screen,
+ * so opening the create wizard right after onboarding does not fire the same
+ * lookup twice.
+ */
+export function useMemorySliderMax(): number {
+  const [systemMemoryMb, setSystemMemoryMb] = useState(cachedSystemMemoryMb)
+
+  useEffect(() => {
+    if (cachedSystemMemoryMb !== null) return
+
+    if (!systemMemoryRequest) {
+      systemMemoryRequest = window.gabi.app
+        .info()
+        .then((info) => {
+          cachedSystemMemoryMb = info.systemMemoryMb
+          return info.systemMemoryMb
+        })
+        .catch(() => null)
+    }
+
+    let cancelled = false
+    void systemMemoryRequest.then((value) => {
+      if (!cancelled) setSystemMemoryMb(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return memorySliderMax(systemMemoryMb)
+}
+
 /** Ticks once a second so relative timestamps stay honest without a refresh. */
 export function useNow(intervalMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now())

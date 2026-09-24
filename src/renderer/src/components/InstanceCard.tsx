@@ -72,7 +72,9 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
             </>
           )}
           {instance.updateCount > 0 && (
-            <span className="badge accent">{instance.updateCount} Updates</span>
+            <span className="badge accent">
+              {instance.updateCount} {pluralise(instance.updateCount, 'Update', 'Updates')}
+            </span>
           )}
         </div>
 

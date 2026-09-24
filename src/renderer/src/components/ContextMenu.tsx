@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useOverlayId } from './ui'
 
 export interface MenuItem {
   label: string
@@ -35,6 +36,10 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null)
   const [pos, setPos] = useState({ left: x, top: y, ready: false })
   const [cursor, setCursor] = useState(0)
+
+  // On the same overlay stack as Modal and the command palette: a menu opened
+  // over a modal must not let Escape also close that modal underneath.
+  useOverlayId(true)
 
   // Reset whenever the menu is re-anchored, which is what happens when the
   // user right-clicks a different row without closing first. The component
@@ -75,6 +80,7 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
     }
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
+        event.preventDefault()
         onClose()
         return
       }

@@ -18,10 +18,10 @@ import type {
   Instance,
   LoaderId
 } from '@shared/types'
-import { ensureInstanceLayout, paths } from '../paths'
+import { ensureInstanceLayout, isValidVersionString, paths } from '../paths'
 import { log } from '../logger'
 import { withTask } from '../tasks'
-import { createInstance, getInstance, persist, syncContentWithDisk } from './instances'
+import { createInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 
 const logger = log('folder-import')
 
@@ -544,10 +544,11 @@ function readGdLauncherConfig(dir: string): LauncherRead | null {
 
     const type = typeof block.loaderType === 'string' ? block.loaderType.toLowerCase() : ''
     const known: LoaderId[] = ['fabric', 'forge', 'neoforge', 'quilt']
+    const loaderVersion = typeof block.loaderVersion === 'string' ? block.loaderVersion : ''
     return {
       mcVersion: block.mcVersion,
       loader: known.includes(type as LoaderId) ? (type as LoaderId) : 'vanilla',
-      loaderVersion: typeof block.loaderVersion === 'string' ? block.loaderVersion : ''
+      loaderVersion
     }
   } catch {
     return null
@@ -650,6 +651,14 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     if (!mcVersion) {
       throw new Error('In der mmc-pack.json fehlt die Minecraft-Version, der Ordner wurde nicht importiert.')
     }
+    // Both ids become path segments (paths.version(), paths.natives()), so a
+    // crafted mmc-pack.json cannot be allowed to smuggle a separator or ".." in.
+    if (!isValidVersionString(mcVersion)) {
+      throw new Error('Die Minecraft-Version in der mmc-pack.json ist ungültig.')
+    }
+    if (loaderVersion && !isValidVersionString(loaderVersion)) {
+      throw new Error('Die Mod-Loader-Version in der mmc-pack.json ist ungültig.')
+    }
 
     // MultiMC wrote "minecraft", Prism writes ".minecraft".
     const gameDir = ['.minecraft', 'minecraft']
@@ -712,6 +721,17 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   ]
   for (const candidate of external) {
     if (!candidate.read) continue
+    // Both ids become path segments (paths.version(), paths.natives()) once
+    // the instance is created, so a crafted metadata file cannot be allowed
+    // to smuggle a separator or ".." through here. Checked here rather than
+    // inside each reader above, since those already catch and swallow every
+    // error to fall through to the next candidate.
+    if (!isValidVersionString(candidate.read.mcVersion)) {
+      throw new Error(`Die Minecraft-Version aus ${candidate.note} ist ungültig.`)
+    }
+    if (candidate.read.loaderVersion && !isValidVersionString(candidate.read.loaderVersion)) {
+      throw new Error(`Die Mod-Loader-Version aus ${candidate.note} ist ungültig.`)
+    }
     return {
       flavour: candidate.flavour,
       name: candidate.read.name?.trim() || folderName,
@@ -1178,6 +1198,17 @@ export async function importInstanceFolder(
 
     task.update('Mods werden erfasst…', 0.9)
     await syncContentWithDisk(instance.id)
+
+    // The base setup (Minecraft itself) that `createInstance` started in the
+    // background may still be running or may have failed by now; marking the
+    // instance installed without checking would hide that.
+    const baseSetupOk = await waitForInstanceSetup(instance.id)
+    if (!baseSetupOk) {
+      persist({ ...getInstance(instance.id), installing: false, installed: false })
+      throw new Error(
+        'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+      )
+    }
 
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update(

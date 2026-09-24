@@ -23,7 +23,8 @@
  * that path and keep vanilla buttons, with no error and no missing texture.
  */
 import AdmZip from 'adm-zip'
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { paths } from '../paths'
@@ -42,6 +43,18 @@ const logger = log('startscreen')
 export const PACK_FILENAME = 'LaunchGabi-Startbildschirm.zip'
 /** How Minecraft's own resource-pack list refers to a file in resourcepacks/. */
 const PACK_ID = `file/${PACK_FILENAME}`
+
+/**
+ * Marks, next to the pack file itself, that this instance's pack has already
+ * been turned on once.
+ *
+ * Without it, every launch activated the pack unconditionally, so a player
+ * who removed it from Minecraft's own resource pack screen found it added
+ * right back on the next launch. Not a `.zip`, so `syncContentWithDisk`'s
+ * resourcepack scan (extension `.zip` only, see instances.ts) never lists it
+ * as content.
+ */
+const ACTIVATION_MARKER = `${PACK_FILENAME}.activated`
 
 /**
  * Where the bundled template ships, packaged or run from source.
@@ -208,6 +221,7 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
   const dir = paths.resourcePacks(instanceId)
   mkdirSync(dir, { recursive: true })
   const target = join(dir, PACK_FILENAME)
+  const marker = join(dir, ACTIVATION_MARKER)
 
   try {
     const zip = new AdmZip(bundled)
@@ -243,19 +257,47 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
       throw new Error('pack.mcmeta wurde nicht wie erwartet aktualisiert')
     }
 
-    zip.writeZip(target)
+    // Written to a temp file in the same folder and renamed over the target:
+    // adm-zip's writeZip() opens the destination directly, and a launch that
+    // starts Minecraft while this runs (a repair, a version change) could
+    // otherwise hand the game a half-written zip.
+    const tmpTarget = join(dir, `${PACK_FILENAME}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`)
+    try {
+      zip.writeZip(tmpTarget)
+      renameSync(tmpTarget, target)
+    } catch (err) {
+      try {
+        if (existsSync(tmpTarget)) rmSync(tmpTarget, { force: true })
+      } catch {
+        // a leftover temp file is harmless
+      }
+      throw err
+    }
   } catch (err) {
     logger.warn(`Startbildschirm-Paket für ${instanceId} konnte nicht geschrieben werden:`, err)
     return
   }
 
-  setPackActive(instanceId, PACK_ID, true)
+  // Only turns it on in options.txt the first time. The pack file above is
+  // always kept current either way; only whether it gets (re-)added to the
+  // active list depends on the marker, so a player who removed it from
+  // Minecraft's own resource pack screen is not overridden on the next
+  // launch.
+  if (!existsSync(marker)) {
+    setPackActive(instanceId, PACK_ID, true)
+    try {
+      writeFileSync(marker, '', 'utf8')
+    } catch (err) {
+      logger.warn(`Aktivierungsmarkierung für ${instanceId} konnte nicht geschrieben werden:`, err)
+    }
+  }
 }
 
 /** Deactivates and deletes the pack, leaving no trace once the beta is off. */
 export function removeCustomStartScreen(instanceId: string): void {
   setPackActive(instanceId, PACK_ID, false)
-  const target = join(paths.resourcePacks(instanceId), PACK_FILENAME)
+  const dir = paths.resourcePacks(instanceId)
+  const target = join(dir, PACK_FILENAME)
   try {
     if (existsSync(target)) {
       // Only our own file, by its exact name, never a wider cleanup of the
@@ -264,5 +306,14 @@ export function removeCustomStartScreen(instanceId: string): void {
     }
   } catch (err) {
     logger.warn(`Startbildschirm-Paket für ${instanceId} konnte nicht entfernt werden:`, err)
+  }
+
+  // Cleared so turning the setting off and back on again re-activates the
+  // pack, the same as if it had never been applied before.
+  try {
+    const marker = join(dir, ACTIVATION_MARKER)
+    if (existsSync(marker)) rmSync(marker, { force: true })
+  } catch (err) {
+    logger.warn(`Aktivierungsmarkierung für ${instanceId} konnte nicht entfernt werden:`, err)
   }
 }

@@ -98,6 +98,8 @@ export interface ContentItem {
   loaders: string[]
   dependencies: ContentDependency[]
   installedAt: number
+  /** When this version was published by its provider, distinct from `installedAt`. */
+  releasedAt?: string
   /** Populated by the update checker. */
   update?: AvailableUpdate | null
 }

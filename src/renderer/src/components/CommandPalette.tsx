@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
+import { useOverlayId } from './ui'
 import {
   IconCompass,
   IconCube,
@@ -50,6 +51,11 @@ export function CommandPalette(): JSX.Element | null {
   const [cursor, setCursor] = useState(0)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+
+  // Registers the palette on the same overlay stack as Modal, so a modal
+  // open underneath (e.g. the account window mid sign in) no longer counts
+  // as the topmost surface and does not also close on Escape.
+  useOverlayId(paletteOpen)
 
   const close = (): void => setState({ paletteOpen: false })
 

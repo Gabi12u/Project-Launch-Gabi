@@ -24,43 +24,9 @@ import {
 } from './instances'
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
-import { withContentLock } from './contentLock'
+import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 
 const logger = log('content')
-
-/**
- * Serializes operations on one specific content item, keyed by its id.
- *
- * `withContentLock` only signals "something is happening" to code outside
- * this file (launch, repair, folder scans); it is a reentrant counter, not a
- * mutex, on purpose, since a batch operation holds it for the whole run
- * while each step inside takes it again. That leaves nothing to stop two
- * independent calls from interleaving on the very same item, which is
- * exactly what an update and a removal of the same mod did when they
- * overlapped: the file the update had just downloaded and renamed survived
- * the removal it raced against, with no record left pointing at it, and the
- * next folder scan discovered it as a "new" mod, undoing the removal.
- *
- * Keyed by contentId rather than by instance, so it needs no reentrancy of
- * its own: nothing in this file ever calls back into the same contentId
- * while already holding this lock for it. Self-cleaning, so a session with
- * many installs does not grow this map forever.
- */
-const itemLocks = new Map<string, Promise<void>>()
-
-function withItemLock<T>(contentId: string, run: () => Promise<T>): Promise<T> {
-  const previous = itemLocks.get(contentId) ?? Promise.resolve()
-  const result = previous.then(run, run)
-  const marker = result.then(
-    () => undefined,
-    () => undefined
-  )
-  itemLocks.set(contentId, marker)
-  void marker.finally(() => {
-    if (itemLocks.get(contentId) === marker) itemLocks.delete(contentId)
-  })
-  return result
-}
 
 /**
  * True when both paths address the same file on this platform.
@@ -128,6 +94,7 @@ function toContentItem(
     loaders: version.loaders,
     dependencies: version.dependencies,
     installedAt: Date.now(),
+    releasedAt: version.releasedAt,
     update: null
   }
 }
@@ -181,6 +148,7 @@ async function installContentOnce(
   visited: Set<string>
 ): Promise<ContentItem[]> {
   const { instanceId, provider, projectId } = options
+  assertNotCopying(instanceId)
 
   const instance = getInstance(instanceId)
   const installed: ContentItem[] = []
@@ -249,7 +217,26 @@ async function installContentOnce(
     // but the capitalisation of its file name would otherwise have this
     // delete the download that just completed.
     if (!samePath(oldPath, destination)) {
-      rmSync(oldPath, { force: true })
+      // Retried once before giving up, same reasoning as `removeContentOnce`:
+      // a scanner or indexer briefly holding the old file open. Unlike that
+      // path, giving up here must not go on to record the new file anyway.
+      // That would leave the fresh download on disk untracked while the old
+      // record stayed put. The freshly downloaded file is removed instead, so
+      // the only lasting change from a failed replace is "try again".
+      try {
+        rmSync(oldPath, { force: true })
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        try {
+          rmSync(oldPath, { force: true })
+        } catch (err) {
+          rmSync(destination, { force: true })
+          throw new Error(
+            `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+            { cause: err }
+          )
+        }
+      }
     }
     removeContentRecord(instanceId, previous.id)
   }
@@ -271,6 +258,18 @@ async function installContentOnce(
     const required = version.dependencies.filter((d) => d.type === 'required')
 
     for (const dependency of required) {
+      // A required dependency the provider could no longer resolve, for
+      // example a withdrawn version: nothing to install, but worth saying.
+      if (!dependency.projectId) {
+        notify(
+          'warning',
+          `${project.name}: Abhängigkeit fehlt`,
+          'Eine benötigte Erweiterung ist beim Anbieter nicht mehr erhältlich. ' +
+            'Ohne sie startet das Spiel unter Umständen nicht.'
+        )
+        continue
+      }
+
       // Scoped to this same provider, matching compat.ts's own dependency
       // check: a dependency's project id only means anything within the
       // provider it came from, and CurseForge's plain numeric ids can in
@@ -331,6 +330,7 @@ export function removeContent(instanceId: string, contentId: string): Promise<In
 }
 
 async function removeContentOnce(instanceId: string, contentId: string): Promise<Instance> {
+  assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
   if (!item) return instance
@@ -383,6 +383,7 @@ async function importContentFileOnce(
   sourceFile: string,
   type: ContentType
 ): Promise<ContentItem> {
+  assertNotCopying(instanceId)
   const dir = targetDir(instanceId, type)
   const fileName = basename(sourceFile)
   const destination = join(dir, fileName)
@@ -434,6 +435,16 @@ function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
   if (!current.versionId) return true
   if (candidate.versionId === current.versionId) return false
   if (candidate.fileName === current.fileName) return false
+  // Once the installed version's own release date is known, compare against
+  // that directly. The old installedAt-based rule never noticed a newer
+  // release after a deliberate downgrade, since installedAt only records when
+  // the (older) file was put in place, not when it was actually released, so
+  // the downgrade always looked more recent than the release it undid.
+  // Records written before this field existed have no releasedAt and fall
+  // back to the old rule.
+  if (current.releasedAt) {
+    return new Date(candidate.releasedAt).getTime() > new Date(current.releasedAt).getTime()
+  }
   return new Date(candidate.releasedAt).getTime() > current.installedAt - 24 * 60 * 60 * 1000
 }
 
@@ -515,6 +526,7 @@ export async function applyUpdate(instanceId: string, contentId: string): Promis
 }
 
 async function applyUpdateOnce(instanceId: string, contentId: string): Promise<ContentItem | null> {
+  assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
   if (!item?.update) return null
@@ -551,6 +563,7 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     sha1: item.update.sha1,
     size: item.update.size,
     installedAt: Date.now(),
+    releasedAt: item.update.releasedAt,
     update: null
   }
 
@@ -638,6 +651,7 @@ export async function updateAll(instanceId: string): Promise<number> {
 }
 
 async function updateAllOnce(instanceId: string): Promise<number> {
+  assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
 
   return withTask(`Updates für ${instance.name}`, 'Vorbereitung…', instanceId, async (task) => {
@@ -743,6 +757,7 @@ export async function fixAll(instanceId: string, issues: CompatibilityIssue[]): 
 
   // One lock for the whole batch, so the gap between two fixes is covered too.
   return withContentLock(instanceId, async () => {
+    assertNotCopying(instanceId)
     for (const issue of fixable) {
       try {
         await applyFix(instanceId, issue.fix as NonNullable<CompatibilityIssue['fix']>)

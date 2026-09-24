@@ -3,6 +3,7 @@ import type { JavaRuntime, LaunchBehaviour } from '@shared/types'
 import type { InstanceDetail } from '@shared/api'
 import { ACCENT_CHOICES, ICON_CHOICES } from '@shared/defaults'
 import { refreshInstances, toast, toastError } from '../lib/store'
+import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
 import { SettingToggle } from '../components/ui'
 import { IconImage, IconRefresh, IconTrash } from '../components/Icons'
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Element {
+  const memoryMax = useMemorySliderMax()
   const [name, setName] = useState(instance.name)
   const [description, setDescription] = useState(instance.description)
   const [group, setGroup] = useState(instance.group)
@@ -237,14 +239,16 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label" htmlFor="is-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+            <label className="label" htmlFor="is-arbeitsspeicher">
+              Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+            </label>
             <input id="is-arbeitsspeicher"
               className="range"
               type="range"
               min={1024}
-              max={32768}
+              max={memoryMax}
               step={512}
-              value={memory}
+              value={Math.min(memory, memoryMax)}
               onChange={(e) => setMemory(Number(e.target.value))}
             />
             <span className="hint">

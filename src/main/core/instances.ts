@@ -21,7 +21,7 @@ import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
-import { isContentBusy, withContentLock } from './contentLock'
+import { assertNotCopying, isContentBusy, markCopying, unmarkCopying, withContentLock, withItemLock } from './contentLock'
 import { isRestoring } from './restoreLock'
 import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
@@ -289,6 +289,29 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
  */
 const settingUp = new Map<string, Promise<void>>()
 
+/**
+ * Waits for the background setup `createInstance`/`installInstance` started
+ * for this id, without starting one itself.
+ *
+ * Pack imports (mrpack, CurseForge, folder imports) create the instance
+ * record first and then add mods on top of the game folder that background
+ * setup is still writing to; without a way to wait for it, an import could
+ * write into a mods/ folder that install had not created yet, or read
+ * `installed` as still false and wrongly report the import as failed.
+ */
+export async function waitForInstanceSetup(id: string): Promise<boolean> {
+  const running = settingUp.get(id)
+  if (running) {
+    try {
+      await running
+      return true
+    } catch {
+      return false
+    }
+  }
+  return tryGetInstance(id)?.installed ?? false
+}
+
 export async function installInstance(id: string, force = false): Promise<void> {
   const running = settingUp.get(id)
   if (running) return running
@@ -518,10 +541,20 @@ export function deleteInstance(id: string): void {
   // failure and lifts the tombstone as before; the backups folder failing
   // afterwards does not undo a deletion that has already happened.
   try {
-    rmSync(dir, { recursive: true, force: true })
+    // `maxRetries`/`retryDelay` retry on EBUSY/ENOTEMPTY/EPERM, the transient
+    // codes a virus scanner or the search indexer briefly holding a file
+    // produce, without touching the ENOENT case `force` already covers.
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   } catch (err) {
     deleted.delete(id)
-    throw err
+    // Retries exhausted: the folder may now be only half removed, so disk and
+    // the in-memory cache have diverged. Rebuilt from disk instead of leaving
+    // the cache showing an instance that is no longer what is actually there.
+    loadInstances(true)
+    throw new Error(
+      `Instanz ${id} konnte nicht vollständig gelöscht werden, eine Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+      { cause: err }
+    )
   }
 
   try {
@@ -542,6 +575,14 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   // new instance.
   assertInstanceIdle(id, 'dupliziert')
 
+  // `assertInstanceIdle` checks the running/starting/content/restore/repair
+  // locks, but the background setup `createInstance` starts (~line 271) sets
+  // none of those: it is still writing libraries, natives and the loader into
+  // the very folder about to be copied.
+  if (settingUp.has(id)) {
+    throw new Error('Die Instanz wird gerade eingerichtet und kann noch nicht dupliziert werden.')
+  }
+
   const source = getInstance(id)
   const name = newName?.trim() || `${source.name} (Kopie)`
   const newId = uniqueId(name)
@@ -555,8 +596,25 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   // waiting on this, from running against the very folder this is reading
   // from partway through the copy. Held on the source id, the same flag
   // `assertInstanceIdle` already checks.
+  //
+  // `withContentLock` alone marks this as busy but is a reentrant counter,
+  // not a mutex, so it does not by itself stop a mod install or update from
+  // running concurrently against the same folder. `markCopying` is the actual
+  // mutex here: those mutations refuse outright while it is set.
   const { cp } = await import('node:fs/promises')
-  await withContentLock(id, () => cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true }))
+  markCopying(id)
+  try {
+    await withContentLock(id, () => cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true }))
+
+    // The instance's custom icon/background lives in a sibling folder next to
+    // the game dir (see paths.icons), so the copy above never touched it.
+    const iconsDir = paths.icons(id)
+    if (existsSync(iconsDir)) {
+      await cp(iconsDir, paths.icons(newId), { recursive: true })
+    }
+  } finally {
+    unmarkCopying(id)
+  }
 
   const clone: Instance = {
     ...structuredClone(source),
@@ -566,7 +624,12 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     lastPlayed: null,
     totalPlayMs: 0,
     sessions: [],
-    favorite: false
+    favorite: false,
+    // `structuredClone(source)` would otherwise carry `installing: true` /
+    // `installed: false` straight over if the source was mid first-install up
+    // until the instant the checks above ran; a clone never goes through
+    // `normalise`, so nothing else would catch that.
+    installing: false
   }
 
   persist(clone)
@@ -783,8 +846,17 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
   // "mod.jar", nothing matched, and the mod was re-registered from scratch as
   // local content — losing its projectId, versionId and hash, and with them
   // update checks and its download link in an exported modpack.
-  const bareKey = (name: string): string =>
-    (name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name).toLowerCase()
+  const bareExact = (name: string): string =>
+    name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
+  const groupBy = (key: (c: ContentItem) => string): Map<string, ContentItem[]> => {
+    const map = new Map<string, ContentItem[]>()
+    for (const c of instance.content) {
+      const list = map.get(key(c)) ?? []
+      list.push(c)
+      map.set(key(c), list)
+    }
+    return map
+  }
   // Scoped by type as well as name: resource packs, shader packs and
   // datapacks all end in `.zip` and are scanned from separate folders below,
   // but shared one map keyed on the bare name alone. Two of them with the
@@ -792,7 +864,17 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
   // entry, and both files then came back tagged with whichever one's
   // metadata happened to still be in `known`: wrong type, wrong name, and an
   // id shared between two records that pointed at two different files.
-  const known = new Map(instance.content.map((c) => [`${c.type}:${bareKey(c.fileName)}`, c]))
+  //
+  // Two maps, not one: an exact, case-sensitive match is tried first, and
+  // only falls back to folding case when nothing exact matched. Matching
+  // case-insensitively from the start meant two files differing only in case
+  // (a real possibility on macOS/Linux) both matched the one record that
+  // happened to be in the map, producing two result entries that share an
+  // id. `claimed` makes sure each record still only ever matches one file per
+  // scan, even through the fallback.
+  const knownExact = groupBy((c) => `${c.type}:${bareExact(c.fileName)}`)
+  const knownFold = groupBy((c) => `${c.type}:${bareExact(c.fileName).toLowerCase()}`)
+  const claimed = new Set<string>()
   const result: ContentItem[] = []
 
   const folders: { dir: string; type: ContentItem['type']; extensions: string[] }[] = [
@@ -821,14 +903,27 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
         continue
       }
 
-      const existing = known.get(`${folder.type}:${bare.toLowerCase()}`)
+      const exactMatches = knownExact.get(`${folder.type}:${bare}`) ?? []
+      const foldMatches = knownFold.get(`${folder.type}:${bare.toLowerCase()}`) ?? []
+      const existing =
+        exactMatches.find((c) => !claimed.has(c.id)) ?? foldMatches.find((c) => !claimed.has(c.id))
       if (existing) {
+        claimed.add(existing.id)
         result.push({ ...existing, fileName, enabled })
         continue
       }
 
       // Unknown file: register it as local content so it still shows up.
-      const stats = statSync(join(folder.dir, fileName))
+      // Skipped, not thrown, if it vanished between `readdirSync` and here:
+      // deleting a file mid-scan otherwise took the whole reconciliation down
+      // with it instead of just leaving that one file for the next scan.
+      let stats: { size: number; mtimeMs: number }
+      try {
+        stats = statSync(join(folder.dir, fileName))
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue
+        throw err
+      }
       result.push({
         id: randomUUID(),
         type: folder.type,
@@ -859,39 +954,49 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
  * neither its old nor its new name for a moment, and `deleteInstance` or
  * `repairInstance` could start against the same folder while the rename was
  * still in flight, since `isContentBusy` looked idle the whole time.
+ *
+ * Also held under `withItemLock`, the same per-item mutex `content.ts` uses
+ * for removal and updates, for the same reason: without it, a toggle racing
+ * an update on the same item could rename the file `applyUpdate` had just
+ * downloaded, and `applyUpdate` then persists from a snapshot taken before
+ * the toggle, overwriting it and leaving an orphaned renamed file with
+ * nothing tracking it.
  */
 export function toggleContent(id: string, contentId: string, enabled: boolean): Promise<Instance> {
-  return withContentLock(id, async () => {
-    const instance = getInstance(id)
-    const item = instance.content.find((c) => c.id === contentId)
-    if (!item) throw new Error('Inhalt nicht gefunden')
+  return withContentLock(id, () =>
+    withItemLock(contentId, async () => {
+      assertNotCopying(id)
+      const instance = getInstance(id)
+      const item = instance.content.find((c) => c.id === contentId)
+      if (!item) throw new Error('Inhalt nicht gefunden')
 
-    const dirMap: Record<ContentItem['type'], string> = {
-      mod: paths.mods(id),
-      resourcepack: paths.resourcePacks(id),
-      shaderpack: paths.shaderPacks(id),
-      datapack: join(paths.gameDir(id), 'datapacks')
-    }
+      const dirMap: Record<ContentItem['type'], string> = {
+        mod: paths.mods(id),
+        resourcepack: paths.resourcePacks(id),
+        shaderpack: paths.shaderPacks(id),
+        datapack: join(paths.gameDir(id), 'datapacks')
+      }
 
-    const dir = dirMap[item.type]
-    // The one content write path that never went through `core/content.ts`,
-    // so it never picked up the `basename()` guard every install/update/
-    // removal there already applies to `fileName`.
-    const currentPath = contentPath(dir, item.fileName)
-    const bare = item.fileName.endsWith('.disabled')
-      ? item.fileName.slice(0, -'.disabled'.length)
-      : item.fileName
-    const nextName = enabled ? bare : `${bare}.disabled`
+      const dir = dirMap[item.type]
+      // The one content write path that never went through `core/content.ts`,
+      // so it never picked up the `basename()` guard every install/update/
+      // removal there already applies to `fileName`.
+      const currentPath = contentPath(dir, item.fileName)
+      const bare = item.fileName.endsWith('.disabled')
+        ? item.fileName.slice(0, -'.disabled'.length)
+        : item.fileName
+      const nextName = enabled ? bare : `${bare}.disabled`
 
-    if (existsSync(currentPath) && nextName !== item.fileName) {
-      renameSync(currentPath, contentPath(dir, nextName))
-    }
+      if (existsSync(currentPath) && nextName !== item.fileName) {
+        renameSync(currentPath, contentPath(dir, nextName))
+      }
 
-    const content = instance.content.map((c) =>
-      c.id === contentId ? { ...c, fileName: nextName, enabled } : c
-    )
-    return persist({ ...instance, content })
-  })
+      const content = instance.content.map((c) =>
+        c.id === contentId ? { ...c, fileName: nextName, enabled } : c
+      )
+      return persist({ ...instance, content })
+    })
+  )
 }
 
 /* ------------------------------------------------------------------ *

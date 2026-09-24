@@ -153,6 +153,9 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
 
     // 4. Dependencies ------------------------------------------------
     for (const dependency of mod.dependencies) {
+      // Unresolvable at the provider (withdrawn version); the install already
+      // warned about it, and there is nothing a fix button could install.
+      if (!dependency.projectId) continue
       if (dependency.type === 'required') {
         // Scoped to the requiring mod's own provider only. The unscoped
         // fallback that used to sit here compared bare ids across providers,
@@ -233,7 +236,18 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     list.push(mod)
     byProject.set(key, list)
   }
-  for (const [, unsorted] of byProject) {
+  // Sharing a display name is not enough on its own to delete something: two
+  // different mods by different authors can happen to be called the same
+  // thing, and a name-only match used to offer the exact same "remove it"
+  // fix as a genuine duplicate, silently deleting an unrelated mod. Only a
+  // shared provider+project id or a shared file hash proves it is actually
+  // one mod installed twice.
+  const sameMod = (a: ContentItem, b: ContentItem): boolean => {
+    if (a.projectId && b.projectId) return a.provider === b.provider && a.projectId === b.projectId
+    if (a.sha1 && b.sha1) return a.sha1 === b.sha1
+    return false
+  }
+  for (const [key, unsorted] of byProject) {
     if (unsorted.length < 2) continue
     // Sorted once, up front: `contentId` (which entry the UI highlights) and
     // `fix.contentId` (which entry "Fix" actually deletes) used to be built
@@ -241,20 +255,38 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     // sort, and could end up pointing at two different duplicates. The oldest
     // is the one the fix removes, so it is also the one shown.
     const duplicates = [...unsorted].sort((a, b) => a.installedAt - b.installedAt)
-    issues.push({
-      id: `duplicate-${flattenName(duplicates[0].name)}`,
-      severity: 'error',
-      title: `${duplicates[0].name} ist doppelt installiert`,
-      detail:
-        `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: ` +
-        duplicates.map((d) => d.fileName).join(', '),
-      contentId: duplicates[0].id,
-      fix: {
-        kind: 'remove-content',
-        label: 'Ältere Datei entfernen',
+    // A mixed group (three files, only two of them provably the same mod) is
+    // treated as a name-only match throughout, rather than guessing which
+    // pair the user meant.
+    const certain = duplicates.every((mod) => sameMod(mod, duplicates[0]))
+
+    if (certain) {
+      issues.push({
+        id: `duplicate-${key}`,
+        severity: 'error',
+        title: `${duplicates[0].name} ist doppelt installiert`,
+        detail:
+          `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: ` +
+          duplicates.map((d) => d.fileName).join(', '),
+        contentId: duplicates[0].id,
+        fix: {
+          kind: 'remove-content',
+          label: 'Ältere Datei entfernen',
+          contentId: duplicates[0].id
+        }
+      })
+    } else {
+      issues.push({
+        id: `duplicate-name-${key}`,
+        severity: 'warning',
+        title: `${duplicates[0].name}: Name mehrfach vergeben`,
+        detail:
+          `${duplicates.length} Mods tragen den Namen "${duplicates[0].name}": ` +
+          duplicates.map((d) => d.fileName).join(', ') +
+          `. Das können auch zwei unterschiedliche Mods sein, prüfe von Hand, ob einer davon ein Duplikat ist.`,
         contentId: duplicates[0].id
-      }
-    })
+      })
+    }
   }
 
   // 6. Shaders without a shader loader -------------------------------

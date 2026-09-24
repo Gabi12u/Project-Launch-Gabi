@@ -71,6 +71,12 @@ function textOr(value: unknown, fallback: string): string {
   return typeof value === 'string' ? value : fallback
 }
 
+/** Every value `ThemeId` allows, kept here since it is a type and not a runtime list. */
+const THEME_IDS = [
+  'midnight', 'nebula', 'abyss', 'aurora', 'cobalt', 'indigo', 'violet', 'prism',
+  'orchid', 'dusk', 'sunset', 'ember', 'rust', 'moss', 'fern', 'pine', 'lagoon', 'slate'
+]
+
 /**
  * Brings a stored settings file back into the shape the rest of the launcher
  * takes for granted.
@@ -121,6 +127,24 @@ function sanitize(input: LauncherSettings): LauncherSettings {
     // must never be taken as consent.
     next.crashReports = fallback.crashReports
   }
+  // Same reasoning as crashReports: "not asked" is not "yes".
+  if (!['unset', 'on', 'off'].includes(next.customStartScreen)) {
+    next.customStartScreen = fallback.customStartScreen
+  }
+  if (!['keep', 'hide', 'close'].includes(next.launchBehaviour)) {
+    next.launchBehaviour = fallback.launchBehaviour
+  }
+  if (!['de', 'en'].includes(next.language)) {
+    next.language = fallback.language
+  }
+  if (!THEME_IDS.includes(next.theme)) {
+    next.theme = fallback.theme
+  }
+  if (!['top', 'side'].includes(next.navPosition)) {
+    next.navPosition = fallback.navPosition
+  }
+  next.reduceMotion = typeof next.reduceMotion === 'boolean' ? next.reduceMotion : fallback.reduceMotion
+  next.javaAutoManage = typeof next.javaAutoManage === 'boolean' ? next.javaAutoManage : fallback.javaAutoManage
   next.lastRunVersion = textOr(next.lastRunVersion, fallback.lastRunVersion)
   next.lastSeenVersion = textOr(next.lastSeenVersion, fallback.lastSeenVersion)
 
@@ -142,6 +166,28 @@ export function getSettings(): LauncherSettings {
   return settings
 }
 
+/**
+ * Makes sure a chosen data directory can actually be used before anything
+ * commits to it.
+ *
+ * `existsSync` says nothing about whether it can be written to (a read-only
+ * network share, a path inside a folder Windows itself protects), and finding
+ * that out only after the directory was already saved and `ensureRootLayout`
+ * had run against it left the launcher pointed at a folder it could not use,
+ * with every instance looking as if it had vanished.
+ */
+function assertDirectoryUsable(dir: string): void {
+  try {
+    mkdirSync(dir, { recursive: true })
+    const probe = join(dir, `.launchgabi-write-test-${process.pid}-${randomUUID().slice(0, 8)}`)
+    writeFileSync(probe, 'ok', 'utf8')
+    unlinkSync(probe)
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err)
+    throw new Error(`Der gewählte Ordner kann nicht verwendet werden: ${reason}`)
+  }
+}
+
 export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings {
   const current = getSettings()
   const next = sanitize({ ...current, ...patch })
@@ -154,6 +200,11 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
   if (typeof wanted !== 'string' || !wanted.trim()) {
     logger.warn('Leeres Datenverzeichnis abgelehnt, bisheriger Pfad bleibt bestehen')
     next.dataDirectory = current.dataDirectory
+  } else if (next.dataDirectory !== current.dataDirectory) {
+    // Throws before anything below runs, so a folder that cannot be used
+    // never reaches disk or the in-memory settings, and the caller (the
+    // `settingsSet` IPC handler) never reaches `ensureRootLayout()` for it.
+    assertDirectoryUsable(next.dataDirectory)
   }
 
   // Written before the module variable is updated: writeJsonAtomic is
@@ -184,10 +235,29 @@ export function resetSettings(): LauncherSettings {
  * ------------------------------------------------------------------ */
 
 export interface StoredAccount extends Account {
-  /** Encrypted (base64) or plain refresh token, see `secure`. */
+  /** Encrypted (base64) or plain refresh token, see `refreshSecure`/`secure`. */
   refreshToken?: string
   accessToken?: string
+  /**
+   * Legacy single flag from before `accessToken` and `refreshToken` tracked
+   * their own encryption state separately. Still written (mirroring
+   * `accessSecure`) so older code reading only this field keeps working, and
+   * still read as the fallback for either token on an account saved before
+   * this field existed.
+   */
   secure?: boolean
+  /** Whether `accessToken` is encrypted. Falls back to `secure` when absent. */
+  accessSecure?: boolean
+  /**
+   * Whether `refreshToken` is encrypted.
+   *
+   * A device-code grant does not always return a fresh refresh token, so a
+   * kept-over one can be older than the access token saved next to it in the
+   * same write; this is what lets it keep its own, possibly different, flag
+   * instead of inheriting the access token's. Falls back to `secure` when
+   * absent.
+   */
+  refreshSecure?: boolean
   /**
    * The Microsoft application id that issued `refreshToken`.
    *
@@ -227,7 +297,10 @@ export function readAccounts(): StoredAccount[] {
       typeof account.username === 'string' &&
       account.username.length > 0 &&
       typeof account.uuid === 'string' &&
-      account.uuid.length > 0
+      account.uuid.length > 0 &&
+      // Anything else is a value no part of the launcher knows how to launch
+      // with; the type decides between two entirely different login flows.
+      (account.type === 'microsoft' || account.type === 'offline')
     )
   })
   if (usable.length !== stored.length) {

@@ -6,6 +6,7 @@ import { useCountUp, useInstanceIcon, useParallax, useSpotlight } from '../lib/h
 import { clickable } from '../lib/a11y'
 import {
   LOADER_LABELS,
+  formatDecimal,
   formatMemory,
   formatPlayTime,
   formatRelative,
@@ -164,7 +165,7 @@ export function HomeView(): JSX.Element {
               icon={<IconSave size={13} />}
               label="Speicherplatz"
               value={stats.diskUsageBytes / 1024 / 1024 / 1024}
-              format={(v) => v.toFixed(1)}
+              format={(v) => formatDecimal(v, 1)}
               suffix="GB"
             />
           </div>

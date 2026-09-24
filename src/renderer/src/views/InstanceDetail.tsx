@@ -243,9 +243,13 @@ export function InstanceDetailView({
                 {LOADER_LABELS[instance.loader]}
                 {instance.loaderVersion ? ` ${instance.loaderVersion}` : ''}
               </span>
-              {modCount > 0 && <span className="badge">{modCount} Mods</span>}
+              {modCount > 0 && (
+                <span className="badge">{modCount} {pluralise(modCount, 'Mod', 'Mods')}</span>
+              )}
               <span className="badge">RAM: {formatMemory(instance.settings.memoryMb)}</span>
-              {updateCount > 0 && <span className="badge warn">{updateCount} Updates</span>}
+              {updateCount > 0 && (
+                <span className="badge warn">{updateCount} {pluralise(updateCount, 'Update', 'Updates')}</span>
+              )}
               {instance.installing && (
                 <span className="badge accent">
                   <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
@@ -695,7 +699,7 @@ function ContentTab({
         <EmptyState
           icon={<IconPackage size={26} />}
           title="Nichts installiert"
-          message={`Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden", um welche zu installieren.`}
+          message={`Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden“, um welche zu installieren.`}
         />
       ) : (
         <div className="col gap-8">
@@ -770,7 +774,7 @@ function ContentTab({
         message={
           confirmUpdate && (
             <>
-              Nur „{confirmUpdate.name}" auf {confirmUpdate.update?.versionNumber} aktualisieren? Die
+              Nur „{confirmUpdate.name}“ auf {confirmUpdate.update?.versionNumber} aktualisieren? Die
               bisherige Datei wird dabei entfernt.
             </>
           )

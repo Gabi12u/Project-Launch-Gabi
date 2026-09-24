@@ -10,7 +10,7 @@ import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
 import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
-import { useDebouncedSetting } from '../lib/hooks'
+import { memorySliderMax, useDebouncedSetting } from '../lib/hooks'
 import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
 import { LogoLockup } from '../components/Logo'
@@ -210,6 +210,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   // Only claims to be unread once the version is actually known: before the
   // app info arrives both sides are empty strings and the dot would flicker.
   const changelogUnread = Boolean(info?.version) && settings.lastSeenVersion !== info?.version
+  const memoryMax = memorySliderMax(info?.systemMemoryMb)
   const [clientId, setClientId] = useState(settings.microsoftClientId)
   // Debounced: these five write straight to a settings file on disk, and
   // without this every step of a drag or every keystroke was its own
@@ -526,16 +527,16 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <h3>Standardwerte für neue Instanzen</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-standard-arbeitsspeicher">
-                    Arbeitsspeicher: {formatMemory(defaultMemoryMb)}
+                    Arbeitsspeicher: {formatMemory(Math.min(defaultMemoryMb, memoryMax))}
                   </label>
                   <input
                     id="st-standard-arbeitsspeicher"
                     className="range"
                     type="range"
                     min={1024}
-                    max={16384}
+                    max={memoryMax}
                     step={512}
-                    value={defaultMemoryMb}
+                    value={Math.min(defaultMemoryMb, memoryMax)}
                     onChange={(event) => setDefaultMemoryMb(Number(event.target.value))}
                   />
                   {info && (

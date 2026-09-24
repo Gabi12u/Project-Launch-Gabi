@@ -4,9 +4,9 @@ import {
   createWriteStream,
   existsSync,
   linkSync,
+  lstatSync,
   mkdirSync,
   readdirSync,
-  statSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs'
@@ -117,11 +117,21 @@ export async function extractAllSlowly(
   targetDir: string,
   onProgress?: (done: number, total: number) => void,
   /** Throws to abort. Lets the caller raise its own cancellation error. */
-  checkCancelled?: () => void
+  checkCancelled?: () => void,
+  /**
+   * Restricts extraction to entries whose first path segment is in this set.
+   * A restore only ever wants to write back the folders it parked aside
+   * beforehand (see `restoreBackupUnlocked`); without this, anything else an
+   * archive happens to contain lands in the game folder unasked for.
+   */
+  includeRoots?: ReadonlySet<string>
 ): Promise<number> {
   mkdirSync(targetDir, { recursive: true })
   const zip = new AdmZip(archivePath)
-  const entries = zip.getEntries()
+  const allEntries = zip.getEntries()
+  const entries = includeRoots
+    ? allEntries.filter((entry) => includeRoots.has(entry.entryName.split('/')[0]))
+    : allEntries
 
   let done = 0
   let lastBreath = Date.now()
@@ -219,19 +229,34 @@ export interface ZipFolderOptions {
    * the launcher cannot keep.
    */
   onSkip?: (file: string, error: unknown) => void
+  /**
+   * Called for every symbolic link found instead of packing it. Separate from
+   * `onSkip`: an unreadable file makes the backup incomplete and worth
+   * failing over, but a link was never something a restore could recreate
+   * either way, so it is only worth a warning, not aborting the whole backup.
+   */
+  onSkipLink?: (file: string) => void
 }
 
-function walk(dir: string, out: string[] = []): string[] {
+function walk(dir: string, out: string[] = [], onSymlink?: (full: string) => void): string[] {
   if (!existsSync(dir)) return out
   for (const name of readdirSync(dir)) {
     const full = join(dir, name)
-    let stats: ReturnType<typeof statSync>
+    let stats: ReturnType<typeof lstatSync>
     try {
-      stats = statSync(full)
+      stats = lstatSync(full)
     } catch {
       continue
     }
-    if (stats.isDirectory()) walk(full, out)
+    // `lstatSync` sees the link itself, not its target. A link can point
+    // outside `sourceDir` (an archive entry a restore can never write back
+    // to where it came from) or form a cycle that would otherwise recurse
+    // forever, so it is reported and left out rather than followed.
+    if (stats.isSymbolicLink()) {
+      onSymlink?.(full)
+      continue
+    }
+    if (stats.isDirectory()) walk(full, out, onSymlink)
     else out.push(full)
   }
   return out
@@ -255,7 +280,14 @@ export async function zipFolder(
     : [sourceDir]
 
   const files: string[] = []
-  for (const rootDir of roots) files.push(...walk(rootDir))
+  const links: string[] = []
+  for (const rootDir of roots) walk(rootDir, files, (full) => links.push(full))
+
+  for (const full of links) {
+    const rel = relative(sourceDir, full).split(sep).join('/')
+    logger.warn(`Verknüpfung wird nicht gesichert: ${rel}`)
+    options.onSkipLink?.(rel)
+  }
 
   const filtered = files.filter((file) => {
     const rel = relative(sourceDir, file).split(sep).join('/')
@@ -266,6 +298,16 @@ export async function zipFolder(
   let done = 0
   for (const file of filtered) {
     const rel = relative(sourceDir, file).split(sep).join('/')
+    // Defensive: `walk` no longer follows links, so this should be
+    // unreachable, but an entry name escaping `sourceDir` is exactly what
+    // `safeJoin` guards against again on the way back in during a restore.
+    // `rel` is already forward-slash normalised above.
+    if (rel === '..' || rel.startsWith('../')) {
+      logger.warn(`Überspringe Eintrag außerhalb des Sicherungsordners: ${rel}`)
+      options.onSkip?.(rel, new Error('Pfad liegt außerhalb des Sicherungsordners'))
+      done++
+      continue
+    }
     const entryName = options.prefix ? `${options.prefix}/${rel}` : rel
     try {
       zip.addFile(entryName, await readFile(file))

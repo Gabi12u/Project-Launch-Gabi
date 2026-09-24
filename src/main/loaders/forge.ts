@@ -96,6 +96,23 @@ function isNeoforgeLegacy(mcVersion: string): boolean {
   return mcVersion === '1.20.1'
 }
 
+/**
+ * Compares two Forge version strings, newest first, by their dot-separated
+ * numeric segments (`47.4.23`, or the older four-segment `14.23.5.2860`).
+ * maven-metadata.xml's own listing order is not reliably newest first,
+ * verified live: it runs descending then ascending part way through.
+ */
+function compareForgeVersionsNewestFirst(a: string, b: string): number {
+  const numbers = (v: string): number[] => v.split('.').map((n) => Number(n) || 0)
+  const pa = numbers(a)
+  const pb = numbers(b)
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pb[i] ?? 0) - (pa[i] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
 async function listForgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
   const xml = await fetchText(`${FORGE_MAVEN}/net/minecraftforge/forge/maven-metadata.xml`)
   const all = [...xml.matchAll(/<version>([^<]+)<\/version>/g)].map((m) => m[1])
@@ -121,7 +138,7 @@ async function listForgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
     // Some old entries carry a trailing branch suffix such as "-1.20.1".
     .map((v) => v.split('-')[0])
     .filter((v, i, arr) => arr.indexOf(v) === i)
-    .reverse()
+    .sort(compareForgeVersionsNewestFirst)
     .map((version) => ({
       version,
       gameVersion: mcVersion,
@@ -226,20 +243,25 @@ function libraryPath(coords: string): string {
  * The installer jar is not just stored — its processors are executed as Java
  * code further down, so downloading it unverified lets a tampered mirror run
  * code as the user. Maven's checksum file is the only hash published for these
- * artifacts. A mirror that cannot serve it is not treated as fatal, since that
- * would make every install hinge on one extra request, but the download then
- * proceeds unverified and says so in the log.
+ * artifacts, so a few retries absorb an ordinary blip, and if it still cannot
+ * be read the installer is refused rather than run unverified.
  */
-async function mavenSha1(url: string): Promise<string | undefined> {
-  try {
-    const body = await fetchText(`${url}.sha1`)
-    const match = /\b[a-f0-9]{40}\b/i.exec(body)
-    if (match) return match[0].toLowerCase()
-    logger.warn(`Prüfsummendatei zu ${url} ist unlesbar, Installer wird ungeprüft geladen`)
-  } catch (err) {
-    logger.warn(`Prüfsumme zu ${url} nicht abrufbar, Installer wird ungeprüft geladen:`, err)
+async function mavenSha1(url: string): Promise<string> {
+  const attempts = 3
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const body = await fetchText(`${url}.sha1`)
+      const match = /\b[a-f0-9]{40}\b/i.exec(body)
+      if (match) return match[0].toLowerCase()
+      logger.warn(`Prüfsummendatei zu ${url} ist unlesbar (Versuch ${attempt}/${attempts})`)
+    } catch (err) {
+      logger.warn(`Prüfsumme zu ${url} nicht abrufbar (Versuch ${attempt}/${attempts}):`, err)
+    }
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1000))
   }
-  return undefined
+  throw new Error(
+    'Die Prüfsumme des Installers konnte nicht geladen werden. Versuche es später erneut.'
+  )
 }
 
 /** Resolves `[net.example:artifact:1.0]` style arguments to absolute paths. */
@@ -290,18 +312,19 @@ export async function installForgeLike(
   const url = await installerUrl(loader, mcVersion, loaderVersion)
   const installer = join(paths.cache(), `${loader}-${mcVersion}-${loaderVersion}-installer.jar`)
 
-  // With a hash present `isSatisfied` verifies the cached copy too, so a jar
-  // left corrupt by an interrupted run is re-fetched instead of reused.
+  // mavenSha1 now always returns a real hash or throws, so `isSatisfied`
+  // verifies the cached copy too: a jar left corrupt by an interrupted run,
+  // or one that never matched what maven actually publishes, is re-fetched
+  // instead of reused.
   const installerSha1 = await mavenSha1(url)
-  await downloadFile({ url, path: installer, sha1: installerSha1, trustExisting: true })
+  await downloadFile({ url, path: installer, sha1: installerSha1 })
 
   const profile = await readEntryJson<InstallProfile>(installer, 'install_profile.json')
   if (!profile) {
-    // No sha1 was available for this download (mavenSha1 above returned
-    // undefined), so a jar left corrupt by an interrupted run was only ever
-    // caught here, downstream, and `trustExisting` would otherwise keep it
-    // marked "done" forever. Removing it means the next attempt downloads a
-    // fresh copy instead of repeating the same broken read.
+    // The sha1 check above already rules out a truncated or tampered
+    // download, so getting here means the jar itself is not a valid
+    // installer. The cached copy is still discarded so a retry does not just
+    // replay the same broken read.
     rmSync(installer, { force: true })
     throw new Error(`${label}-Installer enthält kein install_profile.json`)
   }

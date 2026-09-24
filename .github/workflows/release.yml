@@ -18,6 +18,12 @@ on:
   # Lets you rebuild the current version's assets by hand from the Actions tab.
   workflow_dispatch:
 
+# A tag push and a manual rebuild for the same version would both delete and
+# recreate the release, so they wait for each other instead of interleaving.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   build:
     strategy:

@@ -1,11 +1,12 @@
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import AdmZip from 'adm-zip'
 import type { ContentItem } from '@shared/types'
 import { ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
 import { readdir, stat } from 'node:fs/promises'
 import { log } from '../logger'
-import { withTask } from '../tasks'
+import { TaskCancelledError, withTask } from '../tasks'
 import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } from './net'
 import { clientJarPath, installVersion, loadVersionJson, resolveLibraries , type VersionJson } from './mojang'
 import { requiredJavaMajor, resolveJava } from './java'
@@ -63,6 +64,21 @@ export interface RepairReport {
  * start on top of a repair without any of them having to import `repair.ts`
  * itself.
  */
+/**
+ * Lets a cancellation pass straight through a `catch` that would otherwise
+ * record it as an ordinary failed step.
+ *
+ * Every step below reports its own errors instead of throwing, so the repair
+ * can still finish the remaining steps after one of them breaks. A
+ * cancellation is not "one step broke", though: it is the whole run being
+ * asked to stop, and swallowing it here left `runRepair` returning normally,
+ * so `withTask` called `task.done()` and the user saw "Fertig" for a repair
+ * they had just cancelled.
+ */
+function rethrowIfCancelled(err: unknown): void {
+  if (err instanceof TaskCancelledError) throw err
+}
+
 /**
  * True when a content entry still looks exactly as it did when the repair
  * started.
@@ -195,12 +211,17 @@ async function runRepair(
     const missingFolders = [paths.gameDir(instanceId), paths.mods(instanceId), paths.saves(instanceId)].filter(
       (dir) => !existsSync(dir)
     )
-    ensureInstanceLayout(instanceId)
-    step(
-      'Ordnerstruktur',
-      missingFolders.length > 0 ? 'repaired' : 'ok',
-      missingFolders.length > 0 ? `${missingFolders.length} Ordner neu angelegt` : 'Vollständig'
-    )
+    try {
+      ensureInstanceLayout(instanceId)
+      step(
+        'Ordnerstruktur',
+        missingFolders.length > 0 ? 'repaired' : 'ok',
+        missingFolders.length > 0 ? `${missingFolders.length} Ordner neu angelegt` : 'Vollständig'
+      )
+    } catch (err) {
+      rethrowIfCancelled(err)
+      step('Ordnerstruktur', 'failed', err instanceof Error ? err.message : String(err))
+    }
 
     // 2. Mod loader ---------------------------------------------------
     task.update('Mod Loader wird geprüft…', 0.08)
@@ -228,7 +249,9 @@ async function runRepair(
       // report including the steps that had already succeeded, so the user saw
       // a bare error toast instead of "folder layout fine, loader broken".
       // Everything below needs a resolved version, so this is the end of the
-      // line either way.
+      // line either way. A cancellation is the one exception: it must end the
+      // whole task as cancelled, not as a failed "Mod Loader" step.
+      rethrowIfCancelled(err)
       step('Mod Loader', 'failed', err instanceof Error ? err.message : String(err))
       return report
     }
@@ -238,19 +261,46 @@ async function runRepair(
     repairLog(instanceId, 'check', `Überprüfe Minecraft-Version: ${instance.mcVersion}`)
 
     let versionJson: VersionJson
+    let versionJsonRebuilt = false
     try {
       // Only its existence was checked above. A truncated or half-written
       // version JSON passed that check and then blew up here with a raw
       // SyntaxError, taking the entire repair down with it.
       versionJson = await loadVersionJson(versionId)
     } catch (err) {
-      step(
-        'Minecraft & Bibliotheken',
-        'failed',
-        `Die Versionsdatei ${versionId}.json ist unbrauchbar: ` +
-          (err instanceof Error ? err.message : String(err))
-      )
-      return report
+      rethrowIfCancelled(err)
+      if (!(err instanceof SyntaxError)) {
+        step(
+          'Minecraft & Bibliotheken',
+          'failed',
+          `Die Versionsdatei ${versionId}.json ist unbrauchbar: ` +
+            (err instanceof Error ? err.message : String(err))
+        )
+        return report
+      }
+
+      // Present but corrupt, not missing, so step 2's existence check let it
+      // through. Removing it and rebuilding once recovers the same way a
+      // missing file already does, instead of failing the whole repair over
+      // damage a plain reinstall would fix without anyone noticing.
+      repairLog(instanceId, 'warning', `Versionsdatei ${versionId}.json ist beschädigt`)
+      try {
+        rmSync(join(paths.version(versionId), `${versionId}.json`), { force: true })
+        if (instance.loader !== 'vanilla') {
+          versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+        }
+        versionJson = await loadVersionJson(versionId)
+        versionJsonRebuilt = true
+      } catch (retryErr) {
+        rethrowIfCancelled(retryErr)
+        step(
+          'Minecraft & Bibliotheken',
+          'failed',
+          `Die Versionsdatei ${versionId}.json war beschädigt und konnte nicht neu erstellt werden: ` +
+            (retryErr instanceof Error ? retryErr.message : String(retryErr))
+        )
+        return report
+      }
     }
 
     const items: DownloadItem[] = []
@@ -285,13 +335,29 @@ async function runRepair(
     // it for a second launch of the same version.
     const versionInUse = (): boolean => activeVersionIds().includes(versionId) || isNativesClaimed(versionId)
 
+    const rebuiltNote = versionJsonRebuilt ? `Versionsdatei ${versionId}.json war beschädigt und wurde neu erstellt. ` : ''
+
     if (versionInUse()) {
       step(
         'Minecraft & Bibliotheken',
-        'failed',
-        'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.'
+        versionJsonRebuilt ? 'repaired' : 'failed',
+        `${rebuiltNote}Übersprungen: eine andere Instanz mit derselben Version läuft gerade.`
       )
     } else {
+      // Items without a hash have nothing `isSatisfied` can verify but existence, so a
+      // library jar corrupted after being written (e.g. cut off mid-extraction of
+      // something else in the same folder) would otherwise pass every check below. A
+      // jar that does not even open as a zip is removed here so the download loop
+      // treats it like a missing file instead of trusting it as-is.
+      for (const item of items) {
+        if (item.sha1 || !item.path.toLowerCase().endsWith('.jar') || !existsSync(item.path)) continue
+        try {
+          new AdmZip(item.path).getEntries()
+        } catch {
+          rmSync(item.path, { force: true })
+        }
+      }
+
       let broken = 0
       for (const item of items) {
         report.checkedFiles++
@@ -315,18 +381,21 @@ async function runRepair(
         report.repairedFiles += broken
         step(
           'Minecraft & Bibliotheken',
-          broken > 0 ? 'repaired' : 'ok',
-          broken > 0
-            ? `${broken} von ${items.length} Dateien erneuert`
-            : `${items.length} Dateien in Ordnung`
+          broken > 0 || versionJsonRebuilt ? 'repaired' : 'ok',
+          rebuiltNote +
+            (broken > 0
+              ? `${broken} von ${items.length} Dateien erneuert`
+              : `${items.length} Dateien in Ordnung`)
         )
       } catch (err) {
         // Reported, not thrown: assets, mods and Java can still be checked and
-        // the user gets a report saying which part failed.
+        // the user gets a report saying which part failed. A cancellation is
+        // the exception, it must end the whole task, not just this step.
+        rethrowIfCancelled(err)
         step(
           'Minecraft & Bibliotheken',
           'failed',
-          err instanceof Error ? err.message : String(err)
+          rebuiltNote + (err instanceof Error ? err.message : String(err))
         )
       } finally {
         task.span(0, 1)
@@ -347,6 +416,7 @@ async function runRepair(
         await installVersion(versionJson, instance.mcVersion, task)
         step('Spiel-Assets', 'ok', 'Vollständig')
       } catch (err) {
+        rethrowIfCancelled(err)
         step('Spiel-Assets', 'failed', err instanceof Error ? err.message : String(err))
       } finally {
         task.span(0, 1)
@@ -354,17 +424,24 @@ async function runRepair(
     }
 
     // 5. Natives -------------------------------------------------------
+    task.throwIfCancelled()
     task.update('Natives werden erneuert…', 0.82)
     repairLog(instanceId, 'check', 'Überprüfe native Bibliotheken')
     if (versionInUse()) {
       step('Natives', 'failed', 'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.')
     } else {
-      rmSync(paths.natives(versionId), { recursive: true, force: true })
-      mkdirSync(paths.natives(versionId), { recursive: true })
-      step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+      try {
+        rmSync(paths.natives(versionId), { recursive: true, force: true })
+        mkdirSync(paths.natives(versionId), { recursive: true })
+        step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+      } catch (err) {
+        rethrowIfCancelled(err)
+        step('Natives', 'failed', err instanceof Error ? err.message : String(err))
+      }
     }
 
     // 6. Content files -------------------------------------------------
+    task.throwIfCancelled()
     task.update('Mods werden geprüft…', 0.86)
 
     let restored = 0
@@ -373,6 +450,10 @@ async function runRepair(
     let incompatible = 0
     let contentCount = 0
     const failed: string[] = []
+    // Set when the step's own bookkeeping (the disk sync or the final save)
+    // breaks, as opposed to a single mod, so the "report, do not throw" rule
+    // still holds and steps 7 and 8 still run afterwards.
+    let contentStepError: string | undefined
 
     // Held for the whole step, the same marker `content.ts` takes for its own
     // work. Repair rewrites the same folder and the same record, and it was
@@ -380,7 +461,13 @@ async function runRepair(
     // half downloaded replacement as an unknown extra mod, a launch could
     // start into the folder mid rewrite, and the mod buttons stayed enabled.
     await withContentLock(instanceId, async () => {
-      await syncContentWithDisk(instanceId)
+      try {
+        await syncContentWithDisk(instanceId)
+      } catch (err) {
+        rethrowIfCancelled(err)
+        contentStepError = `Abgleich mit dem Dateisystem fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`
+        return
+      }
 
       // Two records for the same project, one of them stale. This is the
       // shape the old race in `removeContent` left behind: an update
@@ -392,11 +479,13 @@ async function runRepair(
       // Resolved before anything below takes its own snapshot of the list, so
       // the rest of this step only ever sees the deduplicated set.
       for (const item of findDuplicateContent(getInstance(instanceId).content)) {
+        task.throwIfCancelled()
         try {
           await removeContent(instanceId, item.id)
           duplicatesRemoved++
           logger.info(`Doppelten Mod ${item.name} (${item.fileName}) entfernt`)
         } catch (err) {
+          rethrowIfCancelled(err)
           logger.warn(`Doppelter Mod ${item.name} konnte nicht entfernt werden:`, err)
         }
       }
@@ -411,16 +500,38 @@ async function runRepair(
       const before = new Map(current.content.map((item) => [item.id, item]))
 
       for (const item of current.content) {
+        task.throwIfCancelled()
         const file = contentFilePath(instanceId, item)
         report.checkedFiles++
 
         const missing = !existsSync(file)
         let corrupt = false
-        if (!missing && item.sha1) {
-          try {
-            corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
-          } catch {
-            corrupt = true
+        if (!missing) {
+          if (item.sha1) {
+            try {
+              corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
+            } catch {
+              corrupt = true
+            }
+          } else if (item.size !== undefined) {
+            // No hash to check, but a known size: a mismatch is still a plain
+            // signal something went wrong, usually an interrupted write.
+            try {
+              corrupt = statSync(file).size !== item.size
+            } catch {
+              corrupt = true
+            }
+          }
+          // Neither check above rules out a jar that silently truncated at a
+          // point that happens to match its expected size. Anything ending in
+          // .jar without a hash gets one more look: it must at least open as
+          // a zip.
+          if (!corrupt && !item.sha1 && file.toLowerCase().endsWith('.jar')) {
+            try {
+              new AdmZip(file).getEntries()
+            } catch {
+              corrupt = true
+            }
           }
         }
 
@@ -497,12 +608,17 @@ async function runRepair(
             }
 
             repairLog(instanceId, 'fix', `Lade ${version.fileName}`)
-            await downloadFile({
-              url: version.downloadUrl,
-              path: target,
-              sha1: version.sha1,
-              size: version.size
-            })
+            await downloadFile(
+              {
+                url: version.downloadUrl,
+                path: target,
+                sha1: version.sha1,
+                size: version.size
+              },
+              undefined,
+              3,
+              task.signal
+            )
 
             // downloadFile already refuses to finish on a hash mismatch, so this
             // is a second, independent look rather than the only one — the
@@ -539,6 +655,9 @@ async function runRepair(
             throw err
           }
         } catch (err) {
+          // A cancellation must end the whole task, not count as one more
+          // mod the repair failed to restore.
+          rethrowIfCancelled(err)
           // Counted, not just logged: a mod the repair could not restore has to
           // show up in the report, otherwise the user is told everything is fine
           // while a mod is still broken.
@@ -571,7 +690,12 @@ async function runRepair(
         if (decision) merged.push(decision)
       }
 
-      persist({ ...latest, content: merged })
+      try {
+        persist({ ...latest, content: merged })
+      } catch (err) {
+        rethrowIfCancelled(err)
+        contentStepError = `Änderungen konnten nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`
+      }
     })
     report.repairedFiles += restored
 
@@ -585,27 +709,31 @@ async function runRepair(
       logger.warn(`Update-Prüfung während der Reparatur übersprungen:`, err)
     }
 
-    const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
-    const unresolved = failed.length > 0 || incompatible > 0
-    const parts = [
-      ...(duplicatesRemoved > 0 ? [`${duplicatesRemoved} doppelt installierte entfernt`] : []),
-      `${restored} neu geladen`,
-      `${removed} verwaiste Einträge entfernt`,
-      ...(incompatible > 0 ? [`${incompatible} inkompatibel (keine passende Version gefunden)`] : []),
-      ...(outdated > 0 ? [`${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`] : [])
-    ]
-    step(
-      'Mods & Inhalte',
-      unresolved ? 'failed' : changed ? 'repaired' : 'ok',
-      failed.length > 0
-        ? `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
-          (failed.length > 3 ? ' und weitere' : '')
-        : changed || unresolved
-          ? parts.join(', ')
-          : outdated > 0
-            ? `${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`
-            : `${contentCount} Dateien in Ordnung`
-    )
+    if (contentStepError) {
+      step('Mods & Inhalte', 'failed', contentStepError)
+    } else {
+      const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
+      const unresolved = failed.length > 0 || incompatible > 0
+      const parts = [
+        ...(duplicatesRemoved > 0 ? [`${duplicatesRemoved} doppelt installierte entfernt`] : []),
+        `${restored} neu geladen`,
+        `${removed} verwaiste Einträge entfernt`,
+        ...(incompatible > 0 ? [`${incompatible} inkompatibel (keine passende Version gefunden)`] : []),
+        ...(outdated > 0 ? [`${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`] : [])
+      ]
+      step(
+        'Mods & Inhalte',
+        unresolved ? 'failed' : changed ? 'repaired' : 'ok',
+        failed.length > 0
+          ? `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
+            (failed.length > 3 ? ' und weitere' : '')
+          : changed || unresolved
+            ? parts.join(', ')
+            : outdated > 0
+              ? `${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`
+              : `${contentCount} Dateien in Ordnung`
+      )
+    }
 
     // 7. Java ----------------------------------------------------------
     task.update('Java wird geprüft…', 0.95)
@@ -629,10 +757,12 @@ async function runRepair(
       })
       step('Java', 'ok', `Java ${java.major} (${java.version})`)
     } catch (err) {
+      rethrowIfCancelled(err)
       step('Java', 'failed', err instanceof Error ? err.message : String(err))
     }
 
     // 8. Corrupt logs / crash leftovers --------------------------------
+    task.throwIfCancelled()
     task.update('Aufräumen…', 0.99)
     // Was performed but never reported: the function ran eight steps and the
     // report only ever listed seven, so the user never learned whether
@@ -647,6 +777,7 @@ async function runRepair(
           : 'Keine Reste gefunden'
       )
     } catch (err) {
+      rethrowIfCancelled(err)
       step('Aufräumen', 'failed', err instanceof Error ? err.message : String(err))
     }
 

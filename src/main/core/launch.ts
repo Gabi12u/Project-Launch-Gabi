@@ -503,8 +503,18 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     const classpath = wanted.filter((l) => existsSync(l.path)).map((l) => l.path)
 
+    // Every loader (Forge, NeoForge, Fabric...) patches or extends this same
+    // vanilla jar rather than shipping its own, so it is unconditionally
+    // required here too. A missing one used to be skipped in silence, and the
+    // JVM then died with a cryptic error naming no file at all.
     const clientJar = clientJarPath(instance.mcVersion)
-    if (existsSync(clientJar)) classpath.push(clientJar)
+    if (!existsSync(clientJar)) {
+      throw new Error(
+        'Die Spieldatei client.jar fehlt und konnte nicht geladen werden. ' +
+          'Pruefe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".'
+      )
+    }
+    classpath.push(clientJar)
 
     // Deduplicate while keeping loader overrides in front.
     //
@@ -616,6 +626,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     if (instance.settings.fullscreen && !gameArgs.includes('--fullscreen')) {
       gameArgs.push('--fullscreen')
+    } else if (
+      !versionJson.arguments?.game &&
+      !instance.settings.fullscreen &&
+      !gameArgs.includes('--width')
+    ) {
+      // Pre-1.13 versions only carry `minecraftArguments`, a plain string with
+      // no rule-guarded --width/--height like modern versions get from
+      // `features.has_custom_resolution` above. Without this the window
+      // always opened at the vanilla default size on those versions.
+      gameArgs.push('--width', placeholders.resolution_width, '--height', placeholders.resolution_height)
     }
 
     const args = [...jvmArgs, versionJson.mainClass, ...gameArgs]
@@ -1107,10 +1127,32 @@ export function stopInstance(instanceId: string, immediate = false): void {
     // uncaughtException handler — so a taskkill.exe that cannot be spawned (a
     // stripped PATH, an AppLocker policy) would take the whole launcher down
     // instead of failing this one stop request.
+    let killerFailed = false
     killer.on('error', (err) => {
+      killerFailed = true
       logger.error(`taskkill für ${instanceId} fehlgeschlagen:`, err)
       // Fall back to the signal path so the request still does something.
       game.process.kill('SIGKILL')
+    })
+    // taskkill can exit non-zero without firing 'error' (access denied, or the
+    // pid already gone). The marker stays while the fallback kill gets its
+    // chance, since a successful fallback is still a requested stop; only a
+    // game that survives both loses it, so its next real crash is reported.
+    killer.on('exit', (code) => {
+      if (killerFailed || code === 0) return
+      logger.error(`taskkill für ${instanceId} beendete sich mit Code ${code}`)
+      game.process.kill('SIGKILL')
+      setTimeout(() => {
+        if (!isRunning(instanceId)) return
+        stopRequested.delete(instanceId)
+        pushLog({
+          instanceId,
+          stream: 'launcher',
+          level: 'error',
+          text: 'Minecraft ließ sich nicht beenden. Schließe das Spiel selbst oder beende es über den Task-Manager.',
+          time: Date.now()
+        })
+      }, 5000)
     })
   } else if (immediate) {
     game.process.kill('SIGKILL')

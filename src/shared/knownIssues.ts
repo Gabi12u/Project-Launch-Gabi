@@ -1464,8 +1464,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein Klick auf Abbrechen stoppte nur die ersten Schritte einer Reparatur. Das Neuladen von Mods und ' +
       'das Aufräumen liefen im Hintergrund weiter, und die Aufgabenanzeige meldete am Ende sogar „Fertig“. ' +
       'Ab 1.0.20 hält jeder Schritt beim Abbrechen an, und die Anzeige sagt ehrlich, dass abgebrochen wurde.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'reparatur-kaputte-versionsdatei',
@@ -1474,8 +1475,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War die Versionsbeschreibung einer Instanz vorhanden, aber beschädigt, erkannte die Reparatur das ' +
       'zwar, ließ die Datei aber liegen. Jeder weitere Versuch scheiterte deshalb an derselben Stelle. ' +
       'Ab 1.0.20 wird eine unlesbare Versionsdatei entfernt und neu geladen.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'reparatur-bericht-verloren',
@@ -1485,8 +1487,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'ab. Eine kurz von einem Virenscanner gesperrte Datei reichte, und statt des Schritt-für-Schritt-' +
       'Berichts erschien nur „Reparatur fehlgeschlagen“. Ab 1.0.20 landet jeder Fehler als eigener Schritt ' +
       'im Bericht, und die übrigen Schritte laufen weiter.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'reparatur-ohne-pruefsumme',
@@ -1495,8 +1498,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Manche Mods von CurseForge und manche Bibliotheken kommen ohne Prüfsumme. Solche Dateien prüfte die ' +
       'Reparatur nur darauf, ob sie vorhanden sind, nicht ob sie heil sind. Ab 1.0.20 vergleicht sie in ' +
       'diesem Fall die Dateigröße und prüft, ob sich ein Jar-Archiv überhaupt öffnen lässt.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'client-jar-fehlt-unklarer-absturz',
@@ -1505,8 +1509,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Fehlte die Hauptdatei von Minecraft selbst, etwa nach einem abgebrochenen Download, startete der ' +
       'Launcher das Spiel trotzdem, und Java brach mit einer kryptischen Meldung ab. Ab 1.0.20 wird das vor ' +
       'dem Start erkannt und mit dem Hinweis gemeldet, die Instanz zu reparieren.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'fenstergroesse-alte-versionen',
@@ -1515,8 +1520,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Breite und Höhe aus den Instanz-Einstellungen wurden nur an neuere Minecraft-Versionen übergeben. ' +
       'Ältere Versionen starteten immer in ihrer Standardgröße. Ab 1.0.20 gilt die Einstellung für alle ' +
       'Versionen.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'stoppen-fehlgeschlagen-absturz-verschluckt',
@@ -1526,9 +1532,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'merkte sich der Launcher trotzdem, dass ein Stopp gewünscht war. Stürzte dasselbe Spiel danach ' +
       'wirklich ab, galt das als gewolltes Beenden, und es erschien keine Absturzmeldung. Ab 1.0.20 wird ' +
       'ein fehlgeschlagenes Beenden gemeldet und nicht mehr als Stopp gezählt.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-24',
-    platforms: ['Windows']
+    platforms: ['Windows'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'java-ersatz-falsche-version',
@@ -1537,8 +1544,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Brauchte eine Instanz Java 8 und war nur ein neueres Java bis Version 12 installiert, nahm der ' +
       'Launcher dieses ersatzweise. Genau dieser Sprung lässt alte Forge-Versionen zuverlässig abstürzen. ' +
       'Ab 1.0.20 gibt es für Java 8 keinen Ersatz mehr, sondern eine klare Meldung.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'forge-versionsliste-unsortiert',
@@ -1547,8 +1555,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Forge liefert seine Versionsliste nicht durchgehend in einer Reihenfolge. Der Launcher verließ sich ' +
       'darauf, und in der Auswahl eines Forge-Builds lagen neue und alte Versionen durcheinander. Ab 1.0.20 ' +
       'sortiert der Launcher die Liste selbst, die neueste steht oben.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'forge-installer-ohne-pruefung',
@@ -1557,8 +1566,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Scheiterte das Abrufen der Prüfsumme für den Forge- oder NeoForge-Installer, lud der Launcher den ' +
       'Installer trotzdem und führte ihn aus. Ab 1.0.20 wird die Prüfsumme mehrfach versucht, und ohne sie ' +
       'bricht die Installation mit einer verständlichen Meldung ab.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mod-schalten-waehrend-update',
@@ -1567,8 +1577,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Während ein Mod aktualisiert wurde, ließ er sich weiter ein- und ausschalten. Fiel beides zusammen, ' +
       'konnte das Update die Änderung überschreiben und eine Datei zurücklassen, die der Launcher danach ' +
       'als fremden Mod aufführte. Ab 1.0.20 warten Umschalten und Update aufeinander.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'duplikat-erkennung-nach-namen',
@@ -1578,8 +1589,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'galten so als Dublette, und die angebotene Korrektur hätte einen davon gelöscht. Ab 1.0.20 wird nur ' +
       'dann Entfernen angeboten, wenn es sicher derselbe Mod ist. Bei bloß gleichem Namen gibt es einen ' +
       'Hinweis ohne Löschknopf.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'instanz-kopie-ohne-bild',
@@ -1587,8 +1599,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Beim Duplizieren wurden die Spieldateien kopiert, die eigenen Bilder der Instanz aber nicht. Die ' +
       'Kopie zeigte danach das Standardsymbol. Ab 1.0.20 werden Symbol und Hintergrund mitkopiert.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'instanz-kopie-waehrend-modaenderung',
@@ -1597,8 +1610,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Während eine große Instanz kopiert wurde, ließen sich an ihr weiter Mods installieren oder ' +
       'aktualisieren. Das Kopieren konnte dann abbrechen oder eine Kopie mit halb geänderten Mods ' +
       'erzeugen. Ab 1.0.20 warten Mod-Änderungen, bis das Kopieren fertig ist.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'instanz-loeschen-halb',
@@ -1608,8 +1622,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Launcher zeigte die Instanz danach weiter vollständig an, obwohl ein Teil ihrer Dateien schon fehlte. ' +
       'Ab 1.0.20 wird das Löschen mehrfach versucht, und nach einem Fehlschlag zeigt die Liste den ' +
       'tatsächlichen Stand.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mod-abgleich-bricht-ab',
@@ -1618,8 +1633,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde eine Datei im Mods-Ordner genau während des Abgleichs gelöscht oder verschoben, etwa durch ' +
       'eine Cloud-Synchronisierung, brach der gesamte Abgleich ab. Ab 1.0.20 wird diese eine Datei ' +
       'übersprungen.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'gross-kleinschreibung-doppelte-mods',
@@ -1628,9 +1644,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lagen zwei solche Dateien im selben Ordner, bekamen beide denselben Eintrag. Entfernen oder ' +
       'Umschalten des einen traf dann beide Einträge, obwohl nur eine Datei geändert wurde. Ab 1.0.20 ' +
       'bekommt jede Datei ihren eigenen Eintrag.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-22',
-    platforms: ['macOS', 'Linux']
+    platforms: ['macOS', 'Linux'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'update-nach-rueckstufung',
@@ -1639,8 +1656,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer über „Version wählen“ eine ältere Version eines Mods installierte, bekam für diesen Mod danach ' +
       'oft nie wieder ein Update angezeigt. Verglichen wurde mit dem Installationszeitpunkt statt mit dem ' +
       'Erscheinungsdatum der installierten Version. Ab 1.0.20 zählt das Erscheinungsdatum.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'versionswechsel-alte-datei-bleibt',
@@ -1649,8 +1667,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde die alte Datei beim Wechsel auf eine andere Version kurz gesperrt, blieb sie neben der neuen ' +
       'liegen. Zwei Dateien desselben Mods lassen Minecraft beim nächsten Start abstürzen. Ab 1.0.20 wird ' +
       'das Löschen wiederholt, und gelingt es nicht, bleibt die neue Datei nicht halb eingetragen zurück.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'modrinth-abhaengigkeit-verschwindet',
@@ -1659,8 +1678,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Verwies ein Modrinth-Mod auf eine Abhängigkeit, deren Version inzwischen zurückgezogen war, fiel ' +
       'diese Abhängigkeit still aus der Liste. Die Warnung, dass ohne sie das Spiel womöglich nicht startet, ' +
       'erschien deshalb nie. Ab 1.0.20 erscheint sie.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'curseforge-modpack-fehlende-dateien-still',
@@ -1669,8 +1689,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Waren einzelne Dateien eines Modpacks bei CurseForge nicht mehr erhältlich, stand das nur kurz in ' +
       'der Aufgabenanzeige und war verschwunden, bevor der Import fertig war. Ab 1.0.20 bleibt dazu eine ' +
       'Meldung stehen, die die fehlenden Mods nennt.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'import-version-ungeprueft',
@@ -1679,8 +1700,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Beim Import wurde die angegebene Minecraft-Version ungeprüft übernommen und später als Ordnername ' +
       'verwendet. Ein präpariertes Modpack hätte darüber Pfade außerhalb des Launcher-Ordners ansprechen ' +
       'können. Ab 1.0.20 werden solche Angaben abgelehnt.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'import-installiert-ohne-spieldateien',
@@ -1690,8 +1712,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Mods. Scheiterte die erste, konnte die zweite die Instanz trotzdem als fertig markieren, und der ' +
       'erste Start schlug ohne erkennbaren Grund fehl. Ab 1.0.20 gilt eine Instanz erst als installiert, ' +
       'wenn beides geklappt hat.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'kopie-haengt-bei-einrichtung',
@@ -1699,8 +1722,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde eine Instanz dupliziert, während sie noch eingerichtet wurde, zeigte die Kopie für immer ' +
       '„wird eingerichtet“. Ab 1.0.20 ist Duplizieren erst nach der Einrichtung möglich.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'wiederherstellung-rueckabwicklung-unvollstaendig',
@@ -1709,8 +1733,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Scheiterte eine Wiederherstellung, meldete der Launcher in manchen Fällen, der vorherige Stand sei ' +
       'zurückgeholt, obwohl halb entpackte Ordner zurückgeblieben waren. Ab 1.0.20 nennt die Meldung genau, ' +
       'was nicht aufgeräumt werden konnte.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-folgt-verknuepfungen',
@@ -1719,8 +1744,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Enthielt ein gesicherter Ordner eine Verknüpfung, die aus der Instanz herauszeigte, wurde die ' +
       'Sicherung trotzdem als erfolgreich erstellt, ließ sich später aber nie wiederherstellen. Ab 1.0.20 ' +
       'werden solche Verknüpfungen beim Sichern übersprungen und gemeldet.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'wiederherstellung-entpackt-alles',
@@ -1729,8 +1755,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Beim Wiederherstellen wurde immer das ganze Archiv entpackt, geschützt und zurückgerollt wurden aber ' +
       'nur die Ordner aus dem Verzeichnis der Sicherung. Bei älteren Sicherungen konnte beides auseinander ' +
       'liegen. Ab 1.0.20 wird nur entpackt, was auch geschützt ist.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherungen-behalten-nicht-rueckwirkend',
@@ -1738,8 +1765,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde die Zahl der aufzubewahrenden automatischen Sicherungen gesenkt, blieben ältere Sicherungen ' +
       'liegen, bis für dieselbe Instanz die nächste entstand. Ab 1.0.20 wird sofort aufgeräumt.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'aufnahme-falsche-instanz',
@@ -1748,8 +1776,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Liefen zwei Instanzen gleichzeitig, nahm die Taste immer die zuerst gestartete auf, nicht die zuletzt ' +
       'gestartete, die man meist gerade spielt. Die Meldung nannte die Instanz nicht. Ab 1.0.20 wird die ' +
       'zuletzt gestartete aufgenommen und in der Meldung genannt.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'verknuepfungen-zwei-links-verloren',
@@ -1757,8 +1786,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Kamen während des Programmstarts zwei Links oder Verknüpfungen fast gleichzeitig an, überschrieb der ' +
       'zweite den ersten. Ab 1.0.20 werden beide der Reihe nach ausgeführt.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'datenverzeichnis-ungueltig-gespeichert',
@@ -1767,8 +1797,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wählte man in den Einstellungen einen Datenordner, in den der Launcher nicht schreiben darf, wurde ' +
       'die Wahl trotzdem gespeichert. Danach wirkten alle Instanzen verschwunden. Ab 1.0.20 wird der Ordner ' +
       'vorher geprüft, und bei einem Problem bleibt der alte bestehen.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'anmeldung-verschluesselung-wechsel',
@@ -1778,9 +1809,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'vermerkt. Stand die Verschlüsselung des Systems, etwa der Schlüsselbund unter Linux, einmal zur ' +
       'Verfügung und einmal nicht, passte der Vermerk nicht mehr, und man musste sich neu anmelden. Ab ' +
       '1.0.20 wird das für jeden Schlüssel einzeln vermerkt.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-24',
-    platforms: ['Linux']
+    platforms: ['Linux'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'startseite-wieder-aktiviert',
@@ -1788,8 +1820,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer das Startseiten-Paket in Minecraft selbst deaktivierte, bekam es beim nächsten Start ' +
       'stillschweigend wieder aktiviert. Ab 1.0.20 respektiert der Launcher diese Wahl.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'escape-schliesst-zwei-fenster',
@@ -1798,8 +1831,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War ein Fenster offen, zum Beispiel die Microsoft-Anmeldung, und darüber die Schnellsuche (Strg+K), ' +
       'schloss Escape beide auf einmal und brach die Anmeldung ab. Ab 1.0.20 schließt Escape nur die ' +
       'Schnellsuche.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   },
   {
     id: 'zahlen-mit-punkt',
@@ -1807,8 +1841,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Datei- und Speichergrößen erschienen als „1.5 GB“ statt „1,5 GB“. Ab 1.0.20 stehen sie in deutscher ' +
       'Schreibweise da.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'assistent-ungueltige-kombination',
@@ -1817,8 +1852,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Während der Assistent noch prüfte, welche Loader es für eine Minecraft-Version gibt, ließ sich die ' +
       'Instanz bereits anlegen, auch mit einer Kombination, die es gar nicht gibt. Ab 1.0.20 geht es erst ' +
       'weiter, wenn die Prüfung fertig und die Wahl gültig ist.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'assistent-snapshot-bleibt',
@@ -1826,8 +1862,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'War eine Snapshot-Version gewählt und wurden die Snapshots danach ausgeblendet, blieb sie unsichtbar ' +
       'gewählt und wurde so angelegt. Ab 1.0.20 springt die Wahl dann auf die neueste reguläre Version.',
-    state: 'fixing',
-    since: '2026-09-22'
+    state: 'fixed',
+    since: '2026-09-22',
+    fixedIn: '1.0.20'
   },
   {
     id: 'arbeitsspeicher-regler-ohne-grenze',
@@ -1835,8 +1872,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Die Regler für den Arbeitsspeicher gingen je nach Stelle bis 16 oder 32 GB, unabhängig vom ' +
       'eingebauten Speicher. Ab 1.0.20 enden alle Regler beim tatsächlich vorhandenen Arbeitsspeicher.',
-    state: 'fixing',
-    since: '2026-09-24'
+    state: 'fixed',
+    since: '2026-09-24',
+    fixedIn: '1.0.20'
   }
 ]
 

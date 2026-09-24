@@ -11,13 +11,13 @@ import type {
   LoaderId,
   ProjectVersion
 } from '@shared/types'
-import { ensureInstanceLayout, paths, safeJoin } from '../paths'
+import { ensureInstanceLayout, isValidVersionString, paths, safeJoin } from '../paths'
 import { log } from '../logger'
 import { notify } from '../events'
 import { withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
-import { createInstance, getInstance, persist, syncContentWithDisk } from './instances'
+import { createInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
 
 const logger = log('modpack')
@@ -58,18 +58,31 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
         'Es wurde nicht importiert.'
     )
   }
+  // Both ids end up as path segments (paths.version(), paths.natives()), so a
+  // crafted manifest cannot be allowed to smuggle a separator or ".." through.
+  if (!isValidVersionString(mcVersion)) {
+    throw new Error('Die Minecraft-Version im Modpack ist ungültig.')
+  }
+
+  const loaderVersionOf = (key: string): string => {
+    const value = dependencies[key]
+    if (!isValidVersionString(value)) {
+      throw new Error('Die Mod-Loader-Version im Modpack ist ungültig.')
+    }
+    return value
+  }
 
   if (dependencies['fabric-loader']) {
-    return { loader: 'fabric', loaderVersion: dependencies['fabric-loader'], mcVersion }
+    return { loader: 'fabric', loaderVersion: loaderVersionOf('fabric-loader'), mcVersion }
   }
   if (dependencies['quilt-loader']) {
-    return { loader: 'quilt', loaderVersion: dependencies['quilt-loader'], mcVersion }
+    return { loader: 'quilt', loaderVersion: loaderVersionOf('quilt-loader'), mcVersion }
   }
   if (dependencies['neoforge']) {
-    return { loader: 'neoforge', loaderVersion: dependencies['neoforge'], mcVersion }
+    return { loader: 'neoforge', loaderVersion: loaderVersionOf('neoforge'), mcVersion }
   }
   if (dependencies['forge']) {
-    return { loader: 'forge', loaderVersion: dependencies['forge'], mcVersion }
+    return { loader: 'forge', loaderVersion: loaderVersionOf('forge'), mcVersion }
   }
   return { loader: 'vanilla', loaderVersion: '', mcVersion }
 }
@@ -262,6 +275,17 @@ async function installMrpackFiles(
     }
   })
 
+  // The base setup (libraries, assets, the client jar) that `createInstance`
+  // started in the background may still be running or may have failed by now;
+  // marking the instance installed without checking would hide that.
+  const baseSetupOk = await waitForInstanceSetup(instanceId)
+  if (!baseSetupOk) {
+    persist({ ...instance, content: enriched, installing: false, installed: false })
+    throw new Error(
+      'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+    )
+  }
+
   persist({ ...instance, content: enriched, installing: false, installed: true })
   task.update('Import abgeschlossen', 1)
   logger.info(`Modpack in ${instanceId} importiert`)
@@ -316,6 +340,11 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   if (!manifest.minecraft?.version) {
     throw new Error('Das CurseForge-Modpack nennt keine Minecraft-Version (manifest.json unvollständig).')
   }
+  // Becomes a path segment (paths.version(), paths.natives()) further down,
+  // so a crafted manifest cannot be allowed to smuggle a separator or ".." in.
+  if (!isValidVersionString(manifest.minecraft.version)) {
+    throw new Error('Die Minecraft-Version im Modpack ist ungültig.')
+  }
   if (!Array.isArray(manifest.files)) {
     throw new Error('Die Dateiliste im CurseForge-Modpack fehlt oder ist beschädigt.')
   }
@@ -333,6 +362,9 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   }
 
   const { loader, loaderVersion } = loaderFromCurseId(primary.id)
+  if (loaderVersion && !isValidVersionString(loaderVersion)) {
+    throw new Error('Die Mod-Loader-Version im Modpack ist ungültig.')
+  }
   const name = nameOverride?.trim() || manifest.name || 'CurseForge Modpack'
 
   const instance = await createInstance({
@@ -381,6 +413,22 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
         `Achtung: ${fileIds.length - resolved.length} Mods konnten nicht aufgelöst werden`,
         null
       )
+
+      // `task.update` above is overwritten by the next status line moments
+      // later, so without a persistent notification this warning never
+      // actually reaches the user.
+      const resolvedIds = new Set(resolved.map((v) => Number(v.versionId)))
+      const missing = manifest.files.filter(
+        (f) => typeof f?.fileID === 'number' && !resolvedIds.has(f.fileID)
+      )
+      const ids = missing.slice(0, 5).map((f) => f.projectID)
+      notify(
+        'warning',
+        `${missing.length} ${missing.length === 1 ? 'Mod fehlt' : 'Mods fehlen'} im Modpack`,
+        `${name}: CurseForge konnte ${missing.length} ${missing.length === 1 ? 'Mod' : 'Mods'} nicht laden ` +
+          `(Projekt-ID ${ids.join(', ')}${missing.length > 5 ? ` und ${missing.length - 5} weitere` : ''}).`,
+        { route: `/instances/${instance.id}` }
+      )
     }
 
     // `fileName` comes from the API, so it is pinned into the mods folder
@@ -425,6 +473,15 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)
 
     await syncContentWithDisk(instance.id)
+
+    const baseSetupOk = await waitForInstanceSetup(instance.id)
+    if (!baseSetupOk) {
+      persist({ ...getInstance(instance.id), installing: false, installed: false })
+      throw new Error(
+        'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+      )
+    }
+
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update('Import abgeschlossen', 1)
   }).catch((err) => {

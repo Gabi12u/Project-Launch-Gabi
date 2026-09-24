@@ -290,9 +290,9 @@ export async function getProject(projectId: string): Promise<ProjectDetails> {
  * Fills in the project id of dependencies that named only a version.
  *
  * One bulk request covers the whole batch, and it only runs when such an entry
- * actually occurs, which is rare. Anything that cannot be resolved is dropped
- * rather than left with an empty id, because an empty id would make the
- * installer look for a project that does not exist.
+ * actually occurs, which is rare. An optional dependency that cannot be
+ * resolved is dropped. A required one stays with its empty project id, so
+ * content.ts can still warn that it is missing instead of never hearing of it.
  */
 async function resolveVersionOnlyDependencies(versions: ProjectVersion[]): Promise<void> {
   const missing = new Set<string>()
@@ -323,7 +323,9 @@ async function resolveVersionOnlyDependencies(versions: ProjectVersion[]): Promi
       .map((dependency) => {
         if (dependency.projectId) return dependency
         const resolved = dependency.versionId ? byVersionId.get(dependency.versionId) : undefined
-        return resolved ? { ...dependency, projectId: resolved } : null
+        if (resolved) return { ...dependency, projectId: resolved }
+        if (dependency.type === 'required') return dependency
+        return null
       })
       .filter((dependency): dependency is ContentDependency => dependency !== null)
   }

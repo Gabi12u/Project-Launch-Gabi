@@ -20,8 +20,12 @@ export const paths = {
   assetIndexes: () => join(root(), 'assets', 'indexes'),
   libraries: () => join(root(), 'libraries'),
   versions: () => join(root(), 'versions'),
-  version: (id: string) => join(root(), 'versions', id),
-  natives: (id: string) => join(root(), 'versions', id, 'natives'),
+  // `id` can come from an imported modpack or another launcher's own metadata,
+  // never checked further than "non-empty" at the call site until now, so
+  // `safeJoin` is what actually stops "../../x" from escaping the versions
+  // folder instead of `join`, which happily resolves it.
+  version: (id: string) => safeJoin(paths.versions(), id),
+  natives: (id: string) => join(paths.version(id), 'natives'),
   java: () => join(root(), 'java'),
   instances: () => join(root(), 'instances'),
   instance: (id: string) => join(root(), 'instances', id),
@@ -168,6 +172,29 @@ export function sanitizeVersionId(id: string): string {
   // messages the rest of this install path gives for every other failure.
   if (RESERVED_WINDOWS_NAMES.has(cleaned.toLowerCase())) return `${cleaned}-version`
   return cleaned
+}
+
+/**
+ * True for a Minecraft/loader version string safe to carry verbatim into
+ * `paths.version()`/`paths.natives()`, as it arrives from an imported
+ * modpack manifest or another launcher's own metadata rather than from
+ * Mojang.
+ *
+ * Unlike `sanitizeVersionId` above, nothing here is stripped: real Mojang ids
+ * contain spaces and dots ("1.14 Pre-Release 1", "1.20-pre1"), so mangling
+ * them would silently point the instance at the wrong folder. Only what would
+ * make an unsafe path segment or hide control characters is refused, so an
+ * import can fail with a clear reason up front instead of leaving a mangled
+ * or half-escaped folder behind.
+ */
+export function isValidVersionString(value: string): boolean {
+  if (typeof value !== 'string' || !value || value.length > 64) return false
+  if (value.includes('/') || value.includes('\\') || value.includes('..')) return false
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    if (code < 0x20 || code === 0x7f) return false
+  }
+  return true
 }
 
 /** Content folder for a content type inside an instance. */

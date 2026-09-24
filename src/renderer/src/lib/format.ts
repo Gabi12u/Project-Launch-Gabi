@@ -1,6 +1,15 @@
 import type { CSSProperties } from 'react'
 import type { LoaderId } from '@shared/types'
 
+/**
+ * Formats a number the way a German reader expects: a comma for the decimal
+ * separator instead of the dot toFixed() gives. Rounding behaves the same as
+ * toFixed, only the punctuation changes.
+ */
+export function formatDecimal(value: number, digits: number): string {
+  return value.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}
+
 export function formatBytes(bytes: number, decimals = 1): string {
   if (!bytes || bytes < 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
@@ -11,12 +20,12 @@ export function formatBytes(bytes: number, decimals = 1): string {
     value /= 1024
     unit++
   }
-  return `${value.toFixed(value >= 100 ? 0 : decimals)} ${units[unit]}`
+  return `${formatDecimal(value, value >= 100 ? 0 : decimals)} ${units[unit]}`
 }
 
 export function formatNumber(value: number): string {
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 10_000 ? 0 : 1)}K`
+  if (value >= 1_000_000) return `${formatDecimal(value / 1_000_000, value >= 10_000_000 ? 0 : 1)}M`
+  if (value >= 1_000) return `${formatDecimal(value / 1_000, value >= 10_000 ? 0 : 1)}K`
   return String(value)
 }
 
@@ -94,7 +103,7 @@ export function formatTime(value: number): string {
 export function formatMemory(mb: number): string {
   if (mb >= 1024) {
     const gb = mb / 1024
-    return `${gb % 1 === 0 ? gb : gb.toFixed(1)} GB`
+    return `${gb % 1 === 0 ? gb : formatDecimal(gb, 1)} GB`
   }
   return `${mb} MB`
 }

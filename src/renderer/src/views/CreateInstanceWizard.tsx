@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type { LoaderId, LoaderVersion, MinecraftVersion } from '@shared/types'
 import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
+import { useMemorySliderMax } from '../lib/hooks'
 import { formatDate, formatMemory, pluralise } from '../lib/format'
 import { Modal } from '../components/ui'
 import { IconCheck, IconSearch, IconSparkle,
@@ -16,6 +17,7 @@ interface Props {
 
 export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const { settings } = useStore()
+  const memoryMax = useMemorySliderMax()
 
   const [step, setStep] = useState<Step>(0)
   const [busy, setBusy] = useState(false)
@@ -73,7 +75,13 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
       .then((list) => {
         if (!current) return
         setVersions(list)
-        setMcVersion((chosen) => chosen || list.find((v) => v.type === 'release')?.id || list[0]?.id || '')
+        setMcVersion((chosen) => {
+          // A snapshot chosen while "Snapshots" was on has to be dropped once
+          // the toggle turns off: this list no longer contains it, and an id
+          // that resolves to nothing would stay selected invisibly.
+          if (chosen && list.some((v) => v.id === chosen)) return chosen
+          return list.find((v) => v.type === 'release')?.id || list[0]?.id || ''
+        })
       })
       .catch((err) => {
         if (current) toastError(err, 'Versionsliste konnte nicht geladen werden')
@@ -145,6 +153,12 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
     return Array.isArray(versions) ? versions : []
   }, [loaderVersions, loader])
 
+  // Vanilla always exists; any other loader needs at least one selectable
+  // build for the chosen Minecraft version. Without this check, "Weiter" and
+  // "Instanz erstellen" accepted a loader/version pairing that the install
+  // step then had no build for at all.
+  const loaderReady = loader === 'vanilla' || (selectedLoaderVersions.length > 0 && Boolean(loaderVersion))
+
   const filteredVersions = useMemo(() => {
     const term = versionSearch.trim().toLowerCase()
     if (!term) return versions.slice(0, 200)
@@ -207,13 +221,17 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           {step < 2 ? (
             <button
               className="btn primary"
-              disabled={step === 0 ? !mcVersion : false}
+              disabled={step === 0 ? !mcVersion : checkingLoaders || !loaderReady}
               onClick={() => setStep((s) => (s + 1) as Step)}
             >
               Weiter
             </button>
           ) : (
-            <button className="btn primary" onClick={create} disabled={busy || !mcVersion}>
+            <button
+              className="btn primary"
+              onClick={create}
+              disabled={busy || !mcVersion || checkingLoaders || !loaderReady}
+            >
               {busy ? <span className="spinner" /> : <IconSparkle size={15} />}
               INSTANZ ERSTELLEN
             </button>
@@ -434,14 +452,16 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="ci-arbeitsspeicher">Arbeitsspeicher: {formatMemory(memory)}</label>
+              <label className="label" htmlFor="ci-arbeitsspeicher">
+                Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+              </label>
               <input id="ci-arbeitsspeicher"
                 className="range"
                 type="range"
                 min={1024}
-                max={16384}
+                max={memoryMax}
                 step={512}
-                value={memory}
+                value={Math.min(memory, memoryMax)}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
@@ -495,7 +515,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 <span style={{ fontWeight: 650 }}>{name.trim() || suggestedName}</span>
                 <span className="hint">
                   Minecraft {mcVersion} · {LOADERS.find((l) => l.id === loader)?.name}
-                  {loaderVersion ? ` ${loaderVersion}` : ''} · {formatMemory(memory)}
+                  {loaderVersion ? ` ${loaderVersion}` : ''} · {formatMemory(Math.min(memory, memoryMax))}
                 </span>
               </div>
             </div>

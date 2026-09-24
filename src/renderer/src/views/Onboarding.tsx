@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { refreshAccounts, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
 import { LogoLockup } from '../components/Logo'
 import { AccountModal } from '../components/AccountModal'
@@ -9,6 +10,7 @@ import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../component
 /** First-run wizard: identity, look and account in three short steps. */
 export function Onboarding(): JSX.Element {
   const { settings, accounts } = useStore()
+  const memoryMax = useMemorySliderMax()
 
   const [step, setStep] = useState(0)
   const [accent, setAccent] = useState(settings.accentColor)
@@ -92,14 +94,16 @@ export function Onboarding(): JSX.Element {
             </div>
 
             <div className="field">
-              <label className="label" htmlFor="ob-standard-arbeitsspeicher">Standard-Arbeitsspeicher: {formatMemory(memory)}</label>
+              <label className="label" htmlFor="ob-standard-arbeitsspeicher">
+                Standard-Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+              </label>
               <input id="ob-standard-arbeitsspeicher"
                 className="range"
                 type="range"
                 min={1024}
-                max={16384}
+                max={memoryMax}
                 step={512}
-                value={memory}
+                value={Math.min(memory, memoryMax)}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">

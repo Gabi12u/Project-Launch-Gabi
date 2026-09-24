@@ -154,17 +154,35 @@ function armGuard(current: Session, afterMs: number): void {
  * ------------------------------------------------------------------ */
 
 /**
- * Instance ids with a game up, whoever started it.
+ * Every running game with the moment it started, whoever started it.
  *
  * Adopted games count. The launcher can be restarted while Minecraft keeps
  * playing, and refusing to record then would be a dead spot with no reason a
  * user could see: the game is right there on screen.
  */
-function playing(): string[] {
+function playingEntries(): { instanceId: string; startedAt: number }[] {
   return [
-    ...listRunning().map((game) => game.instanceId),
-    ...listAdopted().map((game) => game.instanceId)
+    ...listRunning().map((game) => ({ instanceId: game.instanceId, startedAt: game.startedAt })),
+    ...listAdopted().map((game) => ({ instanceId: game.instanceId, startedAt: game.startedAt }))
   ]
+}
+
+function playing(): string[] {
+  return playingEntries().map((entry) => entry.instanceId)
+}
+
+/**
+ * The instance that was started most recently, or null with nothing running.
+ *
+ * The hotkey and "record whatever is running" carry no hint about which
+ * instance is meant, and picking whichever happened to start first left the
+ * hotkey stuck recording an old session someone forgot about while a second,
+ * newly started instance sat unrecorded on screen.
+ */
+function mostRecentlyStarted(): string | null {
+  const entries = playingEntries()
+  if (entries.length === 0) return null
+  return entries.reduce((latest, entry) => (entry.startedAt > latest.startedAt ? entry : latest)).instanceId
 }
 
 /**
@@ -347,7 +365,14 @@ async function startRecording(instanceId: string): Promise<void> {
   logger.info(`Aufnahme ${id} gestartet (${source.kind}) für ${instanceId}`)
   emit(EVENTS.recordingStart, request)
   publish()
-  notify('info', 'Aufnahme läuft', `Nochmal ${settings.recordingHotkey} drücken beendet sie.`)
+  // Named explicitly: with more than one instance running, a bare "Aufnahme
+  // läuft" left no way to tell which one the hotkey had actually picked.
+  const instanceName = tryGetInstance(instanceId)?.name ?? instanceId
+  notify(
+    'info',
+    'Aufnahme läuft',
+    `Aufnahme von „${instanceName}“ läuft. Nochmal ${settings.recordingHotkey} drücken beendet sie.`
+  )
 }
 
 function stopRecording(): void {
@@ -364,8 +389,9 @@ function stopRecording(): void {
  * Starts or stops, which is what the hotkey does.
  *
  * Without an explicit instance it records whatever is running. With more than
- * one game up the first is taken, which is the only answer available: the key
- * press carries no hint about which window the user meant.
+ * one game up the most recently started one is taken: the key press carries
+ * no hint about which window the user meant, and whichever was launched last
+ * is more likely the one still being looked at.
  */
 export async function toggleRecording(instanceId?: string): Promise<RecordingState> {
   if (session) {
@@ -382,7 +408,7 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
 
   if (!getSettings().recordingEnabled) return getRecordingState()
 
-  const target = instanceId ?? playing()[0]
+  const target = instanceId ?? mostRecentlyStarted()
   if (!target) {
     notify('info', 'Nichts aufzunehmen', 'Starte zuerst eine Instanz.')
     return getRecordingState()

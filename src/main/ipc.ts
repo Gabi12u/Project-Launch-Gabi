@@ -77,7 +77,14 @@ import {
   syncRecordingHotkey,
   toggleRecording
 } from './core/recording'
-import { createBackup, deleteBackup, listBackups, restoreBackup, backupFolder } from './core/backups'
+import {
+  createBackup,
+  deleteBackup,
+  listBackups,
+  restoreBackup,
+  backupFolder,
+  pruneAllAutomaticBackups
+} from './core/backups'
 import { repairInstance } from './core/repair'
 import {
   analyzeModpackFile,
@@ -265,6 +272,18 @@ export function registerIpc(): void {
       next.recordingEnabled !== previous.recordingEnabled
     ) {
       syncRecordingHotkey()
+    }
+
+    // A lower keep count should take effect right away, not only the next
+    // time each instance happens to create a fresh automatic backup. Kept off
+    // the reply: this is best effort housekeeping, not something the settings
+    // save should ever fail over.
+    if (next.automaticBackupKeep < previous.automaticBackupKeep) {
+      try {
+        pruneAllAutomaticBackups()
+      } catch (err) {
+        logger.warn('Automatische Sicherungen nach geänderter Aufbewahrung nicht aufgeräumt:', err)
+      }
     }
     return next
   })

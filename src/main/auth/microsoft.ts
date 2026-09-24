@@ -124,6 +124,16 @@ function encrypt(value: string): { value: string; secure: boolean } {
  */
 class UnreadableTokenError extends Error {}
 
+/** Whether `accessToken` is encrypted, falling back to the legacy combined flag. */
+function accessSecureOf(account: StoredAccount): boolean | undefined {
+  return account.accessSecure ?? account.secure
+}
+
+/** Whether `refreshToken` is encrypted, falling back to the legacy combined flag. */
+function refreshSecureOf(account: StoredAccount): boolean | undefined {
+  return account.refreshSecure ?? account.secure
+}
+
 function decrypt(value: string, secure: boolean | undefined): string {
   if (!secure) return value
   try {
@@ -749,12 +759,13 @@ async function completeMinecraftLogin(
 
   const accounts = readAccounts()
   const existingIndex = accounts.findIndex((a) => a.uuid === uuid && a.type === 'microsoft')
+  const previous = existingIndex >= 0 ? accounts[existingIndex] : undefined
 
   const accessEnc = encrypt(mc.access_token)
   const refreshEnc = token.refresh_token ? encrypt(token.refresh_token) : undefined
 
   const stored: StoredAccount = {
-    id: existingIndex >= 0 ? accounts[existingIndex].id : randomUUID(),
+    id: previous ? previous.id : randomUUID(),
     type: 'microsoft',
     username: profile.name,
     uuid,
@@ -765,8 +776,14 @@ async function completeMinecraftLogin(
     // Falls back to what is already stored. A device-code grant does not
     // always return a fresh refresh_token, and overwriting a still-valid one
     // with undefined forced a full re-login at the next expiry.
-    refreshToken: refreshEnc?.value ?? (existingIndex >= 0 ? accounts[existingIndex].refreshToken : undefined),
+    refreshToken: refreshEnc?.value ?? previous?.refreshToken,
     secure: accessEnc.secure,
+    accessSecure: accessEnc.secure,
+    // A kept-over refresh token keeps its own encryption flag rather than
+    // inheriting the fresh access token's: the two are only ever the same by
+    // coincidence, since a device-code grant can hand back a brand new access
+    // token without a new refresh token to go with it.
+    refreshSecure: refreshEnc ? refreshEnc.secure : previous ? refreshSecureOf(previous) : undefined,
     issuerClientId: clientId
   }
 
@@ -816,7 +833,7 @@ export async function getValidAccessToken(accountId: string): Promise<string> {
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {
     try {
-      return decrypt(account.accessToken, account.secure)
+      return decrypt(account.accessToken, accessSecureOf(account))
     } catch {
       // Unreadable rather than absent: fall through and let the refresh path
       // below try the refresh token, which may still be readable.
@@ -843,12 +860,12 @@ async function refreshAccessToken(accountId: string): Promise<string> {
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {
-    const usable = decryptOrEmpty(account.accessToken, account.secure)
+    const usable = decryptOrEmpty(account.accessToken, accessSecureOf(account))
     if (usable) return usable
   }
 
   const refreshToken = account.refreshToken
-    ? decryptOrEmpty(account.refreshToken, account.secure)
+    ? decryptOrEmpty(account.refreshToken, refreshSecureOf(account))
     : ''
   if (!refreshToken) {
     throw new Error(`Die Sitzung von ${account.username} ist abgelaufen. Bitte neu anmelden.`)
@@ -921,6 +938,15 @@ async function refreshAccessToken(accountId: string): Promise<string> {
               accessToken: accessEnc.value,
               refreshToken: refreshEnc?.value ?? a.refreshToken,
               secure: accessEnc.secure,
+              accessSecure: accessEnc.secure,
+              // A kept-over refresh token (no fresh one in this grant) keeps
+              // its own flag instead of adopting this run's access-token one:
+              // without this, a refresh token still sitting there encrypted
+              // from an earlier run was mislabelled as plain text the moment
+              // the access token happened to get a different flag, and the
+              // next refresh handed its ciphertext to Microsoft as if it were
+              // the real token.
+              refreshSecure: refreshEnc ? refreshEnc.secure : refreshSecureOf(a),
               expiresAt: Date.now() + mc.expires_in * 1000,
               skinUrl: skinUrl ?? a.skinUrl,
               // Backfilled once, from whichever id this refresh actually used

@@ -5,6 +5,7 @@ import type { BackupEntry } from '@shared/types'
 import { paths } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { log } from '../logger'
+import { notify } from '../events'
 import { withTask } from '../tasks'
 import { extractAllSlowly, listEntries, zipFolder } from './archive'
 import { getInstance } from './instances'
@@ -106,13 +107,27 @@ export function listBackups(instanceId?: string): BackupEntry[] {
     const index = readIndex(instanceId)
     // A hand-edited or truncated backups.json can parse as the wrong shape.
     if (!Array.isArray(index)) return []
-    return index
-      .filter(
-        (entry) =>
-          Boolean(entry?.fileName) &&
-          existsSync(join(paths.instanceBackups(instanceId), entry.fileName))
-      )
-      .sort((a, b) => b.createdAt - a.createdAt)
+    const present = index.filter(
+      (entry) =>
+        Boolean(entry?.fileName) &&
+        existsSync(join(paths.instanceBackups(instanceId), entry.fileName))
+    )
+
+    // An entry whose zip is gone (a manual delete outside the app, a failed
+    // write) used to stay in backups.json forever, just hidden from view. It
+    // is only worth writing the cleaned list back when nothing is currently
+    // touching this instance's backups; mid-operation the index can briefly
+    // disagree with the disk on purpose (see `createBackupUnlocked`), and
+    // this cleanup is a nice-to-have, not worth racing that.
+    if (present.length !== index.length && !instanceLocks.has(instanceId)) {
+      try {
+        writeIndex(instanceId, present)
+      } catch (err) {
+        logger.warn(`Bereinigter Sicherungsindex von ${instanceId} nicht geschrieben:`, err)
+      }
+    }
+
+    return present.sort((a, b) => b.createdAt - a.createdAt)
   }
 
   const root = paths.backups()
@@ -217,11 +232,16 @@ async function createBackupUnlocked(
       }
 
       const skipped: string[] = []
+      const skippedLinks: string[] = []
       try {
         await zipFolder(
           gameDir,
           target,
-          { include: existing, onSkip: (file) => skipped.push(file) },
+          {
+            include: existing,
+            onSkip: (file) => skipped.push(file),
+            onSkipLink: (file) => skippedLinks.push(file)
+          },
           (done, total) => {
             task.update(`${done} / ${total} Dateien`, total > 0 ? done / total : null)
           }
@@ -263,6 +283,19 @@ async function createBackupUnlocked(
 
       const entries = [entry, ...readIndex(instanceId)]
       writeIndex(instanceId, entries)
+
+      // A link was never something a restore could recreate anyway, so it is
+      // only worth telling the user about, not failing a backup that is
+      // otherwise complete over.
+      if (skippedLinks.length > 0) {
+        const one = skippedLinks.length === 1
+        notify(
+          'warning',
+          `${instance.name}: Verknüpfungen nicht gesichert`,
+          `${skippedLinks.length} ${one ? 'Verknüpfung wurde' : 'Verknüpfungen wurden'} übersprungen und ` +
+            `${one ? 'ist' : 'sind'} nicht in der Sicherung enthalten (z. B. ${skippedLinks[0]}).`
+        )
+      }
 
       // Tidying up old backups is housekeeping, and the new backup is already
       // written and indexed by now. Letting an EBUSY on some unrelated old
@@ -315,6 +348,38 @@ function pruneAutomatic(instanceId: string): void {
     instanceId,
     entries.filter((e) => !excess.some((x) => x.id === e.id))
   )
+}
+
+/**
+ * Applies a newly lowered `automaticBackupKeep` immediately.
+ *
+ * `pruneAutomatic` above only ever runs right after a fresh backup is
+ * written, so lowering the setting left every instance's existing overflow
+ * sitting on disk until its next backup happened to occur, defeating the
+ * point of lowering it at all. Walks every folder under the backups root the
+ * same way `listBackups()`'s all-instances view does, since a folder orphaned
+ * by a deleted instance (see `assertBackupIdSafe`) still holds real files.
+ */
+export function pruneAllAutomaticBackups(): void {
+  const root = paths.backups()
+  if (!existsSync(root)) return
+
+  for (const id of readdirSync(root)) {
+    try {
+      if (!statSync(join(root, id)).isDirectory()) continue
+    } catch {
+      continue
+    }
+    // A create, restore or delete already running for this id touches the
+    // same backups.json and the same files; pruning underneath it would race
+    // it instead of helping, so it is left for that operation's own prune.
+    if (instanceLocks.has(id)) continue
+    try {
+      pruneAutomatic(id)
+    } catch (err) {
+      logger.warn(`Automatische Sicherungen von ${id} nicht aufgeräumt:`, err)
+    }
+  }
 }
 
 export async function restoreBackup(instanceId: string, backupId: string): Promise<void> {
@@ -461,14 +526,25 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             // a flag nobody read, so the run carried on over the user's files
             // and finished with "Fertig". A cancel here lands in the catch
             // below, which puts the previous state back.
-            () => task.throwIfCancelled()
+            () => task.throwIfCancelled(),
+            // Only the parked folders may be overwritten. Without this an
+            // archive with entries outside `includes` (an older build, a hand
+            // edit of the zip) wrote into folders that were never moved aside
+            // and never backed up either.
+            new Set(includes)
           )
         } catch (err) {
           // Put everything back exactly as it was.
           const stranded: string[] = []
+          // Subset of `stranded` where the current (partially extracted)
+          // folder could not even be removed, so it is still sitting in
+          // `gameDir` on top of the untouched original stuck in `parked`.
+          const strandedLeftover: string[] = []
           for (const item of moved) {
+            let removedCurrent = false
             try {
               rmSync(item.from, { recursive: true, force: true })
+              removedCurrent = true
               renameSync(item.to, item.from)
             } catch (rollbackErr) {
               logger.error(`Rollback von ${item.key} fehlgeschlagen:`, rollbackErr)
@@ -478,6 +554,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
               // directory was therefore enough to destroy the user's only
               // remaining copy while the message below promised the opposite.
               stranded.push(item.key)
+              if (!removedCurrent) strandedLeftover.push(item.key)
             }
           }
 
@@ -485,12 +562,14 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           // never in `moved`, so a partial extraction would leave them behind
           // while the message below promises the previous state is back.
           const restoredKeys = new Set(moved.map((item) => item.key))
+          const newLeftover: string[] = []
           for (const key of includes) {
             if (restoredKeys.has(key)) continue
             try {
               rmSync(join(gameDir, key), { recursive: true, force: true })
             } catch (cleanupErr) {
               logger.error(`Aufräumen von ${key} fehlgeschlagen:`, cleanupErr)
+              newLeftover.push(key)
             }
           }
 
@@ -506,19 +585,42 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             }
           }
 
-          if (stranded.length > 0) {
+          const reason = `(${err instanceof Error ? err.message : String(err)})`
+
+          // Only this case may say the previous state is truly back: every
+          // parked folder was renamed back and nothing new was left behind.
+          if (stranded.length === 0 && newLeftover.length === 0) {
             throw new Error(
-              `Die Wiederherstellung ist fehlgeschlagen, und ${stranded.join(', ')} konnte nicht ` +
-                `zurückgeholt werden. Deine Daten sind nicht verloren: sie liegen unverändert in ` +
-                `${parked}. Schließe Minecraft und alles, was auf den Ordner zugreift, und schiebe ` +
-                `ihn von Hand zurück. (${err instanceof Error ? err.message : String(err)})`
+              `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. ${reason}`
+            )
+          }
+
+          const details: string[] = []
+          if (strandedLeftover.length > 0) {
+            details.push(
+              `${strandedLeftover.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt ` +
+                `unverändert in ${parked}, im Instanzordner selbst kann aber noch ein unvollständig ` +
+                `entpackter Rest der Wiederherstellung liegen`
+            )
+          }
+          const strandedMissing = stranded.filter((key) => !strandedLeftover.includes(key))
+          if (strandedMissing.length > 0) {
+            details.push(
+              `${strandedMissing.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt ` +
+                `unverändert in ${parked} und fehlt im Moment im Instanzordner`
+            )
+          }
+          if (newLeftover.length > 0) {
+            details.push(
+              `${newLeftover.join(', ')} gab es vorher nicht und konnte(n) nicht wieder entfernt werden; ` +
+                `dort liegt jetzt möglicherweise ein unvollständig entpackter Rest der Sicherung`
             )
           }
 
           throw new Error(
-            `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. (${
-              err instanceof Error ? err.message : String(err)
-            })`
+            `Die Wiederherstellung ist fehlgeschlagen, und der vorherige Stand wurde NICHT vollständig ` +
+              `zurückgeholt. ${details.join('. ')}. Schließe Minecraft und alles, was auf den ` +
+              `Instanzordner zugreift, und ordne die genannten Ordner von Hand. ${reason}`
           )
         }
 

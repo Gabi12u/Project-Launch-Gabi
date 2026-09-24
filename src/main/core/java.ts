@@ -745,9 +745,13 @@ export async function resolveJava(options: {
     // guaranteed crash dressed up as a successful launch. Refusing with an
     // actionable message beats that.
     const LIMIT = 4
-    const newer = preferred
-      .filter((r) => r.major > major && r.major <= major + LIMIT)
-      .sort((a, b) => a.major - b.major)[0]
+    // Java 8 and below get no fallback at all: Java 9 already removed the
+    // reflective access the comment above describes, so every runtime a range
+    // starting at 8 could reach falls on the wrong side of that break.
+    const newer =
+      major > 8
+        ? preferred.filter((r) => r.major > major && r.major <= major + LIMIT).sort((a, b) => a.major - b.major)[0]
+        : undefined
 
     if (newer) {
       logger.warn(`Kein Java ${major} gefunden, nutze Java ${newer.major}`)

@@ -28,20 +28,28 @@ const isDev = !app.isPackaged
 initLogger(isDev ? 'debug' : 'info')
 const logger = log('app')
 
-/** Instance the app was asked to launch through a shortcut or deep link. */
-let pendingLaunch: string | null = null
+/**
+ * Instances the app was asked to launch through a shortcut or deep link,
+ * oldest first.
+ *
+ * A single slot here meant a second shortcut or link arriving before the
+ * renderer was ready silently overwrote the first, which then never
+ * launched at all. A queue keeps every one of them and drains them in the
+ * order they arrived.
+ */
+let pendingLaunches: string[] = []
 
 /**
- * A deep link that arrived before there was a window to send it to.
+ * Deep links that arrived before there was a window to send them to,
+ * oldest first.
  *
  * `navigate` drops silently when no window exists, and that is reachable in
  * normal use: on macOS a `launchgabi://` URL can start the app cold via
- * `open-url`, and closing the last window there keeps the app alive, so a
- * second link can arrive with nothing to receive it. The launch action already
- * had this treatment through `pendingLaunch`; the other two did not and simply
- * did nothing.
+ * `open-url`, and closing the last window there keeps the app alive, so more
+ * than one link can arrive with nothing to receive them. Same reasoning as
+ * `pendingLaunches`: a single slot let a second link overwrite the first.
  */
-let pendingRoute: string | null = null
+let pendingRoutes: string[] = []
 
 /**
  * False until the renderer has had time to subscribe to main-process events.
@@ -65,21 +73,26 @@ function rendererReachable(): boolean {
   return bootSettled && getMainWindow() !== null
 }
 
-/** Delivers a route now, or remembers it until the renderer can receive it. */
+/** Delivers a route now, or queues it until the renderer can receive it. */
 function routeOrQueue(target: string): void {
   if (rendererReachable()) {
     navigate(target)
     return
   }
-  pendingRoute = target
+  pendingRoutes.push(target)
   logger.info(`Deep Link ${target} vorgemerkt, die Oberfläche ist noch nicht bereit`)
 }
 
+/** Delivers every queued route in the order it arrived. */
 function consumePendingRoute(): void {
-  if (!pendingRoute || !rendererReachable()) return
-  const target = pendingRoute
-  pendingRoute = null
-  navigate(target)
+  if (!rendererReachable()) return
+  while (pendingRoutes.length > 0) {
+    // Shifted out before navigating: `navigate` is synchronous here, but
+    // leaving the entry in place until afterwards would let a re-entrant
+    // call (unlikely, but cheap to rule out) deliver it twice.
+    const target = pendingRoutes.shift() as string
+    navigate(target)
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -401,7 +414,7 @@ function bootstrap(): void {
 function handleStartupArgs(argv: string[]): void {
   const intent = parseLaunchArgs(argv)
   if (intent) {
-    pendingLaunch = intent.instanceId
+    pendingLaunches.push(intent.instanceId)
     void consumePendingLaunch()
   }
 
@@ -416,7 +429,7 @@ function handleDeepLink(url: string): void {
   switch (link.action) {
     case 'launch':
       if (link.instanceId) {
-        pendingLaunch = link.instanceId
+        pendingLaunches.push(link.instanceId)
         void consumePendingLaunch()
       }
       break
@@ -431,31 +444,34 @@ function handleDeepLink(url: string): void {
   }
 }
 
-/** Starts the instance a shortcut asked for, once the app is ready. */
+/** Starts every instance queued by a shortcut or deep link, in order, once the app is ready. */
 async function consumePendingLaunch(): Promise<void> {
   // Left pending rather than dropped when the renderer cannot receive yet: the
   // timer during boot calls this again, and by then the progress, the log
   // window and the compatibility dialog all have somewhere to appear.
-  if (!pendingLaunch || !app.isReady() || !rendererReachable()) return
+  if (!app.isReady() || !rendererReachable()) return
 
-  const instanceId = pendingLaunch
-  pendingLaunch = null
+  while (pendingLaunches.length > 0) {
+    // Shifted out before launching, so a launch that throws still lets the
+    // rest of the queue drain instead of getting stuck behind it forever.
+    const instanceId = pendingLaunches.shift() as string
 
-  const instance = tryGetInstance(instanceId)
-  if (!instance) {
-    logger.warn(`Verknüpfung zeigt auf unbekannte Instanz ${instanceId}`)
-    notify('error', 'Instanz nicht gefunden', `Die Verknüpfung verweist auf "${instanceId}".`)
-    return
-  }
+    const instance = tryGetInstance(instanceId)
+    if (!instance) {
+      logger.warn(`Verknüpfung zeigt auf unbekannte Instanz ${instanceId}`)
+      notify('error', 'Instanz nicht gefunden', `Die Verknüpfung verweist auf "${instanceId}".`)
+      continue
+    }
 
-  navigate(`/instances/${instanceId}`)
-  logger.info(`Starte ${instance.name} über Verknüpfung`)
+    navigate(`/instances/${instanceId}`)
+    logger.info(`Starte ${instance.name} über Verknüpfung`)
 
-  try {
-    await launchInstance({ instanceId })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    notify('error', `${instance.name} konnte nicht gestartet werden`, message)
+    try {
+      await launchInstance({ instanceId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      notify('error', `${instance.name} konnte nicht gestartet werden`, message)
+    }
   }
 }
 
