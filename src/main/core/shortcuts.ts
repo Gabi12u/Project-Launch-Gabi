@@ -163,7 +163,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
     const ok = shell.writeShortcutLink(linkPath, 'create', {
       target,
       args,
-      description: `${singleLine(instance.name)} — Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
+      description: `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
       cwd: app.getAppPath(),
       icon,
       iconIndex: 0

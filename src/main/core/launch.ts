@@ -1099,7 +1099,7 @@ export function stopInstance(instanceId: string, immediate = false): void {
       notify(
         'info',
         'Eintrag entfernt',
-        `Falls Minecraft noch offen ist, schließe das Fenster selbst — dieser Launcher kann es ` +
+        `Falls Minecraft noch offen ist, schließe das Fenster selbst. Dieser Launcher kann es ` +
           `nicht beenden, weil es eine frühere Sitzung gestartet hat.`
       )
       return

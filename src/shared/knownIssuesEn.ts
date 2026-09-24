@@ -1231,6 +1231,98 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'The memory sliders went up to 16 or 32 GB depending on where they were, regardless of installed ' +
       'memory. From 1.0.20 every slider ends at the memory actually present.'
+  },
+  'datapacks-ohne-wirkung': {
+    title: 'Installed datapacks had no effect in any world',
+    detail:
+      'Datapacks went into a collection folder of the instance and showed as installed. Minecraft only ' +
+      'reads datapacks from a world\u2019s own folder, though, and they were never copied there. From 1.0.20 ' +
+      'the launcher asks which world a datapack should go into, and already installed datapacks can be ' +
+      'assigned to a world afterwards.'
+  },
+  'sicherung-grosse-welten-speicher': {
+    title: 'Backing up large worlds could freeze or crash the launcher',
+    detail:
+      'Creating a backup loaded the entire content into memory at once and only wrote it at the end. With ' +
+      'worlds of several gigabytes there was not enough memory for that. From 1.0.20 it is written file by ' +
+      'file, whatever the size.'
+  },
+  'wiederherstellung-absturz-daten-versteckt': {
+    title: 'After a crash during a restore, the worlds sat hidden in the backup folder',
+    detail:
+      'A restore first moves the existing folders aside. If the launcher or the computer crashed right then, ' +
+      'those folders stayed in a hidden holding folder and nothing brought them back, which looked like lost ' +
+      'worlds. From 1.0.20 the launcher notices this on the next start and restores the previous state.'
+  },
+  'sicherung-ohne-fortschritt': {
+    title: 'Backups and restores showed no progress',
+    detail:
+      'While a backup was created or restored, only a spinner turned. With large worlds that looked like a ' +
+      'frozen window. From 1.0.20 the task list shows the progress.'
+  },
+  'jvm-argumente-anfuehrungszeichen': {
+    title: 'Java arguments with quotes in the middle of a value arrived broken',
+    detail:
+      'An argument like -Dpath="C:\\Program Files\\x" was passed to Java with a leftover quote, and the launch ' +
+      'failed for no visible reason. From 1.0.20 quotes are removed properly anywhere in the argument.'
+  },
+  'datenordner-wechsel-waehrend-spiel': {
+    title: 'The data folder could be changed while a game was running',
+    detail:
+      'Changing the data folder in the settings while Minecraft was running made the launcher lose track of ' +
+      'the running game: stopping it and the live log no longer worked. From 1.0.20 the change is only ' +
+      'possible once no game is running.'
+  },
+  'ordner-oeffnen-laufwerkswurzel': {
+    title: '"Open folder" failed when the data folder sat directly on a drive',
+    detail:
+      'With the data folder directly on a drive such as D:\\, every button that opens a folder claimed the ' +
+      'path was outside the launcher folders. From 1.0.20 they work there too.'
+  },
+  'curseforge-download-gesperrt-rohe-meldung': {
+    title: 'A CurseForge mod that cannot be downloaded showed only a technical error',
+    detail:
+      'Some authors do not allow downloads through other programs on CurseForge. Installing such a mod only ' +
+      'showed a raw HTTP message. From 1.0.20 the launcher explains that the mod is only available from its ' +
+      'CurseForge page.'
+  },
+  'kompatibilitaet-einzeln-waehrend-alle': {
+    title: 'Fixes in the compatibility window could be started twice',
+    detail:
+      'While "Fix all automatically" was running, the individual fix buttons stayed clickable. Both runs ' +
+      'then got in each other\u2019s way and the window could show the wrong state. From 1.0.20 the buttons ' +
+      'are locked while a fix runs.'
+  },
+  'startseite-spielen-tastatur': {
+    title: 'The play button on the home page tiles could not be reached by keyboard',
+    detail:
+      'On the "Recently played" tiles an instance could only be started or stopped directly with the mouse. ' +
+      'From 1.0.20 the keyboard works too.'
+  },
+  'log-datei-tageswechsel': {
+    title: 'The launcher log did not move to a new day and stopped after errors',
+    detail:
+      'If the launcher stayed open past midnight, it kept writing to the previous day\u2019s log file. After a ' +
+      'brief write error, such as a full disk, it logged nothing at all until restarted. From 1.0.20 each day ' +
+      'starts a new file, and writing is retried after an error.'
+  },
+  'versionsauswahl-hervorhebung-fehlt': {
+    title: 'The version picker did not highlight the installed version',
+    detail:
+      'The currently installed version was meant to be highlighted in the list, but the highlight was ' +
+      'missing. From 1.0.20 it shows.'
+  },
+  'einstellungen-ungespeichert-blitzt': {
+    title: 'After saving instance settings, "unsaved changes" flashed up briefly',
+    detail:
+      'If saving corrected a value, such as an empty window width, the unsaved changes bar appeared briefly ' +
+      'although everything was saved. Not any more from 1.0.20.'
+  },
+  'startseite-snapshot-paketformat': {
+    title: 'The custom start screen said "made for another version" on snapshots',
+    detail:
+      'On Minecraft snapshot versions the start screen pack was built with too old a pack format, and ' +
+      'Minecraft showed a note about it. From 1.0.20 snapshots get the right format as well.'
   }
 }
 

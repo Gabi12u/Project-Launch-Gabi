@@ -1875,6 +1875,144 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-24',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'datapacks-ohne-wirkung',
+    title: 'Installierte Datapacks hatten in keiner Welt eine Wirkung',
+    detail:
+      'Datapacks landeten in einem Sammelordner der Instanz und wurden als installiert angezeigt. Minecraft ' +
+      'liest Datapacks aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 ' +
+      'fragt der Launcher beim Installieren, in welche Welt ein Datapack soll, und bereits installierte ' +
+      'Datapacks lassen sich nachträglich einer Welt zuordnen.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'sicherung-grosse-welten-speicher',
+    title: 'Sicherungen großer Welten konnten den Launcher einfrieren oder abstürzen lassen',
+    detail:
+      'Beim Erstellen einer Sicherung wurde der gesamte Inhalt gleichzeitig in den Arbeitsspeicher geladen ' +
+      'und erst am Ende geschrieben. Bei Welten mit mehreren Gigabyte reichte der Speicher dafür nicht. Ab ' +
+      '1.0.20 wird Datei für Datei geschrieben, unabhängig von der Größe.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'wiederherstellung-absturz-daten-versteckt',
+    title: 'Nach einem Absturz während einer Wiederherstellung lagen die Welten versteckt im Sicherungsordner',
+    detail:
+      'Eine Wiederherstellung schiebt die bisherigen Ordner erst beiseite. Stürzte der Launcher oder der ' +
+      'Rechner genau dann ab, blieben diese Ordner in einem versteckten Zwischenordner liegen, und nichts ' +
+      'holte sie zurück. Für den Nutzer sah das wie verlorene Welten aus. Ab 1.0.20 erkennt der Launcher ' +
+      'das beim nächsten Start und stellt den vorherigen Stand wieder her.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'sicherung-ohne-fortschritt',
+    title: 'Sicherungen und Wiederherstellungen zeigten keinen Fortschritt',
+    detail:
+      'Während eine Sicherung erstellt oder wiederhergestellt wurde, drehte sich nur ein Kreis. Bei großen ' +
+      'Welten wirkte das wie ein eingefrorenes Fenster. Ab 1.0.20 zeigt die Aufgabenanzeige den Fortschritt.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'jvm-argumente-anfuehrungszeichen',
+    title: 'Java-Argumente mit Anführungszeichen mitten im Wert kamen kaputt an',
+    detail:
+      'Ein Argument wie -Dpfad="C:\\Program Files\\x" wurde mit einem übrig gebliebenen Anführungszeichen ' +
+      'an Java übergeben, und der Start schlug ohne verständlichen Grund fehl. Ab 1.0.20 werden ' +
+      'Anführungszeichen überall im Argument richtig entfernt.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'datenordner-wechsel-waehrend-spiel',
+    title: 'Der Datenordner ließ sich wechseln, während ein Spiel lief',
+    detail:
+      'Wurde der Datenordner in den Einstellungen geändert, während Minecraft lief, verlor der Launcher den ' +
+      'Bezug zum laufenden Spiel: Stoppen und das Live-Log funktionierten nicht mehr. Ab 1.0.20 ist der ' +
+      'Wechsel erst möglich, wenn kein Spiel mehr läuft.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'ordner-oeffnen-laufwerkswurzel',
+    title: '„Ordner öffnen“ scheiterte, wenn der Datenordner direkt auf einem Laufwerk lag',
+    detail:
+      'Lag der Datenordner direkt auf einem Laufwerk wie D:\\, meldeten alle Knöpfe zum Öffnen eines Ordners, ' +
+      'der Pfad liege außerhalb der Launcher-Ordner. Ab 1.0.20 funktionieren sie auch dort.',
+    state: 'fixing',
+    since: '2026-09-24',
+    platforms: ['Windows']
+  },
+  {
+    id: 'curseforge-download-gesperrt-rohe-meldung',
+    title: 'Ein nicht herunterladbarer CurseForge-Mod zeigte nur eine technische Fehlermeldung',
+    detail:
+      'Manche Autoren erlauben auf CurseForge keine Downloads über andere Programme. Beim Installieren ' +
+      'eines solchen Mods erschien nur eine rohe HTTP-Meldung. Ab 1.0.20 erklärt der Launcher, dass der Mod ' +
+      'nur über die CurseForge-Seite erhältlich ist.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'kompatibilitaet-einzeln-waehrend-alle',
+    title: 'Im Kompatibilitätsfenster ließen sich Korrekturen doppelt anstoßen',
+    detail:
+      'Während „Alle automatisch beheben“ lief, blieben die einzelnen Knöpfe zum Beheben klickbar. Beide ' +
+      'Abläufe kamen sich dann in die Quere, und die Anzeige konnte einen falschen Stand zeigen. Ab 1.0.20 ' +
+      'sind die Knöpfe gesperrt, solange eine Korrektur läuft.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'startseite-spielen-tastatur',
+    title: 'Der Spielen-Knopf auf den Kacheln der Startseite war per Tastatur nicht erreichbar',
+    detail:
+      'Auf den Kacheln unter „Zuletzt gespielt“ ließ sich eine Instanz nur mit der Maus direkt starten oder ' +
+      'stoppen. Ab 1.0.20 geht das auch mit der Tastatur.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'log-datei-tageswechsel',
+    title: 'Das Protokoll des Launchers wechselte nicht auf einen neuen Tag und brach nach Fehlern ab',
+    detail:
+      'Blieb der Launcher über Mitternacht geöffnet, schrieb er weiter in die Protokolldatei des Vortags. ' +
+      'Nach einem kurzen Schreibfehler, etwa einer vollen Festplatte, protokollierte er bis zum Neustart gar ' +
+      'nichts mehr. Ab 1.0.20 beginnt jeden Tag eine neue Datei, und nach einem Fehler wird es erneut versucht.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'versionsauswahl-hervorhebung-fehlt',
+    title: 'In der Versionsauswahl war die installierte Version nicht hervorgehoben',
+    detail:
+      'Die gerade installierte Version sollte in der Liste farblich markiert sein, die Markierung fehlte ' +
+      'aber. Ab 1.0.20 ist sie sichtbar.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'einstellungen-ungespeichert-blitzt',
+    title: 'Nach dem Speichern von Instanz-Einstellungen blitzte kurz „ungespeicherte Änderungen“ auf',
+    detail:
+      'Wurde beim Speichern ein Wert korrigiert, etwa eine leere Fensterbreite, erschien kurz die Leiste für ' +
+      'ungespeicherte Änderungen, obwohl alles gespeichert war. Ab 1.0.20 nicht mehr.',
+    state: 'fixing',
+    since: '2026-09-24'
+  },
+  {
+    id: 'startseite-snapshot-paketformat',
+    title: 'Die eigene Startseite meldete bei Snapshots „für eine andere Version gemacht“',
+    detail:
+      'Bei Snapshot-Versionen von Minecraft wurde das Startseiten-Paket mit einem zu alten Paketformat ' +
+      'erstellt, und Minecraft zeigte dazu einen Hinweis. Ab 1.0.20 wird auch bei Snapshots das passende ' +
+      'Format gewählt.',
+    state: 'fixing',
+    since: '2026-09-24'
   }
 ]
 
