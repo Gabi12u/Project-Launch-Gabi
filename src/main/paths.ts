@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import { getSettings } from './store'
 
@@ -242,23 +242,25 @@ export function worldDatapacksDir(instanceId: string, world: string): string {
 
 /**
  * Copies a datapack into one world's datapacks folder, creating it if needed.
- *
- * Best effort: a world that was deleted or renamed outside the launcher since
- * it was last assigned is skipped rather than failing the whole operation, the
- * same reasoning `syncContentWithDisk` applies to files that vanish mid-scan.
+ * Returns false when it could not: a world gone since it was assigned, a
+ * locked or full disk, or a different file of the same name already sitting
+ * there (hand-placed, or another project's), which is never overwritten.
  */
 export function copyDatapackIntoWorld(
   instanceId: string,
   world: string,
   sourceFile: string,
   fileName: string
-): void {
+): boolean {
   try {
     const dir = worldDatapacksDir(instanceId, world)
+    const target = contentPath(dir, fileName)
+    if (existsSync(target)) return readFileSync(target).equals(readFileSync(sourceFile))
     mkdirSync(dir, { recursive: true })
-    copyFileSync(sourceFile, contentPath(dir, fileName))
+    copyFileSync(sourceFile, target)
+    return true
   } catch {
-    // world removed or renamed outside the launcher; nothing to copy into
+    return false
   }
 }
 

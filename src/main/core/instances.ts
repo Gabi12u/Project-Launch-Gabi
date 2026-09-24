@@ -22,7 +22,7 @@ import {
   safeJoin
 } from '../paths'
 import { getSettings, readJson, writeJsonAtomic } from '../store'
-import { emit } from '../events'
+import { emit, notify } from '../events'
 import { log } from '../logger'
 import { withTask } from '../tasks'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
@@ -1006,7 +1006,15 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       if (item.type === 'datapack' && item.worlds && item.worlds.length > 0) {
         if (enabled) {
           const source = contentPath(dir, bare)
-          for (const world of item.worlds) copyDatapackIntoWorld(id, world, source, bare)
+          const failed = item.worlds.filter((world) => !copyDatapackIntoWorld(id, world, source, bare))
+          if (failed.length > 0) {
+            notify(
+              'warning',
+              `${item.name}: nicht in alle Welten kopiert`,
+              `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. ` +
+                'Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.'
+            )
+          }
         } else {
           for (const world of item.worlds) removeDatapackFromWorld(id, world, bare)
         }

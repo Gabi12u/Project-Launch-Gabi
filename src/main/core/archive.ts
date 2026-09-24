@@ -3,18 +3,21 @@ import { ZipFile } from 'yazl'
 import { randomUUID } from 'node:crypto'
 import {
   copyFileSync,
+  closeSync,
+  createReadStream,
   createWriteStream,
   existsSync,
   linkSync,
   lstatSync,
   mkdirSync,
+  openSync,
   readdirSync,
   renameSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync
 } from 'node:fs'
-import { open } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { safeJoin } from '../paths'
 import { log } from '../logger'
@@ -319,51 +322,66 @@ export async function zipFolder(
     return true
   })
 
-  const zip = new ZipFile()
-  // An entry's data stream can still fail after it has been handed to yazl
-  // (the file vanishes mid read, a lock reappears), and once that happens
-  // yazl stops pumping entries for good. Captured here instead of left to
-  // throw as an unhandled 'error' event on the next tick; checked below to
-  // stop early and reported like any other failure of this function.
-  let streamError: unknown = null
-  zip.on('error', (err) => {
-    streamError = streamError ?? err
-  })
+  mkdirSync(dirname(targetFile), { recursive: true })
+  // Written into a temp file next to the target first, renamed onto it only
+  // once the whole archive is down: a crash or a killed process mid write
+  // leaves an obviously temporary file instead of a truncated archive under
+  // the real backup name. `ZIP_TEMP_SUFFIX` is what the startup sweep removes.
+  const tempTarget = `${targetFile}.${process.pid}.${randomUUID().slice(0, 8)}${ZIP_TEMP_SUFFIX}`
 
+  const zip = new ZipFile()
+  const out = createWriteStream(tempTarget)
   let done = 0
+
+  const written = new Promise<void>((resolvePromise, reject) => {
+    // yazl attaches no error handler to the read streams it is handed, so a
+    // read failing mid file would be an unhandled error that takes the
+    // whole main process down. Every stream below forwards its error here.
+    zip.on('error', reject)
+    out.on('error', reject)
+    out.on('finish', () => resolvePromise())
+  })
+  zip.outputStream.pipe(out)
+
   for (const file of filtered) {
-    if (streamError) break
-    if (options.signal?.aborted) throw new TaskCancelledError()
+    if (options.signal?.aborted) break
 
     const rel = relative(sourceDir, file).split(sep).join('/')
-    // Defensive: `walk` no longer follows links, so this should be
+    // Defensive: `walk` does not follow links, so this should be
     // unreachable, but an entry name escaping `sourceDir` is exactly what
     // `safeJoin` guards against again on the way back in during a restore.
-    // `rel` is already forward-slash normalised above.
     if (rel === '..' || rel.startsWith('../')) {
       logger.warn(`Überspringe Eintrag außerhalb des Sicherungsordners: ${rel}`)
       options.onSkip?.(rel, new Error('Pfad liegt außerhalb des Sicherungsordners'))
-      done++
       continue
     }
     const entryName = options.prefix ? `${options.prefix}/${rel}` : rel
+
+    // Probed and closed right away, so a file Minecraft still has locked
+    // reaches `onSkip` here, while only one handle is ever open at a time:
+    // the real read happens lazily once yazl gets to this entry.
+    let size: number
     try {
-      // Opened by hand rather than left to `addFile` itself, so a file
-      // Minecraft still has locked fails right here and reaches `onSkip`
-      // exactly like the old `readFile` call did, instead of surfacing much
-      // later as an opaque stream error with nothing to skip past.
-      const handle = await open(file, 'r')
-      const stats = await handle.stat()
-      zip.addReadStream(handle.createReadStream(), entryName, { size: stats.size, mtime: stats.mtime })
+      closeSync(openSync(file, 'r'))
+      size = statSync(file).size
     } catch (err) {
       logger.warn(`Überspringe ${file}:`, err)
       options.onSkip?.(rel, err)
+      continue
     }
-    done++
-    if (done % 25 === 0) onProgress?.(done, filtered.length)
-  }
 
-  if (streamError) throw streamError instanceof Error ? streamError : new Error(String(streamError))
+    zip.addReadStreamLazy(entryName, { size }, (cb) => {
+      if (options.signal?.aborted) {
+        zip.emit('error', new TaskCancelledError())
+        return
+      }
+      const stream = createReadStream(file)
+      stream.on('error', (err) => zip.emit('error', err))
+      done++
+      if (done % 25 === 0) onProgress?.(done, filtered.length)
+      cb(null, stream)
+    })
+  }
 
   for (const extra of options.extraFiles ?? []) {
     zip.addBuffer(
@@ -371,39 +389,28 @@ export async function zipFolder(
       extra.name
     )
   }
+  zip.end()
 
-  onProgress?.(filtered.length, filtered.length)
-
-  mkdirSync(dirname(targetFile), { recursive: true })
-  // Written into a temp file next to the target first, renamed onto it only
-  // once the whole archive is down: a crash or a killed process mid write
-  // then leaves an obviously-temporary file instead of a truncated archive
-  // sitting under the real backup name. `ZIP_TEMP_SUFFIX` is what a startup
-  // sweep looks for to clean those up.
-  const tempTarget = `${targetFile}.${process.pid}.${randomUUID().slice(0, 8)}${ZIP_TEMP_SUFFIX}`
   try {
-    await new Promise<void>((resolvePromise, reject) => {
-      if (streamError) {
-        reject(streamError)
-        return
-      }
-      zip.on('error', reject)
-      const out = createWriteStream(tempTarget)
-      out.on('error', reject)
-      out.on('finish', () => resolvePromise())
-      zip.outputStream.pipe(out)
-      zip.end()
-    })
+    await written
+    if (options.signal?.aborted) throw new TaskCancelledError()
     renameSync(tempTarget, targetFile)
   } catch (err) {
+    // Closed before removing: Windows refuses to delete a file still open.
+    if (!out.closed) {
+      const closed = new Promise((r) => out.once('close', r))
+      out.destroy()
+      await closed
+    }
     try {
       rmSync(tempTarget, { force: true })
     } catch {
-      // best effort
+      // best effort; the startup sweep catches it otherwise
     }
     throw err
   }
 
+  onProgress?.(filtered.length, filtered.length)
   return filtered.length
 }
 

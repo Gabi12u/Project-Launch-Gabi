@@ -32,6 +32,7 @@ export function WorldPickerModal({
   const [worlds, setWorlds] = useState<WorldInfo[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialSelected))
   const [applying, setApplying] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     let current = true
@@ -43,6 +44,7 @@ export function WorldPickerModal({
       .catch((err) => {
         if (!current) return
         toastError(err, 'Welten konnten nicht geladen werden')
+        setLoadFailed(true)
         setWorlds([])
       })
     return () => {
@@ -91,6 +93,8 @@ export function WorldPickerModal({
     >
       {worlds === null ? (
         <div className="skeleton" style={{ height: 120 }} />
+      ) : loadFailed ? (
+        <p className="hint">Die Welten dieser Instanz konnten nicht gelesen werden. Schließe das Fenster und versuche es erneut.</p>
       ) : worlds.length === 0 ? (
         <p className="hint">
           Diese Instanz hat noch keine Welten. Sobald du eine erstellst, kannst du das Data Pack ihr

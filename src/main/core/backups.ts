@@ -486,7 +486,8 @@ export function recoverInterruptedRestores(): string[] {
 
     for (const name of stagingNames) {
       try {
-        if (recoverOneInterruptedRestore(instanceId, join(instanceDir, name))) recovered.push(instanceId)
+        const undone = recoverOneInterruptedRestore(instanceId, join(instanceDir, name))
+        if (undone && !recovered.includes(instanceId)) recovered.push(instanceId)
       } catch (err) {
         logger.error(`Wiederherstellung nach Absturz für ${instanceId}/${name} fehlgeschlagen:`, err)
       }
@@ -510,8 +511,14 @@ function recoverOneInterruptedRestore(instanceId: string, staging: string): bool
     return false
   }
 
+  // Paths are rebuilt from the known folder keys, not taken from the journal:
+  // it is a file on disk, and a damaged or edited one must not be able to
+  // point these deletes and renames anywhere else.
+  const gameDir = paths.gameDir(instanceId)
   let ok = true
-  for (const item of journal.moved) {
+  for (const entry of journal.moved) {
+    if (!BACKUP_TARGET_KEYS.has(entry.key)) continue
+    const item = { key: entry.key, from: join(gameDir, entry.key), to: join(staging, entry.key) }
     // The parked copy missing means the rename that would have created it
     // never ran, so `from`, whatever is there, is the untouched original.
     if (!existsSync(item.to)) continue
@@ -528,8 +535,8 @@ function recoverOneInterruptedRestore(instanceId: string, staging: string): bool
     }
   }
 
-  const gameDir = paths.gameDir(instanceId)
   for (const key of journal.newKeys) {
+    if (!BACKUP_TARGET_KEYS.has(key)) continue
     try {
       rmSync(join(gameDir, key), { recursive: true, force: true })
     } catch (err) {
@@ -805,8 +812,16 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           )
         }
 
-        // 4. Only now is the old state expendable.
-        rmSync(parked, { recursive: true, force: true })
+        // 4. Only now is the old state expendable. The journal goes first: a
+        // staging folder that then fails to delete (a scanner holding a file)
+        // is harmless leftover, but one still carrying its journal would have
+        // the next start undo this finished restore.
+        try {
+          rmSync(journalFile(parked), { force: true })
+          rmSync(parked, { recursive: true, force: true })
+        } catch (err) {
+          logger.warn(`Zwischenordner ${parked} nach der Wiederherstellung nicht aufgeräumt:`, err)
+        }
         logger.info(`Sicherung ${entry.fileName} in ${instance.name} eingespielt`)
       }
     )

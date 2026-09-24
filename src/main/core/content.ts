@@ -276,7 +276,9 @@ async function installContentOnce(
         ? previous.fileName.slice(0, -'.disabled'.length)
         : previous.fileName
       for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
-      if (!worlds || worlds.length === 0) worlds = previous.worlds
+      // Only when the caller named no worlds at all; an explicit empty choice
+      // in the picker means "in no world" and is kept.
+      if (options.worlds === undefined) worlds = previous.worlds
     }
     removeContentRecord(instanceId, previous.id)
   }
@@ -288,15 +290,17 @@ async function installContentOnce(
     summary: project.summary,
     pageUrl: project.pageUrl
   })
-  if (worlds) item.worlds = worlds
+  if (worlds && worlds.length > 0) {
+    const failed = worlds.filter((world) => !copyDatapackIntoWorld(instanceId, world, destination, item.fileName))
+    item.worlds = worlds.filter((world) => !failed.includes(world))
+    warnWorldCopyFailed(project.name, failed)
+  } else if (worlds) {
+    item.worlds = worlds
+  }
 
   addContent(instanceId, item)
   installed.push(item)
   logger.info(`${project.name} ${version.versionNumber} in ${instanceId} installiert`)
-
-  if (worlds && worlds.length > 0) {
-    for (const world of worlds) copyDatapackIntoWorld(instanceId, world, destination, item.fileName)
-  }
 
   // Dependencies -----------------------------------------------------
   if (!options.skipDependencies && getSettings().autoInstallDependencies) {
@@ -334,6 +338,8 @@ async function installContentOnce(
           projectId: dependency.projectId,
           versionId: dependency.versionId,
           type,
+          // A datapack's own required datapacks belong in the same worlds.
+          worlds: type === 'datapack' ? item.worlds : undefined,
           visited,
           task: options.task
         })
@@ -650,10 +656,12 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   if (next.type === 'datapack' && current.enabled && current.worlds && current.worlds.length > 0) {
     const bare = (name: string): string =>
       name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
+    const failed: string[] = []
     for (const world of current.worlds) {
       removeDatapackFromWorld(instanceId, world, bare(current.fileName))
-      copyDatapackIntoWorld(instanceId, world, destination, bare(next.fileName))
+      if (!copyDatapackIntoWorld(instanceId, world, destination, bare(next.fileName))) failed.push(world)
     }
+    warnWorldCopyFailed(item.name, failed)
   }
 
   // Dependencies can change between versions.
@@ -753,7 +761,7 @@ async function setDatapackWorldsOnce(
     throw new Error('Nur Data Packs können Welten zugeordnet werden.')
   }
 
-  const next = Array.from(new Set(worlds))
+  let next = Array.from(new Set(worlds))
   for (const world of next) assertWorldExists(instanceId, world)
 
   if (item.enabled) {
@@ -764,9 +772,11 @@ async function setDatapackWorldsOnce(
     for (const world of previous) {
       if (!next.includes(world)) removeDatapackFromWorld(instanceId, world, bare)
     }
-    for (const world of next) {
-      if (!previous.includes(world)) copyDatapackIntoWorld(instanceId, world, source, bare)
-    }
+    const failed = next.filter(
+      (world) => !previous.includes(world) && !copyDatapackIntoWorld(instanceId, world, source, bare)
+    )
+    next = next.filter((world) => !failed.includes(world))
+    warnWorldCopyFailed(item.name, failed)
   }
   // If disabled, no copies exist to add or remove; the assignment is only
   // recorded and takes effect once the datapack is enabled again.
@@ -776,6 +786,17 @@ async function setDatapackWorldsOnce(
   persist({ ...instance, content })
   logger.info(`${item.name}: Welten aktualisiert (${next.length})`)
   return updated
+}
+
+/** Tells the user which worlds a datapack could not be copied into, if any. */
+function warnWorldCopyFailed(name: string, failed: string[]): void {
+  if (failed.length === 0) return
+  notify(
+    'warning',
+    `${name}: nicht in alle Welten kopiert`,
+    `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. ` +
+      'Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.'
+  )
 }
 
 export async function updateAll(instanceId: string): Promise<number> {

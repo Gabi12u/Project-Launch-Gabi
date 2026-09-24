@@ -47,14 +47,16 @@ function openStream(): void {
   // Log lines can include a raw error body from Microsoft or a file path
   // under the user's own account name, so the file gets the same owner-only
   // permission as the settings and account files.
-  stream = createWriteStream(join(currentDir, currentFileName()), { flags: 'a', mode: 0o600 })
+  const opened = createWriteStream(join(currentDir, currentFileName()), { flags: 'a', mode: 0o600 })
+  stream = opened
   // An unhandled 'error' on a stream is a hard throw in Node, so a full disk or
   // a revoked permission would take the whole launcher down over logging.
-  stream.on('error', (err) => {
-    const failed = stream
-    stream = null
+  // Only this stream is dropped: a late error from yesterday's, already
+  // rotated file must not discard the healthy one that replaced it.
+  opened.on('error', (err) => {
+    if (stream === opened) stream = null
     console.error('Log-Datei konnte nicht geschrieben werden:', err)
-    failed?.destroy()
+    opened.destroy()
   })
 }
 
