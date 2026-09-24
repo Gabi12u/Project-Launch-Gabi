@@ -2079,6 +2079,282 @@ footer a:hover { color: var(--ink); }
       "state": "fixed",
       "since": "2026-09-21",
       "fixedIn": "1.0.20"
+    },
+    {
+      "id": "reparatur-abbrechen-wirkungslos",
+      "title": "Eine Reparatur ließ sich nicht wirklich abbrechen",
+      "detail": "Ein Klick auf Abbrechen stoppte nur die ersten Schritte einer Reparatur. Das Neuladen von Mods und das Aufräumen liefen im Hintergrund weiter, und die Aufgabenanzeige meldete am Ende sogar „Fertig“. Ab 1.0.20 hält jeder Schritt beim Abbrechen an, und die Anzeige sagt ehrlich, dass abgebrochen wurde.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-kaputte-versionsdatei",
+      "title": "Die Reparatur konnte eine beschädigte Versionsdatei nicht ersetzen",
+      "detail": "War die Versionsbeschreibung einer Instanz vorhanden, aber beschädigt, erkannte die Reparatur das zwar, ließ die Datei aber liegen. Jeder weitere Versuch scheiterte deshalb an derselben Stelle. Ab 1.0.20 wird eine unlesbare Versionsdatei entfernt und neu geladen.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-bericht-verloren",
+      "title": "Die Reparatur brach bei einzelnen Fehlern ganz ab, statt sie im Bericht zu nennen",
+      "detail": "Einige Schritte der Reparatur, etwa das Neuanlegen des Natives-Ordners, fingen einen Fehler nicht ab. Eine kurz von einem Virenscanner gesperrte Datei reichte, und statt des Schritt-für-Schritt-Berichts erschien nur „Reparatur fehlgeschlagen“. Ab 1.0.20 landet jeder Fehler als eigener Schritt im Bericht, und die übrigen Schritte laufen weiter.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-ohne-pruefsumme",
+      "title": "Die Reparatur übersah beschädigte Dateien, für die keine Prüfsumme bekannt war",
+      "detail": "Manche Mods von CurseForge und manche Bibliotheken kommen ohne Prüfsumme. Solche Dateien prüfte die Reparatur nur darauf, ob sie vorhanden sind, nicht ob sie heil sind. Ab 1.0.20 vergleicht sie in diesem Fall die Dateigröße und prüft, ob sich ein Jar-Archiv überhaupt öffnen lässt.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "client-jar-fehlt-unklarer-absturz",
+      "title": "Eine fehlende Spieldatei führte zu einem unverständlichen Absturz",
+      "detail": "Fehlte die Hauptdatei von Minecraft selbst, etwa nach einem abgebrochenen Download, startete der Launcher das Spiel trotzdem, und Java brach mit einer kryptischen Meldung ab. Ab 1.0.20 wird das vor dem Start erkannt und mit dem Hinweis gemeldet, die Instanz zu reparieren.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "fenstergroesse-alte-versionen",
+      "title": "Die eingestellte Fenstergröße wirkte bei Minecraft vor 1.13 nicht",
+      "detail": "Breite und Höhe aus den Instanz-Einstellungen wurden nur an neuere Minecraft-Versionen übergeben. Ältere Versionen starteten immer in ihrer Standardgröße. Ab 1.0.20 gilt die Einstellung für alle Versionen.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "stoppen-fehlgeschlagen-absturz-verschluckt",
+      "title": "Ein fehlgeschlagenes Beenden konnte einen späteren Absturz verschleiern",
+      "detail": "Ließ sich ein Spiel über „Stoppen“ nicht beenden, etwa weil ein Schutzprogramm das verhinderte, merkte sich der Launcher trotzdem, dass ein Stopp gewünscht war. Stürzte dasselbe Spiel danach wirklich ab, galt das als gewolltes Beenden, und es erschien keine Absturzmeldung. Ab 1.0.20 wird ein fehlgeschlagenes Beenden gemeldet und nicht mehr als Stopp gezählt.",
+      "state": "fixing",
+      "since": "2026-09-24",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "java-ersatz-falsche-version",
+      "title": "Bei ausgeschalteter Java-Verwaltung konnte ein unpassendes Java gewählt werden",
+      "detail": "Brauchte eine Instanz Java 8 und war nur ein neueres Java bis Version 12 installiert, nahm der Launcher dieses ersatzweise. Genau dieser Sprung lässt alte Forge-Versionen zuverlässig abstürzen. Ab 1.0.20 gibt es für Java 8 keinen Ersatz mehr, sondern eine klare Meldung.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "forge-versionsliste-unsortiert",
+      "title": "Die Liste der Forge-Versionen war nicht richtig sortiert",
+      "detail": "Forge liefert seine Versionsliste nicht durchgehend in einer Reihenfolge. Der Launcher verließ sich darauf, und in der Auswahl eines Forge-Builds lagen neue und alte Versionen durcheinander. Ab 1.0.20 sortiert der Launcher die Liste selbst, die neueste steht oben.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "forge-installer-ohne-pruefung",
+      "title": "Der Forge-Installer konnte ohne Prüfsumme ausgeführt werden",
+      "detail": "Scheiterte das Abrufen der Prüfsumme für den Forge- oder NeoForge-Installer, lud der Launcher den Installer trotzdem und führte ihn aus. Ab 1.0.20 wird die Prüfsumme mehrfach versucht, und ohne sie bricht die Installation mit einer verständlichen Meldung ab.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "mod-schalten-waehrend-update",
+      "title": "Ein Mod, der während eines Updates ein- oder ausgeschaltet wurde, konnte eine verwaiste Datei hinterlassen",
+      "detail": "Während ein Mod aktualisiert wurde, ließ er sich weiter ein- und ausschalten. Fiel beides zusammen, konnte das Update die Änderung überschreiben und eine Datei zurücklassen, die der Launcher danach als fremden Mod aufführte. Ab 1.0.20 warten Umschalten und Update aufeinander.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "duplikat-erkennung-nach-namen",
+      "title": "Die Kompatibilitätsprüfung konnte einen fremden, gleichnamigen Mod zum Entfernen vorschlagen",
+      "detail": "Doppelt installierte Mods wurden allein am Namen erkannt. Zwei verschiedene Mods mit gleichem Namen galten so als Dublette, und die angebotene Korrektur hätte einen davon gelöscht. Ab 1.0.20 wird nur dann Entfernen angeboten, wenn es sicher derselbe Mod ist. Bei bloß gleichem Namen gibt es einen Hinweis ohne Löschknopf.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-kopie-ohne-bild",
+      "title": "Eine kopierte Instanz verlor ihr eigenes Symbol und ihren Hintergrund",
+      "detail": "Beim Duplizieren wurden die Spieldateien kopiert, die eigenen Bilder der Instanz aber nicht. Die Kopie zeigte danach das Standardsymbol. Ab 1.0.20 werden Symbol und Hintergrund mitkopiert.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-kopie-waehrend-modaenderung",
+      "title": "Duplizieren konnte mit gleichzeitigen Mod-Änderungen zusammenstoßen",
+      "detail": "Während eine große Instanz kopiert wurde, ließen sich an ihr weiter Mods installieren oder aktualisieren. Das Kopieren konnte dann abbrechen oder eine Kopie mit halb geänderten Mods erzeugen. Ab 1.0.20 warten Mod-Änderungen, bis das Kopieren fertig ist.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-loeschen-halb",
+      "title": "Das Löschen einer Instanz konnte sie halb gelöscht zurücklassen",
+      "detail": "Hielt ein Virenscanner beim Löschen kurz eine Datei fest, brach das Löschen mittendrin ab. Der Launcher zeigte die Instanz danach weiter vollständig an, obwohl ein Teil ihrer Dateien schon fehlte. Ab 1.0.20 wird das Löschen mehrfach versucht, und nach einem Fehlschlag zeigt die Liste den tatsächlichen Stand.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "mod-abgleich-bricht-ab",
+      "title": "Der Abgleich der Mod-Liste brach ab, wenn währenddessen eine Datei verschwand",
+      "detail": "Wurde eine Datei im Mods-Ordner genau während des Abgleichs gelöscht oder verschoben, etwa durch eine Cloud-Synchronisierung, brach der gesamte Abgleich ab. Ab 1.0.20 wird diese eine Datei übersprungen.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "gross-kleinschreibung-doppelte-mods",
+      "title": "Zwei Mod-Dateien, die sich nur in Groß- und Kleinschreibung unterschieden, wurden verwechselt",
+      "detail": "Lagen zwei solche Dateien im selben Ordner, bekamen beide denselben Eintrag. Entfernen oder Umschalten des einen traf dann beide Einträge, obwohl nur eine Datei geändert wurde. Ab 1.0.20 bekommt jede Datei ihren eigenen Eintrag.",
+      "state": "fixing",
+      "since": "2026-09-22",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    },
+    {
+      "id": "update-nach-rueckstufung",
+      "title": "Nach einem bewussten Zurückstufen wurden keine Updates mehr angezeigt",
+      "detail": "Wer über „Version wählen“ eine ältere Version eines Mods installierte, bekam für diesen Mod danach oft nie wieder ein Update angezeigt. Verglichen wurde mit dem Installationszeitpunkt statt mit dem Erscheinungsdatum der installierten Version. Ab 1.0.20 zählt das Erscheinungsdatum.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "versionswechsel-alte-datei-bleibt",
+      "title": "Beim Wechsel der Mod-Version konnte die alte Datei liegen bleiben",
+      "detail": "Wurde die alte Datei beim Wechsel auf eine andere Version kurz gesperrt, blieb sie neben der neuen liegen. Zwei Dateien desselben Mods lassen Minecraft beim nächsten Start abstürzen. Ab 1.0.20 wird das Löschen wiederholt, und gelingt es nicht, bleibt die neue Datei nicht halb eingetragen zurück.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "modrinth-abhaengigkeit-verschwindet",
+      "title": "Eine benötigte Abhängigkeit konnte ohne Warnung wegfallen",
+      "detail": "Verwies ein Modrinth-Mod auf eine Abhängigkeit, deren Version inzwischen zurückgezogen war, fiel diese Abhängigkeit still aus der Liste. Die Warnung, dass ohne sie das Spiel womöglich nicht startet, erschien deshalb nie. Ab 1.0.20 erscheint sie.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "curseforge-modpack-fehlende-dateien-still",
+      "title": "Ein CurseForge-Modpack-Import verschwieg fehlende Mods",
+      "detail": "Waren einzelne Dateien eines Modpacks bei CurseForge nicht mehr erhältlich, stand das nur kurz in der Aufgabenanzeige und war verschwunden, bevor der Import fertig war. Ab 1.0.20 bleibt dazu eine Meldung stehen, die die fehlenden Mods nennt.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "import-version-ungeprueft",
+      "title": "Die Minecraft-Version aus importierten Modpacks und Ordnern wurde nicht geprüft",
+      "detail": "Beim Import wurde die angegebene Minecraft-Version ungeprüft übernommen und später als Ordnername verwendet. Ein präpariertes Modpack hätte darüber Pfade außerhalb des Launcher-Ordners ansprechen können. Ab 1.0.20 werden solche Angaben abgelehnt.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "import-installiert-ohne-spieldateien",
+      "title": "Eine importierte Instanz konnte als installiert gelten, obwohl Spieldateien fehlten",
+      "detail": "Beim Import liefen zwei Einrichtungen nebeneinander, eine für Minecraft selbst und eine für die Mods. Scheiterte die erste, konnte die zweite die Instanz trotzdem als fertig markieren, und der erste Start schlug ohne erkennbaren Grund fehl. Ab 1.0.20 gilt eine Instanz erst als installiert, wenn beides geklappt hat.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "kopie-haengt-bei-einrichtung",
+      "title": "Eine Kopie, die während der Einrichtung entstand, hing dauerhaft",
+      "detail": "Wurde eine Instanz dupliziert, während sie noch eingerichtet wurde, zeigte die Kopie für immer „wird eingerichtet“. Ab 1.0.20 ist Duplizieren erst nach der Einrichtung möglich.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "wiederherstellung-rueckabwicklung-unvollstaendig",
+      "title": "Nach einer abgebrochenen Wiederherstellung konnten Reste zurückbleiben",
+      "detail": "Scheiterte eine Wiederherstellung, meldete der Launcher in manchen Fällen, der vorherige Stand sei zurückgeholt, obwohl halb entpackte Ordner zurückgeblieben waren. Ab 1.0.20 nennt die Meldung genau, was nicht aufgeräumt werden konnte.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "sicherung-folgt-verknuepfungen",
+      "title": "Sicherungen mit verknüpften Ordnern ließen sich nicht wiederherstellen",
+      "detail": "Enthielt ein gesicherter Ordner eine Verknüpfung, die aus der Instanz herauszeigte, wurde die Sicherung trotzdem als erfolgreich erstellt, ließ sich später aber nie wiederherstellen. Ab 1.0.20 werden solche Verknüpfungen beim Sichern übersprungen und gemeldet.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "wiederherstellung-entpackt-alles",
+      "title": "Eine Wiederherstellung konnte mehr schreiben, als vorher gesichert worden war",
+      "detail": "Beim Wiederherstellen wurde immer das ganze Archiv entpackt, geschützt und zurückgerollt wurden aber nur die Ordner aus dem Verzeichnis der Sicherung. Bei älteren Sicherungen konnte beides auseinander liegen. Ab 1.0.20 wird nur entpackt, was auch geschützt ist.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "sicherungen-behalten-nicht-rueckwirkend",
+      "title": "Eine kleinere Anzahl aufzubewahrender Sicherungen wirkte erst später",
+      "detail": "Wurde die Zahl der aufzubewahrenden automatischen Sicherungen gesenkt, blieben ältere Sicherungen liegen, bis für dieselbe Instanz die nächste entstand. Ab 1.0.20 wird sofort aufgeräumt.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "aufnahme-falsche-instanz",
+      "title": "Bei zwei laufenden Spielen nahm die Aufnahmetaste das falsche auf",
+      "detail": "Liefen zwei Instanzen gleichzeitig, nahm die Taste immer die zuerst gestartete auf, nicht die zuletzt gestartete, die man meist gerade spielt. Die Meldung nannte die Instanz nicht. Ab 1.0.20 wird die zuletzt gestartete aufgenommen und in der Meldung genannt.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "verknuepfungen-zwei-links-verloren",
+      "title": "Zwei kurz hintereinander geöffnete Launch-Gabi-Links: der erste ging verloren",
+      "detail": "Kamen während des Programmstarts zwei Links oder Verknüpfungen fast gleichzeitig an, überschrieb der zweite den ersten. Ab 1.0.20 werden beide der Reihe nach ausgeführt.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "datenverzeichnis-ungueltig-gespeichert",
+      "title": "Ein nicht beschreibbarer Datenordner wurde trotzdem übernommen",
+      "detail": "Wählte man in den Einstellungen einen Datenordner, in den der Launcher nicht schreiben darf, wurde die Wahl trotzdem gespeichert. Danach wirkten alle Instanzen verschwunden. Ab 1.0.20 wird der Ordner vorher geprüft, und bei einem Problem bleibt der alte bestehen.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "anmeldung-verschluesselung-wechsel",
+      "title": "Eine unnötige Neuanmeldung, wenn sich die Verschlüsselung des Systems änderte",
+      "detail": "Ob die Anmeldedaten verschlüsselt gespeichert sind, wurde für zwei getrennte Schlüssel nur einmal vermerkt. Stand die Verschlüsselung des Systems, etwa der Schlüsselbund unter Linux, einmal zur Verfügung und einmal nicht, passte der Vermerk nicht mehr, und man musste sich neu anmelden. Ab 1.0.20 wird das für jeden Schlüssel einzeln vermerkt.",
+      "state": "fixing",
+      "since": "2026-09-24",
+      "platforms": [
+        "Linux"
+      ]
+    },
+    {
+      "id": "startseite-wieder-aktiviert",
+      "title": "Die eigene Startseite schaltete sich nach dem Abwählen in Minecraft wieder ein",
+      "detail": "Wer das Startseiten-Paket in Minecraft selbst deaktivierte, bekam es beim nächsten Start stillschweigend wieder aktiviert. Ab 1.0.20 respektiert der Launcher diese Wahl.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "escape-schliesst-zwei-fenster",
+      "title": "Escape in der Schnellsuche schloss auch das Fenster darunter",
+      "detail": "War ein Fenster offen, zum Beispiel die Microsoft-Anmeldung, und darüber die Schnellsuche (Strg+K), schloss Escape beide auf einmal und brach die Anmeldung ab. Ab 1.0.20 schließt Escape nur die Schnellsuche.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "zahlen-mit-punkt",
+      "title": "Größenangaben zeigten einen Punkt statt eines Kommas",
+      "detail": "Datei- und Speichergrößen erschienen als „1.5 GB“ statt „1,5 GB“. Ab 1.0.20 stehen sie in deutscher Schreibweise da.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "assistent-ungueltige-kombination",
+      "title": "Im Assistenten ließ sich eine Instanz mit einer nicht vorhandenen Loader-Version anlegen",
+      "detail": "Während der Assistent noch prüfte, welche Loader es für eine Minecraft-Version gibt, ließ sich die Instanz bereits anlegen, auch mit einer Kombination, die es gar nicht gibt. Ab 1.0.20 geht es erst weiter, wenn die Prüfung fertig und die Wahl gültig ist.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "assistent-snapshot-bleibt",
+      "title": "Im Assistenten blieb nach dem Ausblenden der Snapshots eine Snapshot-Version gewählt",
+      "detail": "War eine Snapshot-Version gewählt und wurden die Snapshots danach ausgeblendet, blieb sie unsichtbar gewählt und wurde so angelegt. Ab 1.0.20 springt die Wahl dann auf die neueste reguläre Version.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "arbeitsspeicher-regler-ohne-grenze",
+      "title": "Der Arbeitsspeicher-Regler erlaubte mehr, als der Rechner hat",
+      "detail": "Die Regler für den Arbeitsspeicher gingen je nach Stelle bis 16 oder 32 GB, unabhängig vom eingebauten Speicher. Ab 1.0.20 enden alle Regler beim tatsächlich vorhandenen Arbeitsspeicher.",
+      "state": "fixing",
+      "since": "2026-09-24"
     }
   ];
   var ISSUE_LABEL = {
@@ -2874,6 +3150,282 @@ footer a:hover { color: var(--ink); }
       "state": "fixed",
       "since": "2026-09-21",
       "fixedIn": "1.0.20"
+    },
+    {
+      "id": "reparatur-abbrechen-wirkungslos",
+      "title": "A repair could not really be cancelled",
+      "detail": "Clicking Cancel only stopped the first steps of a repair. Re-downloading mods and cleaning up kept running in the background, and the task list even said \"Done\" at the end. From 1.0.20 every step stops on cancel, and the task list says plainly that it was cancelled.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-kaputte-versionsdatei",
+      "title": "The repair could not replace a damaged version file",
+      "detail": "If an instance’s version description was present but damaged, the repair noticed it but left the file in place, so every later attempt failed at the same spot. From 1.0.20 an unreadable version file is removed and downloaded again.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-bericht-verloren",
+      "title": "The repair stopped entirely on single errors instead of listing them in its report",
+      "detail": "Some repair steps, such as recreating the natives folder, did not catch errors. A file briefly locked by a virus scanner was enough to replace the step-by-step report with a bare \"Repair failed\". From 1.0.20 every error shows up as its own step and the remaining steps carry on.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "reparatur-ohne-pruefsumme",
+      "title": "The repair missed damaged files that came without a checksum",
+      "detail": "Some CurseForge mods and some libraries come without a checksum. The repair only checked that such files exist, not that they are intact. From 1.0.20 it compares the file size in that case and checks that a jar archive can actually be opened.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "client-jar-fehlt-unklarer-absturz",
+      "title": "A missing game file led to an incomprehensible crash",
+      "detail": "If Minecraft’s own main file was missing, for example after an interrupted download, the launcher started the game anyway and Java stopped with a cryptic message. From 1.0.20 this is caught before launch and reported with a hint to repair the instance.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "fenstergroesse-alte-versionen",
+      "title": "The configured window size had no effect before Minecraft 1.13",
+      "detail": "Width and height from the instance settings were only passed to newer Minecraft versions. Older versions always started at their default size. From 1.0.20 the setting applies to every version.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "stoppen-fehlgeschlagen-absturz-verschluckt",
+      "title": "A failed stop could hide a later crash",
+      "detail": "If \"Stop\" could not end a game, for example because security software prevented it, the launcher still remembered that a stop was requested. If the same game then really crashed, that counted as an intended stop and no crash message appeared. From 1.0.20 a failed stop is reported and no longer counted as a stop.",
+      "state": "fixing",
+      "since": "2026-09-24",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "java-ersatz-falsche-version",
+      "title": "With Java management switched off, an unsuitable Java could be picked",
+      "detail": "If an instance needed Java 8 and only a newer Java up to version 12 was installed, the launcher used that instead. That exact jump reliably crashes old Forge versions. From 1.0.20 there is no stand-in for Java 8 any more, just a clear message.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "forge-versionsliste-unsortiert",
+      "title": "The list of Forge versions was not sorted properly",
+      "detail": "Forge does not deliver its version list in one consistent order. The launcher relied on it, so new and old builds were mixed up in the Forge build picker. From 1.0.20 the launcher sorts the list itself, newest first.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "forge-installer-ohne-pruefung",
+      "title": "The Forge installer could run without a checksum",
+      "detail": "If fetching the checksum for the Forge or NeoForge installer failed, the launcher downloaded and ran the installer anyway. From 1.0.20 the checksum is retried several times, and without it the installation stops with a clear message.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "mod-schalten-waehrend-update",
+      "title": "Toggling a mod during its update could leave an orphaned file",
+      "detail": "While a mod was updating it could still be switched on and off. When both happened together, the update could overwrite the change and leave a file behind that the launcher then listed as an unknown mod. From 1.0.20 toggling and updating wait for each other.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "duplikat-erkennung-nach-namen",
+      "title": "The compatibility check could suggest removing an unrelated mod with the same name",
+      "detail": "Duplicate mods were detected by name alone. Two different mods sharing a name counted as a duplicate, and the offered fix would have deleted one of them. From 1.0.20 removal is only offered when it is certainly the same mod. A mere name match gets a note without a delete button.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-kopie-ohne-bild",
+      "title": "A duplicated instance lost its custom icon and background",
+      "detail": "Duplicating copied the game files but not the instance’s own images, so the copy showed the default icon. From 1.0.20 icon and background are copied along.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-kopie-waehrend-modaenderung",
+      "title": "Duplicating could collide with mod changes happening at the same time",
+      "detail": "While a large instance was being copied, mods could still be installed or updated on it. Copying could then fail or produce a copy with half-changed mods. From 1.0.20 mod changes wait until copying is done.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "instanz-loeschen-halb",
+      "title": "Deleting an instance could leave it half deleted",
+      "detail": "If a virus scanner briefly held a file during deletion, deleting stopped halfway. The launcher kept showing the instance as complete even though part of its files were already gone. From 1.0.20 deletion is retried, and after a failure the list shows the real state.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "mod-abgleich-bricht-ab",
+      "title": "The mod list scan stopped when a file vanished during it",
+      "detail": "If a file in the mods folder was deleted or moved right during the scan, for example by cloud sync, the whole scan failed. From 1.0.20 that one file is skipped.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "gross-kleinschreibung-doppelte-mods",
+      "title": "Two mod files differing only in upper and lower case were mixed up",
+      "detail": "When two such files sat in the same folder, both got the same entry. Removing or toggling one then hit both entries although only one file changed. From 1.0.20 each file gets its own entry.",
+      "state": "fixing",
+      "since": "2026-09-22",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
+    },
+    {
+      "id": "update-nach-rueckstufung",
+      "title": "After a deliberate downgrade, no updates were shown any more",
+      "detail": "Installing an older version of a mod through \"Choose version\" often meant no update was ever shown for that mod again. The comparison used the install time instead of the release date of the installed version. From 1.0.20 the release date counts.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "versionswechsel-alte-datei-bleibt",
+      "title": "Switching a mod’s version could leave the old file behind",
+      "detail": "If the old file was briefly locked while switching to another version, it stayed next to the new one. Two files of the same mod make Minecraft crash on the next start. From 1.0.20 the deletion is retried, and if it still fails the new file is not left half registered.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "modrinth-abhaengigkeit-verschwindet",
+      "title": "A required dependency could drop out without a warning",
+      "detail": "If a Modrinth mod pointed to a dependency whose version had since been withdrawn, that dependency silently fell off the list. The warning that the game may not start without it therefore never appeared. From 1.0.20 it does.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "curseforge-modpack-fehlende-dateien-still",
+      "title": "A CurseForge modpack import kept quiet about missing mods",
+      "detail": "If single files of a modpack were no longer available on CurseForge, that only showed briefly in the task list and was gone before the import finished. From 1.0.20 a message naming the missing mods stays visible.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "import-version-ungeprueft",
+      "title": "The Minecraft version from imported modpacks and folders was not checked",
+      "detail": "On import, the stated Minecraft version was taken over unchecked and later used as a folder name. A crafted modpack could have used that to reach paths outside the launcher folder. From 1.0.20 such values are rejected.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "import-installiert-ohne-spieldateien",
+      "title": "An imported instance could count as installed although game files were missing",
+      "detail": "An import ran two setups side by side, one for Minecraft itself and one for the mods. If the first failed, the second could still mark the instance as ready, and the first launch failed for no visible reason. From 1.0.20 an instance only counts as installed once both succeeded.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "kopie-haengt-bei-einrichtung",
+      "title": "A copy made during setup stayed stuck",
+      "detail": "Duplicating an instance while it was still being set up produced a copy that showed \"setting up\" forever. From 1.0.20 duplicating is only possible once setup is finished.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "wiederherstellung-rueckabwicklung-unvollstaendig",
+      "title": "A failed restore could leave leftovers behind",
+      "detail": "When a restore failed, the launcher sometimes reported that the previous state was back although half-extracted folders remained. From 1.0.20 the message says exactly what could not be cleaned up.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "sicherung-folgt-verknuepfungen",
+      "title": "Backups containing linked folders could not be restored",
+      "detail": "If a backed-up folder contained a link pointing outside the instance, the backup was still created as successful but could never be restored. From 1.0.20 such links are skipped and reported while backing up.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "wiederherstellung-entpackt-alles",
+      "title": "A restore could write more than had been protected beforehand",
+      "detail": "Restoring always extracted the whole archive, while only the folders listed in the backup’s index were protected and rolled back. With older backups the two could differ. From 1.0.20 only what is protected gets extracted.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "sicherungen-behalten-nicht-rueckwirkend",
+      "title": "Lowering the number of kept backups only took effect later",
+      "detail": "When the number of automatic backups to keep was lowered, older backups stayed until the same instance got its next one. From 1.0.20 they are cleaned up right away.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "aufnahme-falsche-instanz",
+      "title": "With two games running, the recording key recorded the wrong one",
+      "detail": "With two instances running, the key always recorded the one started first, not the one started last that is usually being played. The message did not name the instance. From 1.0.20 the most recently started one is recorded and named in the message.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "verknuepfungen-zwei-links-verloren",
+      "title": "Two Launch Gabi links opened in quick succession: the first one got lost",
+      "detail": "If two links or shortcuts arrived almost at once while the program was starting, the second overwrote the first. From 1.0.20 both are carried out in order.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "datenverzeichnis-ungueltig-gespeichert",
+      "title": "A data folder the launcher could not write to was accepted anyway",
+      "detail": "Choosing a data folder in the settings that the launcher is not allowed to write to still saved the choice, after which all instances seemed to have vanished. From 1.0.20 the folder is checked first and the old one stays if there is a problem.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "anmeldung-verschluesselung-wechsel",
+      "title": "An unnecessary sign-in when the system’s encryption changed",
+      "detail": "Whether sign-in data is stored encrypted was noted only once for two separate keys. If the system’s encryption, such as the keyring on Linux, was available one time and not the next, the note no longer matched and a new sign-in was needed. From 1.0.20 it is noted for each key separately.",
+      "state": "fixing",
+      "since": "2026-09-24",
+      "platforms": [
+        "Linux"
+      ]
+    },
+    {
+      "id": "startseite-wieder-aktiviert",
+      "title": "The custom start screen switched itself back on after being deselected in Minecraft",
+      "detail": "Deactivating the start screen pack inside Minecraft had it silently reactivated on the next launch. From 1.0.20 the launcher respects that choice.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "escape-schliesst-zwei-fenster",
+      "title": "Escape in quick search also closed the window underneath",
+      "detail": "With a window open, such as the Microsoft sign-in, and quick search (Ctrl+K) on top of it, Escape closed both at once and cancelled the sign-in. From 1.0.20 Escape only closes quick search.",
+      "state": "fixing",
+      "since": "2026-09-24"
+    },
+    {
+      "id": "zahlen-mit-punkt",
+      "title": "Sizes showed a point instead of a comma",
+      "detail": "File and memory sizes appeared as \"1.5 GB\" instead of the German \"1,5 GB\". From 1.0.20 they use German notation.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "assistent-ungueltige-kombination",
+      "title": "The wizard could create an instance with a loader version that does not exist",
+      "detail": "While the wizard was still checking which loaders exist for a Minecraft version, the instance could already be created, even with a combination that does not exist. From 1.0.20 it only continues once the check is done and the choice is valid.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "assistent-snapshot-bleibt",
+      "title": "The wizard kept a snapshot selected after snapshots were hidden",
+      "detail": "If a snapshot was selected and snapshots were then hidden, it stayed selected out of sight and was created that way. From 1.0.20 the choice jumps to the newest regular version instead.",
+      "state": "fixing",
+      "since": "2026-09-22"
+    },
+    {
+      "id": "arbeitsspeicher-regler-ohne-grenze",
+      "title": "The memory slider allowed more than the computer has",
+      "detail": "The memory sliders went up to 16 or 32 GB depending on where they were, regardless of installed memory. From 1.0.20 every slider ends at the memory actually present.",
+      "state": "fixing",
+      "since": "2026-09-24"
     }
   ];
   var ISSUE_LABEL_EN = {
