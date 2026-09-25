@@ -11,6 +11,7 @@ dist/
 # Lokale Werkzeug- und Editor-Einstellungen, gehören niemandem sonst
 .claude/
 CLAUDE.md
+TODO.md
 .vscode/
 
 # Nie einchecken: Zugangsdaten und Schlüssel
