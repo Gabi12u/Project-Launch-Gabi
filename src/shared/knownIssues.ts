@@ -2027,6 +2027,93 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-24',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'java-download-ohne-pruefsumme',
+    title: 'Heruntergeladenes Java wurde ohne Prüfsumme übernommen',
+    detail:
+      'Wenn der Launcher Java selbst installiert, verglich er die Datei nur mit ihrer Größe, nicht mit ' +
+      'der Prüfsumme, die Adoptium mitliefert. Eine unterwegs veränderte Java-Version wäre so ' +
+      'unbemerkt bei jedem Spielstart ausgeführt worden. Ab 1.0.20 wird die Prüfsumme geprüft, und ' +
+      'ohne passende Prüfsumme wird nichts installiert.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'modpack-vorschau-speicher',
+    title: 'Eine präparierte Modpack-Datei konnte sehr viel Arbeitsspeicher belegen',
+    detail:
+      'Beim Öffnen einer .mrpack- oder CurseForge-Datei wurde deren Beschreibungsdatei ohne ' +
+      'Größengrenze entpackt. Eine kleine, präparierte Datei konnte so schon in der Vorschau Hunderte ' +
+      'Megabyte belegen, und Archive mit sehr vielen Dateien wurden ohne Obergrenze entpackt. Ab ' +
+      '1.0.20 gelten auch dort feste Grenzen.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'startbefehle-ohne-bestaetigung',
+    title: 'Eigene Startbefehle und Java-Pfade liefen ohne eigene Rückfrage',
+    detail:
+      'Ein Wrapper-Befehl, ein Befehl vor dem Start oder ein eigener Java-Pfad wurden ausgeführt, ' +
+      'sobald sie in den Instanz-Einstellungen standen, der Java-Pfad schon beim Öffnen der ' +
+      'Instanzseite. Von außen ließen sie sich nicht setzen, aber eine künftige Lücke in der ' +
+      'Oberfläche hätte sie direkt nutzen können. Ab 1.0.20 fragt der Launcher in einem eigenen ' +
+      'Fenster nach, bevor ein neuer oder geänderter Befehl zum ersten Mal läuft.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'dateinamen-versteckte-datenstroeme',
+    title: 'Dateinamen mit Doppelpunkt konnten versteckte Daten an Mods anhängen',
+    detail:
+      'Ein Dateiname wie „mod.jar:etwas“, von einem Mod-Anbieter oder aus einem Modpack, wurde nicht ' +
+      'abgelehnt. Windows legt dafür einen versteckten Datenstrom an der Datei an, der im Explorer ' +
+      'nicht zu sehen ist. Ab 1.0.20 werden solche Namen abgelehnt.',
+    state: 'fixing',
+    since: '2026-09-25',
+    platforms: ['Windows']
+  },
+  {
+    id: 'mrpack-downloads-beliebige-server',
+    title: 'Modrinth-Modpacks durften Dateien von beliebigen Servern laden',
+    detail:
+      'Eine .mrpack-Datei kann Download-Adressen für ihre Mods mitbringen. Der Launcher prüfte nicht, ' +
+      'ob diese auf die von Modrinth erlaubten Server zeigen, und nahm auch unverschlüsselte Adressen ' +
+      'an. Ab 1.0.20 gilt die Liste erlaubter Server aus der Modrinth-Spezifikation, und nur ' +
+      'verschlüsselte Verbindungen.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'anmeldung-fehler-im-protokoll',
+    title: 'Fehlerantworten der Microsoft-Anmeldung standen ungeschwärzt im Protokoll',
+    detail:
+      'Scheiterte die Anmeldung, schrieb der Launcher die Antwort des Servers in seine Protokolldatei, ' +
+      'und darin kann die E-Mail-Adresse des Kontos stehen. In Fehlerberichten blieb außerdem ein Teil ' +
+      'von Anmelde-Tokens stehen. Ab 1.0.20 wird beides geschwärzt.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'link-startet-ohne-rueckfrage',
+    title: 'Ein Launch-Gabi-Link von einer Webseite startete eine Instanz ohne Rückfrage',
+    detail:
+      'Ein Link der Form launchgabi://launch/... startete die genannte Instanz direkt, sobald der ' +
+      'Browser ihn weitergab. Ab 1.0.20 fragt der Launcher vorher nach, ob die Instanz wirklich ' +
+      'gestartet werden soll. Eigene Desktop-Verknüpfungen starten weiter ohne Rückfrage.',
+    state: 'fixing',
+    since: '2026-09-25'
+  },
+  {
+    id: 'verknuepfung-reservierter-name',
+    title: 'Eine Desktop-Verknüpfung für eine Instanz namens „CON“ oder ähnlich ließ sich nicht anlegen',
+    detail:
+      'Windows reserviert Namen wie CON, NUL oder COM1. Hieß eine Instanz so, scheiterte das Anlegen ' +
+      'der Verknüpfung mit einer unverständlichen Meldung. Ab 1.0.20 bekommt die Verknüpfung dann ' +
+      'einen abgewandelten Namen.',
+    state: 'fixing',
+    since: '2026-09-25',
+    platforms: ['Windows']
   }
 ]
 

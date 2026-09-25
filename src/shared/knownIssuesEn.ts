@@ -1323,6 +1323,65 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'On Minecraft snapshot versions the start screen pack was built with too old a pack format, and ' +
       'Minecraft showed a note about it. From 1.0.20 snapshots get the right format as well.'
+  },
+  'java-download-ohne-pruefsumme': {
+    title: 'Downloaded Java was accepted without a checksum',
+    detail:
+      'When the launcher installed Java itself, it only compared the file with its size, not with the ' +
+      'checksum Adoptium provides. A Java version altered on the way would have been run unnoticed on ' +
+      'every game start. From 1.0.20 the checksum is verified, and nothing is installed without a ' +
+      'matching one.'
+  },
+  'modpack-vorschau-speicher': {
+    title: 'A crafted modpack file could take up a lot of memory',
+    detail:
+      'Opening a .mrpack or CurseForge file unpacked its description file without a size limit. A ' +
+      'small crafted file could take up hundreds of megabytes already in the preview, and archives ' +
+      'with a huge number of files were unpacked without a cap. From 1.0.20 fixed limits apply there ' +
+      'too.'
+  },
+  'startbefehle-ohne-bestaetigung': {
+    title: 'Custom launch commands and Java paths ran without a confirmation of their own',
+    detail:
+      'A wrapper command, a pre-launch command or a custom Java path ran as soon as it was in the ' +
+      'instance settings, the Java path already when opening the instance page. They could not be set ' +
+      'from outside, but a future flaw in the interface could have used them directly. From 1.0.20 the ' +
+      'launcher asks in a window of its own before a new or changed command runs for the first time.'
+  },
+  'dateinamen-versteckte-datenstroeme': {
+    title: 'File names with a colon could attach hidden data to mods',
+    detail:
+      'A file name like "mod.jar:something", from a mod provider or a modpack, was not rejected. ' +
+      'Windows creates a hidden data stream on the file for that, invisible in Explorer. From 1.0.20 ' +
+      'such names are rejected.'
+  },
+  'mrpack-downloads-beliebige-server': {
+    title: 'Modrinth modpacks could download files from any server',
+    detail:
+      'A .mrpack file can bring download addresses for its mods. The launcher did not check that they ' +
+      'point to the servers Modrinth allows and also accepted unencrypted addresses. From 1.0.20 the ' +
+      'allowed server list from the Modrinth specification applies, and only encrypted connections.'
+  },
+  'anmeldung-fehler-im-protokoll': {
+    title: 'Error responses from the Microsoft sign-in were written to the log unredacted',
+    detail:
+      'When signing in failed, the launcher wrote the server’s response to its log file, and it can ' +
+      'contain the account’s email address. Error reports also kept part of sign-in tokens. From ' +
+      '1.0.20 both are redacted.'
+  },
+  'link-startet-ohne-rueckfrage': {
+    title: 'A Launch Gabi link from a website started an instance without asking',
+    detail:
+      'A link of the form launchgabi://launch/... started the named instance directly as soon as the ' +
+      'browser passed it on. From 1.0.20 the launcher asks first whether the instance should really ' +
+      'start. Your own desktop shortcuts still start without asking.'
+  },
+  'verknuepfung-reservierter-name': {
+    title: 'A desktop shortcut for an instance named "CON" or similar could not be created',
+    detail:
+      'Windows reserves names such as CON, NUL or COM1. If an instance had such a name, creating its ' +
+      'shortcut failed with an unclear message. From 1.0.20 the shortcut gets an adjusted name ' +
+      'instead.'
   }
 }
 
