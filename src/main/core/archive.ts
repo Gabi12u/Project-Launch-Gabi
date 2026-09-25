@@ -47,6 +47,54 @@ export function assertReasonableSize(entry: { header: { size: number }; entryNam
   }
 }
 
+/**
+ * Upper bound for a single metadata entry read whole into memory as text or
+ * JSON (modrinth.index.json, manifest.json, install_profile.json,
+ * fabric.mod.json, ...). These are always small hand written or generated
+ * files, nothing legitimate ever comes close. `readEntryText` used to call
+ * `getData()` with no size check at all, so a 200 KB .mrpack whose
+ * modrinth.index.json declared 200 MB got the full 200 MB inflated into
+ * memory before anything ever looked at the content.
+ */
+const MAX_METADATA_SIZE = 32 * 1024 * 1024
+
+function assertReasonableMetadataSize(entry: { header: { size: number }; entryName: string }): void {
+  if (entry.header.size > MAX_METADATA_SIZE) {
+    throw new Error(`Die Datei "${entry.entryName}" im Archiv ist unplausibel groß.`)
+  }
+}
+
+/**
+ * Upper bounds for the whole archive, checked once before any entry is
+ * touched. `assertReasonableSize` alone still let an archive with an absurd
+ * number of entries, or an absurd total declared size across many
+ * individually reasonable entries, run unchecked through every extraction
+ * loop below. Real archives this launcher unpacks, the largest modpacks and a
+ * full JDK included, stay far below either number.
+ */
+const MAX_ARCHIVE_ENTRIES = 200_000
+const MAX_ARCHIVE_TOTAL_SIZE = 50 * 1024 * 1024 * 1024
+
+function assertReasonableArchive(
+  entries: { header: { size: number } }[],
+  archivePath: string
+): void {
+  if (entries.length > MAX_ARCHIVE_ENTRIES) {
+    throw new Error(
+      `${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`
+    )
+  }
+  let total = 0
+  for (const entry of entries) total += entry.header.size
+  if (total > MAX_ARCHIVE_TOTAL_SIZE) {
+    throw new Error(
+      `${archivePath} entpackt auf insgesamt mehr als ${Math.round(
+        MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024
+      )} GB, abgelehnt.`
+    )
+  }
+}
+
 export interface ZipEntryInfo {
   name: string
   isDirectory: boolean
@@ -66,7 +114,9 @@ export async function readEntryText(archivePath: string, entryName: string): Pro
   try {
     const zip = new AdmZip(archivePath)
     const entry = zip.getEntry(entryName)
-    return entry ? zip.readAsText(entry) : null
+    if (!entry) return null
+    assertReasonableMetadataSize(entry)
+    return zip.readAsText(entry)
   } catch (err) {
     logger.warn(`Konnte ${entryName} aus ${archivePath} nicht lesen:`, err)
     return null
@@ -95,8 +145,10 @@ export async function readEntryJson<T>(archivePath: string, entryName: string): 
 export function extractAll(archivePath: string, targetDir: string, overwrite = true): void {
   mkdirSync(targetDir, { recursive: true })
   const zip = new AdmZip(archivePath)
+  const entries = zip.getEntries()
+  assertReasonableArchive(entries, archivePath)
 
-  for (const entry of zip.getEntries()) {
+  for (const entry of entries) {
     const target = safeJoin(targetDir, entry.entryName)
 
     if (entry.isDirectory) {
@@ -137,6 +189,7 @@ export async function extractAllSlowly(
   mkdirSync(targetDir, { recursive: true })
   const zip = new AdmZip(archivePath)
   const allEntries = zip.getEntries()
+  assertReasonableArchive(allEntries, archivePath)
   const entries = includeRoots
     ? allEntries.filter((entry) => includeRoots.has(entry.entryName.split('/')[0]))
     : allEntries
@@ -180,18 +233,24 @@ export async function extractAllSlowly(
 /** Extracts only entries under `prefix`, stripping the prefix from the output path. */
 export function extractSubtree(archivePath: string, prefix: string, targetDir: string): number {
   const zip = new AdmZip(archivePath)
+  const entries = zip.getEntries()
+  assertReasonableArchive(entries, archivePath)
   const normalized = prefix.endsWith('/') ? prefix : `${prefix}/`
   let count = 0
 
-  for (const entry of zip.getEntries()) {
+  for (const entry of entries) {
     if (entry.isDirectory) continue
     if (!entry.entryName.startsWith(normalized)) continue
 
     const rel = entry.entryName.slice(normalized.length)
-    if (!rel || rel.includes('..')) continue
+    if (!rel) continue
 
     assertReasonableSize(entry)
-    const dest = join(targetDir, ...rel.split('/'))
+    // `safeJoin` rejects '..', an absolute path and a ':', while a bare
+    // `rel.includes('..')` check used to be the only guard, so an entry like
+    // "overrides/mods/legit.jar:hidden.exe" reached `join()` untouched and
+    // wrote an NTFS alternate data stream instead of the mod jar it looked like.
+    const dest = safeJoin(targetDir, rel)
     mkdirSync(dirname(dest), { recursive: true })
     writeFileSync(dest, entry.getData())
     count++
@@ -208,7 +267,9 @@ export function extractNatives(jarPath: string, targetDir: string, excludes: str
   mkdirSync(targetDir, { recursive: true })
 
   const zip = new AdmZip(jarPath)
-  for (const entry of zip.getEntries()) {
+  const entries = zip.getEntries()
+  assertReasonableArchive(entries, jarPath)
+  for (const entry of entries) {
     if (entry.isDirectory) continue
     const name = entry.entryName
 
@@ -424,6 +485,12 @@ export async function zipFolder(
  */
 function extractLink(type: string, link: string, dest: string, targetDir: string): void {
   if (!link || existsSync(dest)) return
+  // A backslash or ':' in the target is either a drive letter / NTFS
+  // alternate data stream marker or, on Windows, an extra path separator the
+  // containment check below never expected. No real JDK archive link target
+  // needs either, and a missing legal notice is not worth failing the whole
+  // extraction over, so the link is skipped rather than trusted.
+  if (link.includes('\\') || link.includes(':')) return
   mkdirSync(dirname(dest), { recursive: true })
 
   // A symlink target is relative to the entry's own folder, a hardlink target
@@ -470,11 +537,23 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   let paddingRemaining = 0
   let sink: number[] = []
   let longName: string | null = null
+  // Counted as headers are parsed, since a tar stream carries no upfront
+  // index the way a zip's central directory does; the same limit as the zip
+  // functions below, checked as early as the format allows.
+  let entryCount = 0
 
   const flushFile = (): void => {
     if (!pendingHeader) return
     const name = longName ?? pendingHeader.path
     longName = null
+    // A literal backslash or ':' in the entry name is either an NTFS
+    // alternate data stream in disguise ("legit.jar:hidden.exe") or, since
+    // `join` treats a backslash as its own path separator on Windows, a
+    // traversal the '..'-segment filter below never sees because it is never
+    // split out into a segment of its own.
+    if (name.includes('\\') || name.includes(':')) {
+      throw new Error(`Ungültiger Pfad im Archiv: "${name}"`)
+    }
     const dest = join(targetDir, ...name.split('/').filter((p) => p && p !== '..'))
 
     if (pendingHeader.type === '5') {
@@ -493,54 +572,68 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
 
   const consumer = new Writable({
     write(chunk: Buffer, _enc, callback) {
-      buffer = Buffer.concat([buffer, chunk])
+      // Wrapped so a thrown limit or path check below reaches `pipeline()` as
+      // a normal rejection instead of an uncaught exception from inside a
+      // stream callback.
+      try {
+        buffer = Buffer.concat([buffer, chunk])
 
-      for (;;) {
-        if (remaining > 0) {
-          const take = Math.min(remaining, buffer.length)
-          if (take === 0) break
-          for (let i = 0; i < take; i++) sink.push(buffer[i])
-          buffer = buffer.subarray(take)
-          remaining -= take
-          if (remaining === 0) {
-            // The content is fully buffered now, so the file is written
-            // immediately rather than waiting for its padding to arrive too —
-            // padding is only bytes to skip, not part of the file.
-            const size = sink.length
-            flushFile()
-            paddingRemaining = (512 - (size % 512)) % 512
+        for (;;) {
+          if (remaining > 0) {
+            const take = Math.min(remaining, buffer.length)
+            if (take === 0) break
+            for (let i = 0; i < take; i++) sink.push(buffer[i])
+            buffer = buffer.subarray(take)
+            remaining -= take
+            if (remaining === 0) {
+              // The content is fully buffered now, so the file is written
+              // immediately rather than waiting for its padding to arrive too,
+              // padding is only bytes to skip, not part of the file.
+              const size = sink.length
+              flushFile()
+              paddingRemaining = (512 - (size % 512)) % 512
+            }
+            continue
           }
-          continue
+
+          if (paddingRemaining > 0) {
+            const skip = Math.min(paddingRemaining, buffer.length)
+            if (skip === 0) break
+            buffer = buffer.subarray(skip)
+            paddingRemaining -= skip
+            continue
+          }
+
+          if (buffer.length < 512) break
+          const header = buffer.subarray(0, 512)
+          buffer = buffer.subarray(512)
+
+          const name = header.subarray(0, 100).toString('utf8').replace(/\0.*$/, '')
+          if (!name) continue
+
+          const sizeField = header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim()
+          const size = parseInt(sizeField, 8) || 0
+          const type = String.fromCharCode(header[156]) || '0'
+          // `linkname`, only populated for link entries.
+          const link = header.subarray(157, 257).toString('utf8').replace(/\0.*$/, '')
+          const prefix = header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '')
+
+          entryCount++
+          if (entryCount > MAX_ARCHIVE_ENTRIES) {
+            throw new Error(
+              `${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`
+            )
+          }
+
+          pendingHeader = { path: prefix ? `${prefix}/${name}` : name, size, type, link }
+          remaining = size
+
+          if (size === 0) flushFile()
         }
-
-        if (paddingRemaining > 0) {
-          const skip = Math.min(paddingRemaining, buffer.length)
-          if (skip === 0) break
-          buffer = buffer.subarray(skip)
-          paddingRemaining -= skip
-          continue
-        }
-
-        if (buffer.length < 512) break
-        const header = buffer.subarray(0, 512)
-        buffer = buffer.subarray(512)
-
-        const name = header.subarray(0, 100).toString('utf8').replace(/\0.*$/, '')
-        if (!name) continue
-
-        const sizeField = header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim()
-        const size = parseInt(sizeField, 8) || 0
-        const type = String.fromCharCode(header[156]) || '0'
-        // `linkname`, only populated for link entries.
-        const link = header.subarray(157, 257).toString('utf8').replace(/\0.*$/, '')
-        const prefix = header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '')
-
-        pendingHeader = { path: prefix ? `${prefix}/${name}` : name, size, type, link }
-        remaining = size
-
-        if (size === 0) flushFile()
+        callback()
+      } catch (err) {
+        callback(err instanceof Error ? err : new Error(String(err)))
       }
-      callback()
     }
   })
 

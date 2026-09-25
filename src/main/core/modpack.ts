@@ -99,6 +99,37 @@ function modrinthIdsFromUrl(url: string): { projectId: string; versionId: string
   return match ? { projectId: match[1], versionId: match[2] } : null
 }
 
+/**
+ * Hosts the Modrinth mrpack spec allows a download url to point at.
+ * https://support.modrinth.com/en/articles/8802351-modrinth-modpack-format-mrpack
+ */
+const MRPACK_ALLOWED_HOSTS = new Set([
+  'cdn.modrinth.com',
+  'github.com',
+  'raw.githubusercontent.com',
+  'gitlab.com'
+])
+
+/**
+ * Keeps only the download urls the mrpack spec actually allows.
+ *
+ * `file.downloads` comes straight out of an archive anyone could have built,
+ * so nothing stops it from naming an arbitrary host. Without this, importing
+ * a crafted .mrpack made the launcher fetch and write to disk from wherever
+ * that manifest pointed, under a file name it also chose.
+ */
+export function filterAllowedMrpackUrls(urls: string[]): string[] {
+  return urls.filter((raw) => {
+    let parsed: URL
+    try {
+      parsed = new URL(raw)
+    } catch {
+      return false
+    }
+    return parsed.protocol === 'https:' && MRPACK_ALLOWED_HOSTS.has(parsed.hostname)
+  })
+}
+
 function contentTypeFromPath(path: string): ContentType {
   const lower = path.toLowerCase()
   if (lower.startsWith('mods/')) return 'mod'
@@ -178,10 +209,21 @@ async function installMrpackFiles(
   // built by anyone, so neither is trusted here.
   const downloads: DownloadItem[] = []
   const rejected: string[] = []
+  // Every url this file listed pointed at a host the mrpack spec does not
+  // allow. Counted separately from `rejected` below: this is not a crafted
+  // path trying to escape the instance folder, just a file this launcher
+  // will not fetch, and it should cost the pack that one file, not the
+  // whole import.
+  const blockedByHost: string[] = []
   for (const file of clientFiles) {
-    const urls = (file.downloads ?? []).filter((u): u is string => typeof u === 'string' && u.length > 0)
+    const rawUrls = (file.downloads ?? []).filter((u): u is string => typeof u === 'string' && u.length > 0)
+    const urls = filterAllowedMrpackUrls(rawUrls)
     if (urls.length === 0) {
-      rejected.push(`${file.path} (kein Download-Link)`)
+      if (rawUrls.length > 0) {
+        blockedByHost.push(file.path)
+      } else {
+        rejected.push(`${file.path} (kein Download-Link)`)
+      }
       continue
     }
     try {
@@ -234,6 +276,17 @@ async function installMrpackFiles(
       `Das Modpack wurde installiert, aber ${failed.slice(0, 3).join(', ')}${
         failed.length > 3 ? ' und weitere' : ''
       } konnten nicht geladen werden.`,
+      { route: `/instances/${instanceId}` }
+    )
+  }
+
+  if (blockedByHost.length > 0) {
+    notify(
+      'warning',
+      `${blockedByHost.length} ${blockedByHost.length === 1 ? 'Datei übersprungen' : 'Dateien übersprungen'}`,
+      `Das Modpack wurde installiert, aber ${blockedByHost.slice(0, 3).join(', ')}${
+        blockedByHost.length > 3 ? ' und weitere' : ''
+      } wurden übersprungen, weil ihre Download-Adresse nicht zu den von Modrinth erlaubten Adressen gehört.`,
       { route: `/instances/${instanceId}` }
     )
   }

@@ -107,15 +107,32 @@ import {
 } from './auth/microsoft'
 import { getNews, getStats } from './core/news'
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate } from './core/updater'
+import { isGameLogWebContents } from './gameLogWindow'
 
 const logger = log('ipc')
+
+/**
+ * Channels the separate live-log window is allowed to invoke.
+ *
+ * The preload exposes every channel to every window alike, log window
+ * included, since it shares the exact same bundle as the main window. Without
+ * this, a compromised log-window renderer could call anything the main
+ * window can: remove accounts, delete instances, change settings, all of it.
+ * Kept to exactly what `GameLogWindow.tsx` actually calls (`launch.logs`,
+ * `launch.stop`, `settings.get` for the theme); everything else throws.
+ */
+const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([IPC.launchLogs, IPC.launchStop, IPC.settingsGet])
 
 /** Wraps a handler so renderer-side errors arrive as readable messages. */
 function handle<T extends unknown[], R>(
   channel: string,
   fn: (...args: T) => Promise<R> | R
 ): void {
-  ipcMain.handle(channel, async (_event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (isGameLogWebContents(event.sender.id) && !GAME_LOG_ALLOWED_CHANNELS.has(channel)) {
+      logger.error(`Log-Fenster hat verbotenen Kanal aufgerufen: ${channel}`)
+      throw new Error('Dieser Kanal steht dem Log-Fenster nicht zur Verfügung.')
+    }
     try {
       return await fn(...(args as T))
     } catch (err) {

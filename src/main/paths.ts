@@ -125,6 +125,21 @@ export function contentFileName(fileName: string): string {
   if (!safe || safe === '.' || safe === '..') {
     throw new Error(`Ungültiger Dateiname: "${fileName}"`)
   }
+  // A ':' turns an otherwise ordinary looking name into an NTFS alternate
+  // data stream ("mod.jar:payload.exe"), and a control character breaks
+  // Windows outright. A name ending in a dot or space is silently stripped of
+  // it by Windows' own file APIs, so "mod.jar" and "mod.jar." would end up as
+  // the exact same file on disk without this being caught here first.
+  if (/[\x00-\x1f\x7f:]/.test(safe) || safe.endsWith('.') || safe.endsWith(' ')) {
+    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+  }
+  // A reserved device name stays reserved with any extension attached
+  // ("CON.jar" fails exactly like "CON" does), so only the part before the
+  // first dot is checked against the list `sanitizeVersionId` already uses.
+  const stem = safe.slice(0, safe.indexOf('.') === -1 ? safe.length : safe.indexOf('.'))
+  if (RESERVED_WINDOWS_NAMES.has(stem.toLowerCase())) {
+    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+  }
   return safe
 }
 

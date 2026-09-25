@@ -34,6 +34,18 @@ files:
 asarUnpack:
   - resources/**
 
+# Electron fuses baked into the packaged binary at build time. Nothing in
+# this codebase sets ELECTRON_RUN_AS_NODE, spawns process.execPath as a plain
+# node process, or passes --inspect, so turning these three off costs nothing
+# and closes off ways a renderer compromise could otherwise re-launch the
+# packaged binary with raw Node access instead of as Electron.
+# asarIntegrity and onlyLoadAppFromAsar are deliberately left off: verifying
+# either needs running the packaged app, which is not possible from here.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+
 # `build/` is the buildResources folder, which electron-builder excludes from
 # the package — so the icon desktop shortcuts point at was never shipped and
 # `appIconPath()` in src/main/core/shortcuts.ts found nothing in a real install.

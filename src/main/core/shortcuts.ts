@@ -1,7 +1,7 @@
 import { app, shell } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { paths } from '../paths'
+import { paths, RESERVED_WINDOWS_NAMES } from '../paths'
 import { log } from '../logger'
 import { getInstance } from './instances'
 import { icoFromDataUrls } from './ico'
@@ -22,7 +22,16 @@ function singleLine(value: string): string {
 
 /** Characters Windows refuses in file names, plus anything line-breaking. */
 function safeFileName(name: string): string {
-  return singleLine(name).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
+  const cleaned = singleLine(name).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
+  // Windows silently drops a trailing dot or space, so "Modpack." and
+  // "Modpack" would otherwise collide as the exact same shortcut file.
+  const trimmed = cleaned.replace(/[. ]+$/, '') || 'Instanz'
+  // A reserved device name is refused by Windows no matter what comes after a
+  // dot ("CON.lnk" fails exactly like "CON" does), so an instance literally
+  // named "CON" gets a harmless suffix instead of a shortcut that silently
+  // never gets written.
+  const stem = trimmed.slice(0, trimmed.indexOf('.') === -1 ? trimmed.length : trimmed.indexOf('.'))
+  return RESERVED_WINDOWS_NAMES.has(stem.toLowerCase()) ? `${trimmed} (Launch Gabi)` : trimmed
 }
 
 /**
@@ -260,15 +269,26 @@ export function parseDeepLink(url: string): DeepLink {
   }
 }
 
-/** Registers `launchgabi://` with the operating system. */
+/**
+ * Registers `launchgabi://` with the operating system.
+ *
+ * A trailing `--` is appended before the OS-supplied `%1`, so the registered
+ * command becomes `"exe" ... "--" "%1"`. Chromium's own command line parser,
+ * shared by every Electron app, stops treating anything after `--` as a
+ * switch of its own; without it a link such as
+ * "launchgabi://x/--gpu-launcher=calc.exe" would have reached the process
+ * looking exactly like a real flag. `parseLaunchArgs` and the deep link scan
+ * in `index.ts` both look for a matching argument anywhere in `argv` rather
+ * than at a fixed position, so the extra token does not break either.
+ */
 export function registerProtocol(): void {
   if (process.defaultApp) {
     // In development the interpreter needs the project path passed along.
     if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient('launchgabi', process.execPath, [app.getAppPath()])
+      app.setAsDefaultProtocolClient('launchgabi', process.execPath, [app.getAppPath(), '--'])
     }
   } else {
-    app.setAsDefaultProtocolClient('launchgabi')
+    app.setAsDefaultProtocolClient('launchgabi', process.execPath, ['--'])
   }
 }
 

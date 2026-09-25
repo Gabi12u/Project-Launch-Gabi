@@ -141,6 +141,40 @@ export function scrub(text: string): string {
   // login-hint URL rather than written out directly.
   out = out.replace(/[A-Za-z0-9._%+-]+%40[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gi, '<E-Mail>')
 
+  // Anything token-shaped, whether or not we know where it came from. Moved
+  // ahead of the account-name, Xbox-identity, numeric-id and IP rules below:
+  // those all match on a character class a token's own bytes can satisfy by
+  // accident (a run of digits between dots, a hyphen-bounded slice matching a
+  // stored username), and if one of them fired first it spliced a placeholder
+  // like "<Kennung>" into the middle of the token. That placeholder's angle
+  // brackets are not in the Bearer/JWT pattern's own character class, so the
+  // match broke there and everything after it, the actual signature, stayed
+  // in the clear. Verified with a real JWT: the old rule below stopped at the
+  // first dot, so "Bearer eyHeader.eyPayload.Signature" came out as
+  // "Bearer <Token>.<Token>.Signature", the one part that must never be
+  // readable left untouched.
+  //
+  // The header segment plus up to two more dot-separated segments, so this
+  // covers a bare opaque "ey..." token, a two-part token, and a full
+  // header.payload.signature JWT in one match instead of stopping at the
+  // first dot.
+  out = out.replace(/\b(ey[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+){0,2})/g, '<Token>')
+  out = out.replace(/("?(?:access_?|refresh_?|id_?)token"?\s*[:=]\s*"?)[^"'\s,}]+/gi, '$1<Token>')
+  // Microsoft account refresh tokens, which start neither with "ey" nor under
+  // a key we recognise: "M." for a normal token, "0." for a family refresh
+  // token shared across Microsoft's own apps, both followed by a long,
+  // high-entropy string that also uses "!" and "*", not just the usual
+  // base64url alphabet. The lookahead requires an uppercase letter somewhere
+  // in that string, which is what keeps this from firing on a plain decimal
+  // like "0.5" or a version string like "0.21.11", neither of which has one.
+  out = out.replace(/\b[M0]\.(?=[A-Za-z0-9._!*-]*[A-Z])[A-Za-z0-9._!*-]{24,}/g, '<Token>')
+  out = out.replace(/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{20,}/gi, '$1<Token>')
+  out = out.replace(/([?&](?:code|access_token|refresh_token|id_token)=)[^&\s"']+/gi, '$1<Token>')
+  // The opaque blobs the Xbox endpoints hand back under their own key names.
+  // Case-insensitive like every other field-name rule above: Xbox's own APIs
+  // answer in PascalCase, but nothing guarantees every caller matches that.
+  out = out.replace(/("(?:Token|X-Token|Signature)"\s*:\s*")[^"]*/gi, '$1<Token>')
+
   // The account name itself, wherever else it turns up. The rules above only
   // catch it directly after a home directory, but people name folders after
   // themselves and then put the data directory there. `boundary()` rather
@@ -197,20 +231,6 @@ export function scrub(text: string): string {
   // At least three colons, so an HH:MM:SS timestamp (two colons) elsewhere in
   // the same stack trace is never mistaken for one.
   out = out.replace(/\b(?:[0-9a-fA-F]{1,4}:){3,7}[0-9a-fA-F]{0,4}\b/g, '<IP>')
-
-  // Anything token-shaped, whether or not we know where it came from.
-  out = out.replace(/\b(ey[A-Za-z0-9_-]{10,})/g, '<Token>')
-  out = out.replace(/("?(?:access_?|refresh_?|id_?)token"?\s*[:=]\s*"?)[^"'\s,}]+/gi, '$1<Token>')
-  // Microsoft account refresh tokens, which start neither with "ey" nor under
-  // a key we recognise: M.C534_BAY.2.U.AbCd... The region code after the
-  // underscore is not always three letters, so this no longer assumes it is.
-  out = out.replace(/\bM\.[A-Z]\w*_[A-Z]{2,6}\.[^\s"',}]+/g, '<Token>')
-  out = out.replace(/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{20,}/gi, '$1<Token>')
-  out = out.replace(/([?&](?:code|access_token|id_token)=)[^&\s"']+/gi, '$1<Token>')
-  // The opaque blobs the Xbox endpoints hand back under their own key names.
-  // Case-insensitive like every other field-name rule above: Xbox's own APIs
-  // answer in PascalCase, but nothing guarantees every caller matches that.
-  out = out.replace(/("(?:Token|X-Token|Signature)"\s*:\s*")[^"]*/gi, '$1<Token>')
 
   // Dashed ids first, then the bare 32-hex form Mojang's API actually returns.
   out = out.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '<UUID>')

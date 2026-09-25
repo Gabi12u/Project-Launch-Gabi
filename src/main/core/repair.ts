@@ -19,6 +19,7 @@ import { isRestoring } from './restoreLock'
 import { isNativesClaimed } from './launch'
 import { clearRepairing, isRepairing, markRepairing } from './repairLock'
 import { pushLog } from './instanceLog'
+import { ensureJavaPathApproved } from './commandApproval'
 
 const logger = log('repair')
 
@@ -775,8 +776,12 @@ async function runRepair(
       // "Java fine" for a setting that was never really checked.
       const current = getInstance(instanceId)
       const major = current.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, current.mcVersion)
+      const explicitJavaPath = current.settings.javaPath || undefined
+      if (explicitJavaPath) {
+        await ensureJavaPathApproved(instanceId, current.name, explicitJavaPath)
+      }
       const java = await resolveJava({
-        explicitPath: current.settings.javaPath || undefined,
+        explicitPath: explicitJavaPath,
         major,
         autoManage: getSettings().javaAutoManage,
         task,

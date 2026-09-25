@@ -6,7 +6,7 @@ import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
 import { fetchJson, httpRequest, HttpError } from '../core/net'
 import { log } from '../logger'
-import { reportError } from '../core/reports'
+import { reportError, scrub } from '../core/reports'
 
 const logger = log('auth')
 
@@ -284,7 +284,9 @@ export async function loginWithMicrosoft(): Promise<Account> {
       logger.error(
         `Anmeldung fehlgeschlagen: HTTP ${err.status} von ${err.url}, ` +
           `Code: ${err.code ?? '(keiner)'}, nach ${Math.round((Date.now() - attemptStartedAt) / 1000)} s, ` +
-          `Rumpf: ${(err.body || '(leer)').slice(0, 300)}`
+          // Scrubbed: an Azure AD error_description or an Xbox identity body
+          // can carry the account's email, gamertag or XUID in clear text.
+          `Rumpf: ${scrub(err.body || '(leer)').slice(0, 300)}`
       )
     } else if (err instanceof Error && err.message !== 'Anmeldung abgebrochen') {
       logger.error('Anmeldung fehlgeschlagen:', err)
@@ -444,7 +446,9 @@ async function pollForToken(
           const body = err.body || ''
           logger.warn(
             `Anmeldung: invalid_grant nach ${since()} und ${polls} Abfragen, Rumpf: ` +
-              `${body.slice(0, 200)}`
+              // Scrubbed for the log only; explainInvalidGrant() below still
+              // gets the raw body, it only matches fixed English phrases.
+              `${scrub(body).slice(0, 200)}`
           )
           throw new Error(explainInvalidGrant(body) + technicalSuffix(err.status, err.code))
         }
@@ -472,7 +476,7 @@ async function pollForToken(
         if (unreadableErrors === 1 || unreadableErrors % 10 === 0) {
           logger.warn(
             `Anmeldung: ${unreadableErrors}. Antwort 400 ohne lesbaren Code, Rumpf: ` +
-              `${(err.body || '(leer)').slice(0, 200)}`
+              `${scrub(err.body || '(leer)').slice(0, 200)}`
           )
         }
         continue

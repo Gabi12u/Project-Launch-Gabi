@@ -25,6 +25,7 @@ import {
 } from './mojang'
 import { extractNatives } from './archive'
 import { requiredJavaMajor, resolveJava } from './java'
+import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath } from './commandApproval'
 import {
   getInstance,
   markPlayed,
@@ -253,17 +254,27 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
     : requiredJavaMajor({ libraries: [] } as unknown as VersionJson, instance.mcVersion)
 
   let java: LaunchPreflight['java'] = null
-  try {
-    const runtime = await resolveJava({
-      explicitPath: instance.settings.javaPath || undefined,
-      major: instance.settings.javaMajorOverride ?? javaMajor,
-      // Never trigger a download from the preflight panel.
-      autoManage: false,
-      instanceId: instance.id
-    })
-    java = { major: runtime.major, version: runtime.version, path: runtime.path, managed: runtime.managed }
-  } catch {
-    java = null
+  const explicitJavaPath = instance.settings.javaPath || undefined
+  // This runs unprompted every time the instance page opens, so an explicit
+  // path that has not been approved yet must never be probed here: that would
+  // both run an unapproved program and pop a dialog nobody asked for. It is
+  // treated as "not yet checked" instead, the same neutral result a Java that
+  // cannot be found gets.
+  const javaPathReady =
+    !explicitJavaPath || (isValidJavaPath(explicitJavaPath) && isApproved(instance.id, 'javaPath', explicitJavaPath))
+  if (javaPathReady) {
+    try {
+      const runtime = await resolveJava({
+        explicitPath: explicitJavaPath,
+        major: instance.settings.javaMajorOverride ?? javaMajor,
+        // Never trigger a download from the preflight panel.
+        autoManage: false,
+        instanceId: instance.id
+      })
+      java = { major: runtime.major, version: runtime.version, path: runtime.path, managed: runtime.managed }
+    } catch {
+      java = null
+    }
   }
 
   // Rough estimate of what still has to be downloaded.
@@ -453,8 +464,12 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // 4. Java --------------------------------------------------------
     setStatus(instanceId, 'installing-java', 'Java wird vorbereitet…')
     const javaMajor = instance.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, instance.mcVersion)
+    const explicitJavaPath = instance.settings.javaPath || undefined
+    if (explicitJavaPath) {
+      await ensureJavaPathApproved(instanceId, instance.name, explicitJavaPath)
+    }
     const java = await resolveJava({
-      explicitPath: instance.settings.javaPath || undefined,
+      explicitPath: explicitJavaPath,
       major: javaMajor,
       autoManage: settings.javaAutoManage,
       task,
@@ -666,6 +681,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     // 9. Spawn -------------------------------------------------------
     if (userText(instance.settings.preLaunchCommand).trim()) {
+      await ensureApproved(instanceId, instance.name, 'preLaunch', instance.settings.preLaunchCommand)
       task.update('Pre-Launch-Befehl läuft…', null)
       await runPreLaunch(instance, gameDir, task)
     }
@@ -680,6 +696,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     let command = javaBinary
     let commandArgs = args
     if (userText(instance.settings.wrapperCommand).trim()) {
+      await ensureApproved(instanceId, instance.name, 'wrapper', instance.settings.wrapperCommand)
       const wrapper = splitUserArgs(instance.settings.wrapperCommand)
       command = wrapper[0]
       commandArgs = [...wrapper.slice(1), javaBinary, ...args]

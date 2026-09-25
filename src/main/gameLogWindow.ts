@@ -1,5 +1,8 @@
-import { BrowserWindow, app } from 'electron'
+import { BrowserWindow, app, shell } from 'electron'
 import { join } from 'node:path'
+import { log } from './logger'
+
+const logger = log('gameLogWindow')
 
 /**
  * The separate live-log window opened for every launch, one per running
@@ -17,6 +20,18 @@ import { join } from 'node:path'
  * so a window nobody is going to reopen does not just sit there.
  */
 const logWindows = new Map<string, BrowserWindow>()
+
+/**
+ * `webContents.id`s of every open log window, so `ipc.ts` can recognise a
+ * request coming from one and hold it to the narrow set of channels
+ * `GameLogWindow.tsx` actually calls, the same preload exposes every channel
+ * to whichever window loads it.
+ */
+const logWindowWebContentsIds = new Set<number>()
+
+export function isGameLogWebContents(webContentsId: number): boolean {
+  return logWindowWebContentsIds.has(webContentsId)
+}
 
 export function openGameLogWindow(instanceId: string, instanceName: string): void {
   const existing = logWindows.get(instanceId)
@@ -46,7 +61,31 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
   })
 
   logWindows.set(instanceId, win)
-  win.on('closed', () => logWindows.delete(instanceId))
+  const webContentsId = win.webContents.id
+  logWindowWebContentsIds.add(webContentsId)
+  win.on('closed', () => {
+    logWindows.delete(instanceId)
+    logWindowWebContentsIds.delete(webContentsId)
+  })
+
+  // This window only ever shows its own bundled page. Unlike the main
+  // window, it has no legitimate reason to ever navigate anywhere else, so
+  // any attempt (a compromised renderer, a stray link) is refused outright.
+  win.webContents.on('will-navigate', (event) => {
+    event.preventDefault()
+  })
+
+  // Mirrors the main window's own guard in index.ts: an http(s) link opens in
+  // the system browser, everything else (a new window, a javascript: URL) is
+  // denied rather than opened inside this frameless little window.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      void shell.openExternal(url).catch((err: unknown) => {
+        logger.error(`Link im Log-Fenster konnte nicht geöffnet werden (${url}):`, err)
+      })
+    }
+    return { action: 'deny' }
+  })
 
   const query = `?gameLog=${encodeURIComponent(instanceId)}&name=${encodeURIComponent(instanceName)}`
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {

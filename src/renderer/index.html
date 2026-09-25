@@ -4,9 +4,16 @@
     <meta charset="UTF-8" />
     <title>Launch Gabi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Everything the renderer needs from the network goes through IPC to the
+      main process (provider search, downloads, updates, all of it), nothing
+      here calls fetch/XHR/WebSocket directly. connect-src is therefore just
+      'self': no https:, no open localhost range, both of which would only
+      have given a compromised renderer somewhere to send data to.
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: ws: http://localhost:*"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: file:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
     />
   </head>
   <body>

@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { chmodSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { createHash, randomUUID } from 'node:crypto'
+import { chmodSync, createReadStream, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { JavaRuntime } from '@shared/types'
@@ -117,8 +117,22 @@ export function majorFromVersion(version: string): number {
   return Number(cleaned.split(/[.\-+]/)[0]) || 0
 }
 
+/**
+ * True for a UNC path (`\\server\share\...` or `//server/share/...`).
+ *
+ * Even just `existsSync` on one of these makes Windows attempt an SMB
+ * handshake against whatever the named host is, which can leak the current
+ * user's NTLM credentials to it. JAVA_HOME and an explicit Java path both
+ * come from outside the launcher's own control, so both are checked here
+ * before anything ever touches them on disk.
+ */
+export function isUncPath(value: string): boolean {
+  return /^(\\\\|\/\/)/.test(value.trim())
+}
+
 /** Runs `java -XshowSettings:properties -version` and parses the result. */
 export async function probeJava(executable: string): Promise<JavaRuntime | null> {
+  if (isUncPath(executable)) return null
   if (!existsSync(executable)) return null
   try {
     const { stdout, stderr } = await execFileAsync(
@@ -147,7 +161,7 @@ export async function probeJava(executable: string): Promise<JavaRuntime | null>
 function candidateRoots(): string[] {
   const roots: string[] = []
 
-  if (process.env.JAVA_HOME) roots.push(process.env.JAVA_HOME)
+  if (process.env.JAVA_HOME && !isUncPath(process.env.JAVA_HOME)) roots.push(process.env.JAVA_HOME)
 
   if (process.platform === 'win32') {
     const programFiles = [
@@ -272,6 +286,23 @@ export function executableIn(root: string): string | null {
   return null
 }
 
+/**
+ * Absolute path to the OS tool that resolves `java` on PATH.
+ *
+ * Running `where`/`which` by bare name lets Windows search the current
+ * working directory first, which for a launcher can be attacker-controlled
+ * (an instance folder, a downloaded archive extracted next to the exe). An
+ * absolute path skips that lookup entirely. `null` when the expected tool
+ * is not at its usual place, so the caller just skips the PATH lookup.
+ */
+function pathLookupTool(): string | null {
+  const exe =
+    process.platform === 'win32'
+      ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'where.exe')
+      : '/usr/bin/which'
+  return existsSync(exe) ? exe : null
+}
+
 export async function detectJavaRuntimes(force = false): Promise<JavaRuntime[]> {
   if (cache && !force) return cache
 
@@ -284,13 +315,16 @@ export async function detectJavaRuntimes(force = false): Promise<JavaRuntime[]> 
 
   // Whatever is on PATH.
   try {
-    const probe = await execFileAsync(process.platform === 'win32' ? 'where' : 'which', ['java'], {
-      timeout: 8000,
-      windowsHide: true
-    })
-    for (const line of probe.stdout.split(/\r?\n/)) {
-      const trimmed = line.trim()
-      if (trimmed && existsSync(trimmed)) executables.add(trimmed)
+    const tool = pathLookupTool()
+    if (tool) {
+      const probe = await execFileAsync(tool, ['java'], {
+        timeout: 8000,
+        windowsHide: true
+      })
+      for (const line of probe.stdout.split(/\r?\n/)) {
+        const trimmed = line.trim()
+        if (trimmed && existsSync(trimmed)) executables.add(trimmed)
+      }
     }
   } catch {
     // java not on PATH
@@ -485,36 +519,78 @@ function sweepStagingDirs(): void {
   }
 }
 
+/** Download link, byte size and sha256 for one Adoptium release archive. */
+interface AdoptiumArchiveMetadata {
+  url: string
+  size: number
+  sha256: string
+}
+
 /**
- * Looks up the exact byte size Adoptium's own release metadata reports for
- * the archive this is about to download.
+ * Looks up the download link, byte size and sha256 checksum Adoptium's own
+ * release metadata reports for the archive this is about to download.
  *
- * The download URL below is a redirect endpoint with no size of its own, so
- * the archive used to carry neither a hash nor a size, and `isSatisfied`
- * then treated any non-empty file on disk as complete for good. A
- * connection dropped mid-transfer wrote out a truncated archive that looked
- * done, with the damage only surfacing much later as a broken Java install.
- * Adoptium's asset metadata is a separate endpoint with no redirect and no
- * binary body, so a failure to reach it does not cost anything beyond
- * falling back to the previous behaviour: the download still proceeds,
- * verified only by `Content-Length` at transfer time as before.
+ * The binary redirect endpoint used before this (`/v3/binary/latest/...`)
+ * hands back the archive itself with no hash and no size of its own, so a
+ * connection dropped mid-transfer, or a tampered file at the source, wrote
+ * out a bad archive that looked done and got executed as-is. This assets
+ * endpoint is a plain JSON call with no redirect and no binary body, and it
+ * is the only Adoptium endpoint that carries a checksum at all, so this now
+ * replaces the size-only lookup outright: without it there is nothing to
+ * verify the archive against, and the caller refuses to install rather than
+ * fall back to the old, unverified download.
  */
-async function adoptiumArchiveSize(major: number, imageType: 'jdk' | 'jre'): Promise<number | undefined> {
+async function adoptiumArchiveMetadata(
+  major: number,
+  imageType: 'jdk' | 'jre'
+): Promise<AdoptiumArchiveMetadata | null> {
   try {
     const url =
-      `https://api.adoptium.net/v3/assets/feature_releases/${major}/ga` +
-      `?image_type=${imageType}&os=${adoptiumOs()}&architecture=${adoptiumArch()}` +
-      `&jvm_impl=hotspot&heap_size=normal&page=0&page_size=1&sort_method=DEFAULT&sort_order=DESC`
-    const releases = await fetchJson<Array<{ binaries?: Array<{ package?: { size?: number } }> }>>(url)
-    const size = releases[0]?.binaries?.[0]?.package?.size
-    return typeof size === 'number' && size > 0 ? size : undefined
+      `https://api.adoptium.net/v3/assets/latest/${major}/hotspot` +
+      `?architecture=${adoptiumArch()}&image_type=${imageType}&os=${adoptiumOs()}&vendor=eclipse`
+    const releases = await fetchJson<
+      Array<{ binary?: { package?: { link?: string; size?: number; checksum?: string } } }>
+    >(url)
+    const pkg = releases[0]?.binary?.package
+    if (
+      !pkg ||
+      typeof pkg.link !== 'string' ||
+      !pkg.link.startsWith('https://') ||
+      typeof pkg.size !== 'number' ||
+      pkg.size <= 0 ||
+      typeof pkg.checksum !== 'string' ||
+      !/^[0-9a-f]{64}$/i.test(pkg.checksum)
+    ) {
+      logger.warn(`Adoptium-Metadaten für Java ${major} unvollständig oder unerwartet geformt`)
+      return null
+    }
+    return { url: pkg.link, size: pkg.size, sha256: pkg.checksum.toLowerCase() }
   } catch (err) {
-    logger.warn(`Erwartete Dateigröße für Java ${major} nicht abrufbar:`, err)
-    return undefined
+    logger.warn(`Adoptium-Metadaten für Java ${major} nicht abrufbar:`, err)
+    return null
   }
 }
 
+/** Streams a file through sha256, for verifying a downloaded archive. */
+export function sha256File(file: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256')
+    createReadStream(file)
+      .on('error', reject)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('end', () => resolve(hash.digest('hex')))
+  })
+}
+
 async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime> {
+  // `major` can come from a hand-edited settings file (`javaMajorOverride`),
+  // not only from the launcher's own `requiredJavaMajor`. Both the folder
+  // name and the Adoptium URL below are built from it directly, so a value
+  // that is not a plain, small integer is refused before it reaches either.
+  if (!Number.isInteger(major) || major < 8 || major > 99) {
+    throw new Error('Ungültige Java-Hauptversion, die Installation wurde abgebrochen.')
+  }
+
   const targetDir = join(paths.java(), `temurin-${major}`)
 
   const existing = executableIn(targetDir)
@@ -524,15 +600,17 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   }
 
   const imageType = major <= 8 ? 'jdk' : 'jre'
-  const url =
-    `https://api.adoptium.net/v3/binary/latest/${major}/ga/${adoptiumOs()}/${adoptiumArch()}` +
-    `/${imageType}/hotspot/normal/eclipse`
+
+  const metadata = await adoptiumArchiveMetadata(major, imageType)
+  if (!metadata) {
+    throw new Error('Die Prüfsumme für Java konnte nicht geladen werden. Versuche es später erneut.')
+  }
 
   const isZip = adoptiumOs() === 'windows'
   const archive = join(paths.cache(), `temurin-${major}.${isZip ? 'zip' : 'tar.gz'}`)
 
   task?.update(`Lade Java ${major} herunter…`, null)
-  logger.info(`Lade Java ${major} von ${url}`)
+  logger.info(`Lade Java ${major} von ${metadata.url}`)
 
   // Staging directory, so a failure cannot leave the existing runtime damaged
   // and a JVM currently running out of `targetDir` keeps its files.
@@ -546,12 +624,13 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   // as a usable runtime. Nothing else in the app sweeps them.
   sweepStagingDirs()
 
-  const expectedSize = await adoptiumArchiveSize(major, imageType)
-
   try {
     let received = 0
     try {
-      await downloadFile({ url, path: archive, size: expectedSize }, (delta) => {
+      // `downloadFile` only ever checks a sha1, and Adoptium only hands out
+      // sha256, so the size is passed here for the usual truncation check
+      // and the real integrity check happens by hand right below.
+      await downloadFile({ url: metadata.url, path: archive, size: metadata.size }, (delta) => {
         received += delta
         task?.update(`Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`, null)
       }, 3, task?.signal)
@@ -566,6 +645,16 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       )
     }
 
+    // Verified against the sha256 Adoptium's own metadata reported before the
+    // download, so a tampered or corrupted archive is caught here and never
+    // reaches the extractor. The outer catch below removes the archive on any
+    // error thrown inside this try, this one included.
+    task?.update(`Java ${major} · Prüfsumme wird geprüft…`, null)
+    const archiveHash = await sha256File(archive)
+    if (archiveHash !== metadata.sha256) {
+      throw new Error(`Java ${major} hat eine falsche Prüfsumme und wurde nicht installiert.`)
+    }
+
     task?.update(`Java ${major} wird entpackt…`, null)
     rmSync(staging, { recursive: true, force: true })
 
@@ -577,11 +666,10 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       throw new Error(`Java ${major} konnte nicht entpackt werden`)
     }
 
-    // The download carries no checksum, so the archive itself cannot be
-    // verified. Running the unpacked JVM once is the stronger check anyway:
-    // it catches a truncated archive, a half-written extraction and a binary
-    // for the wrong architecture in one go, and it means `targetDir` only ever
-    // receives a runtime that provably starts.
+    // The archive's sha256 is already verified above. Running the unpacked
+    // JVM once still catches a half-written extraction or a binary for the
+    // wrong architecture, so `targetDir` only ever receives a runtime that
+    // provably starts.
     task?.update(`Java ${major} wird geprüft…`, null)
     const probed = await probeJava(staged)
     if (!probed) {
@@ -634,9 +722,9 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       await renameWithRetry(staging, targetDir)
     }
   } catch (err) {
-    // The archive carries no checksum, so a truncated one would be treated as
-    // "already downloaded" forever and every later attempt would fail the same
-    // way. Removing it makes the next run retry cleanly.
+    // Covers a failed checksum too: leaving a bad archive on disk would be
+    // treated as "already downloaded" forever and every later attempt would
+    // fail the same way. Removing it makes the next run retry cleanly.
     try {
       rmSync(archive, { force: true })
     } catch {

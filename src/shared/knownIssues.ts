@@ -2036,8 +2036,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'der Prüfsumme, die Adoptium mitliefert. Eine unterwegs veränderte Java-Version wäre so ' +
       'unbemerkt bei jedem Spielstart ausgeführt worden. Ab 1.0.20 wird die Prüfsumme geprüft, und ' +
       'ohne passende Prüfsumme wird nichts installiert.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'modpack-vorschau-speicher',
@@ -2047,8 +2048,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Größengrenze entpackt. Eine kleine, präparierte Datei konnte so schon in der Vorschau Hunderte ' +
       'Megabyte belegen, und Archive mit sehr vielen Dateien wurden ohne Obergrenze entpackt. Ab ' +
       '1.0.20 gelten auch dort feste Grenzen.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'startbefehle-ohne-bestaetigung',
@@ -2059,8 +2061,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Instanzseite. Von außen ließen sie sich nicht setzen, aber eine künftige Lücke in der ' +
       'Oberfläche hätte sie direkt nutzen können. Ab 1.0.20 fragt der Launcher in einem eigenen ' +
       'Fenster nach, bevor ein neuer oder geänderter Befehl zum ersten Mal läuft.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'dateinamen-versteckte-datenstroeme',
@@ -2069,9 +2072,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein Dateiname wie „mod.jar:etwas“, von einem Mod-Anbieter oder aus einem Modpack, wurde nicht ' +
       'abgelehnt. Windows legt dafür einen versteckten Datenstrom an der Datei an, der im Explorer ' +
       'nicht zu sehen ist. Ab 1.0.20 werden solche Namen abgelehnt.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-25',
-    platforms: ['Windows']
+    platforms: ['Windows'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'mrpack-downloads-beliebige-server',
@@ -2081,8 +2085,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'ob diese auf die von Modrinth erlaubten Server zeigen, und nahm auch unverschlüsselte Adressen ' +
       'an. Ab 1.0.20 gilt die Liste erlaubter Server aus der Modrinth-Spezifikation, und nur ' +
       'verschlüsselte Verbindungen.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'anmeldung-fehler-im-protokoll',
@@ -2091,8 +2096,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Scheiterte die Anmeldung, schrieb der Launcher die Antwort des Servers in seine Protokolldatei, ' +
       'und darin kann die E-Mail-Adresse des Kontos stehen. In Fehlerberichten blieb außerdem ein Teil ' +
       'von Anmelde-Tokens stehen. Ab 1.0.20 wird beides geschwärzt.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'link-startet-ohne-rueckfrage',
@@ -2101,8 +2107,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein Link der Form launchgabi://launch/... startete die genannte Instanz direkt, sobald der ' +
       'Browser ihn weitergab. Ab 1.0.20 fragt der Launcher vorher nach, ob die Instanz wirklich ' +
       'gestartet werden soll. Eigene Desktop-Verknüpfungen starten weiter ohne Rückfrage.',
-    state: 'fixing',
-    since: '2026-09-25'
+    state: 'fixed',
+    since: '2026-09-25',
+    fixedIn: '1.0.20'
   },
   {
     id: 'verknuepfung-reservierter-name',
@@ -2111,9 +2118,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Windows reserviert Namen wie CON, NUL oder COM1. Hieß eine Instanz so, scheiterte das Anlegen ' +
       'der Verknüpfung mit einer unverständlichen Meldung. Ab 1.0.20 bekommt die Verknüpfung dann ' +
       'einen abgewandelten Namen.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-25',
-    platforms: ['Windows']
+    platforms: ['Windows'],
+    fixedIn: '1.0.20'
   }
 ]
 

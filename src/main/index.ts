@@ -30,6 +30,19 @@ initLogger(isDev ? 'debug' : 'info')
 const logger = log('app')
 
 /**
+ * An instance the app was asked to launch, and where that request came from.
+ *
+ * A desktop shortcut this app itself created (`--launch=<slug>`) is trusted
+ * without asking, exactly as clicking "Spielen" in the launcher is. A
+ * `launchgabi://launch/<id>` link can come from any website, so that origin
+ * asks for a confirmation before the instance actually starts.
+ */
+interface PendingLaunch {
+  instanceId: string
+  origin: 'shortcut' | 'link'
+}
+
+/**
  * Instances the app was asked to launch through a shortcut or deep link,
  * oldest first.
  *
@@ -38,7 +51,7 @@ const logger = log('app')
  * launched at all. A queue keeps every one of them and drains them in the
  * order they arrived.
  */
-let pendingLaunches: string[] = []
+let pendingLaunches: PendingLaunch[] = []
 
 /**
  * Deep links that arrived before there was a window to send them to,
@@ -186,6 +199,23 @@ function createWindow(): BrowserWindow {
   })
 
   window.on('closed', () => setMainWindow(null))
+
+  // The window keeps the preload API, so it must never leave its own page:
+  // anything else would hand that API to whatever loaded instead.
+  window.webContents.on('will-navigate', (event, url) => {
+    try {
+      const target = new URL(url)
+      const current = new URL(window.webContents.getURL())
+      const samePage =
+        target.protocol === 'file:'
+          ? current.protocol === 'file:' && target.pathname === current.pathname
+          : target.origin === current.origin
+      if (samePage) return
+    } catch {
+      // unparsable target: refuse below
+    }
+    event.preventDefault()
+  })
 
   // External links never open inside the app window.
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -435,7 +465,7 @@ function bootstrap(): void {
 function handleStartupArgs(argv: string[]): void {
   const intent = parseLaunchArgs(argv)
   if (intent) {
-    pendingLaunches.push(intent.instanceId)
+    pendingLaunches.push({ instanceId: intent.instanceId, origin: 'shortcut' })
     void consumePendingLaunch()
   }
 
@@ -450,7 +480,7 @@ function handleDeepLink(url: string): void {
   switch (link.action) {
     case 'launch':
       if (link.instanceId) {
-        pendingLaunches.push(link.instanceId)
+        pendingLaunches.push({ instanceId: link.instanceId, origin: 'link' })
         void consumePendingLaunch()
       }
       break
@@ -475,7 +505,7 @@ async function consumePendingLaunch(): Promise<void> {
   while (pendingLaunches.length > 0) {
     // Shifted out before launching, so a launch that throws still lets the
     // rest of the queue drain instead of getting stuck behind it forever.
-    const instanceId = pendingLaunches.shift() as string
+    const { instanceId, origin } = pendingLaunches.shift() as PendingLaunch
 
     const instance = tryGetInstance(instanceId)
     if (!instance) {
@@ -484,8 +514,37 @@ async function consumePendingLaunch(): Promise<void> {
       continue
     }
 
+    // A shortcut this app created itself asks nothing, the same as clicking
+    // "Spielen" would not. A `launchgabi://launch/<id>` link can come from any
+    // website a browser happens to visit, so that one origin gets a
+    // confirmation before anything actually starts.
+    if (origin === 'link') {
+      const win = getMainWindow()
+      // A dialog parented to a hidden or minimised window can end up out of
+      // sight on Windows, leaving the launch waiting on a box nobody sees.
+      if (win && !win.isDestroyed()) {
+        if (win.isMinimized()) win.restore()
+        if (!win.isVisible()) win.show()
+        win.focus()
+      }
+      const result = await dialog.showMessageBox(win as BrowserWindow, {
+        type: 'question',
+        title: 'Instanz starten?',
+        message: 'Instanz starten?',
+        detail: `Launch Gabi soll die Instanz „${instance.name}“ starten. Der Aufruf kam über einen Link. Starten?`,
+        buttons: ['Starten', 'Abbrechen'],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true
+      })
+      if (result.response !== 0) {
+        logger.info(`Start über Link für ${instance.name} abgelehnt`)
+        continue
+      }
+    }
+
     navigate(`/instances/${instanceId}`)
-    logger.info(`Starte ${instance.name} über Verknüpfung`)
+    logger.info(`Starte ${instance.name} über ${origin === 'link' ? 'Link' : 'Verknüpfung'}`)
 
     try {
       await launchInstance({ instanceId })

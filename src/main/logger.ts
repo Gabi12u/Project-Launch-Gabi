@@ -34,6 +34,33 @@ function redactHome(text: string): string {
   return HOME ? text.split(HOME).join('~') : text
 }
 
+// A minimal, self-contained mirror of the token/email rules in
+// core/reports.ts scrub(). Duplicated rather than imported: reports.ts
+// itself imports `log` from this very module, so importing back from there
+// would be a circular import. Only the cheap, unambiguous patterns run here,
+// on every single line; the fuller pass (usernames, UUIDs, XUIDs, IPs) stays
+// in scrub(), which only ever runs on the text of an actual error report.
+// None of these match an instance-id UUID or a plain version string.
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
+const JWT_RE = /\b(ey[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+){0,2})/g
+const MS_REFRESH_RE = /\b[M0]\.(?=[A-Za-z0-9._!*-]*[A-Z])[A-Za-z0-9._!*-]{24,}/g
+const TOKEN_FIELD_RE = /("?(?:access_?|refresh_?|id_?)token"?\s*[:=]\s*"?)[^"'\s,}]+/gi
+const TOKEN_QUERY_RE = /([?&](?:code|access_token|refresh_token|id_token)=)[^&\s"']+/gi
+const BEARER_RE = /\b(Bearer\s+)[A-Za-z0-9._~+/=-]{20,}/gi
+
+// Exported so the pattern list can be checked directly, the same reasoning
+// as `explainInvalidGrant` in auth/microsoft.ts: without this, testing it
+// means replaying a real login just to get a line through the logger.
+export function redactSecrets(text: string): string {
+  return text
+    .replace(EMAIL_RE, '<E-Mail>')
+    .replace(JWT_RE, '<Token>')
+    .replace(MS_REFRESH_RE, '<Token>')
+    .replace(TOKEN_FIELD_RE, '$1<Token>')
+    .replace(TOKEN_QUERY_RE, '$1<Token>')
+    .replace(BEARER_RE, '$1<Token>')
+}
+
 function logDir(): string {
   return join(app.getPath('userData'), 'logs')
 }
@@ -96,7 +123,7 @@ function write(level: Level, scope: string, args: unknown[]): void {
     })
     .join(' ')
 
-  const line = `${new Date().toISOString()} [${level.toUpperCase().padEnd(5)}] [${scope}] ${redactHome(text)}`
+  const line = `${new Date().toISOString()} [${level.toUpperCase().padEnd(5)}] [${scope}] ${redactSecrets(redactHome(text))}`
 
   if (!app.isPackaged) {
     const sink = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log
