@@ -23,6 +23,7 @@ import type {
   LaunchPreflight,
   LaunchStatus,
   LauncherSettings,
+  LanguageId,
   LauncherStats,
   LoaderId,
   LoaderVersion,
@@ -150,6 +151,8 @@ export interface InstallContentRequest {
 export type Unsubscribe = () => void
 
 export interface GabiApi {
+  /** Fixed for the lifetime of the window; changing it relaunches the app. */
+  language: LanguageId
   window: {
     minimize(): void
     maximize(): void
@@ -163,6 +166,8 @@ export interface GabiApi {
     pickDirectory(title?: string): Promise<string | null>
     pickFile(options?: FilePickerOptions): Promise<string[]>
     stats(): Promise<LauncherStats>
+    /** Restarts the launcher. Refused while a game runs or is starting. */
+    relaunch(): Promise<void>
   }
   settings: {
     get(): Promise<LauncherSettings>

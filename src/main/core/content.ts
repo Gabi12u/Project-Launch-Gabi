@@ -32,6 +32,7 @@ import {
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
+import { locale } from '@shared/i18n'
 
 const logger = log('content')
 
@@ -828,7 +829,7 @@ async function updateAllOnce(instanceId: string): Promise<number> {
     if (instance.settings.backupBeforeUpdates) {
       task.update('Sicherung wird erstellt…', null)
       await createBackup(instanceId, {
-        name: `Vor Mod-Update ${new Date().toLocaleDateString('de-DE')}`,
+        name: `Vor Mod-Update ${new Date().toLocaleDateString(locale())}`,
         reason: 'pre-update',
         includes: ['saves']
       })

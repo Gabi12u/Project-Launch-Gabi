@@ -14,6 +14,7 @@ export const IPC = {
   appPickDirectory: 'app:pick-directory',
   appPickFile: 'app:pick-file',
   appStats: 'app:stats',
+  appRelaunch: 'app:relaunch',
 
   // settings
   settingsGet: 'settings:get',

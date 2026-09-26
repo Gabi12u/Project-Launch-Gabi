@@ -1,5 +1,6 @@
 import { BrowserWindow, app, shell } from 'electron'
 import { join } from 'node:path'
+import { getLanguage } from '@shared/i18n'
 import { log } from './logger'
 
 const logger = log('gameLogWindow')
@@ -56,7 +57,8 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      additionalArguments: [`--gabi-lang=${getLanguage()}`]
     }
   })
 

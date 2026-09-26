@@ -28,6 +28,7 @@ import {
   IconSave,
   IconStop
 } from '../components/Icons'
+import { locale } from '@shared/i18n'
 
 export function HomeView(): JSX.Element {
   const { instances, accounts, starting } = useStore()
@@ -373,7 +374,7 @@ function Stat({
   format?: (value: number) => string
 }): JSX.Element {
   const animated = useCountUp(value)
-  const text = format ? format(animated) : Math.round(animated).toLocaleString('de-DE')
+  const text = format ? format(animated) : Math.round(animated).toLocaleString(locale())
 
   return (
     <div className="stat">

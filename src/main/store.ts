@@ -187,7 +187,12 @@ export function getSettings(): LauncherSettings {
     // produce a settings object with no usable fields.
     const stored = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
     // Merging with the defaults keeps configs from older builds usable.
-    settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, ...stored })
+    // A brand-new install follows the system language; anyone who already has
+    // settings keeps German unless they chose otherwise.
+    const firstRun = Object.keys(stored).length === 0
+    const systemLocale = (app.isReady() ? app.getLocale() : '') || Intl.DateTimeFormat().resolvedOptions().locale
+    const language = firstRun && !/^de\b/i.test(systemLocale) ? 'en' : DEFAULT_LAUNCHER_SETTINGS.language
+    settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...stored })
   }
   return settings
 }

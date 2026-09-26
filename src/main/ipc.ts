@@ -16,6 +16,7 @@ import type {
 } from '@shared/types'
 import { ensureRootLayout, paths, safeJoin } from './paths'
 import { getSettings, resetSettings, saveSettings } from './store'
+import { tr } from '@shared/i18n'
 import { emit, getMainWindow, notify } from './events'
 import { log, getLogDirectory } from './logger'
 import { cancelTask, listTasks } from './tasks'
@@ -260,6 +261,29 @@ export function registerIpc(): void {
   )
 
   handle(IPC.appStats, () => getStats())
+
+  handle(IPC.appRelaunch, () => {
+    // A restart would cut off a launch that is still preparing, and with
+    // "close with the game" it would take a running game down with it.
+    if (runningCount() + startingCount() > 0) {
+      throw new Error(
+        tr(
+          'Beende zuerst alle laufenden Spiele, dann startet der Launcher neu.',
+          'Close all running games first, then the launcher restarts.'
+        )
+      )
+    }
+    if (listTasks().some((task) => task.state === 'running')) {
+      throw new Error(
+        tr(
+          'Warte, bis alle Downloads und Aufgaben fertig sind, dann startet der Launcher neu.',
+          'Wait until all downloads and tasks are finished, then the launcher restarts.'
+        )
+      )
+    }
+    app.relaunch()
+    app.quit()
+  })
 
   /* ---------------------------------------------------------------- *
    * Settings

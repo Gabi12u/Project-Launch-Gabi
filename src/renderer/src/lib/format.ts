@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { LoaderId } from '@shared/types'
+import { locale } from '@shared/i18n'
 
 /**
  * Formats a number the way a German reader expects: a comma for the decimal
@@ -7,7 +8,7 @@ import type { LoaderId } from '@shared/types'
  * toFixed, only the punctuation changes.
  */
 export function formatDecimal(value: number, digits: number): string {
-  return value.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  return value.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 export function formatBytes(bytes: number, decimals = 1): string {
@@ -75,7 +76,7 @@ export function formatRelative(timestamp: number | null | undefined): string {
     return days === 1 ? 'gestern' : `vor ${days} Tagen`
   }
 
-  return new Date(timestamp).toLocaleDateString('de-DE', {
+  return new Date(timestamp).toLocaleDateString(locale(), {
     day: '2-digit',
     month: 'short',
     year: diff > 300 * 86_400_000 ? 'numeric' : undefined
@@ -85,11 +86,11 @@ export function formatRelative(timestamp: number | null | undefined): string {
 export function formatDate(value: number | string): string {
   const date = typeof value === 'number' ? new Date(value) : new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
+  return date.toLocaleDateString(locale(), { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export function formatDateTime(value: number): string {
-  return new Date(value).toLocaleString('de-DE', {
+  return new Date(value).toLocaleString(locale(), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -99,7 +100,7 @@ export function formatDateTime(value: number): string {
 }
 
 export function formatTime(value: number): string {
-  return new Date(value).toLocaleTimeString('de-DE', {
+  return new Date(value).toLocaleTimeString(locale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'

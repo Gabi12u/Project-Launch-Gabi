@@ -13,6 +13,7 @@ import { navigate, refreshInstances, refreshSettings, saveSettings, toast, toast
 import { memorySliderMax, useDebouncedSetting } from '../lib/hooks'
 import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
+import { SUPPORTED_LANGUAGES, getLanguage, tr } from '@shared/i18n'
 import { LogoLockup } from '../components/Logo'
 import {
   IconDownload,
@@ -74,6 +75,65 @@ function updateHeadline(status: UpdateStatus): string {
     default:
       return `Version ${status.currentVersion}`
   }
+}
+
+function LanguageSetting(): JSX.Element {
+  const { settings } = useStore()
+  const [askRestart, setAskRestart] = useState(false)
+  const pending = settings.language !== getLanguage()
+
+  return (
+    <section className="setting-group">
+      <h3>{tr('Sprache', 'Language')}</h3>
+      <p className="hint">
+        {tr(
+          'Gilt für den ganzen Launcher. Zum Wechseln startet der Launcher neu.',
+          'Applies to the whole launcher. Switching restarts the launcher.'
+        )}
+      </p>
+      <div className="option-grid">
+        {SUPPORTED_LANGUAGES.map((language) => (
+          <button
+            key={language.id}
+            className={`option ${settings.language === language.id ? 'selected' : ''}`}
+            onClick={async () => {
+              if (settings.language === language.id) return
+              const ok = await saveSettings({ language: language.id })
+              if (ok && language.id !== getLanguage()) setAskRestart(true)
+            }}
+          >
+            <div className="option-name">{language.label}</div>
+          </button>
+        ))}
+      </div>
+      {pending && !askRestart && (
+        <p className="hint">
+          {tr('Die neue Sprache gilt ab dem nächsten Start.', 'The new language applies from the next start.')}{' '}
+          <button className="link" onClick={() => setAskRestart(true)}>
+            {tr('Jetzt neu starten', 'Restart now')}
+          </button>
+        </p>
+      )}
+      <Confirm
+        open={askRestart}
+        title={tr('Launcher neu starten?', 'Restart the launcher?')}
+        confirmLabel={tr('Neu starten', 'Restart')}
+        message={tr(
+          'Die Sprache wechselt nach einem Neustart. Laufende Downloads müssen vorher fertig sein.',
+          'The language changes after a restart. Running downloads need to finish first.'
+        )}
+        onConfirm={async () => {
+          setAskRestart(false)
+          try {
+            await window.gabi.app.relaunch()
+          } catch (err) {
+            toastError(err, tr('Neustart nicht möglich', 'Restart not possible'))
+          }
+        }}
+        onCancel={() => setAskRestart(false)}
+      />
+    </section>
+  )
 }
 
 function UpdatePanel(): JSX.Element {
@@ -374,6 +434,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
 
           {section === 'appearance' && (
             <>
+              <LanguageSetting />
+
               <section className="setting-group">
                 <h3>Theme</h3>
                 <p className="hint">Bestimmt die Hintergrundstimmung des Launchers.</p>

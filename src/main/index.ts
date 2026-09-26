@@ -4,6 +4,7 @@ import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout } from './paths'
 import { getSettings } from './store'
+import { getLanguage, setLanguage } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
@@ -163,7 +164,8 @@ function createWindow(): BrowserWindow {
       // of every recording. The capture, the encoder's slice timer and the
       // handover to the main process all live in that renderer, so the default
       // turned exactly the case this feature exists for into the slowest one.
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      additionalArguments: [`--gabi-lang=${getLanguage()}`]
     }
   })
 
@@ -320,6 +322,8 @@ function bootstrap(): void {
   })
 
   void app.whenReady().then(async () => {
+    // Before any window or translated text exists; fixed until the next start.
+    setLanguage(getSettings().language)
     // Groups the taskbar entry and makes notifications show the app name.
     app.setAppUserModelId('gg.launchgabi.app')
     nativeTheme.themeSource = 'dark'

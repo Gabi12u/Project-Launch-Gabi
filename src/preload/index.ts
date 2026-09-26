@@ -18,7 +18,11 @@ function on(channel: string, listener: (payload: never) => void): () => void {
   return () => ipcRenderer.removeListener(channel, handler)
 }
 
+// Passed in by the main process through additionalArguments.
+const langArg = process.argv.find((arg) => arg.startsWith('--gabi-lang='))
+
 const api = {
+  language: langArg === '--gabi-lang=en' ? 'en' : 'de',
   window: {
     minimize: () => ipcRenderer.send(IPC.windowMinimize),
     maximize: () => ipcRenderer.send(IPC.windowMaximize),
@@ -32,7 +36,8 @@ const api = {
     openPath: call(IPC.appOpenPath),
     pickDirectory: call(IPC.appPickDirectory),
     pickFile: call(IPC.appPickFile),
-    stats: call(IPC.appStats)
+    stats: call(IPC.appStats),
+    relaunch: call(IPC.appRelaunch)
   },
 
   settings: {
