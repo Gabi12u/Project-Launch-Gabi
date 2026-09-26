@@ -650,7 +650,7 @@ export function registerIpc(): void {
   })
 
   handle(IPC.contentImportFile, async (instanceId: string, type: ContentType) => {
-    requireStopped(instanceId, 'Dateien hinzufuegen')
+    requireStopped(instanceId, 'Dateien hinzufügen')
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
       title: 'Dateien hinzufügen',

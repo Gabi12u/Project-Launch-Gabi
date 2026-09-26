@@ -1,27 +1,101 @@
-import { type JSX } from 'react'
+import { useState, type JSX } from 'react'
 import type { InstanceSummary } from '@shared/types'
-import { navigate, useStore } from '../lib/store'
+import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { startInstance, stopInstance, toggleFavorite } from '../lib/actions'
 import { useInstanceIcon, useTilt } from '../lib/hooks'
 import { clickable } from '../lib/a11y'
 import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/format'
-import { IconPlay, IconStar, IconStarFilled, IconStop } from './Icons'
+import { IconCopy, IconExternal, IconFolder, IconPlay, IconStar, IconStarFilled, IconStop, IconTrash } from './Icons'
+import { ContextMenu, useContextMenu, type MenuItem } from './ContextMenu'
+import { Confirm } from './ui'
 
 export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.Element {
   const { starting } = useStore()
   const iconSrc = useInstanceIcon(instance)
   const isStarting = starting.includes(instance.id)
   const tilt = useTilt<HTMLElement>(5)
+  const menu = useContextMenu<null>()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
 
   const accent = instance.appearance.accent
+  // Mirrors the guards the main process itself has against duplicating: it
+  // refuses while the instance is running, starting, mid setup or mid mod
+  // change, so the entry is greyed out here instead of failing on click.
+  const duplicateBlocked = instance.running || isStarting || instance.installing || instance.contentBusy
+
+  const duplicate = async (): Promise<void> => {
+    setDuplicating(true)
+    try {
+      await window.gabi.instances.duplicate(instance.id)
+      toast('success', 'Instanz dupliziert', instance.name)
+      await refreshInstances()
+    } catch (err) {
+      toastError(err, 'Instanz konnte nicht dupliziert werden')
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
+  const remove = async (): Promise<void> => {
+    try {
+      await window.gabi.instances.remove(instance.id)
+      toast('info', 'Instanz gelöscht', instance.name)
+      await refreshInstances()
+    } catch (err) {
+      toastError(err, 'Instanz konnte nicht gelöscht werden')
+    } finally {
+      setConfirmDelete(false)
+    }
+  }
+
+  const menuItems: MenuItem[] = [
+    {
+      label: instance.running ? 'Beenden' : 'Spielen',
+      icon: instance.running ? <IconStop size={14} /> : <IconPlay size={14} />,
+      disabled: !instance.running && (isStarting || instance.installing),
+      onSelect: () => {
+        if (instance.running) void stopInstance(instance.id)
+        else void startInstance(instance.id, instance.name)
+      }
+    },
+    {
+      label: 'Öffnen',
+      icon: <IconExternal size={14} />,
+      onSelect: () => navigate(`/instances/${instance.id}`)
+    },
+    {
+      label: 'Ordner öffnen',
+      icon: <IconFolder size={14} />,
+      onSelect: () => void window.gabi.instances.openFolder(instance.id)
+    },
+    {
+      label: 'Duplizieren',
+      icon: <IconCopy size={14} />,
+      disabled: duplicateBlocked || duplicating,
+      disabledReason: 'Die Instanz läuft gerade oder wird gerade bearbeitet.',
+      separated: true,
+      onSelect: () => void duplicate()
+    },
+    {
+      label: 'Löschen',
+      icon: <IconTrash size={14} />,
+      danger: true,
+      disabled: instance.running,
+      disabledReason: 'Beende die Instanz zuerst.',
+      onSelect: () => setConfirmDelete(true)
+    }
+  ]
 
   return (
+    <>
     <article
       className="instance-card"
       style={{ ['--card-accent' as string]: accent }}
       aria-label={instance.name}
       {...clickable(() => navigate(`/instances/${instance.id}`))}
       {...tilt}
+      onContextMenu={(event) => menu.onContextMenu(event, null)}
     >
       <div className="instance-cover">
         <div className="instance-icon">
@@ -119,5 +193,23 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
         </div>
       </div>
     </article>
+
+    {menu.open && <ContextMenu x={menu.open.x} y={menu.open.y} items={menuItems} onClose={menu.close} />}
+
+    <Confirm
+      open={confirmDelete}
+      title="Instanz löschen?"
+      danger
+      confirmLabel="Endgültig löschen"
+      message={
+        <>
+          <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots, Aufnahmen und
+          Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
+        </>
+      }
+      onConfirm={remove}
+      onCancel={() => setConfirmDelete(false)}
+    />
+    </>
   )
 }

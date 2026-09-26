@@ -9,7 +9,7 @@ import type {
 import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { CHANGELOG, CHANGE_KIND_LABEL } from '@shared/changelog'
-import { refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { navigate, refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { memorySliderMax, useDebouncedSetting } from '../lib/hooks'
 import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
 import { Confirm, SettingToggle } from '../components/ui'
@@ -112,8 +112,19 @@ function UpdatePanel(): JSX.Element {
         {status?.error && <p className="hint mt-8">{status.error}</p>}
 
         {status?.notes && state !== 'up-to-date' && (
-          <p className="hint mt-8" style={{ whiteSpace: 'pre-wrap' }}>
-            {status.notes.slice(0, 600)}
+          // The raw release notes are markdown from GitHub, not plain text, so
+          // showing them as-is left stray "#" and "-" characters on screen.
+          // The changelog tab already renders the same information properly.
+          <p className="hint mt-8">
+            Was neu ist, steht unter{' '}
+            <button
+              className="link"
+              style={{ background: 'none', padding: 0 }}
+              onClick={() => navigate('/settings?section=changelog')}
+            >
+              Änderungen
+            </button>
+            .
           </p>
         )}
 
@@ -206,6 +217,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   const [detecting, setDetecting] = useState(false)
   const [installingJava, setInstallingJava] = useState<number | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmDataDir, setConfirmDataDir] = useState(false)
   const [apiKey, setApiKey] = useState(settings.curseForgeApiKey)
   // Only claims to be unread once the version is actually known: before the
   // app info arrives both sides are empty strings and the dot would flicker.
@@ -247,6 +259,21 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
     setApiKey(settings.curseForgeApiKey)
     setClientId(settings.microsoftClientId)
   }, [settings.curseForgeApiKey, settings.microsoftClientId])
+
+  /** Runs after the confirm dialog, once the user actually wants to switch. */
+  const changeDataDirectory = async (): Promise<void> => {
+    setConfirmDataDir(false)
+    const dir = await window.gabi.app.pickDirectory('Datenverzeichnis wählen')
+    if (!dir) return
+    // Only report a move once the save actually took. A rejected path
+    // (unwritable, invalid) left the directory untouched, yet this still told
+    // the user it had changed and to go move their data across.
+    if (!(await saveSettings({ dataDirectory: dir }))) return
+    // The main process just dropped its instance cache, so the list on screen
+    // still shows the old directory's instances until it is read again.
+    await refreshInstances()
+    toast('success', 'Datenordner geändert')
+  }
 
   return (
     <div className="col gap-24">
@@ -311,6 +338,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 />
                 <SettingToggle
                   label="Über verfügbare Updates informieren"
+                  hint="Zeigt eine Meldung, wenn die Prüfung oben neue Mod-Updates gefunden hat."
                   checked={settings.notifyOnUpdates}
                   onChange={(value) => void saveSettings({ notifyOnUpdates: value })}
                 />
@@ -329,28 +357,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 </p>
                 <div className="row gap-8">
                   <input className="input" value={settings.dataDirectory} readOnly />
-                  <button
-                    className="btn"
-                    onClick={async () => {
-                      const dir = await window.gabi.app.pickDirectory('Datenverzeichnis wählen')
-                      if (!dir) return
-                      // Only report a move once the save actually took. A
-                      // rejected path (unwritable, invalid) left the directory
-                      // untouched, yet this still told the user it had changed
-                      // and to go move their data across.
-                      if (!(await saveSettings({ dataDirectory: dir }))) return
-                      // The main process just dropped its instance cache, so the
-                      // list on screen still shows the old directory's instances
-                      // until it is read again.
-                      await refreshInstances()
-                      toast(
-                        'warning',
-                        'Verzeichnis geändert',
-                        'Vorhandene Daten wurden nicht verschoben. Kopiere sie bei Bedarf selbst.',
-                        10000
-                      )
-                    }}
-                  >
+                  <button className="btn" onClick={() => setConfirmDataDir(true)}>
                     Ändern
                   </button>
                   <button
@@ -731,8 +738,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               <section className="setting-group">
                 <h3>Zurücksetzen</h3>
                 <p className="hint">
-                  Setzt alle Launcher-Einstellungen auf die Voreinstellung zurück. Instanzen, Welten und
-                  Accounts bleiben erhalten.
+                  Setzt alle Launcher-Einstellungen auf die Voreinstellung zurück. Der Datenordner und
+                  deine Instanzen, Welten und Accounts bleiben dabei unverändert.
                 </p>
                 <button className="btn danger" onClick={() => setConfirmReset(true)}>
                   <IconTrash size={15} />
@@ -796,6 +803,15 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           toast('success', 'Zurückgesetzt')
         }}
         onCancel={() => setConfirmReset(false)}
+      />
+
+      <Confirm
+        open={confirmDataDir}
+        title="Datenordner ändern?"
+        confirmLabel="Ordner auswählen"
+        message="Deine vorhandenen Instanzen werden nicht verschoben. Im neuen Ordner startest du leer. Den alten Ordner kannst du jederzeit wieder auswählen."
+        onConfirm={changeDataDirectory}
+        onCancel={() => setConfirmDataDir(false)}
       />
     </div>
   )

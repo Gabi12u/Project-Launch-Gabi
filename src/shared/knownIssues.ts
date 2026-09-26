@@ -2472,8 +2472,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer bei laufendem Spiel Dateien zu einer Instanz hinzufügen wollte, bekam die Meldung „Dateien ' +
       'hinzufuegen ist nicht möglich …“ mit falsch geschriebenem Wort.',
-    state: 'fixing',
-    since: '2026-09-27'
+    state: 'fixed',
+    since: '2026-09-27',
+    fixedIn: '1.0.20'
   },
   {
     id: 'changelog-farben-fehlen',
@@ -2482,8 +2483,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Im Änderungsverlauf, bei Screenshots ohne Vorschau und in aufgeklappten Fehlerberichten sollten ' +
       'Datum und Nebentexte gedämpft erscheinen. Die dafür vorgesehenen Farben waren nirgends ' +
       'festgelegt, der Text erschien deshalb in der normalen Farbe.',
-    state: 'fixing',
-    since: '2026-09-27'
+    state: 'fixed',
+    since: '2026-09-27',
+    fixedIn: '1.0.20'
   },
   {
     id: 'suche-tooltip-fehlt',
@@ -2491,8 +2493,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Der Suchknopf oben im Fenster sollte beim Darüberfahren die Tastenkombination zeigen. Der ' +
       'Hinweis war zwar hinterlegt, wurde aber nie angezeigt.',
-    state: 'fixing',
-    since: '2026-09-27'
+    state: 'fixed',
+    since: '2026-09-27',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mod-entfernen-ohne-rueckfrage',
@@ -2500,8 +2503,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Der Papierkorb neben dem An/Aus-Schalter eines Mods löschte die Datei sofort und endgültig, ' +
       'ohne Nachfrage. Bei langen Listen führte ein Fehlklick so zum Verlust des Mods.',
-    state: 'fixing',
-    since: '2026-09-27'
+    state: 'fixed',
+    since: '2026-09-27',
+    fixedIn: '1.0.20'
   },
   {
     id: 'datenordner-wechsel-ohne-warnung',
@@ -2510,8 +2514,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Nach „Datenordner ändern“ zeigte der Launcher sofort den neuen, leeren Ordner. Dass die ' +
       'vorhandenen Instanzen nicht mit umgezogen werden, stand erst danach in einer kurz sichtbaren ' +
       'Meldung.',
-    state: 'fixing',
-    since: '2026-09-27'
+    state: 'fixed',
+    since: '2026-09-27',
+    fixedIn: '1.0.20'
   }
 ]
 

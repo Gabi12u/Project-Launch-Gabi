@@ -69,10 +69,10 @@ export function TitleBar(): JSX.Element {
       {platform !== 'darwin' && (
         <div className="titlebar-right">
           <button
-            className="win-btn wide no-drag"
+            className="win-btn wide no-drag tip tip-below"
             onClick={() => setState({ paletteOpen: true })}
             aria-label="Befehle suchen"
-            data-tip="Strg + K"
+            data-tip="Strg K"
           >
             <IconSearch size={15} />
           </button>

@@ -237,7 +237,12 @@ export function CompatibilityGate(): JSX.Element | null {
   return (
     <Modal
       open
-      title="⚠️ Problem gefunden"
+      title={
+        <span className="row gap-8" style={{ alignItems: 'center' }}>
+          <IconWarning size={16} />
+          Problem gefunden
+        </span>
+      }
       subtitle={`${compatGate.instanceName} kann so nicht gestartet werden.`}
       onClose={close}
       busy={fixing}

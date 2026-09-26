@@ -1,4 +1,4 @@
-import { getState, refreshInstances, setState, toast, toastError } from './store'
+import { getState, promptToast, refreshInstances, setState, toast, toastError } from './store'
 import { renderInstanceIcon } from './icon'
 
 /**
@@ -10,11 +10,17 @@ export async function startInstance(instanceId: string, instanceName: string): P
 
   const accounts = getState().accounts
   if (accounts.length === 0) {
-    toast(
+    promptToast(
       'warning',
       'Kein Account',
       'Melde dich zuerst mit Microsoft an oder lege ein Offline-Profil an.',
-      7000
+      [
+        {
+          label: 'Account hinzufügen',
+          primary: true,
+          onClick: () => setState({ accountModalOpen: true })
+        }
+      ]
     )
     return
   }

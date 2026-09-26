@@ -1,11 +1,27 @@
 import { useEffect, useState, type JSX } from 'react'
 import { ACCENT_CHOICES } from '@shared/defaults'
-import { refreshAccounts, saveSettings, toast, toastError, useStore } from '../lib/store'
+import { refreshAccounts, saveSettings, setState, toast, toastError, useStore } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
 import { LogoLockup } from '../components/Logo'
 import { AccountModal } from '../components/AccountModal'
 import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../components/Icons'
+
+/** German names for the accent swatches, read out by screen readers instead of the raw hex value. */
+const ACCENT_NAMES: Record<string, string> = {
+  '#7c5cff': 'Lila',
+  '#4f7bff': 'Blau',
+  '#22c6f2': 'Türkis',
+  '#25d0a1': 'Smaragd',
+  '#5ec26a': 'Grün',
+  '#f2c33d': 'Gelb',
+  '#ff8a3d': 'Orange',
+  '#ff5c7a': 'Rot',
+  '#e254d8': 'Pink',
+  '#9aa4c4': 'Graublau'
+}
+
+const TOTAL_STEPS = 3
 
 /** First-run wizard: identity, look and account in three short steps. */
 export function Onboarding(): JSX.Element {
@@ -54,7 +70,8 @@ export function Onboarding(): JSX.Element {
         onboarded: true
       })
       if (saved) {
-        toast('success', 'Willkommen bei Launch Gabi', 'Lege jetzt deine erste Instanz an.')
+        toast('success', 'Willkommen bei Launch Gabi', 'Leg direkt deine erste Instanz an.')
+        setState({ createOpen: true })
       }
     } catch (err) {
       toastError(err, 'Einrichtung fehlgeschlagen')
@@ -66,6 +83,17 @@ export function Onboarding(): JSX.Element {
   return (
     <div className="onboarding">
       <div className="onboarding-card">
+        <div className="onboarding-steps">
+          <div className="onboarding-dots" aria-hidden="true">
+            {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
+              <span key={index} className={`onboarding-dot${index <= step ? ' done' : ''}`} />
+            ))}
+          </div>
+          <span className="hint">
+            Schritt {step + 1} von {TOTAL_STEPS}
+          </span>
+        </div>
+
         {step === 0 && (
           <div className="col gap-24">
             <LogoLockup />
@@ -108,7 +136,7 @@ export function Onboarding(): JSX.Element {
                       // Apply immediately so the choice is visible right away.
                       void saveSettings({ accentColor: color })
                     }}
-                    aria-label={color}
+                    aria-label={ACCENT_NAMES[color] ?? color}
                   />
                 ))}
               </div>
@@ -220,6 +248,7 @@ export function Onboarding(): JSX.Element {
           setAccountOpen(false)
           void refreshAccounts()
         }}
+        closeOnSuccess
       />
     </div>
   )

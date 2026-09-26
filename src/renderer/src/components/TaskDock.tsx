@@ -20,6 +20,50 @@ export function TaskDock(): JSX.Element | null {
   // rest of the session.
   const scheduled = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
+  // Rough "time left" for long downloads, guessed from how fast progress moved
+  // recently. Kept as a plain ref (time, fraction) history per task rather than
+  // in the shared store, since it is a renderer-only display detail nobody
+  // else needs.
+  const progressHistory = useRef<Map<string, { t: number; p: number }[]>>(new Map())
+  const [remaining, setRemaining] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const now = Date.now()
+    const ids = new Set(tasks.map((t) => t.id))
+    // Without this a task that finished or was cancelled long ago would keep
+    // its sample history around for the rest of the session.
+    for (const id of progressHistory.current.keys()) {
+      if (!ids.has(id)) progressHistory.current.delete(id)
+    }
+
+    const next: Record<string, string> = {}
+    for (const task of tasks) {
+      if (task.state !== 'running' || task.progress === null) continue
+
+      const samples = progressHistory.current.get(task.id) ?? []
+      const last = samples[samples.length - 1]
+      if (!last || last.p !== task.progress) samples.push({ t: now, p: task.progress })
+      // Roughly the last 30s of samples, so the rate is an average over that
+      // window instead of jumping with every single progress event.
+      while (samples.length > 2 && now - samples[1].t > 30000) samples.shift()
+      progressHistory.current.set(task.id, samples)
+
+      const first = samples[0]
+      const elapsed = now - first.t
+      if (elapsed < 5000 || task.progress < 0.03) continue
+
+      const rate = (task.progress - first.p) / elapsed
+      if (rate <= 0 || !Number.isFinite(rate)) continue
+
+      const remainingMs = (1 - task.progress) / rate
+      if (!Number.isFinite(remainingMs)) continue
+
+      const minutes = Math.round(remainingMs / 60000)
+      next[task.id] = minutes < 1 ? 'noch unter 1 Min.' : `noch ca. ${minutes} Min.`
+    }
+    setRemaining(next)
+  }, [tasks])
+
   useEffect(() => {
     const finished = tasks.filter((t) => t.state === 'done' || t.state === 'cancelled')
     const fresh = finished.filter((t) => !scheduled.current.has(t.id))
@@ -102,6 +146,11 @@ export function TaskDock(): JSX.Element | null {
                 {task.progress !== null && task.state === 'running' && (
                   <span className="mono" style={{ color: 'var(--text-3)' }}>
                     {Math.round(task.progress * 100)}%
+                  </span>
+                )}
+                {task.state === 'running' && remaining[task.id] && (
+                  <span className="mono" style={{ color: 'var(--text-4)', fontSize: 11 }}>
+                    {remaining[task.id]}
                   </span>
                 )}
                 {task.state === 'running' && (

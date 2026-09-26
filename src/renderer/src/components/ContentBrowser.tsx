@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import type {
+  ContentItem,
   ContentType,
   LoaderId,
   ProjectDetails,
@@ -60,6 +61,17 @@ function sortMerged(items: SearchResultItem[], sort: SearchQuery['sort']): Searc
       break
   }
   return sorted
+}
+
+/**
+ * Names the dependencies an install pulled in, e.g. "Fabric API" or
+ * "Fabric API und Cloth Config". Beyond three, only the first two are named
+ * and the rest are just counted, so the toast does not grow without bound.
+ */
+function describeDependencies(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? ''
+  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}`
+  return `${names[0]}, ${names[1]} und ${names.length - 2} weitere`
 }
 
 interface Props {
@@ -234,7 +246,9 @@ export function ContentBrowser({
         toast(
           'success',
           `${item.name} installiert`,
-          installed.length > 1 ? `Inklusive ${installed.length - 1} Abhängigkeiten.` : undefined
+          installed.length > 1
+            ? `Inklusive ${describeDependencies(installed.slice(1).map((dep) => dep.name))}.`
+            : undefined
         )
       }
       onInstalled?.()
@@ -254,6 +268,12 @@ export function ContentBrowser({
     () => response?.errors.some((e) => e.provider === 'curseforge' && e.message.includes('API')),
     [response]
   )
+
+  // The empty state otherwise just says "nothing found", which reads like a
+  // dead end when the real reason is that CurseForge, the only source left
+  // active, could not even be queried without a key.
+  const emptyDueToMissingKey =
+    missingKey && providers.length === 1 && providers[0] === 'curseforge' && !settings.curseForgeApiKey
 
   return (
     <div className="col gap-16">
@@ -309,12 +329,20 @@ export function ContentBrowser({
         <button
           className={`badge ${providers.includes('modrinth') ? 'accent' : ''}`}
           style={{ cursor: 'pointer' }}
+          title={
+            providers.length === 1 && providers.includes('modrinth')
+              ? 'Mindestens eine Quelle muss aktiv sein'
+              : undefined
+          }
           onClick={() =>
-            setProviders((current) =>
-              current.includes('modrinth')
-                ? current.filter((p) => p !== 'modrinth')
-                : [...current, 'modrinth']
-            )
+            setProviders((current) => {
+              // The last active provider cannot be switched off, or the search
+              // would have nothing left to query at all.
+              if (current.includes('modrinth')) {
+                return current.length > 1 ? current.filter((p) => p !== 'modrinth') : current
+              }
+              return [...current, 'modrinth']
+            })
           }
         >
           Modrinth
@@ -323,12 +351,18 @@ export function ContentBrowser({
         <button
           className={`badge ${providers.includes('curseforge') ? 'accent' : ''}`}
           style={{ cursor: 'pointer' }}
+          title={
+            providers.length === 1 && providers.includes('curseforge')
+              ? 'Mindestens eine Quelle muss aktiv sein'
+              : undefined
+          }
           onClick={() =>
-            setProviders((current) =>
-              current.includes('curseforge')
-                ? current.filter((p) => p !== 'curseforge')
-                : [...current, 'curseforge']
-            )
+            setProviders((current) => {
+              if (current.includes('curseforge')) {
+                return current.length > 1 ? current.filter((p) => p !== 'curseforge') : current
+              }
+              return [...current, 'curseforge']
+            })
           }
         >
           CurseForge
@@ -367,9 +401,11 @@ export function ContentBrowser({
           icon={<IconPackage size={26} />}
           title="Nichts gefunden"
           message={
-            useVersionFilter && mcVersion
-              ? `Für Minecraft ${mcVersion} gibt es dazu nichts. Schalte den Versionsfilter aus, um breiter zu suchen.`
-              : 'Versuche einen anderen Suchbegriff.'
+            emptyDueToMissingKey
+              ? 'CurseForge ist als einzige Quelle aktiv, aber ohne API-Schlüssel liefert es keine Ergebnisse. Trage einen Schlüssel in den Einstellungen ein oder schalte Modrinth mit dazu.'
+              : useVersionFilter && mcVersion
+                ? `Für Minecraft ${mcVersion} gibt es dazu nichts. Schalte den Versionsfilter aus, um breiter zu suchen.`
+                : 'Versuche einen anderen Suchbegriff.'
           }
         />
       ) : (
@@ -541,6 +577,32 @@ function ProjectModal({
   const [selected, setSelected] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [onlyCompatible, setOnlyCompatible] = useState(true)
+  // Looked up separately from `installedProjectIds` (which only carries ids)
+  // so the modal can show which version is already in place.
+  const [installedItem, setInstalledItem] = useState<ContentItem | null>(null)
+
+  useEffect(() => {
+    if (!instanceId) {
+      setInstalledItem(null)
+      return
+    }
+    let current = true
+    void window.gabi.instances
+      .get(instanceId)
+      .then((instance) => {
+        if (!current) return
+        setInstalledItem(
+          instance.content.find((c) => c.provider === item.provider && c.projectId === item.projectId) ??
+            null
+        )
+      })
+      .catch(() => {
+        if (current) setInstalledItem(null)
+      })
+    return () => {
+      current = false
+    }
+  }, [instanceId, item.provider, item.projectId])
 
   useEffect(() => {
     // Guarded like the other async lookups in this app: closing the dialog
@@ -566,14 +628,14 @@ function ProjectModal({
     }
   }, [item.provider, item.projectId])
 
-  const shown = useMemo(() => {
-    if (!onlyCompatible || !mcVersion) return versions
+  // Deliberately the same rules the rest of the app applies, not stricter.
+  // Demanding an exact game-version match hid a mod published only for
+  // "1.21" from a 1.21.1 instance, even though installing it without
+  // picking a version works and the compatibility check afterwards raises
+  // no objection. The Quilt exception was missing for the same reason.
+  const compatibleVersions = useMemo(() => {
+    if (!mcVersion) return versions
 
-    // Deliberately the same rules the rest of the app applies, not stricter.
-    // Demanding an exact game-version match hid a mod published only for
-    // "1.21" from a 1.21.1 instance, even though installing it without
-    // picking a version works and the compatibility check afterwards raises
-    // no objection. The Quilt exception was missing for the same reason.
     const line = mcVersion.split('.').slice(0, 2).join('.')
     const versionFits = (version: (typeof versions)[number]): boolean =>
       version.gameVersions.length === 0 ||
@@ -588,13 +650,26 @@ function ProjectModal({
       (loader === 'quilt' && version.loaders.includes('fabric'))
 
     return versions.filter((version) => versionFits(version) && loaderFits(version))
-  }, [versions, onlyCompatible, mcVersion, loader])
+  }, [versions, mcVersion, loader])
+
+  const shown = onlyCompatible && mcVersion ? compatibleVersions : versions
+
+  // `versions` arrives sorted newest first (see the provider), so the first
+  // compatible entry is what "Neueste installieren" would actually fetch.
+  const latestVersionId = compatibleVersions[0]?.versionId
+  const installedIsLatest = Boolean(
+    installedItem?.versionId && latestVersionId && installedItem.versionId === latestVersionId
+  )
 
   return (
     <Modal
       open
       title={item.name}
-      subtitle={item.author ? `von ${item.author}` : undefined}
+      subtitle={
+        [item.author ? `von ${item.author}` : null, installedItem ? `Bereits installiert: ${installedItem.version}` : null]
+          .filter(Boolean)
+          .join(' · ') || undefined
+      }
       onClose={onClose}
       width="wide"
       footer={
@@ -605,7 +680,12 @@ function ProjectModal({
           </button>
           <div className="grow" />
           {instanceId && (
-            <button className="btn primary" onClick={() => onInstall(selected || undefined)} disabled={installing}>
+            <button
+              className="btn primary"
+              onClick={() => onInstall(selected || undefined)}
+              disabled={installing || (!selected && installedIsLatest)}
+              title={!selected && installedIsLatest ? 'Diese Version ist schon installiert' : undefined}
+            >
               {installing ? <span className="spinner" /> : <IconDownload size={15} />}
               {selected ? 'Diese Version installieren' : 'Neueste installieren'}
             </button>

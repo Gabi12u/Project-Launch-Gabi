@@ -30,6 +30,11 @@ export interface AppState {
   createOpen: boolean
   /** Set while the Ctrl+K command palette is open. */
   paletteOpen: boolean
+  /**
+   * Set to request the account modal from outside the sidebar, e.g. from a
+   * toast action. The sidebar owns the actual dialog and watches this flag.
+   */
+  accountModalOpen: boolean
   /** Populated when a launch was stopped by compatibility problems. */
   compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
   /** Populated when a launch is paused to ask about outdated mods first. */
@@ -61,6 +66,7 @@ const initial: AppState = {
   maximized: false,
   createOpen: false,
   paletteOpen: false,
+  accountModalOpen: false,
   compatGate: null,
   modUpdateGate: null,
   starting: [],

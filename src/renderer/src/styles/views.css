@@ -1092,6 +1092,34 @@
   animation: pop-in var(--t-slow) var(--ease);
 }
 
+.onboarding-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.onboarding-steps .hint {
+  margin: 0;
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.onboarding-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--line-strong);
+  transition: background var(--t) var(--ease);
+}
+
+.onboarding-dot.done {
+  background: var(--accent);
+}
+
 /* --- Device code ------------------------------------------------------- */
 
 .device-code {
@@ -1155,7 +1183,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--text-dim);
+  color: var(--text-3);
   background: var(--surface-2);
 }
 
@@ -1254,13 +1282,13 @@
 .changelog-date {
   margin-left: auto;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--text-3);
 }
 
 .changelog-headline {
   margin: 6px 0 12px;
   font-size: 13px;
-  color: var(--text-soft);
+  color: var(--text-2);
 }
 
 .changelog-list {
@@ -1401,5 +1429,5 @@
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
-  color: var(--text-soft);
+  color: var(--text-3);
 }

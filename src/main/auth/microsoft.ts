@@ -93,7 +93,7 @@ function announceInsecureStorage(): void {
       : {
           title: 'Anmeldetoken unverschlüsselt gespeichert',
           message:
-            'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Kontoeinstellungen.'
+            'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Einstellungen unter Accounts.'
         }
 
   notify('warning', title, message, { route: '/settings?section=accounts' })
@@ -515,23 +515,23 @@ function describeXboxFailure(err: HttpError): string | null {
   switch (xerr) {
     case 2148916233:
       return (
-        'Zu diesem Microsoft-Konto gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
+        'Zu diesem Microsoft-Account gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
         'xbox.com an, lege dort ein Profil an, und versuche es danach erneut.'
       )
     case 2148916235:
       return (
-        'Xbox Live ist im Land dieses Kontos nicht verfügbar. Die Anmeldung ist damit ' +
+        'Xbox Live ist im Land dieses Accounts nicht verfügbar. Die Anmeldung ist damit ' +
         'leider nicht möglich.'
       )
     case 2148916236:
     case 2148916237:
       return (
-        'Dieses Konto benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
+        'Dieser Account benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
         'durch und versuche es danach erneut.'
       )
     case 2148916238:
       return (
-        'Dieses Konto gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
+        'Dieser Account gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
         'sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen ' +
         'freigeben, danach ist die Anmeldung möglich.'
       )
@@ -650,7 +650,7 @@ export function explainMissingProfile(entitlements: string[]): string {
 
   if (hasGamePass) {
     return (
-      'Dieses Konto hat Minecraft über den Game Pass, aber noch keinen Spielernamen für die ' +
+      'Dieser Account hat Minecraft über den Game Pass, aber noch keinen Spielernamen für die ' +
       'Java Edition. Starte Minecraft Java einmal über die Xbox-App oder den offiziellen ' +
       'Minecraft-Launcher und lege dort einen Namen fest. Danach funktioniert die Anmeldung hier.'
     )
@@ -658,13 +658,13 @@ export function explainMissingProfile(entitlements: string[]): string {
 
   if (hasJava) {
     return (
-      'Dieses Konto besitzt die Java Edition, hat aber noch keinen Spielernamen. Lege auf ' +
+      'Dieser Account besitzt die Java Edition, hat aber noch keinen Spielernamen. Lege auf ' +
       'minecraft.net einen fest und melde dich danach erneut an.'
     )
   }
 
   return (
-    'Für dieses Konto gibt es noch kein Minecraft-Java-Profil. Das trifft auf Konten zu, die ' +
+    'Für diesen Account gibt es noch kein Minecraft-Java-Profil. Das trifft auf Accounts zu, die ' +
     'Java Edition weder gekauft noch über den Game Pass haben, und auf solche, bei denen noch ' +
     'kein Spielername festgelegt wurde. Hast du Game Pass, starte Minecraft Java einmal über ' +
     'die Xbox-App. Hast du gekauft, lege den Namen auf minecraft.net fest.'

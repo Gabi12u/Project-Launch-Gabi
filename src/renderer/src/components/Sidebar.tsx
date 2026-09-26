@@ -22,7 +22,7 @@ interface NavEntry {
 }
 
 export function Sidebar(): JSX.Element {
-  const { route, instances, accounts, updateReady } = useStore()
+  const { route, instances, accounts, updateReady, accountModalOpen } = useStore()
   const [accountOpen, setAccountOpen] = useState(false)
 
   const section = parseRoute(route).section
@@ -141,9 +141,10 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       <AccountModal
-        open={accountOpen}
+        open={accountOpen || accountModalOpen}
         onClose={() => {
           setAccountOpen(false)
+          setState({ accountModalOpen: false })
           void refreshAccounts()
         }}
       />

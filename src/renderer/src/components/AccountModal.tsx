@@ -5,7 +5,19 @@ import { initials, skinHeadStyle } from '../lib/format'
 import { Confirm, CopyButton, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
 
-export function AccountModal({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element {
+/** Player names Mojang accepts for an offline profile. */
+const OFFLINE_NAME_RE = /^[A-Za-z0-9_]{3,16}$/
+
+export function AccountModal({
+  open,
+  onClose,
+  closeOnSuccess
+}: {
+  open: boolean
+  onClose: () => void
+  /** Closes the dialog right after a successful sign in, for the onboarding flow. */
+  closeOnSuccess?: boolean
+}): JSX.Element {
   const { accounts } = useStore()
   const [prompt, setPrompt] = useState<DeviceCodePrompt | null>(null)
   const [busy, setBusy] = useState(false)
@@ -42,6 +54,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       toast('success', 'Angemeldet', `Willkommen, ${account.username}!`)
       await refreshAccounts()
       setPrompt(null)
+      if (closeOnSuccess) onClose()
     } catch (err) {
       if (ticket !== attempt.current) return
       // A cancel the user asked for themselves is not a failure and needs no
@@ -73,8 +86,10 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
     onClose()
   }
 
+  const offlineValid = OFFLINE_NAME_RE.test(offlineName.trim())
+
   const loginOffline = async (): Promise<void> => {
-    if (!offlineName.trim() || creatingOffline) return
+    if (!offlineValid || creatingOffline) return
     // Without this guard a double click fires two concurrent requests and two
     // success toasts for one intent, unlike the Microsoft button which is
     // disabled while busy.
@@ -84,6 +99,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       toast('success', 'Offline-Profil angelegt', account.username)
       setOfflineName('')
       await refreshAccounts()
+      if (closeOnSuccess) onClose()
     } catch (err) {
       toastError(err, 'Profil konnte nicht angelegt werden')
     } finally {
@@ -103,7 +119,7 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
       await refreshAccounts()
       setConfirmRemove(null)
     } catch (err) {
-      toastError(err, 'Konto konnte nicht entfernt werden')
+      toastError(err, 'Account konnte nicht entfernt werden')
     }
   }
 
@@ -166,13 +182,19 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
                 <button
                   className="btn"
                   onClick={loginOffline}
-                  disabled={creatingOffline || offlineName.trim().length < 3}
+                  disabled={creatingOffline || !offlineValid}
                 >
                   Anlegen
                 </button>
               </div>
+              {offlineName.length > 0 && !offlineValid && (
+                <span className="hint" style={{ color: 'var(--danger)' }}>
+                  Nur Buchstaben, Zahlen und Unterstriche, 3 bis 16 Zeichen.
+                </span>
+              )}
               <span className="hint">
                 Offline-Profile funktionieren nur auf Servern ohne Online-Modus und in Einzelspieler-Welten.
+                Mindestens 3 Zeichen, nur Buchstaben, Zahlen und Unterstriche.
               </span>
             </div>
           </div>
@@ -181,11 +203,11 @@ export function AccountModal({ open, onClose }: { open: boolean; onClose: () => 
 
       <Confirm
         open={confirmRemove !== null}
-        title="Konto entfernen?"
+        title="Account entfernen?"
         danger
         message={
           confirmRemove
-            ? `${confirmRemove.username} wird aus diesem Launcher entfernt. Ein Microsoft-Konto lässt sich jederzeit erneut anmelden, ein Offline-Profil danach nicht wiederherstellen.`
+            ? `${confirmRemove.username} wird aus diesem Launcher entfernt. Ein Microsoft-Account lässt sich jederzeit erneut anmelden, ein Offline-Profil danach nicht wiederherstellen.`
             : ''
         }
         confirmLabel="Entfernen"
@@ -265,7 +287,7 @@ function DeviceCodePanel({
       <div className="col gap-8">
         <div style={{ fontSize: 15, fontWeight: 650 }}>Anmeldung bei Microsoft</div>
         <p className="hint">
-          Öffne die Seite, melde dich mit deinem Microsoft-Konto an und gib dort den folgenden Code ein.
+          Öffne die Seite, melde dich mit deinem Microsoft-Account an und gib dort den folgenden Code ein.
           Danach geht es hier automatisch weiter.
         </p>
       </div>
@@ -286,7 +308,9 @@ function DeviceCodePanel({
       <div className="row-between">
         <span className="hint">
           <span className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />
-          Warte auf Bestätigung… (noch {minutes}:{String(seconds).padStart(2, '0')})
+          {remaining > 0
+            ? `Warte auf Bestätigung… (noch ${minutes}:${String(seconds).padStart(2, '0')})`
+            : 'Code abgelaufen, wird geprüft…'}
         </span>
         <button className="btn ghost sm" onClick={onCancel}>
           Abbrechen

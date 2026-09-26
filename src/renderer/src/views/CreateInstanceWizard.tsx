@@ -288,10 +288,17 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
             <button
               className={`btn ${showSnapshots ? 'primary' : ''}`}
               onClick={() => setShowSnapshots((value) => !value)}
+              title="Testversionen von Mojang anzeigen"
             >
               Snapshots
             </button>
           </div>
+
+          {showSnapshots && (
+            <span className="hint">
+              Snapshots sind Testversionen von Mojang und oft noch fehlerhaft.
+            </span>
+          )}
 
           {loadingVersions ? (
             <div className="col gap-8">

@@ -23,13 +23,14 @@ import {
   loaderColor,
   pluralise
 } from '../lib/format'
-import { Confirm, EmptyState, ProgressBar } from '../components/ui'
+import { Confirm, EmptyState, ProgressBar, Segmented } from '../components/ui'
 import { CompatibilityPanel } from '../components/CompatibilityPanel'
 import { ContentBrowser } from '../components/ContentBrowser'
 import { WorldPickerModal } from '../components/WorldPickerModal'
 import { InstanceSettingsPanel } from './InstanceSettings'
 import {
   IconChevronLeft,
+  IconCopy,
   IconCube,
   IconDownload,
   IconExternal,
@@ -98,7 +99,9 @@ export function InstanceDetailView({
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [checking, setChecking] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmRepair, setConfirmRepair] = useState(false)
   const [repairing, setRepairing] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   // Whether the settings panel has unsaved edits, so a tab switch that would
   // unmount it can ask first instead of silently discarding them.
   const [settingsDirty, setSettingsDirty] = useState(false)
@@ -192,6 +195,20 @@ export function InstanceDetailView({
     }
   }
 
+  const duplicate = async (): Promise<void> => {
+    setDuplicating(true)
+    try {
+      const created = await window.gabi.instances.duplicate(instanceId)
+      toast('success', 'Instanz dupliziert', created.name)
+      await refreshInstances()
+      navigate(`/instances/${created.id}`)
+    } catch (err) {
+      toastError(err, 'Instanz konnte nicht dupliziert werden')
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
   if (!instance) {
     return (
       <div className="col gap-16">
@@ -279,7 +296,7 @@ export function InstanceDetailView({
                 onClick={() => void startInstance(instanceId, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? 'STARTET…' : 'PLAY'}
+                {busy ? 'STARTET…' : 'SPIELEN'}
               </button>
             )}
 
@@ -307,9 +324,22 @@ export function InstanceDetailView({
         <button className="btn sm" onClick={() => void createShortcut(instanceId)}>
           <IconLink size={14} /> Desktop-Verknüpfung
         </button>
-        <button className="btn sm" onClick={repair} disabled={repairing || running}>
+        <button
+          className="btn sm"
+          onClick={() => setConfirmRepair(true)}
+          disabled={repairing || running}
+          title="Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods."
+        >
           {repairing ? <span className="spinner" /> : <IconWrench size={14} />}
           Reparieren
+        </button>
+        <button
+          className="btn sm"
+          onClick={duplicate}
+          disabled={duplicating || running || busy || instance.installing || repairing}
+        >
+          {duplicating ? <span className="spinner" /> : <IconCopy size={14} />}
+          Duplizieren
         </button>
         <button
           className="btn sm"
@@ -415,12 +445,29 @@ export function InstanceDetailView({
         confirmLabel="Endgültig löschen"
         message={
           <>
-            <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots und Sicherungen
-            unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
+            <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots, Aufnahmen und
+            Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
           </>
         }
         onConfirm={remove}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      <Confirm
+        open={confirmRepair}
+        title="Instanz reparieren?"
+        confirmLabel="Reparieren"
+        message={
+          <>
+            Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods. Deine
+            Welten und Einstellungen bleiben erhalten.
+          </>
+        }
+        onConfirm={async () => {
+          setConfirmRepair(false)
+          await repair()
+        }}
+        onCancel={() => setConfirmRepair(false)}
       />
 
       <Confirm
@@ -578,6 +625,14 @@ const CONTENT_TABS: { id: ContentType; label: string }[] = [
   { id: 'datapack', label: 'Data Packs' }
 ]
 
+type ContentSortKey = 'name' | 'added' | 'provider'
+
+const CONTENT_SORT_OPTIONS: { value: ContentSortKey; label: string }[] = [
+  { value: 'name', label: 'Name' },
+  { value: 'added', label: 'Zuletzt hinzugefügt' },
+  { value: 'provider', label: 'Anbieter' }
+]
+
 function ContentTab({
   instance,
   onChanged,
@@ -595,15 +650,27 @@ function ContentTab({
   const menu = useContextMenu<ContentItem>()
   const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
   const [confirmUpdate, setConfirmUpdate] = useState<ContentItem | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<ContentItem | null>(null)
   const [worldsFor, setWorldsFor] = useState<ContentItem | null>(null)
+  const [sort, setSort] = useState<ContentSortKey>('name')
 
   const items = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return instance.content
+    const filtered = instance.content
       .filter((c) => c.type === type)
       .filter((c) => !term || c.name.toLowerCase().includes(term) || c.fileName.toLowerCase().includes(term))
-      .sort((a, b) => a.name.localeCompare(b.name, 'de'))
-  }, [instance.content, type, search])
+
+    switch (sort) {
+      case 'added':
+        return [...filtered].sort((a, b) => b.installedAt - a.installedAt)
+      case 'provider':
+        return [...filtered].sort(
+          (a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name, 'de')
+        )
+      default:
+        return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de'))
+    }
+  }, [instance.content, type, search, sort])
 
   const updates = instance.content.filter((c) => c.update).length
 
@@ -657,6 +724,21 @@ function ContentTab({
     }
   }
 
+  // Also shared by the row button and the context menu entry. Removing a file
+  // deletes it from disk for good, so both paths only ask `setConfirmRemove`
+  // to show the dialog below instead of removing right away.
+  const runRemove = async (item: ContentItem): Promise<void> => {
+    try {
+      await window.gabi.content.remove(instance.id, item.id)
+      toast('info', `${item.name} entfernt`)
+      await onChanged()
+    } catch (err) {
+      toastError(err, 'Entfernen fehlgeschlagen')
+    } finally {
+      setConfirmRemove(null)
+    }
+  }
+
   return (
     <div className="col gap-16">
       <div className="row gap-12 wrap">
@@ -685,6 +767,8 @@ function ContentTab({
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
+
+        <Segmented value={sort} onChange={setSort} options={CONTENT_SORT_OPTIONS} />
 
         <div className="grow" />
 
@@ -745,11 +829,7 @@ function ContentTab({
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
                 await onChanged()
               }}
-              onRemove={async () => {
-                await window.gabi.content.remove(instance.id, item.id)
-                toast('info', `${item.name} entfernt`)
-                await onChanged()
-              }}
+              onRemove={() => setConfirmRemove(item)}
             />
           ))}
         </div>
@@ -773,15 +853,7 @@ function ContentTab({
             onUpdate: (item) => setConfirmUpdate(item),
             onPickVersion: (item) => setVersionFor(item),
             onOpenPage: (item) => void window.gabi.app.openExternal(item.pageUrl as string),
-            onRemove: async (item) => {
-              try {
-                await window.gabi.content.remove(instance.id, item.id)
-                toast('info', `${item.name} entfernt`)
-                await onChanged()
-              } catch (err) {
-                toastError(err, 'Entfernen fehlgeschlagen')
-              }
-            }
+            onRemove: (item) => setConfirmRemove(item)
           })}
         />
       )}
@@ -816,6 +888,16 @@ function ContentTab({
           if (item) await runUpdate(item)
         }}
         onCancel={() => setConfirmUpdate(null)}
+      />
+
+      <Confirm
+        open={confirmRemove !== null}
+        title={confirmRemove ? `„${confirmRemove.name}“ entfernen?` : ''}
+        danger
+        confirmLabel="Entfernen"
+        message="Die Datei wird dabei endgültig gelöscht. Wenn du den Mod nur vorübergehend nicht willst, schalte ihn stattdessen aus."
+        onConfirm={() => (confirmRemove ? runRemove(confirmRemove) : Promise.resolve())}
+        onCancel={() => setConfirmRemove(null)}
       />
 
       {worldsFor && (

@@ -274,7 +274,7 @@ function FeaturedInstance({
             {instance.running ? (
               <PlayButton stop onClick={() => void stopInstance(instance.id)}>
                 <IconStop size={18} />
-                MINECRAFT BEENDEN
+                BEENDEN
               </PlayButton>
             ) : (
               <PlayButton
@@ -282,7 +282,7 @@ function FeaturedInstance({
                 onClick={() => void startInstance(instance.id, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? 'WIRD VORBEREITET…' : 'PLAY'}
+                {busy ? 'STARTET…' : 'SPIELEN'}
               </PlayButton>
             )}
           </div>

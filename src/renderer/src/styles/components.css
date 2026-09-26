@@ -1239,6 +1239,18 @@
   translate: -50% -2px;
 }
 
+/* For a button flush with the top edge (the title bar), the default tooltip
+   would open upward and get clipped by the window frame above it. This flips
+   it to open downward instead. */
+.tip-below::after {
+  bottom: auto;
+  top: calc(100% + 8px);
+}
+
+.tip-below:hover::after {
+  translate: -50% 2px;
+}
+
 /* --- Misc ---------------------------------------------------------- */
 
 .divider {

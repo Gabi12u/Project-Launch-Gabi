@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useCallback, useEffect, useState, type JSX } from 'react'
 import type { WorldInfo } from '@shared/api'
 import { toastError } from '../lib/store'
 import { Modal } from './ui'
@@ -34,8 +34,12 @@ export function WorldPickerModal({
   const [applying, setApplying] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
 
-  useEffect(() => {
+  // Reused by the "Erneut versuchen" button below, so a failed load never
+  // strands the user with nothing to do but close the modal.
+  const load = useCallback(() => {
     let current = true
+    setWorlds(null)
+    setLoadFailed(false)
     void window.gabi.instances
       .worlds(instanceId)
       .then((list) => {
@@ -51,6 +55,8 @@ export function WorldPickerModal({
       current = false
     }
   }, [instanceId])
+
+  useEffect(() => load(), [load])
 
   const toggle = (name: string): void => {
     setSelected((current) => {
@@ -94,7 +100,12 @@ export function WorldPickerModal({
       {worlds === null ? (
         <div className="skeleton" style={{ height: 120 }} />
       ) : loadFailed ? (
-        <p className="hint">Die Welten dieser Instanz konnten nicht gelesen werden. Schließe das Fenster und versuche es erneut.</p>
+        <div className="col gap-12" style={{ alignItems: 'flex-start' }}>
+          <p className="hint">Die Welten dieser Instanz konnten nicht gelesen werden.</p>
+          <button type="button" className="btn sm" onClick={() => load()}>
+            Erneut versuchen
+          </button>
+        </div>
       ) : worlds.length === 0 ? (
         <p className="hint">
           Diese Instanz hat noch keine Welten. Sobald du eine erstellst, kannst du das Data Pack ihr

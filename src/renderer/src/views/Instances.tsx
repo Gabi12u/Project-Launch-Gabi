@@ -7,7 +7,7 @@ import { InstanceCard } from '../components/InstanceCard'
 import { EmptyState, Segmented } from '../components/ui'
 import { IconCube, IconDownload, IconFolder, IconPlus, IconSearch } from '../components/Icons'
 
-type SortKey = 'recent' | 'name' | 'created' | 'played'
+type SortKey = 'recent' | 'name' | 'played'
 
 export function InstancesView(): JSX.Element {
   const { instances } = useStore()
@@ -39,8 +39,6 @@ export function InstancesView(): JSX.Element {
         return [...result].sort((a, b) => a.name.localeCompare(b.name, 'de'))
       case 'played':
         return [...result].sort((a, b) => b.totalPlayMs - a.totalPlayMs)
-      case 'created':
-        return [...result].sort((a, b) => b.id.localeCompare(a.id))
       default:
         return result
     }
@@ -102,6 +100,7 @@ export function InstancesView(): JSX.Element {
             <input
               className="input"
               placeholder="Instanzen durchsuchen…"
+              aria-label="Instanzen durchsuchen"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

@@ -1,4 +1,4 @@
-import type { CompatibilityIssue, CompatibilityReport, ContentItem, Instance } from '@shared/types'
+import type { CompatibilityIssue, CompatibilityReport, ContentItem, Instance, LoaderId } from '@shared/types'
 import { getInstance, syncContentWithDisk } from './instances'
 import { modrinth, curseforge } from '../providers'
 import { log } from '../logger'
@@ -344,13 +344,33 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     // is what actually loads them on top of Sodium.
     const hasShaderLoader = enabled.some((mod) => isShaderLoader(mod))
     if (!hasShaderLoader) {
+      // Iris and Oculus are the same mod for different loaders, both hosted
+      // on Modrinth under their own project id.
+      const shaderModByLoader: Partial<Record<LoaderId, { name: string; projectId: string }>> = {
+        fabric: { name: 'Iris', projectId: 'YL57xq9U' },
+        quilt: { name: 'Iris', projectId: 'YL57xq9U' },
+        neoforge: { name: 'Iris', projectId: 'YL57xq9U' },
+        forge: { name: 'Oculus', projectId: 'GchcoXML' }
+      }
+      const shaderMod = shaderModByLoader[instance.loader]
+
       issues.push({
         id: 'shader-without-loader',
         severity: 'warning',
         title: 'Shader ohne Shader-Mod',
-        detail:
-          `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. ` +
-          `Installiere Iris (Fabric/NeoForge) oder Oculus (Forge).`
+        detail: shaderMod
+          ? `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. ` +
+            `Installiere ${shaderMod.name}.`
+          : `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. ` +
+            `Dafür braucht es einen Mod Loader (zum Beispiel Fabric) und Iris.`,
+        fix: shaderMod
+          ? {
+              kind: 'install-dependency',
+              label: `${shaderMod.name} installieren`,
+              projectId: shaderMod.projectId,
+              provider: 'modrinth'
+            }
+          : undefined
       })
     }
   }

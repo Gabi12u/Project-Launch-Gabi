@@ -844,12 +844,31 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
         const minutes = Math.round((endedAt - startedAt) / 60000)
         if (crashed) {
-          notify(
-            'error',
-            `${instance.name} ist abgestürzt`,
-            `Minecraft wurde mit Code ${code} beendet. Das Log findest du im Instanz-Tab.`,
-            { route: `/instances/${instanceId}?tab=logs` }
-          )
+          // A guess at the cause is only worth adding for modded instances; a
+          // vanilla crash has no mod to blame. Fired without awaiting so a slow
+          // compatibility check never delays the rest of this handler, in
+          // particular handleWindowRestore() a few lines down.
+          const hasMods = instance.loader !== 'vanilla' && instance.content.some((c) => c.type === 'mod' && c.enabled)
+          void (async () => {
+            let hint = ''
+            if (hasMods) {
+              try {
+                const report = await checkCompatibility(instanceId)
+                const blocking = report.issues.find((i) => i.severity === 'error')
+                hint = blocking
+                  ? ` Vermutlich liegt es an einem Mod: ${blocking.title}.`
+                  : ' Häufig liegt das an einem Mod, der nicht zu dieser Version passt.'
+              } catch {
+                hint = ' Häufig liegt das an einem Mod, der nicht zu dieser Version passt.'
+              }
+            }
+            notify(
+              'error',
+              `${instance.name} ist abgestürzt`,
+              `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
+              { route: `/instances/${instanceId}?tab=logs` }
+            )
+          })()
         } else if (getSettings().notifyOnGameExit) {
           notify('info', `${instance.name} beendet`, `Spielzeit: ${minutes} Minuten`)
         }
