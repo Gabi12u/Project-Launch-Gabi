@@ -2465,6 +2465,53 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-26',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'meldung-hinzufuegen-ohne-umlaut',
+    title: 'Eine Fehlermeldung schrieb „hinzufuegen“ ohne Umlaut',
+    detail:
+      'Wer bei laufendem Spiel Dateien zu einer Instanz hinzufügen wollte, bekam die Meldung „Dateien ' +
+      'hinzufuegen ist nicht möglich …“ mit falsch geschriebenem Wort.',
+    state: 'fixing',
+    since: '2026-09-27'
+  },
+  {
+    id: 'changelog-farben-fehlen',
+    title: 'Datum und Kurzbeschreibung im Änderungsverlauf waren nicht abgesetzt',
+    detail:
+      'Im Änderungsverlauf, bei Screenshots ohne Vorschau und in aufgeklappten Fehlerberichten sollten ' +
+      'Datum und Nebentexte gedämpft erscheinen. Die dafür vorgesehenen Farben waren nirgends ' +
+      'festgelegt, der Text erschien deshalb in der normalen Farbe.',
+    state: 'fixing',
+    since: '2026-09-27'
+  },
+  {
+    id: 'suche-tooltip-fehlt',
+    title: 'Der Hinweis „Strg K“ am Suchknopf der Titelleiste erschien nie',
+    detail:
+      'Der Suchknopf oben im Fenster sollte beim Darüberfahren die Tastenkombination zeigen. Der ' +
+      'Hinweis war zwar hinterlegt, wurde aber nie angezeigt.',
+    state: 'fixing',
+    since: '2026-09-27'
+  },
+  {
+    id: 'mod-entfernen-ohne-rueckfrage',
+    title: 'Ein Mod ließ sich mit einem Fehlklick ohne Rückfrage löschen',
+    detail:
+      'Der Papierkorb neben dem An/Aus-Schalter eines Mods löschte die Datei sofort und endgültig, ' +
+      'ohne Nachfrage. Bei langen Listen führte ein Fehlklick so zum Verlust des Mods.',
+    state: 'fixing',
+    since: '2026-09-27'
+  },
+  {
+    id: 'datenordner-wechsel-ohne-warnung',
+    title: 'Das Ändern des Datenordners wirkte, als seien alle Instanzen verschwunden',
+    detail:
+      'Nach „Datenordner ändern“ zeigte der Launcher sofort den neuen, leeren Ordner. Dass die ' +
+      'vorhandenen Instanzen nicht mit umgezogen werden, stand erst danach in einer kurz sichtbaren ' +
+      'Meldung.',
+    state: 'fixing',
+    since: '2026-09-27'
   }
 ]
 

@@ -1585,6 +1585,37 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'When importing an instance folder was cancelled, the instance stayed with the files copied so ' +
       'far and looked like a normal instance. Worlds or mods in it could be incomplete.'
+  },
+  'meldung-hinzufuegen-ohne-umlaut': {
+    title: 'An error message spelled a German word without its umlaut',
+    detail:
+      'Trying to add files to an instance while the game was running showed a message with a ' +
+      'misspelled German word.'
+  },
+  'changelog-farben-fehlen': {
+    title: 'Dates and short descriptions in the changelog were not set apart',
+    detail:
+      'In the changelog, for screenshots without a preview and in expanded error reports, dates and ' +
+      'secondary text were meant to appear dimmed. The colors for that were never defined, so the ' +
+      'text appeared in the normal color.'
+  },
+  'suche-tooltip-fehlt': {
+    title: 'The "Ctrl K" hint on the title bar search button never appeared',
+    detail:
+      'The search button at the top of the window was meant to show its keyboard shortcut on hover. ' +
+      'The hint was set but never displayed.'
+  },
+  'mod-entfernen-ohne-rueckfrage': {
+    title: 'A mod could be deleted by a misclick without confirmation',
+    detail:
+      'The trash button next to a mod’s on/off switch deleted the file immediately and permanently, ' +
+      'without asking. In long lists a misclick lost the mod.'
+  },
+  'datenordner-wechsel-ohne-warnung': {
+    title: 'Changing the data folder made it look as if all instances had disappeared',
+    detail:
+      'After changing the data folder the launcher immediately showed the new, empty folder. That ' +
+      'existing instances are not moved was only mentioned afterwards in a briefly visible message.'
   }
 }
 
