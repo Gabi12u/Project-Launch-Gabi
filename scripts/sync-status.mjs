@@ -66,8 +66,12 @@ const ISSUE_STATES = ['investigating', 'fixing', 'fixed', 'limitation']
  * matching the newest entry's, then presents the whole run as one release.
  * An ordinary release with nothing else on the same day is a run of one and
  * comes back unchanged.
+ *
+ * `joiner` is the word placed between combined version numbers; it is the
+ * only text this function adds on its own, so the English pass passes its
+ * own word instead of getting the German one by default.
  */
-function combineSameDayReleases(list) {
+function combineSameDayReleases(list, joiner = ' und ') {
   const newest = list[0]
   const run = []
   for (const entry of list) {
@@ -84,7 +88,7 @@ function combineSameDayReleases(list) {
   const headlineSource = run.reduce((a, b) => (b.changes.length > a.changes.length ? b : a))
 
   return {
-    version: oldestFirst.map((entry) => entry.version).join(' und '),
+    version: oldestFirst.map((entry) => entry.version).join(joiner),
     date: newest.date,
     headline: headlineSource.headline,
     changes: oldestFirst.flatMap((entry) => entry.changes)
@@ -112,7 +116,7 @@ try {
     'issues-en.mjs'
   )
 
-  const latestEn = combineSameDayReleases(changelogLocalized('en'))
+  const latestEn = combineSameDayReleases(changelogLocalized('en'), ' and ')
   const issuesEn = knownIssuesLocalized('en')
 
   const kindLabelEn = Object.fromEntries(

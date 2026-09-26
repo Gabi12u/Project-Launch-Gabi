@@ -337,6 +337,16 @@ export interface LaunchOptions {
  */
 const stopRequested = new Set<string>()
 
+/**
+ * Instances with a stop already under way.
+ *
+ * `stopInstance` can be called again before the first attempt's taskkill or
+ * signal has actually ended the process (a second click on the stop button,
+ * the escalation path, a quit racing a manual stop), which used to send a
+ * second taskkill at the same pid. Cleared once the process actually exits.
+ */
+const stopping = new Set<string>()
+
 export { isStarting, startingCount }
 
 export async function launchInstance(options: LaunchOptions): Promise<void> {
@@ -772,6 +782,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // excused by a stop the user asked for minutes earlier.
       dropNativesClaim()
       const requested = stopRequested.delete(instanceId)
+      // The process is gone either way, so any stop attempt for it is over.
+      stopping.delete(instanceId)
       // `code` alone is not enough: a process killed by a signal (a native
       // segfault, an OOM kill, anything POSIX) exits with `code === null`, the
       // exact same value Node reports for other null-code cases. The comment
@@ -906,6 +918,19 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     task.fail(err)
     setStatus(instanceId, 'idle', err instanceof Error ? err.message : String(err))
+
+    // The log window opened before any of the pre-spawn checks (account,
+    // compatibility, downloads, Java) that can throw here, and it is normally
+    // closed by the process exit handler. A launch that never got that far
+    // never spawned a process, so that handler never runs and the window
+    // would otherwise stay open over an instance that is not starting.
+    if (!spawned) {
+      closeGameLogWindow(instanceId)
+      // Closing the window during preparation only hides it; bring it back so
+      // the error is actually seen.
+      const win = getMainWindow()
+      if (win && !win.isDestroyed() && !win.isVisible() && runningCount() === 0) win.show()
+    }
 
     if (stillUp) {
       // A process that was only just signalled is not dead yet. Clearing the
@@ -1129,6 +1154,16 @@ export function stopInstance(instanceId: string, immediate = false): void {
     return
   }
 
+  // Already being stopped: a second taskkill or signal at the same pid buys
+  // nothing and can only race the first one.
+  // An immediate stop (launcher quitting) still goes through, it escalates.
+  if (stopping.has(instanceId) && !immediate) return
+  stopping.add(instanceId)
+  // A game that survives every attempt must not lock the stop button forever.
+  setTimeout(() => {
+    if (getRunning(instanceId)?.process === game.process) stopping.delete(instanceId)
+  }, 10_000).unref()
+
   logger.info(`Beende Instanz ${instanceId} (PID ${game.process.pid})`)
   pushLog({
     instanceId,
@@ -1162,6 +1197,15 @@ export function stopInstance(instanceId: string, immediate = false): void {
     // game that survives both loses it, so its next real crash is reported.
     killer.on('exit', (code) => {
       if (killerFailed || code === 0) return
+
+      // The process can already be gone by the time taskkill runs (it exited
+      // on its own right after the request), which also exits non-zero. That
+      // is the expected outcome, not a failure, so it only gets a plain log.
+      if (getRunning(instanceId)?.process !== game.process) {
+        logger.info(`taskkill für ${instanceId} fand den Prozess nicht mehr (Code ${code})`)
+        return
+      }
+
       logger.error(`taskkill für ${instanceId} beendete sich mit Code ${code}`)
       game.process.kill('SIGKILL')
       setTimeout(() => {

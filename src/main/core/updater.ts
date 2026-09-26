@@ -395,5 +395,26 @@ export function installUpdate(): void {
   // Silent for the same reason as the start-up path above: this installer is
   // an assisted one, so showing its UI walks the user through the full setup
   // wizard again. `isForceRunAfter` brings the launcher back up afterwards.
-  setImmediate(() => autoUpdater.quitAndInstall(true, true))
+  setImmediate(() => {
+    // Re-checked here, same as the start-up auto-install path: the two checks
+    // above ran before this callback was even queued, and a launch started in
+    // that gap would otherwise be pulled out from under the player.
+    if (runningCount() > 0) {
+      notify(
+        'warning',
+        'Update später',
+        'Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.'
+      )
+      return
+    }
+    if (startingCount() > 0) {
+      notify(
+        'warning',
+        'Update später',
+        'Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.'
+      )
+      return
+    }
+    autoUpdater.quitAndInstall(true, true)
+  })
 }

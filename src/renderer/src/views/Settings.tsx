@@ -216,18 +216,18 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   // without this every step of a drag or every keystroke was its own
   // synchronous rewrite.
   const [defaultMemoryMb, setDefaultMemoryMb] = useDebouncedSetting(settings.defaultMemoryMb, (value) =>
-    void saveSettings({ defaultMemoryMb: value })
+    saveSettings({ defaultMemoryMb: value })
   )
   const [defaultJvmArgs, setDefaultJvmArgs] = useDebouncedSetting(settings.defaultJvmArgs, (value) =>
-    void saveSettings({ defaultJvmArgs: value })
+    saveSettings({ defaultJvmArgs: value })
   )
   const [concurrentDownloads, setConcurrentDownloads] = useDebouncedSetting(
     settings.concurrentDownloads,
-    (value) => void saveSettings({ concurrentDownloads: value })
+    (value) => saveSettings({ concurrentDownloads: value })
   )
   const [automaticBackupKeep, setAutomaticBackupKeep] = useDebouncedSetting(
     settings.automaticBackupKeep,
-    (value) => void saveSettings({ automaticBackupKeep: value })
+    (value) => saveSettings({ automaticBackupKeep: value })
   )
 
   // A notification that points here can arrive while this view is already
@@ -822,7 +822,7 @@ function RecordingPanel(): JSX.Element {
   const { settings, recording } = useStore()
   const [recordingMaxMinutes, setRecordingMaxMinutes] = useDebouncedSetting(
     settings.recordingMaxMinutes,
-    (value) => void saveSettings({ recordingMaxMinutes: value })
+    (value) => saveSettings({ recordingMaxMinutes: value })
   )
 
   return (

@@ -54,11 +54,13 @@ let cache: JavaRuntime[] | null = null
 export function requiredJavaMajor(version: VersionJson, mcVersion: string): number {
   if (version.javaVersion?.majorVersion) return version.javaVersion.majorVersion
 
+  const id = mcVersion.trim()
+
   // Snapshot ids ("24w14a") carry no dotted version at all. Treating them as
   // "1.0" used to fall through every threshold and demand Java 8 — but the
   // two-digit year in front says which era they belong to, so an old snapshot
   // no longer gets handed a JVM that cannot run it.
-  const snapshot = /^(\d{2})w\d{2}[a-z]?$/i.exec(mcVersion.trim())
+  const snapshot = /^(\d{2})w\d{2}[a-z]?$/i.exec(id)
   if (snapshot) {
     const year = Number(snapshot[1])
     // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) in the 21w3x range;
@@ -68,11 +70,28 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
     if (year === 21) return 16
     return 8
   }
-  if (!/^\d+\.\d+/.test(mcVersion.trim())) return 21
 
-  const parts = mcVersion.split('.')
-  const minor = Number(parts[1] ?? 0)
-  const patch = Number((parts[2] ?? '0').split('-')[0])
+  // Pre-release-era ids with no dotted version at all: classic ("c0.30_01c"),
+  // alpha ("a1.2.6"), beta ("b1.7.3"), infdev ("inf-20100618") and the
+  // pre-classic rubble dumps ("rd-132211"). All predate every Java bump
+  // above by years, so they need the oldest runtime, not the
+  // "unknown format, assume new" fallback below.
+  if (/^(a|b|c|rd-|inf-)/i.test(id)) return 8
+
+  // Two known April Fools ids with no parseable dotted version either:
+  // "1.RV-Pre1" (2016, built on a pre-1.9 combat test) and "3D Shareware
+  // v1.34" (2019, built on a pre-1.14 snapshot). Both are old enough for Java 8.
+  if (/^1\.rv-pre/i.test(id) || /^3d shareware/i.test(id)) return 8
+
+  if (!/^\d+\.\d+/.test(id)) return 21
+
+  const parts = id.split('.')
+  // A trailing qualifier ("16-pre1", "14 Pre-Release 1", "rc1") rides along
+  // on the minor or patch token instead of getting its own dot. Left in,
+  // Number() turned the whole token into NaN and every pre-release build
+  // was handed Java 21 regardless of which actual version it previewed.
+  const minor = Number((parts[1] ?? '0').split(/[-\s_]/)[0])
+  const patch = Number((parts[2] ?? '0').split(/[-\s_]/)[0])
 
   if (Number.isNaN(minor)) return 21
   if (minor > 20 || (minor === 20 && patch >= 5)) return 21
@@ -488,23 +507,29 @@ export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
 }
 
 /**
- * Staging folders this process is filling right now.
+ * Staging (`.new-`) and parked (`.old-`) folders this process is using right
+ * now.
  *
  * The sweep below matches on the name alone, and `installing` only dedupes
  * installs of the *same* major. Two different majors can therefore overlap —
  * launching an instance on Java 8 and another on Java 21 does exactly that —
  * and the second install's sweep would delete the first one's half-extracted
- * folder, failing it with a bogus "konnte nicht entpackt werden".
+ * or mid-swap folder, failing it with a bogus "konnte nicht entpackt werden".
  */
 const liveStaging = new Set<string>()
 
-/** Removes staging folders a crashed or killed install left behind. */
+/**
+ * Removes staging folders a crashed or killed install left behind: both the
+ * `.new-` extraction folders and the `.old-` folders a swap parks the
+ * previous install under while the new one takes its place (see the rename
+ * dance in installJavaOnce).
+ */
 function sweepStagingDirs(): void {
   const root = paths.java()
   if (!existsSync(root)) return
   try {
     for (const entry of readdirSync(root)) {
-      if (!entry.includes('.new-')) continue
+      if (!entry.includes('.new-') && !entry.includes('.old-')) continue
       // Owned by an install that is still running; not ours to delete.
       if (liveStaging.has(entry)) continue
       try {
@@ -696,24 +721,32 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       // that leftover, whatever it is, is never mistaken for the real thing.
       if (existsSync(parked)) parked = `${parked}-${randomUUID().slice(0, 8)}`
 
+      // Marked live for the brief window it exists, so a concurrent install
+      // of a different major sweeping stale ".old-" folders never deletes a
+      // parked install that is still mid-swap.
+      liveStaging.add(basename(parked))
       renameSync(targetDir, parked)
       try {
-        await renameWithRetry(staging, targetDir)
-      } catch (swapErr) {
-        // The new install could not take the old one's place. Put the old one
-        // back so a failed update never costs a working installation, then
-        // let the original error continue up unchanged.
         try {
-          renameSync(parked, targetDir)
-        } catch (rollbackErr) {
-          logger.error(`Rollback der alten Java-${major}-Installation fehlgeschlagen:`, rollbackErr)
+          await renameWithRetry(staging, targetDir)
+        } catch (swapErr) {
+          // The new install could not take the old one's place. Put the old one
+          // back so a failed update never costs a working installation, then
+          // let the original error continue up unchanged.
+          try {
+            renameSync(parked, targetDir)
+          } catch (rollbackErr) {
+            logger.error(`Rollback der alten Java-${major}-Installation fehlgeschlagen:`, rollbackErr)
+          }
+          throw swapErr
         }
-        throw swapErr
-      }
-      try {
-        rmSync(parked, { recursive: true, force: true })
-      } catch {
-        // Leftover old install is harmless once the new one is in place.
+        try {
+          rmSync(parked, { recursive: true, force: true })
+        } catch {
+          // Leftover old install is harmless once the new one is in place.
+        }
+      } finally {
+        liveStaging.delete(basename(parked))
       }
     } else {
       // First install for this major: nothing to swap out. Still retried,

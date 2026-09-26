@@ -3,8 +3,7 @@ import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MinecraftVersion } from '@shared/types'
 import { paths, safeJoin } from '../paths'
-import { writeJsonAtomic } from '../store'
-import { downloadAll, downloadFile, fetchJson, fetchJsonCached, type DownloadItem } from './net'
+import { downloadAll, downloadFile, fetchJsonCached, type DownloadItem } from './net'
 import type { Task } from '../tasks'
 import { log } from '../logger'
 
@@ -249,8 +248,12 @@ export async function loadVersionJson(
     const manifest = await getVersionManifest()
     const entry = manifest.versions.find((v) => v.id === versionId)
     if (!entry) throw new Error(`Minecraft-Version ${versionId} ist unbekannt`)
-    json = await fetchJson<VersionJson>(entry.url)
-    writeJsonAtomic(file, json)
+    // Routed through downloadFile so the manifest's own sha1 is actually
+    // checked. Before this, a tampered redirect or a compromised mirror
+    // could hand back a version JSON that pointed libraries and the client
+    // jar anywhere it liked, with nothing to notice the substitution.
+    await downloadFile({ url: entry.url, path: file, sha1: entry.sha1 })
+    json = JSON.parse(await readFile(file, 'utf8')) as VersionJson
   }
 
   if (json.inheritsFrom) {
@@ -493,12 +496,17 @@ export async function installAssets(version: VersionJson, task?: Task): Promise<
   if (!version.assetIndex) return
 
   const indexFile = join(paths.assetIndexes(), `${version.assetIndex.id}.json`)
-  await downloadFile({
-    url: version.assetIndex.url,
-    path: indexFile,
-    sha1: version.assetIndex.sha1,
-    size: version.assetIndex.size
-  })
+  await downloadFile(
+    {
+      url: version.assetIndex.url,
+      path: indexFile,
+      sha1: version.assetIndex.sha1,
+      size: version.assetIndex.size
+    },
+    undefined,
+    3,
+    task?.signal
+  )
 
   const index = JSON.parse(await readFile(indexFile, 'utf8')) as AssetIndex
   const objects = Object.values(index.objects ?? {})

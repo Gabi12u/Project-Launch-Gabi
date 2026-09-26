@@ -1,10 +1,11 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import type { Account, LauncherSettings } from '@shared/types'
 import { log } from './logger'
+import { notify } from './events'
 
 const logger = log('store')
 
@@ -34,12 +35,37 @@ export function writeJsonAtomic(file: string, data: unknown): void {
   }
 }
 
-export function readJson<T>(file: string, fallback: T): T {
+export function readJson<T>(file: string, fallback: T, quarantine = false): T {
   try {
     if (!existsSync(file)) return fallback
     return JSON.parse(readFileSync(file, 'utf8')) as T
   } catch (err) {
+    // A file that simply is not there yet (or vanished between the check above
+    // and the read, a narrow race) is not corruption, just nothing to read.
+    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') return fallback
+
     logger.warn(`Konnte ${file} nicht lesen:`, err)
+    // Only for files the launcher rebuilds from scratch; journals, indexes and
+    // instance.json have callers that deal with unreadable content themselves.
+    if (!quarantine) return fallback
+
+    // Left in place, a file that fails to parse (bad JSON, a truncated write
+    // that escaped writeJsonAtomic, hand editing) fails the exact same way on
+    // every future read, forever. Moved aside once instead, best effort, so
+    // the fallback takes over cleanly and the next write starts a fresh file
+    // rather than tripping over the broken one again and again.
+    try {
+      const corrupted = `${file}.corrupt-${Date.now()}`
+      renameSync(file, corrupted)
+      notify(
+        'warning',
+        'Datei beschädigt',
+        `Die Datei ${basename(file)} war beschädigt und wurde als ${basename(corrupted)} beiseitegelegt.`
+      )
+    } catch (renameErr) {
+      logger.warn(`Konnte ${file} nicht beiseitelegen:`, renameErr)
+    }
+
     return fallback
   }
 }
@@ -156,7 +182,7 @@ function sanitize(input: LauncherSettings): LauncherSettings {
 
 export function getSettings(): LauncherSettings {
   if (!settings) {
-    const raw = readJson<Partial<LauncherSettings>>(settingsFile(), {})
+    const raw = readJson<Partial<LauncherSettings>>(settingsFile(), {}, true)
     // A file containing `null`, an array or a bare string parses fine but would
     // produce a settings object with no usable fields.
     const stored = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
@@ -279,7 +305,7 @@ function accountsFile(): string {
 }
 
 export function readAccounts(): StoredAccount[] {
-  const stored = readJson<StoredAccount[]>(accountsFile(), [])
+  const stored = readJson<StoredAccount[]>(accountsFile(), [], true)
   // A hand-edited or truncated file can parse as valid JSON of the wrong shape;
   // every caller iterates the result, so anything but an array must not escape.
   if (!Array.isArray(stored)) {

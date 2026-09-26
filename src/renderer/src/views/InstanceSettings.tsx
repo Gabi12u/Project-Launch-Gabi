@@ -11,9 +11,11 @@ import { IconImage, IconRefresh, IconTrash } from '../components/Icons'
 interface Props {
   instance: InstanceDetail
   onChanged: () => Promise<void>
+  /** Reports whether there are unsaved edits, so the parent can guard tab switches. */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
-export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Element {
+export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Props): JSX.Element {
   const memoryMax = useMemorySliderMax()
   const [name, setName] = useState(instance.name)
   const [description, setDescription] = useState(instance.description)
@@ -97,7 +99,9 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
       mounted.current = true
       return
     }
-    setDirty(fieldsSnapshot() !== baseline.current)
+    const next = fieldsSnapshot() !== baseline.current
+    setDirty(next)
+    onDirtyChange?.(next)
   }, [
     name,
     description,
@@ -119,7 +123,17 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
 
   useEffect(() => {
     setDirty(false)
+    onDirtyChange?.(false)
+    // Only the instance switching, not onDirtyChange identity, should reset this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance.id])
+
+  // Leaving the tab unmounts this panel; the parent's copy of `dirty` must not
+  // survive that, or a later remount would start out blocked on a stale flag.
+  useEffect(() => {
+    return () => onDirtyChange?.(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const save = async (): Promise<void> => {
     setSaving(true)
@@ -190,6 +204,7 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
       await refreshInstances()
       await onChanged()
       setDirty(false)
+      onDirtyChange?.(false)
       toast('success', 'Gespeichert', `${savedName} wurde aktualisiert.`)
     } catch (err) {
       toastError(err, 'Speichern fehlgeschlagen')
@@ -251,6 +266,21 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
                 onClick={async () => {
                   const result = await window.gabi.instances.setIconImage(instance.id)
                   if (result) {
+                    // The IPC call already wrote the new icon to disk and returns
+                    // only a resolved preview path, not the `img:` reference this
+                    // form tracks locally. Without re-reading it, the local
+                    // `icon` state stays on its old value and save() /
+                    // "Hintergrund entfernen" below would overwrite the fresh
+                    // icon with that stale one.
+                    const fresh = await window.gabi.instances.get(instance.id)
+                    // Icon is index 3 in both fieldsSnapshot() and baseline
+                    // above. Folding it into the baseline too means the dirty
+                    // effect below finds no difference from this pick alone,
+                    // since it was already saved to disk.
+                    const fields = JSON.parse(baseline.current)
+                    fields[3] = fresh.appearance.icon
+                    baseline.current = JSON.stringify(fields)
+                    setIcon(fresh.appearance.icon)
                     await onChanged()
                     toast('success', 'Icon gesetzt')
                   }
@@ -337,6 +367,12 @@ export function InstanceSettingsPanel({ instance, onChanged }: Props): JSX.Eleme
             <div role="group" aria-labelledby="is-java-version" className="row gap-8">
               <select className="select" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
                 <option value="">Automatisch verwalten (empfohlen)</option>
+                {/* Covers a path from a runtime that was since removed or never
+                    detected; without this the select would silently jump to
+                    "Automatisch verwalten" while the instance kept using it. */}
+                {javaPath && !runtimes.some((runtime) => runtime.path === javaPath) && (
+                  <option value={javaPath}>{javaPath} (nicht gefunden)</option>
+                )}
                 {runtimes.map((runtime) => (
                   <option key={runtime.path} value={runtime.path}>
                     Java {runtime.major} · {runtime.version} {runtime.managed ? '(verwaltet)' : ''}

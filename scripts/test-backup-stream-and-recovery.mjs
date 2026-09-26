@@ -19,6 +19,15 @@
  *    rueckgaengig. Dieser Test baut genau die Ordnerlage nach, die eine
  *    abgestuerzte Wiederherstellung hinterlassen wuerde, und prueft, dass der
  *    urspruengliche Stand danach wieder da ist.
+ * 3. `recoverOneInterruptedRestore` raeumte den halb entpackten Ordner frueher
+ *    per `rmSync` weg, bevor der geparkte Originalordner zurueckbenannt wurde.
+ *    Schlug genau dieses Zurueckbenennen fehl, war der halb entpackte Rest
+ *    schon geloescht und nichts kam zurueck. Jetzt wird er nur beiseite
+ *    geschoben und erst nach Erfolg entfernt. Ein `fs`-Ersatz laesst genau
+ *    dieses eine Zurueckbenennen fehlschlagen, ohne echte Dateirechte zu
+ *    manipulieren, und prueft, dass danach beides noch da ist: der halb
+ *    entpackte Rest (zurueckgeschoben statt verloren) und die geparkte
+ *    Originalsicherung (nie angefasst).
  */
 import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
@@ -77,6 +86,38 @@ try {
   const entryBackups = join(work, 'entry-backups.js')
   writeFileSync(entryBackups, `module.exports = require(${JSON.stringify(join(root, 'src/main/core/backups.ts'))})`)
 
+  // Used only by part 3 below, to make exactly one `renameSync` call fail
+  // (via `globalThis.__lgFailRenameTo`) without touching real file permissions,
+  // which differ too much between machines to rely on for a repeatable test.
+  // Everything else passes straight through to the real `fs`.
+  const fsShim = join(work, 'fs-shim.js')
+  writeFileSync(
+    fsShim,
+    `const real = require('fs')
+     module.exports = new Proxy(real, {
+       get(target, prop, receiver) {
+         if (prop === 'renameSync') {
+           return function renameSync(src, dest) {
+             if (globalThis.__lgFailRenameTo && dest === globalThis.__lgFailRenameTo) {
+               globalThis.__lgFailRenameTo = null
+               const err = new Error('Simulierter Fehler fuer den Test')
+               err.code = 'EPERM'
+               throw err
+             }
+             return target.renameSync(src, dest)
+           }
+         }
+         return Reflect.get(target, prop, receiver)
+       }
+     })`
+  )
+  // esbuild's `alias` also rewrites subpath imports of an aliased specifier
+  // (`node:fs/promises` starts with `node:fs`), which would otherwise resolve
+  // to `fs-shim.js/promises` and fail. Instances.ts et al. use the promise API
+  // too, so it needs its own pass-through alias back to the real module.
+  const fsPromisesShim = join(work, 'fs-promises-shim.js')
+  writeFileSync(fsPromisesShim, `module.exports = require('fs/promises')`)
+
   const outArchive = join(work, 'archive.cjs')
   const outBackups = join(work, 'backups.cjs')
   const buildOptions = {
@@ -87,10 +128,18 @@ try {
     logLevel: 'error'
   }
   await esbuild.build({ ...buildOptions, entryPoints: [entryArchive], outfile: outArchive })
-  await esbuild.build({ ...buildOptions, entryPoints: [entryBackups], outfile: outBackups })
+  // `backups.ts` imports from 'node:fs' specifically; only that exact
+  // specifier is redirected, so the shim (which itself requires plain 'fs')
+  // cannot alias into itself.
+  await esbuild.build({
+    ...buildOptions,
+    alias: { ...buildOptions.alias, 'node:fs': fsShim, 'node:fs/promises': fsPromisesShim },
+    entryPoints: [entryBackups],
+    outfile: outBackups
+  })
 
   const { zipFolder, extractAllSlowly, listEntries } = require(outArchive)
-  const { recoverInterruptedRestores } = require(outBackups)
+  const { recoverInterruptedRestores, failedRestoreRecoveries } = require(outBackups)
 
   /* ================================================================ *
    * Part 1: streaming zipFolder() with a large file
@@ -213,6 +262,64 @@ try {
   recoverInterruptedRestores()
   check(existsSync(join(gameDir, 'saves', 'world.dat')), 'Ein zweiter Aufruf ohne Staging-Ordner hat etwas kaputt gemacht')
   notes.push('Zweiter Aufruf ohne unterbrochene Wiederherstellung: keine Wirkung, kein Fehler.')
+
+  /* ================================================================ *
+   * Part 3: a failed rename-back during recovery must not lose data
+   * ================================================================ */
+
+  const instanceId2 = 'test-instance-renamefail'
+  const gameDir2 = join(dataDir, 'instances', instanceId2, 'minecraft')
+  const backupsDir2 = join(dataDir, 'backups', instanceId2)
+  const staging2 = join(backupsDir2, 'restore-crashtest')
+
+  // The parked original, never to be touched by this scenario.
+  mkdirSync(join(staging2, 'saves'), { recursive: true })
+  writeFileSync(join(staging2, 'saves', 'world.dat'), 'URSPRUENGLICHER WELTSTAND 2')
+
+  // The half written extraction target, exactly as part 2's, sitting where
+  // the original used to be.
+  mkdirSync(join(gameDir2, 'saves'), { recursive: true })
+  writeFileSync(join(gameDir2, 'saves', 'world.dat'), 'HALB ENTPACKTER MUELL 2')
+
+  writeFileSync(
+    join(staging2, 'journal.json'),
+    JSON.stringify({
+      moved: [{ key: 'saves', from: join(gameDir2, 'saves'), to: join(staging2, 'saves') }],
+      newKeys: []
+    })
+  )
+
+  // Makes the rename that would put the parked original back fail exactly
+  // once, the same way a locked file or a denied permission would on a real
+  // machine, without needing either.
+  globalThis.__lgFailRenameTo = join(gameDir2, 'saves')
+
+  const result3 = recoverInterruptedRestores()
+  globalThis.__lgFailRenameTo = null
+
+  check(
+    !result3.includes(instanceId2),
+    'recoverInterruptedRestores() meldet die fehlgeschlagene Instanz faelschlich als erledigt'
+  )
+  check(
+    existsSync(join(gameDir2, 'saves', 'world.dat')) &&
+      readFileSync(join(gameDir2, 'saves', 'world.dat'), 'utf8') === 'HALB ENTPACKTER MUELL 2',
+    'Der halb entpackte Rest wurde nach dem fehlgeschlagenen Zurueckbenennen nicht zurueckgeschoben'
+  )
+  check(
+    existsSync(join(staging2, 'saves', 'world.dat')) &&
+      readFileSync(join(staging2, 'saves', 'world.dat'), 'utf8') === 'URSPRUENGLICHER WELTSTAND 2',
+    'Die geparkte Originalsicherung wurde beim fehlgeschlagenen Versuch angetastet'
+  )
+  check(existsSync(join(staging2, 'journal.json')), 'Das Journal wurde trotz fehlgeschlagener Wiederherstellung entfernt')
+  check(
+    failedRestoreRecoveries().some((f) => f.instanceId === instanceId2 && f.staging === staging2),
+    'failedRestoreRecoveries() meldet die fehlgeschlagene Wiederherstellung nicht'
+  )
+  notes.push(
+    'Fehlgeschlagenes Zurueckbenennen beim Wiederherstellen: weder der halb entpackte Rest noch die ' +
+      'geparkte Originalsicherung gingen verloren, und die fehlgeschlagene Instanz wird gemeldet.'
+  )
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {

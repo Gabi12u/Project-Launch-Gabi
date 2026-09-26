@@ -264,7 +264,7 @@ function mapFile(file: CfFile): ProjectVersion {
  * Public API
  * ------------------------------------------------------------------ */
 
-export async function search(query: SearchQuery): Promise<{ items: SearchResultItem[]; total: number }> {
+function searchParams(query: SearchQuery, modLoaderType?: number): URLSearchParams {
   const params = new URLSearchParams({
     gameId: String(GAME_ID),
     classId: String(CLASS_ID[query.type]),
@@ -279,27 +279,48 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
   })
 
   if (query.gameVersion) params.set('gameVersion', query.gameVersion)
-  // Modpacks are filtered by loader too, matching what the Modrinth provider
-  // does. Restricting this to `mod` meant a search filtered to Fabric returned
-  // every CurseForge modpack regardless of loader, while the Modrinth half of
-  // the same result list was filtered correctly.
-  if (query.loader && query.loader !== 'vanilla') {
-    params.set('modLoaderType', String(LOADER_TYPE[query.loader]))
-  }
+  if (modLoaderType !== undefined) params.set('modLoaderType', String(modLoaderType))
+  return params
+}
 
-  const response = await fetchJson<CfListResponse<CfMod>>(`${API}/mods/search?${params.toString()}`, {
-    headers: headers()
-  })
-
+async function runSearch(query: SearchQuery, modLoaderType?: number): Promise<{ mods: CfMod[]; total: number }> {
+  const response = await fetchJson<CfListResponse<CfMod>>(
+    `${API}/mods/search?${searchParams(query, modLoaderType).toString()}`,
+    { headers: headers() }
+  )
   // The response shape is cast, never verified, so a changed or partial body
   // would otherwise throw on `.map` and take the whole merged search down
   // rather than just this provider's half of it.
   const data = Array.isArray(response.data) ? response.data : []
+  return { mods: data, total: response.pagination?.totalCount ?? data.length }
+}
 
-  return {
-    items: data.map(mapMod),
-    total: response.pagination?.totalCount ?? data.length
+export async function search(query: SearchQuery): Promise<{ items: SearchResultItem[]; total: number }> {
+  // Modpacks are filtered by loader too, matching what the Modrinth provider
+  // does. Restricting this to `mod` meant a search filtered to Fabric returned
+  // every CurseForge modpack regardless of loader, while the Modrinth half of
+  // the same result list was filtered correctly.
+  if (query.loader === 'quilt') {
+    // Quilt runs Fabric mods, so a Quilt search must also surface Fabric-only
+    // projects. The search endpoint has no OR filter for loaders, so this
+    // runs two requests and merges them, deduplicating by mod id.
+    const [quilt, fabric] = await Promise.all([
+      runSearch(query, LOADER_TYPE.quilt),
+      runSearch(query, LOADER_TYPE.fabric)
+    ])
+    const seen = new Set<number>()
+    const merged: CfMod[] = []
+    for (const mod of [...quilt.mods, ...fabric.mods]) {
+      if (seen.has(mod.id)) continue
+      seen.add(mod.id)
+      merged.push(mod)
+    }
+    return { items: merged.map(mapMod), total: quilt.total + fabric.total }
   }
+
+  const modLoaderType = query.loader && query.loader !== 'vanilla' ? LOADER_TYPE[query.loader] : undefined
+  const { mods, total } = await runSearch(query, modLoaderType)
+  return { items: mods.map(mapMod), total }
 }
 
 export async function getProject(projectId: string): Promise<ProjectDetails> {
@@ -368,6 +389,18 @@ export async function getVersions(
   return files.map(mapFile).sort((a, b) => time(b.releasedAt) - time(a.releasedAt))
 }
 
+/**
+ * Among a set of already loader-matching candidates, keeps only the ones that
+ * declare Quilt itself when at least one does. Quilt also runs Fabric mods,
+ * so both stay in `loaderOk`, but a native Quilt build should still win over
+ * a Fabric-only one when both exist.
+ */
+function preferNativeQuilt(versions: ProjectVersion[], loader: LoaderId): ProjectVersion[] {
+  if (loader !== 'quilt') return versions
+  const native = versions.filter((v) => v.loaders.includes('quilt'))
+  return native.length > 0 ? native : versions
+}
+
 export async function bestVersionFor(
   projectId: string,
   gameVersion: string,
@@ -376,16 +409,23 @@ export async function bestVersionFor(
   const all = await getVersions(projectId)
 
   const loaderOk = (v: ProjectVersion): boolean =>
-    loader === 'vanilla' || v.loaders.length === 0 || v.loaders.includes(loader)
+    loader === 'vanilla' ||
+    v.loaders.length === 0 ||
+    v.loaders.includes(loader) ||
+    (loader === 'quilt' && v.loaders.includes('fabric'))
 
-  const exact = all.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v))
+  const exact = preferNativeQuilt(
+    all.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v)),
+    loader
+  )
   if (exact.length > 0) return exact.find((v) => v.releaseType === 'release') ?? exact[0]
 
   const line = gameVersion.split('.').slice(0, 2).join('.')
-  const nearby = all.filter(
-    (v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))
+  const nearby = preferNativeQuilt(
+    all.filter((v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))),
+    loader
   )
-  return nearby[0] ?? null
+  return (nearby.find((v) => v.releaseType === 'release') ?? nearby[0]) ?? null
 }
 
 export async function getFile(projectId: string, fileId: string): Promise<ProjectVersion | null> {

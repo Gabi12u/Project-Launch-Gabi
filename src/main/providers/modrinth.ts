@@ -143,7 +143,11 @@ function buildFacets(query: SearchQuery): string {
   // Resource packs and shaders are loader independent; filtering them by
   // loader would return nothing.
   if (query.loader && query.loader !== 'vanilla' && (query.type === 'mod' || query.type === 'modpack')) {
-    facets.push([`categories:${query.loader}`])
+    // Quilt runs Fabric mods, so a project only tagged "fabric" must still
+    // match. An inner array is an OR group in Modrinth's facet syntax.
+    facets.push(
+      query.loader === 'quilt' ? ['categories:quilt', 'categories:fabric'] : [`categories:${query.loader}`]
+    )
   }
 
   for (const category of query.categories ?? []) {
@@ -214,6 +218,7 @@ export function mapVersion(version: ModrinthVersion): ProjectVersion | null {
     downloadUrl: file.url,
     fileName: file.filename,
     sha1: file.hashes?.sha1,
+    sha512: file.hashes?.sha512,
     size: file.size,
     releasedAt: version.date_published,
     changelog: version.changelog,
@@ -361,6 +366,18 @@ export async function getVersions(
 }
 
 /**
+ * Among a set of already loader-matching candidates, keeps only the ones that
+ * declare Quilt itself when at least one does. Quilt also runs Fabric mods,
+ * so both stay in `loaderOk`, but a native Quilt build should still win over
+ * a Fabric-only one when both exist.
+ */
+function preferNativeQuilt(versions: ProjectVersion[], loader: LoaderId): ProjectVersion[] {
+  if (loader !== 'quilt') return versions
+  const native = versions.filter((v) => v.loaders.includes('quilt'))
+  return native.length > 0 ? native : versions
+}
+
+/**
  * Picks the newest version that fits the instance. Falls back to a version
  * matching only the loader so a mod that lists `1.21` still resolves for
  * `1.21.1` when the author has not updated the metadata yet.
@@ -373,19 +390,26 @@ export async function bestVersionFor(
   const all = await getVersions(projectId)
 
   const loaderOk = (v: ProjectVersion): boolean =>
-    loader === 'vanilla' || v.loaders.length === 0 || v.loaders.includes(loader)
+    loader === 'vanilla' ||
+    v.loaders.length === 0 ||
+    v.loaders.includes(loader) ||
+    (loader === 'quilt' && v.loaders.includes('fabric'))
 
-  const exact = all.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v))
+  const exact = preferNativeQuilt(
+    all.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v)),
+    loader
+  )
   if (exact.length > 0) {
     return exact.find((v) => v.releaseType === 'release') ?? exact[0]
   }
 
   // Same major.minor line, e.g. 1.21.x
   const line = gameVersion.split('.').slice(0, 2).join('.')
-  const nearby = all.filter(
-    (v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))
+  const nearby = preferNativeQuilt(
+    all.filter((v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))),
+    loader
   )
-  if (nearby.length > 0) return nearby[0]
+  if (nearby.length > 0) return nearby.find((v) => v.releaseType === 'release') ?? nearby[0]
 
   return null
 }

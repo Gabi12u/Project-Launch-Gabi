@@ -35,6 +35,13 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
     if (requestedProject) setType('mod')
   }, [requestedProject])
 
+  // `requestedProject` is `<provider>:<projectId>`, as main/index.ts builds it
+  // for a launchgabi://install/... deep link.
+  const separator = requestedProject?.indexOf(':') ?? -1
+  const requestedProvider =
+    separator > 0 ? (requestedProject!.slice(0, separator) === 'curseforge' ? 'curseforge' : 'modrinth') : undefined
+  const requestedProjectId = separator > 0 ? requestedProject!.slice(separator + 1) : undefined
+
   const instance = instances.find((i) => i.id === target)
 
   // Guarded against answers arriving out of order. Switching the target
@@ -128,6 +135,8 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
             initialType={type}
             installedProjectIds={installedIds}
             onInstalled={refreshInstalled}
+            openProjectProvider={requestedProvider}
+            openProjectId={requestedProjectId}
           />
         </>
       )}

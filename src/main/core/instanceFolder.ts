@@ -20,8 +20,9 @@ import type {
 } from '@shared/types'
 import { ensureInstanceLayout, isValidVersionString, paths } from '../paths'
 import { log } from '../logger'
-import { withTask } from '../tasks'
-import { createInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { notify } from '../events'
+import { TaskCancelledError, withTask } from '../tasks'
+import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 
 const logger = log('folder-import')
 
@@ -1227,6 +1228,24 @@ export async function importInstanceFolder(
     )
   }).catch((err) => {
     logger.error(`Ordner-Import von ${name} fehlgeschlagen:`, err)
+    if (err instanceof TaskCancelledError) {
+      // The source folder was only ever read from, so nothing is lost by
+      // starting over. Left in place, the half copied files carry no marker
+      // of the cancel and a later "Spielen" would treat them as a real,
+      // finished install.
+      try {
+        deleteInstance(instance.id)
+        return
+      } catch (deleteErr) {
+        logger.warn(`Abgebrochener Ordner-Import von ${instance.id} konnte nicht gelöscht werden:`, deleteErr)
+        notify(
+          'warning',
+          'Import abgebrochen',
+          `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere den Ordner erneut.`,
+          { route: `/instances/${instance.id}` }
+        )
+      }
+    }
     try {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
     } catch (persistErr) {

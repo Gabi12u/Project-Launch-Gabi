@@ -498,7 +498,12 @@ function extractLink(type: string, link: string, dest: string, targetDir: string
   const base = type === '2' ? dirname(dest) : targetDir
   const resolvedRoot = resolve(targetDir)
   const resolvedLink = resolve(base, link)
-  if (resolvedLink !== resolvedRoot && !resolvedLink.startsWith(resolvedRoot + sep)) return
+  // `resolve()` already puts a trailing separator on a drive root ("C:\") but
+  // never on anything deeper, so appending one unconditionally doubled it
+  // whenever `targetDir` was a drive root and rejected every link underneath.
+  // Same fix as `safeJoin` in paths.ts.
+  const rootWithSep = resolvedRoot.endsWith(sep) ? resolvedRoot : resolvedRoot + sep
+  if (resolvedLink !== resolvedRoot && !resolvedLink.startsWith(rootWithSep)) return
 
   try {
     if (type === '2') symlinkSync(link, dest)
@@ -535,12 +540,16 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   // write() skipped straight to header parsing on the still-unstripped
   // padding — corrupting every entry after it for the rest of the archive.
   let paddingRemaining = 0
-  let sink: number[] = []
+  let sink: Buffer[] = []
   let longName: string | null = null
   // Counted as headers are parsed, since a tar stream carries no upfront
   // index the way a zip's central directory does; the same limit as the zip
   // functions below, checked as early as the format allows.
   let entryCount = 0
+  // Declared sizes add up across entries the same way the zip archives are
+  // checked in `assertReasonableArchive`, so a tar with many individually
+  // reasonable entries cannot still add up to an absurd total.
+  let totalSize = 0
 
   const flushFile = (): void => {
     if (!pendingHeader) return
@@ -559,12 +568,12 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
     if (pendingHeader.type === '5') {
       mkdirSync(dest, { recursive: true })
     } else if (pendingHeader.type === 'L') {
-      longName = Buffer.from(sink).toString('utf8').replace(/\0+$/, '')
+      longName = Buffer.concat(sink).toString('utf8').replace(/\0+$/, '')
     } else if (pendingHeader.type === '1' || pendingHeader.type === '2') {
       extractLink(pendingHeader.type, pendingHeader.link, dest, targetDir)
     } else {
       mkdirSync(dirname(dest), { recursive: true })
-      writeFileSync(dest, Buffer.from(sink))
+      writeFileSync(dest, Buffer.concat(sink))
     }
     sink = []
     pendingHeader = null
@@ -582,14 +591,14 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           if (remaining > 0) {
             const take = Math.min(remaining, buffer.length)
             if (take === 0) break
-            for (let i = 0; i < take; i++) sink.push(buffer[i])
+            sink.push(buffer.subarray(0, take))
             buffer = buffer.subarray(take)
             remaining -= take
             if (remaining === 0) {
               // The content is fully buffered now, so the file is written
               // immediately rather than waiting for its padding to arrive too,
               // padding is only bytes to skip, not part of the file.
-              const size = sink.length
+              const size = pendingHeader?.size ?? 0
               flushFile()
               paddingRemaining = (512 - (size % 512)) % 512
             }
@@ -625,7 +634,26 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
             )
           }
 
-          pendingHeader = { path: prefix ? `${prefix}/${name}` : name, size, type, link }
+          const fullPath = prefix ? `${prefix}/${name}` : name
+          // Checked as early as a tar header alone allows, the same limits the
+          // zip extraction paths enforce via `assertReasonableSize` /
+          // `assertReasonableArchive` before this used to inflate a declared
+          // size straight into memory with nothing looking at it first.
+          if (size > MAX_ENTRY_SIZE) {
+            throw new Error(
+              `${fullPath} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`
+            )
+          }
+          totalSize += size
+          if (totalSize > MAX_ARCHIVE_TOTAL_SIZE) {
+            throw new Error(
+              `${archivePath} entpackt auf insgesamt mehr als ${Math.round(
+                MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024
+              )} GB, abgelehnt.`
+            )
+          }
+
+          pendingHeader = { path: fullPath, size, type, link }
           remaining = size
 
           if (size === 0) flushFile()

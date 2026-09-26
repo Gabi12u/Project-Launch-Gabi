@@ -127,6 +127,7 @@ export function adoptRunningFromDisk(): void {
 
   if (adopted.size > 0) {
     logger.info(`${adopted.size} noch laufende Spiele aus der letzten Sitzung übernommen`)
+    ensureAdoptedCheck()
   }
   persist()
 }
@@ -151,6 +152,7 @@ export function pruneAdopted(exists: (instanceId: string) => boolean): void {
   }
   if (removed > 0) {
     persist()
+    stopAdoptedCheckIfIdle()
     // The set of playing games just changed, and the recorder decides whether
     // to hold the hotkey from exactly that. Skipping this left the key claimed
     // with nothing running behind it.
@@ -174,14 +176,60 @@ export function onRunningChanged(listener: RunningListener): () => void {
   return () => listeners.delete(listener)
 }
 
+/**
+ * True while a call to `announce` is already unwinding.
+ *
+ * `listAdopted`/`isRunning` call `announce` themselves when they drop a dead
+ * pid, and a listener reacting to that announcement is free to call either of
+ * them right back (the recording module does exactly this). Without a guard
+ * that is unbounded recursion; with it, the re-entrant call simply finds the
+ * map already updated and skips straight to returning its now-correct result.
+ */
+let announcing = false
+
 function announce(): void {
-  for (const listener of listeners) {
-    try {
-      listener()
-    } catch (err) {
-      // A listener that throws must not take a launch or an exit down with it.
-      logger.warn('Melder für laufende Spiele ist gescheitert:', err)
+  if (announcing) return
+  announcing = true
+  try {
+    for (const listener of listeners) {
+      try {
+        listener()
+      } catch (err) {
+        // A listener that throws must not take a launch or an exit down with it.
+        logger.warn('Melder für laufende Spiele ist gescheitert:', err)
+      }
     }
+  } finally {
+    announcing = false
+  }
+}
+
+/**
+ * How often adopted games are checked for liveness while the launcher itself
+ * is not touching them.
+ *
+ * `isRunning` and `listAdopted` only notice a dead pid when something asks,
+ * and recording only stops on the announcement they make when that happens.
+ * A game closed while nobody was polling therefore left its recording running
+ * forever. This sweep is the thing that asks on its own.
+ */
+const ADOPTED_CHECK_INTERVAL_MS = 5_000
+
+let adoptedCheckTimer: NodeJS.Timeout | null = null
+
+/** Starts the sweep if there is now something for it to watch. */
+function ensureAdoptedCheck(): void {
+  if (adoptedCheckTimer || adopted.size === 0) return
+  adoptedCheckTimer = setInterval(() => listAdopted(), ADOPTED_CHECK_INTERVAL_MS)
+  // Must never be the reason the process stays alive.
+  adoptedCheckTimer.unref()
+}
+
+/** Stops the sweep once there is nothing left adopted to watch. */
+function stopAdoptedCheckIfIdle(): void {
+  if (adoptedCheckTimer && adopted.size === 0) {
+    clearInterval(adoptedCheckTimer)
+    adoptedCheckTimer = null
   }
 }
 
@@ -225,6 +273,7 @@ export function setRunning(instanceId: string, game: RunningGame): void {
   adopted.delete(instanceId)
   running.set(instanceId, game)
   persist()
+  stopAdoptedCheckIfIdle()
   announce()
 }
 
@@ -232,6 +281,7 @@ export function clearRunning(instanceId: string): void {
   running.delete(instanceId)
   adopted.delete(instanceId)
   persist()
+  stopAdoptedCheckIfIdle()
   announce()
 }
 
@@ -239,9 +289,32 @@ export function getRunning(instanceId: string): RunningGame | undefined {
   return running.get(instanceId)
 }
 
-/** Instances left running by an earlier session and still alive. */
+/**
+ * Instances left running by an earlier session and still alive.
+ *
+ * Also the liveness check itself: a dead pid found here is dropped from the
+ * registry and announced immediately, the same as `isRunning` below, rather
+ * than only being filtered out of this one result.
+ */
 export function listAdopted(): AdoptedGame[] {
-  return [...adopted.values()].filter((game) => alive(game.pid))
+  const result: AdoptedGame[] = []
+  let removed = false
+  for (const instanceId of [...adopted.keys()]) {
+    const game = adopted.get(instanceId)
+    if (!game) continue
+    if (alive(game.pid)) {
+      result.push(game)
+    } else {
+      adopted.delete(instanceId)
+      removed = true
+    }
+  }
+  if (removed) {
+    persist()
+    stopAdoptedCheckIfIdle()
+    announce()
+  }
+  return result
 }
 
 /** An instance left running by an earlier session, if any. */
@@ -257,9 +330,12 @@ export function isRunning(instanceId: string): boolean {
   if (alive(orphan.pid)) return true
 
   // The game has since been closed, so the instance is free again. Checking
-  // lazily here is what makes the guard self-healing without any polling.
+  // lazily here is what makes the guard self-healing, on top of the periodic
+  // sweep started in `ensureAdoptedCheck`.
   adopted.delete(instanceId)
   persist()
+  stopAdoptedCheckIfIdle()
+  announce()
   return false
 }
 

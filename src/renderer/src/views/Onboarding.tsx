@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react'
+import { useEffect, useState, type JSX } from 'react'
 import { ACCENT_CHOICES } from '@shared/defaults'
 import { refreshAccounts, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
@@ -11,6 +11,12 @@ import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../component
 export function Onboarding(): JSX.Element {
   const { settings, accounts } = useStore()
   const memoryMax = useMemorySliderMax()
+  // useMemorySliderMax answers instantly with a generous fallback ceiling
+  // while the real installed RAM is still being fetched. Clamping against
+  // that fallback before it resolves could cut a legitimate high value down
+  // to the fallback for no reason, so the clamp is only applied once the
+  // real number is confirmed to have arrived.
+  const [memoryKnown, setMemoryKnown] = useState(false)
 
   const [step, setStep] = useState(0)
   const [accent, setAccent] = useState(settings.accentColor)
@@ -18,6 +24,21 @@ export function Onboarding(): JSX.Element {
   const [autoJava, setAutoJava] = useState(true)
   const [accountOpen, setAccountOpen] = useState(false)
   const [finishing, setFinishing] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.gabi.app.info().then((info) => {
+      if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // The value that is actually shown and saved: never above what the machine
+  // really has. Submitting the raw slider value used to save more memory
+  // than exists on machines with less RAM than the 4096 MB default.
+  const effectiveMemory = memoryKnown ? Math.min(memory, memoryMax) : memory
 
   const finish = async (): Promise<void> => {
     setFinishing(true)
@@ -28,7 +49,7 @@ export function Onboarding(): JSX.Element {
       // showing this very screen, right after telling the user setup worked.
       const saved = await saveSettings({
         accentColor: accent,
-        defaultMemoryMb: memory,
+        defaultMemoryMb: effectiveMemory,
         javaAutoManage: autoJava,
         onboarded: true
       })
@@ -95,7 +116,7 @@ export function Onboarding(): JSX.Element {
 
             <div className="field">
               <label className="label" htmlFor="ob-standard-arbeitsspeicher">
-                Standard-Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+                Standard-Arbeitsspeicher: {formatMemory(effectiveMemory)}
               </label>
               <input id="ob-standard-arbeitsspeicher"
                 className="range"
@@ -103,7 +124,7 @@ export function Onboarding(): JSX.Element {
                 min={1024}
                 max={memoryMax}
                 step={512}
-                value={Math.min(memory, memoryMax)}
+                value={effectiveMemory}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">

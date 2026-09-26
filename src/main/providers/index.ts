@@ -50,10 +50,13 @@ export async function searchAll(query: SearchQuery): Promise<SearchResponse> {
   const total = results.reduce((sum, r) => sum + r.total, 0)
 
   // Each provider sorts its own page correctly, but concatenating them lists
-  // all of one platform before any of the other — so a project updated minutes
+  // all of one platform before any of the other, so a project updated minutes
   // ago can end up below a week-old one. Every sort except relevance therefore
-  // gets applied across the merged list; relevance has no comparable score
-  // between platforms, so there the lists are interleaved instead.
+  // gets applied across this page's merged list; relevance has no comparable
+  // score between platforms, so there the lists are interleaved instead.
+  // This only fixes ordering within one page. "Mehr laden" fetches another
+  // page from each provider and appends it, so the renderer has to re-apply
+  // the same sort across the whole accumulated list, not just this one.
   const merged =
     wanted.length > 1 && query.sort === 'relevance' ? interleave(results.map((r) => r.items)) : items
 

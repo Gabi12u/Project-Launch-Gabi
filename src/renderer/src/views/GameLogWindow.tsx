@@ -24,6 +24,17 @@ export function GameLogWindow({
   const [lines, setLines] = useState<LogLine[]>([])
   const [status, setStatus] = useState<LaunchStatus | null>(null)
   const boxRef = useRef<HTMLDivElement | null>(null)
+  // Whether the box was scrolled near its bottom just before the lines below
+  // change, so a new burst of output does not yank the view down from under
+  // someone who scrolled up to read something earlier. Starts true so the
+  // very first batch of history still lands scrolled to the bottom.
+  const nearBottomRef = useRef(true)
+
+  const handleScroll = (): void => {
+    const box = boxRef.current
+    if (!box) return
+    nearBottomRef.current = box.scrollHeight - box.scrollTop - box.clientHeight < 40
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -36,8 +47,21 @@ export function GameLogWindow({
         // so lines can arrive while the history is still in flight. Replacing
         // the array outright would drop them.
         setLines((streamed) => {
-          const seen = new Set(history.map((line) => `${line.time}|${line.text}`))
-          const fresh = streamed.filter((line) => !seen.has(`${line.time}|${line.text}`))
+          // A multiset, not a Set: two genuinely identical lines (same time and
+          // text) can both be real output, and a plain Set would drop the
+          // second one as if it were the same line arriving twice.
+          const counts = new Map<string, number>()
+          for (const line of history) {
+            const key = `${line.time}|${line.text}`
+            counts.set(key, (counts.get(key) ?? 0) + 1)
+          }
+          const fresh = streamed.filter((line) => {
+            const key = `${line.time}|${line.text}`
+            const remaining = counts.get(key) ?? 0
+            if (remaining <= 0) return true
+            counts.set(key, remaining - 1)
+            return false
+          })
           return [...history, ...fresh].slice(-1200)
         })
       })
@@ -60,7 +84,8 @@ export function GameLogWindow({
   }, [instanceId])
 
   useEffect(() => {
-    if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
+    const box = boxRef.current
+    if (box && nearBottomRef.current) box.scrollTop = box.scrollHeight
   }, [lines])
 
   // The window itself was created with a generic Electron title until this
@@ -133,7 +158,12 @@ export function GameLogWindow({
           </div>
         </div>
 
-        <div className="log-view grow" ref={boxRef} style={{ flex: 1, minHeight: 0 }}>
+        <div
+          className="log-view grow"
+          ref={boxRef}
+          onScroll={handleScroll}
+          style={{ flex: 1, minHeight: 0 }}
+        >
           {lines.length === 0 ? (
             <div className="muted" style={{ padding: 12 }}>Noch keine Ausgabe.</div>
           ) : (

@@ -24,9 +24,9 @@ export type FabricLikeLoader = keyof typeof ENDPOINTS
 
 /**
  * Compares two loader version strings, newest first, by their dot-separated
- * numeric prefix (a `-beta.9` or similar suffix is ignored for the
- * comparison itself, since two builds only differing in that suffix still
- * need to sort by their shared numeric part).
+ * numeric prefix. When that prefix is equal, a plain release outranks any
+ * pre-release of it, and among pre-releases alpha < beta < pre < rc, then the
+ * numeric counter after that word (`beta.9` newer than `beta.7`).
  */
 function compareVersionsNewestFirst(a: string, b: string): number {
   const numbers = (v: string): number[] => v.split(/[-+]/)[0].split('.').map((n) => Number(n) || 0)
@@ -36,7 +36,29 @@ function compareVersionsNewestFirst(a: string, b: string): number {
     const diff = (pb[i] ?? 0) - (pa[i] ?? 0)
     if (diff !== 0) return diff
   }
-  return 0
+
+  const suffixOf = (v: string): string | null => {
+    const idx = v.indexOf('-')
+    return idx === -1 ? null : v.slice(idx + 1)
+  }
+  const sa = suffixOf(a)
+  const sb = suffixOf(b)
+  if (sa === null && sb === null) return 0
+  if (sa === null) return -1 // a is a plain release, newer than any pre-release
+  if (sb === null) return 1
+
+  const rank = (s: string): [number, number] => {
+    const match = /^([a-zA-Z]+)\.?(\d+)?/.exec(s)
+    const order: Record<string, number> = { alpha: 0, beta: 1, pre: 2, rc: 3 }
+    const word = match?.[1]?.toLowerCase()
+    const tier = word && word in order ? order[word] : 4
+    const counter = match?.[2] ? Number(match[2]) : 0
+    return [tier, counter]
+  }
+  const [tierA, counterA] = rank(sa)
+  const [tierB, counterB] = rank(sb)
+  if (tierA !== tierB) return tierA - tierB
+  return counterB - counterA
 }
 
 export async function listFabricLikeVersions(

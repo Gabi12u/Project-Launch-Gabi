@@ -111,6 +111,14 @@ const GRACE_MS = 30_000
  */
 const STOP_GRACE_MS = 12_000
 
+/**
+ * Upper bound for `disposeRecording` waiting on a concurrent finish or fail
+ * to flush its file. Same idea as `STOP_GRACE_MS`: a real flush takes a
+ * moment, not minutes, and quitting must not hang forever on one that never
+ * settles.
+ */
+const DISPOSE_MAX_WAIT_MS = 10_000
+
 /** Hotkey currently handed to the OS, so it can be released again. */
 let registered: string | null = null
 
@@ -243,6 +251,37 @@ export function syncRecordingHotkey(): void {
  * ------------------------------------------------------------------ */
 
 /**
+ * A title that looks like a real Minecraft client window: "Minecraft",
+ * optionally starred, optionally followed by a version and/or mod loader
+ * suffix (`Minecraft 1.20.1`, `Minecraft* 1.21`, `Minecraft 1.20.1 Fabric`).
+ *
+ * The plain `/minecraft/i` test this replaced matched anywhere in the title,
+ * which is also true of a browser tab reading "Minecraft Wiki - Google
+ * Chrome" or a Discord window showing "Playing Minecraft" as the status.
+ * Anchoring at the start and requiring the rest of the title to look like a
+ * version or loader name rules those out.
+ */
+const STRICT_WINDOW_TITLE_RE = /^minecraft\*?(\s+[\w.-]+)*$/i
+
+/** Windows that merely mention Minecraft rather than being its client. */
+const EXCLUDED_WINDOW_MARKERS = [
+  ' - google chrome',
+  'mozilla firefox',
+  'microsoft edge',
+  'opera',
+  'discord',
+  'youtube',
+  'visual studio code',
+  'explorer'
+]
+
+function looksLikeGameWindow(title: string): boolean {
+  const lower = title.toLowerCase()
+  if (EXCLUDED_WINDOW_MARKERS.some((marker) => lower.includes(marker))) return false
+  return STRICT_WINDOW_TITLE_RE.test(title)
+}
+
+/**
  * Picks what to capture: the game's own window if we can find it.
  *
  * `desktopCapturer` exposes no process id, only a window title, so with more
@@ -252,6 +291,10 @@ export function syncRecordingHotkey(): void {
  * own Minecraft version narrows that considerably, though two instances on
  * the exact same version running side by side are still indistinguishable
  * this way: there is nothing left in the title to tell them apart.
+ *
+ * A title has to pass `looksLikeGameWindow` to even be considered; if nothing
+ * does, this falls through to the screen capture below rather than guessing
+ * with a looser match.
  */
 async function pickSource(instanceId: string): Promise<{ id: string; kind: 'window' | 'screen' } | null> {
   // A thumbnail is a full screen grab per source and we throw them all away,
@@ -262,7 +305,7 @@ async function pickSource(instanceId: string): Promise<{ id: string; kind: 'wind
   })
 
   const windows = sources.filter(
-    (source) => source.id.startsWith('window:') && /minecraft/i.test(source.name)
+    (source) => source.id.startsWith('window:') && looksLikeGameWindow(source.name)
   )
   const mcVersion = tryGetInstance(instanceId)?.mcVersion
   const game = (mcVersion && windows.find((source) => source.name.includes(mcVersion))) || windows[0]
@@ -786,4 +829,21 @@ export async function disposeRecording(): Promise<void> {
   }
   const current = await closeSession()
   if (current) logger.info('Laufende Aufnahme beim Beenden geschlossen')
+
+  // `closeSession` only handles a session that is still open. A stop that was
+  // already under way when the quit began has none: `session` is null while
+  // `finishRecordingInner`/`failRecordingInner` are still writing the sidecar
+  // and, on the fail path, deleting the file. Without waiting here, the
+  // quit guard in index.ts that awaits `disposeRecording` returned before that
+  // write actually landed.
+  if (finalising === 0) return
+  await new Promise<void>((done) => {
+    const deadline = Date.now() + DISPOSE_MAX_WAIT_MS
+    const poll = setInterval(() => {
+      if (finalising === 0 || Date.now() > deadline) {
+        clearInterval(poll)
+        done()
+      }
+    }, 100)
+  })
 }

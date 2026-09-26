@@ -113,19 +113,26 @@ export function useCountUp(target: number, duration = 900): number {
  * dozens of them in under a second, and on a slow disk or with antivirus
  * scanning every temp file, that was enough to make the slider visibly
  * stutter and the interface hitch.
+ *
+ * `save` may return `saveSettings`'s own boolean result (or nothing, for a
+ * caller that does not care). When it resolves to `false`, the field snaps
+ * back to the last known-good source value instead of continuing to show an
+ * edit that was never actually written to disk.
  */
 export function useDebouncedSetting<T>(
   source: T,
-  save: (value: T) => void,
+  save: (value: T) => void | Promise<boolean>,
   delayMs = 300
 ): [T, (value: T) => void] {
   const [local, setLocal] = useState(source)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pending = useRef(source)
+  const sourceRef = useRef(source)
 
   // Follows the source (a reset, a value loaded from disk, another window)
   // for as long as nothing typed here is still waiting to be saved.
   useEffect(() => {
+    sourceRef.current = source
     if (timer.current === null) setLocal(source)
   }, [source])
 
@@ -135,7 +142,9 @@ export function useDebouncedSetting<T>(
     if (timer.current !== null) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
       timer.current = null
-      save(pending.current)
+      void Promise.resolve(save(pending.current)).then((ok) => {
+        if (ok === false) setLocal(sourceRef.current)
+      })
     }, delayMs)
   }
 

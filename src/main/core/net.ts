@@ -128,24 +128,42 @@ function isRetryable(err: unknown): boolean {
  * these addresses directly, which is what a manipulated Location header or a
  * mod's own declared download URL would realistically contain.
  */
+/** True for a private/loopback IPv4 range, given its first two octets. */
+function isPrivateV4Octets(a: number, b: number): boolean {
+  if (a === 127 || a === 10 || a === 0) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 192 && b === 168) return true
+  if (a === 169 && b === 254) return true
+  return false
+}
+
 function isPrivateAddress(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
   if (host === 'localhost') return true
 
   const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
-  if (v4) {
-    const a = Number(v4[1])
-    const b = Number(v4[2])
-    if (a === 127 || a === 10 || a === 0) return true
-    if (a === 172 && b >= 16 && b <= 31) return true
-    if (a === 192 && b === 168) return true
-    if (a === 169 && b === 254) return true
-    return false
-  }
+  if (v4) return isPrivateV4Octets(Number(v4[1]), Number(v4[2]))
 
   if (host === '::1' || host === '::') return true
   // Unique local (fc00::/7) and link-local (fe80::/10).
   if (/^f[cd][0-9a-f]{2}:/i.test(host) || /^fe[89ab][0-9a-f]:/i.test(host)) return true
+
+  // IPv4-mapped (::ffff:a.b.c.d) and legacy IPv4-compatible (::a.b.c.d)
+  // addresses embed a real IPv4 address in their last 32 bits. The WHATWG
+  // URL parser normalizes both into a hex form before this function ever
+  // sees them, so a literal like [::ffff:127.0.0.1] arrives here as
+  // "::ffff:7f00:1" and used to sail past every check above. The dotted
+  // form is handled too in case it ever reaches this function unnormalized.
+  const dotted = host.match(/^::(?:ffff:)?(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/)
+  if (dotted) return isPrivateV4Octets(Number(dotted[1]), Number(dotted[2]))
+
+  const hex = host.match(/^::(?:ffff:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+  if (hex) {
+    const hi = parseInt(hex[1], 16)
+    // Only the first 16 bits of the embedded address matter here, since the
+    // private/loopback ranges above are all decided by the first two octets.
+    return isPrivateV4Octets(hi >> 8, hi & 0xff)
+  }
 
   return false
 }
@@ -492,7 +510,7 @@ export async function downloadFile(
               if (signal?.aborted) throw new TaskCancelledError()
               lastError = err
               if (!isRetryable(err) || attempt === retries) break
-              await sleep(400 * 2 ** attempt)
+              await sleep(retryDelayMs(err, attempt))
             }
           }
         }

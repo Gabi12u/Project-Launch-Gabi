@@ -342,6 +342,7 @@ export interface ProjectVersion {
   downloadUrl: string
   fileName: string
   sha1?: string
+  sha512?: string
   size?: number
   releasedAt: string
   changelog?: string

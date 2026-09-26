@@ -35,7 +35,10 @@ export function ModsView(): JSX.Element {
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState(false)
-  const [updating, setUpdating] = useState<string | null>(null)
+  // A Set, not a single id. With one shared value, starting a second row's
+  // update overwrote the first: the first row's spinner vanished and its
+  // button went live again while its request was still running.
+  const [updating, setUpdating] = useState<ReadonlySet<string>>(() => new Set())
   const [search, setSearch] = useState('')
   const [onlyUpdates, setOnlyUpdates] = useState(false)
   const [instanceFilter, setInstanceFilter] = useState('all')
@@ -359,10 +362,12 @@ export function ModsView(): JSX.Element {
                     {row.item.update && (
                       <button
                         className="btn sm primary"
-                        disabled={updating === row.item.id || blockedReason(row.instance) !== null}
+                        disabled={updating.has(row.item.id) || blockedReason(row.instance) !== null}
                         title={blockedReason(row.instance) ?? undefined}
                         onClick={async () => {
-                          setUpdating(row.item.id)
+                          // Guards against a double click landing twice before the first render.
+                          if (updating.has(row.item.id)) return
+                          setUpdating((current) => new Set(current).add(row.item.id))
                           try {
                             await window.gabi.content.update(row.instance.id, row.item.id)
                             toast('success', `${row.item.name} aktualisiert`)
@@ -371,11 +376,15 @@ export function ModsView(): JSX.Element {
                           } catch (err) {
                             toastError(err, 'Update fehlgeschlagen')
                           } finally {
-                            setUpdating(null)
+                            setUpdating((current) => {
+                              const next = new Set(current)
+                              next.delete(row.item.id)
+                              return next
+                            })
                           }
                         }}
                       >
-                        {updating === row.item.id ? <span className="spinner" /> : <IconDownload size={13} />}
+                        {updating.has(row.item.id) ? <span className="spinner" /> : <IconDownload size={13} />}
                         Update
                       </button>
                     )}

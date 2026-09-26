@@ -7,8 +7,8 @@ import { getSettings } from './store'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
-import { recoverInterruptedRestores } from './core/backups'
-import { adoptRunningFromDisk, pruneAdopted, runningCount } from './core/running'
+import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
+import { adoptRunningFromDisk, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { loadInstances, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
@@ -192,7 +192,10 @@ function createWindow(): BrowserWindow {
   // the same hide the launcher already does the moment a game starts, and
   // `handleWindowRestore` (launch.ts) brings it back once the last one ends.
   window.on('close', (event) => {
-    if (runningCount() > 0 && getSettings().launchBehaviour !== 'close') {
+    // A launch still preparing (no process yet) is just as much a reason to
+    // keep it alive as one already running: quitting now would cut a download
+    // or a Java install off mid way with nothing left to finish it.
+    if ((runningCount() > 0 || startingCount() > 0) && getSettings().launchBehaviour !== 'close') {
       event.preventDefault()
       window.hide()
     }
@@ -357,13 +360,6 @@ function bootstrap(): void {
     createWindow()
     handleStartupArgs(process.argv)
 
-    // Started right alongside the window rather than after the usual settling
-    // delay: an update left pending by the previous session resolves out of the
-    // cache in milliseconds, and every second it waits here is a second the
-    // user stares at a launcher that is about to restart anyway. The check is
-    // one small request and holds nothing up if there is no update.
-    initUpdater()
-
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
@@ -382,12 +378,34 @@ function bootstrap(): void {
         )
       }
 
+      // Same reasoning: a restore the crash recovery could not finish leaves
+      // the originals parked in a staging folder, and nothing else on screen
+      // ever says so.
+      for (const { instanceId, staging } of failedRestoreRecoveries()) {
+        const name = tryGetInstance(instanceId)?.name ?? instanceId
+        notify(
+          'error',
+          'Wiederherstellung unvollständig',
+          `Nach einem Absturz ließ sich eine Wiederherstellung von „${name}“ nicht vollständig zurücknehmen. ` +
+            `Die gesicherten Dateien liegen noch in ${staging}.`
+        )
+      }
+
       // Each step stands alone. These write files and talk to the OS, so any
       // of them can throw on a machine with a locked config or a hostile
       // virus scanner, and an escaping error used to abandon everything
       // scheduled after it for the rest of the session: no recording hotkey,
       // no cleanup, a shortcut launch silently dropped, and nothing on screen
       // to say so.
+      try {
+        // Moved here from right after createWindow(): the renderer only
+        // subscribes to its IPC listeners once it settles, and a cached
+        // update resolving instantly used to send its status and notify()
+        // before anything was listening for them.
+        initUpdater()
+      } catch (err) {
+        logger.error('Updater konnte nicht gestartet werden:', err)
+      }
       try {
         announceUpdate()
       } catch (err) {
@@ -495,63 +513,82 @@ function handleDeepLink(url: string): void {
   }
 }
 
+/**
+ * True while a call to `consumePendingLaunch` is already draining the queue.
+ *
+ * The function is called from several places (boot, window ready, a new
+ * shortcut or link arriving) and awaits a dialog and a full launch per item,
+ * so a second call could easily start before the first one returns. Both
+ * would then race the same array with `shift()`, and the confirmation dialog
+ * for a link could show twice for one entry. This makes an overlapping call
+ * a no-op instead: the already-running loop below picks up anything pushed
+ * in the meantime on its next iteration.
+ */
+let draining = false
+
 /** Starts every instance queued by a shortcut or deep link, in order, once the app is ready. */
 async function consumePendingLaunch(): Promise<void> {
   // Left pending rather than dropped when the renderer cannot receive yet: the
   // timer during boot calls this again, and by then the progress, the log
   // window and the compatibility dialog all have somewhere to appear.
   if (!app.isReady() || !rendererReachable()) return
+  if (draining) return
+  draining = true
 
-  while (pendingLaunches.length > 0) {
-    // Shifted out before launching, so a launch that throws still lets the
-    // rest of the queue drain instead of getting stuck behind it forever.
-    const { instanceId, origin } = pendingLaunches.shift() as PendingLaunch
+  try {
+    while (pendingLaunches.length > 0) {
+      // Shifted out before launching, so a launch that throws still lets the
+      // rest of the queue drain instead of getting stuck behind it forever.
+      const { instanceId, origin } = pendingLaunches.shift() as PendingLaunch
 
-    const instance = tryGetInstance(instanceId)
-    if (!instance) {
-      logger.warn(`Verknüpfung zeigt auf unbekannte Instanz ${instanceId}`)
-      notify('error', 'Instanz nicht gefunden', `Die Verknüpfung verweist auf "${instanceId}".`)
-      continue
-    }
-
-    // A shortcut this app created itself asks nothing, the same as clicking
-    // "Spielen" would not. A `launchgabi://launch/<id>` link can come from any
-    // website a browser happens to visit, so that one origin gets a
-    // confirmation before anything actually starts.
-    if (origin === 'link') {
-      const win = getMainWindow()
-      // A dialog parented to a hidden or minimised window can end up out of
-      // sight on Windows, leaving the launch waiting on a box nobody sees.
-      if (win && !win.isDestroyed()) {
-        if (win.isMinimized()) win.restore()
-        if (!win.isVisible()) win.show()
-        win.focus()
-      }
-      const result = await dialog.showMessageBox(win as BrowserWindow, {
-        type: 'question',
-        title: 'Instanz starten?',
-        message: 'Instanz starten?',
-        detail: `Launch Gabi soll die Instanz „${instance.name}“ starten. Der Aufruf kam über einen Link. Starten?`,
-        buttons: ['Starten', 'Abbrechen'],
-        defaultId: 1,
-        cancelId: 1,
-        noLink: true
-      })
-      if (result.response !== 0) {
-        logger.info(`Start über Link für ${instance.name} abgelehnt`)
+      const instance = tryGetInstance(instanceId)
+      if (!instance) {
+        logger.warn(`Verknüpfung zeigt auf unbekannte Instanz ${instanceId}`)
+        notify('error', 'Instanz nicht gefunden', `Die Verknüpfung verweist auf "${instanceId}".`)
         continue
       }
-    }
 
-    navigate(`/instances/${instanceId}`)
-    logger.info(`Starte ${instance.name} über ${origin === 'link' ? 'Link' : 'Verknüpfung'}`)
+      // A shortcut this app created itself asks nothing, the same as clicking
+      // "Spielen" would not. A `launchgabi://launch/<id>` link can come from any
+      // website a browser happens to visit, so that one origin gets a
+      // confirmation before anything actually starts.
+      if (origin === 'link') {
+        const win = getMainWindow()
+        // A dialog parented to a hidden or minimised window can end up out of
+        // sight on Windows, leaving the launch waiting on a box nobody sees.
+        if (win && !win.isDestroyed()) {
+          if (win.isMinimized()) win.restore()
+          if (!win.isVisible()) win.show()
+          win.focus()
+        }
+        const result = await dialog.showMessageBox(win as BrowserWindow, {
+          type: 'question',
+          title: 'Instanz starten?',
+          message: 'Instanz starten?',
+          detail: `Launch Gabi soll die Instanz „${instance.name}“ starten. Der Aufruf kam über einen Link. Starten?`,
+          buttons: ['Starten', 'Abbrechen'],
+          defaultId: 1,
+          cancelId: 1,
+          noLink: true
+        })
+        if (result.response !== 0) {
+          logger.info(`Start über Link für ${instance.name} abgelehnt`)
+          continue
+        }
+      }
 
-    try {
-      await launchInstance({ instanceId })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      notify('error', `${instance.name} konnte nicht gestartet werden`, message)
+      navigate(`/instances/${instanceId}`)
+      logger.info(`Starte ${instance.name} über ${origin === 'link' ? 'Link' : 'Verknüpfung'}`)
+
+      try {
+        await launchInstance({ instanceId })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        notify('error', `${instance.name} konnte nicht gestartet werden`, message)
+      }
     }
+  } finally {
+    draining = false
   }
 }
 

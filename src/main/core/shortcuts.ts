@@ -14,10 +14,16 @@ const logger = log('shortcuts')
  * Instance names are user supplied and only trimmed at the edges, so a pasted
  * name carrying a newline would break out of a `Name=` key in a .desktop file,
  * or out of the `rem`/`#` comment in the generated start scripts — turning the
- * rest of the name into its own directive or shell command.
+ * rest of the name into its own directive or shell command. Unicode format and
+ * bidi control characters are stripped too: they come through unscathed from a
+ * modpack manifest and can otherwise reorder or hide parts of the rendered
+ * name without a single visible character being out of place.
  */
 function singleLine(value: string): string {
-  return value.replace(/[\x00-\x1f\x7f]+/g, ' ').trim()
+  return value
+    .replace(/[\x00-\x1f\x7f]+/g, ' ')
+    .replace(/[​-‏‪-‮⁦-⁩﻿؜]/g, '')
+    .trim()
 }
 
 /** Characters Windows refuses in file names, plus anything line-breaking. */
@@ -25,7 +31,14 @@ function safeFileName(name: string): string {
   const cleaned = singleLine(name).replace(/[\\/:*?"<>|]/g, '-').trim() || 'Instanz'
   // Windows silently drops a trailing dot or space, so "Modpack." and
   // "Modpack" would otherwise collide as the exact same shortcut file.
-  const trimmed = cleaned.replace(/[. ]+$/, '') || 'Instanz'
+  let trimmed = cleaned.replace(/[. ]+$/, '') || 'Instanz'
+  // Capped well below any filesystem limit, before the extension and any
+  // " (2)" disambiguation suffix are added. Trimmed again after slicing, since
+  // the cut can land right on a dot or space Windows would otherwise drop.
+  const MAX_NAME_LENGTH = 120
+  if (trimmed.length > MAX_NAME_LENGTH) {
+    trimmed = trimmed.slice(0, MAX_NAME_LENGTH).replace(/[. ]+$/, '') || 'Instanz'
+  }
   // A reserved device name is refused by Windows no matter what comes after a
   // dot ("CON.lnk" fails exactly like "CON" does), so an instance literally
   // named "CON" gets a harmless suffix instead of a shortcut that silently

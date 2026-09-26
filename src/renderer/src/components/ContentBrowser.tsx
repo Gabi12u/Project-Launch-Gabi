@@ -30,6 +30,38 @@ const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
   modpack: 'Modpacks'
 }
 
+/** Undated entries sort last rather than jumping to the top as NaN would. */
+function time(value?: string): number {
+  const parsed = value ? Date.parse(value) : Number.NaN
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+/**
+ * Mirrors the cross-provider comparator `searchAll` applies to a single page.
+ * That sort only ever sees one page at a time, so once "Mehr laden" appends
+ * another page from each provider, the accumulated list has to be re-sorted
+ * here the same way, or a project from the second page could sit above one
+ * from the first just because it belongs to a different platform.
+ */
+function sortMerged(items: SearchResultItem[], sort: SearchQuery['sort']): SearchResultItem[] {
+  const sorted = [...items]
+  switch (sort) {
+    case 'downloads':
+      sorted.sort((a, b) => b.downloads - a.downloads)
+      break
+    case 'follows':
+      sorted.sort((a, b) => (b.follows ?? 0) - (a.follows ?? 0))
+      break
+    case 'updated':
+    case 'newest':
+      sorted.sort((a, b) => time(b.updatedAt) - time(a.updatedAt))
+      break
+    default:
+      break
+  }
+  return sorted
+}
+
 interface Props {
   /** When set, results can be installed straight into this instance. */
   instanceId?: string
@@ -49,6 +81,9 @@ interface Props {
   /** Project ids already installed, so the button can show "Installiert". */
   installedProjectIds?: string[]
   onInstalled?: () => void
+  /** Opens this project's modal on mount, e.g. from a `launchgabi://install/...` deep link. */
+  openProjectProvider?: 'modrinth' | 'curseforge'
+  openProjectId?: string
 }
 
 export function ContentBrowser({
@@ -59,7 +94,9 @@ export function ContentBrowser({
   types = ['mod', 'resourcepack', 'shaderpack', 'datapack'],
   initialType,
   installedProjectIds = [],
-  onInstalled
+  onInstalled,
+  openProjectProvider,
+  openProjectId
 }: Props): JSX.Element {
   const { settings } = useStore()
 
@@ -102,6 +139,30 @@ export function ContentBrowser({
     }
   }, [])
 
+  // Opens the project a deep link (launchgabi://install/...) pointed at.
+  // Keyed so the same link does not reopen the modal again after the user
+  // has closed it, and a changed link still opens its own project.
+  const openedProjectRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!openProjectProvider || !openProjectId) return
+    const key = `${openProjectProvider}:${openProjectId}`
+    if (openedProjectRef.current === key) return
+    openedProjectRef.current = key
+
+    let current = true
+    void window.gabi.providers
+      .project(openProjectProvider, openProjectId)
+      .then((details) => {
+        if (current) setDetail(details)
+      })
+      .catch((err) => {
+        if (current) toastError(err, 'Projekt konnte nicht geöffnet werden')
+      })
+    return () => {
+      current = false
+    }
+  }, [openProjectProvider, openProjectId])
+
   const search = useCallback(
     async (nextOffset: number, append: boolean): Promise<void> => {
       const id = ++requestId.current
@@ -121,11 +182,15 @@ export function ContentBrowser({
         // Ignore responses from superseded requests.
         if (id !== requestId.current) return
 
-        setResponse((current) =>
-          append && current
-            ? { ...result, items: [...current.items, ...result.items] }
-            : result
-        )
+        setResponse((current) => {
+          if (!append || !current) return result
+          const combined = [...current.items, ...result.items]
+          // Each page arrives pre-sorted across providers on its own; once a
+          // second page is appended, the whole accumulated list needs the
+          // same sort re-applied, or the pages just stack platform by platform.
+          const items = providers.length > 1 ? sortMerged(combined, sort) : combined
+          return { ...result, items }
+        })
       } catch (err) {
         if (id === requestId.current) {
           // Cleared on a fresh search, so the list cannot keep showing the

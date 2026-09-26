@@ -18,6 +18,22 @@ interface Props {
 export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const { settings } = useStore()
   const memoryMax = useMemorySliderMax()
+  // useMemorySliderMax answers instantly with a generous fallback ceiling
+  // while the real installed RAM is still being fetched. Clamping against
+  // that fallback before it resolves could cut a legitimate high value down
+  // to the fallback for no reason, so the clamp is only applied once the
+  // real number is confirmed to have arrived.
+  const [memoryKnown, setMemoryKnown] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.gabi.app.info().then((info) => {
+      if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const [step, setStep] = useState<Step>(0)
   const [busy, setBusy] = useState(false)
@@ -47,6 +63,11 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const [accent, setAccent] = useState(settings.accentColor)
   const [memory, setMemory] = useState(settings.defaultMemoryMb)
   const [group, setGroup] = useState('')
+
+  // The value that is actually shown and saved: never above what the machine
+  // really has. Submitting the raw slider value used to save more memory
+  // than exists on machines with less RAM than the default.
+  const effectiveMemory = memoryKnown ? Math.min(memory, memoryMax) : memory
 
   /* --- Reset whenever the wizard is opened ------------------------ */
   useEffect(() => {
@@ -182,7 +203,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         icon,
         accent,
         group: group.trim(),
-        memoryMb: memory
+        memoryMb: effectiveMemory
       })
 
       toast(
@@ -453,7 +474,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
             </div>
             <div className="field grow">
               <label className="label" htmlFor="ci-arbeitsspeicher">
-                Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+                Arbeitsspeicher: {formatMemory(effectiveMemory)}
               </label>
               <input id="ci-arbeitsspeicher"
                 className="range"
@@ -461,7 +482,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 min={1024}
                 max={memoryMax}
                 step={512}
-                value={Math.min(memory, memoryMax)}
+                value={effectiveMemory}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
@@ -515,7 +536,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 <span style={{ fontWeight: 650 }}>{name.trim() || suggestedName}</span>
                 <span className="hint">
                   Minecraft {mcVersion} · {LOADERS.find((l) => l.id === loader)?.name}
-                  {loaderVersion ? ` ${loaderVersion}` : ''} · {formatMemory(Math.min(memory, memoryMax))}
+                  {loaderVersion ? ` ${loaderVersion}` : ''} · {formatMemory(effectiveMemory)}
                 </span>
               </div>
             </div>

@@ -99,6 +99,10 @@ export function InstanceDetailView({
   const [checking, setChecking] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [repairing, setRepairing] = useState(false)
+  // Whether the settings panel has unsaved edits, so a tab switch that would
+  // unmount it can ask first instead of silently discarding them.
+  const [settingsDirty, setSettingsDirty] = useState(false)
+  const [pendingTab, setPendingTab] = useState<Tab | null>(null)
 
   const status = launchStatus[instanceId]
   const running = summary?.running ?? false
@@ -344,7 +348,15 @@ export function InstanceDetailView({
           <button
             key={entry.id}
             className={`tab ${tab === entry.id ? 'active' : ''}`}
-            onClick={() => setTab(entry.id)}
+            onClick={() => {
+              // Leaving the settings tab unmounts the panel below, which would
+              // otherwise discard whatever it has not saved yet.
+              if (tab === 'settings' && entry.id !== 'settings' && settingsDirty) {
+                setPendingTab(entry.id)
+              } else {
+                setTab(entry.id)
+              }
+            }}
           >
             {entry.label}
             {entry.id === 'content' && instance.content.length > 0 && (
@@ -393,7 +405,7 @@ export function InstanceDetailView({
       {tab === 'recordings' && <RecordingsTab instanceId={instanceId} />}
       {tab === 'logs' && <LogsTab instanceId={instanceId} />}
       {tab === 'settings' && (
-        <InstanceSettingsPanel instance={instance} onChanged={load} />
+        <InstanceSettingsPanel instance={instance} onChanged={load} onDirtyChange={setSettingsDirty} />
       )}
 
       <Confirm
@@ -409,6 +421,20 @@ export function InstanceDetailView({
         }
         onConfirm={remove}
         onCancel={() => setConfirmDelete(false)}
+      />
+
+      <Confirm
+        open={pendingTab !== null}
+        title="Ungespeicherte Änderungen verwerfen?"
+        danger
+        confirmLabel="Verwerfen"
+        message="Die Einstellungen dieser Instanz wurden noch nicht gespeichert. Beim Wechsel gehen sie verloren."
+        onConfirm={() => {
+          setSettingsDirty(false)
+          if (pendingTab) setTab(pendingTab)
+          setPendingTab(null)
+        }}
+        onCancel={() => setPendingTab(null)}
       />
     </div>
   )

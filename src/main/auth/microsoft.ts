@@ -302,7 +302,7 @@ export async function loginWithMicrosoft(): Promise<Account> {
 Code: ${err.code ?? '(keiner)'}
 Dauer bis zum Fehlschlag: ${Math.round((Date.now() - attemptStartedAt) / 1000)} s
 System: ${endpoints.kind}
-Rumpf: ${(err.body || '(leer)').slice(0, 800)}`
+Rumpf: ${scrub(err.body || '(leer)').slice(0, 800)}`
           : `Dauer bis zum Fehlschlag: ${Math.round((Date.now() - attemptStartedAt) / 1000)} s`
       reportError('login', err, detail)
     }
@@ -893,6 +893,34 @@ async function refreshAccessToken(accountId: string): Promise<string> {
       scope: SCOPE
     })
   )
+
+  // Microsoft can rotate the refresh token on every single use, and the chain
+  // below (Xbox Live, XSTS, Minecraft) makes three more network calls that can
+  // fail on their own for reasons that have nothing to do with the refresh
+  // itself. Losing the rotated token to one of those failures locked the
+  // account out for good: the old refresh token was already invalidated by
+  // Microsoft the moment this grant succeeded, so the next attempt could
+  // never work either. Persisted the instant it arrives, well before anything
+  // downstream gets a chance to throw. The final write below still runs as
+  // usual and simply confirms the same value.
+  if (token.refresh_token) {
+    const rotatedEnc = encrypt(token.refresh_token)
+    const beforeChain = readAccounts()
+    if (beforeChain.some((a) => a.id === accountId)) {
+      writeAccounts(
+        beforeChain.map((a) =>
+          a.id === accountId
+            ? {
+                ...a,
+                refreshToken: rotatedEnc.value,
+                refreshSecure: rotatedEnc.secure,
+                issuerClientId: a.issuerClientId ?? clientId
+              }
+            : a
+        )
+      )
+    }
+  }
 
   const xbl = await xboxLogin(token.access_token)
   const xsts = await xstsAuthorize(xbl.token)

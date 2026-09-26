@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react'
-import { setState, toast, toastError, useStore } from '../lib/store'
+import { refreshInstances, setState, toast, toastError, useStore } from '../lib/store'
 import { pluralise } from '../lib/format'
 import { startInstanceForced } from '../lib/actions'
 import { Modal } from './ui'
@@ -31,8 +31,19 @@ export function UpdateGate(): JSX.Element | null {
     try {
       const updated = await window.gabi.content.updateAll(instanceId)
       toast('success', `${updated} ${pluralise(updated, 'Mod', 'Mods')} aktualisiert`)
+      await refreshInstances()
       close()
-      void startInstanceForced(instanceId, instanceName)
+      // Not routed back through startInstance: it would read the update count
+      // from the store, which was only just refreshed above and could still
+      // reopen this same gate. Checking compatibility directly here, the same
+      // API CompatibilityGate uses, only skips the update check while still
+      // catching mod conflicts caused by the update itself.
+      const report = await window.gabi.content.compatibility(instanceId)
+      if (report.launchable) {
+        void startInstanceForced(instanceId, instanceName)
+      } else {
+        setState({ compatGate: { instanceId, instanceName, report } })
+      }
     } catch (err) {
       toastError(err, 'Update fehlgeschlagen')
     } finally {

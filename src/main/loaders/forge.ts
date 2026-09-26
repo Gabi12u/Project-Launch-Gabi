@@ -296,6 +296,14 @@ async function mainClassOf(jarPath: string): Promise<string> {
   return match[1].trim()
 }
 
+// Keyed by "loader:mcVersion:loaderVersion". The processors below write into
+// shared library output paths, so two concurrent installs of the same build
+// (two new instances taking the recommended version at once, or a bulk
+// repair) used to run their processor steps in parallel against the same
+// files. A second caller now awaits the first's in-flight promise instead of
+// starting its own run.
+const inFlightInstalls = new Map<string, Promise<string>>()
+
 /**
  * Installs Forge or NeoForge. Both use the same installer format: a jar that
  * carries the version JSON plus a list of "processors" which patch the vanilla
@@ -303,6 +311,39 @@ async function mainClassOf(jarPath: string): Promise<string> {
  * graphical installer.
  */
 export async function installForgeLike(
+  loader: ForgeLikeLoader,
+  mcVersion: string,
+  loaderVersion: string,
+  task?: Task
+): Promise<string> {
+  const key = `${loader}:${mcVersion}:${loaderVersion}`
+  const existing = inFlightInstalls.get(key)
+  if (existing) {
+    try {
+      return await existing
+    } catch (err) {
+      // The first caller's own task was cancelled: that says nothing about
+      // whether this caller still wants the install, so it runs its own
+      // instead of silently inheriting a cancellation it never asked for.
+      if (err instanceof TaskCancelledError) {
+        return installForgeLike(loader, mcVersion, loaderVersion, task)
+      }
+      throw err
+    }
+  }
+
+  const promise = installForgeLikeInner(loader, mcVersion, loaderVersion, task)
+  inFlightInstalls.set(key, promise)
+  try {
+    return await promise
+  } finally {
+    if (inFlightInstalls.get(key) === promise) {
+      inFlightInstalls.delete(key)
+    }
+  }
+}
+
+async function installForgeLikeInner(
   loader: ForgeLikeLoader,
   mcVersion: string,
   loaderVersion: string,

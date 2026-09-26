@@ -13,6 +13,17 @@ let currentDir = ''
 let currentStamp = ''
 let currentPart = 0
 let lastReopenAttempt = 0
+/**
+ * Bytes already in the current file when this stream was opened.
+ *
+ * The file is opened with `flags: 'a'`, so a session that restarts (app
+ * relaunch, the midnight rollover below reopening the same day's file after a
+ * failed write) starts a brand new `WriteStream` whose own `bytesWritten`
+ * counts from zero, even though the file on disk already holds everything
+ * from before. Comparing `bytesWritten` alone against the cap let a file grow
+ * past it every time the stream was reopened within the same day.
+ */
+let streamOffset = 0
 
 /** A single very chatty session had nothing stopping today's file from growing without bound. */
 const MAX_FILE_BYTES = 20 * 1024 * 1024
@@ -71,11 +82,22 @@ function currentFileName(): string {
 }
 
 function openStream(): void {
+  const path = join(currentDir, currentFileName())
+  // 0 when the file does not exist yet (a fresh day, a fresh part), otherwise
+  // how much this reopened stream's own bytesWritten needs to be offset by.
+  let offset = 0
+  try {
+    offset = statSync(path).size
+  } catch {
+    // Missing file, nothing to offset from.
+  }
+
   // Log lines can include a raw error body from Microsoft or a file path
   // under the user's own account name, so the file gets the same owner-only
   // permission as the settings and account files.
-  const opened = createWriteStream(join(currentDir, currentFileName()), { flags: 'a', mode: 0o600 })
+  const opened = createWriteStream(path, { flags: 'a', mode: 0o600 })
   stream = opened
+  streamOffset = offset
   // An unhandled 'error' on a stream is a hard throw in Node, so a full disk or
   // a revoked permission would take the whole launcher down over logging.
   // Only this stream is dropped: a late error from yesterday's, already
@@ -153,7 +175,7 @@ function write(level: Level, scope: string, args: unknown[]): void {
     // used to have nothing capping today's file. Rolling to a new part is
     // cheap and keeps a single file from growing without bound; the part
     // files sit right next to each other and prune on the same weekly sweep.
-    if (stream && stream.bytesWritten > MAX_FILE_BYTES) {
+    if (stream && streamOffset + stream.bytesWritten > MAX_FILE_BYTES) {
       stream.end()
       currentPart += 1
       openStream()

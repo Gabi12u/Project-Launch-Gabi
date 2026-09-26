@@ -67,6 +67,40 @@ function versionCompatible(instance: Instance, item: ContentItem): boolean {
   return item.gameVersions.some((v) => v === line || v.startsWith(`${line}.`))
 }
 
+/** Modrinth project ids for Iris and Oculus, the two shader loaders distributed there. */
+const MODRINTH_SHADER_LOADER_IDS = new Set(['YL57xq9U', 'GchcoXML'].map((id) => id.toLowerCase()))
+
+/** CurseForge project ids for the same two mods. */
+const CURSEFORGE_SHADER_LOADER_IDS = new Set(['455508', '581495'])
+
+/**
+ * True for a mod known to load shader packs: Iris, Oculus or OptiFine.
+ *
+ * Matched by provider identity rather than a free text search. The previous
+ * check looked for "iris", "optifine" or "oculus" as a substring of the
+ * display name, so any unrelated mod whose name merely contained one of
+ * those words silenced the warning below for good. OptiFine is not
+ * distributed on either platform and has no project id, so it stays a
+ * strict file name check.
+ */
+function isShaderLoader(item: ContentItem): boolean {
+  if (
+    item.provider === 'modrinth' &&
+    item.projectId &&
+    MODRINTH_SHADER_LOADER_IDS.has(item.projectId.toLowerCase())
+  ) {
+    return true
+  }
+  if (item.provider === 'curseforge' && item.projectId && CURSEFORGE_SHADER_LOADER_IDS.has(item.projectId)) {
+    return true
+  }
+  // Hand-placed jars carry no project id at all; a file clearly named after
+  // one of the two mods is accepted so a manually installed Iris still counts.
+  if (item.provider === 'local' && /^(iris|oculus)-/i.test(item.fileName)) return true
+  if (/^optifine[_-]/i.test(item.fileName)) return true
+  return false
+}
+
 /**
  * Inspects the installed content of an instance and reports everything that
  * would break the launch or behave unexpectedly.
@@ -306,12 +340,9 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   if (shaders.length > 0) {
     // Sodium is deliberately absent: it is a rendering optimiser, not a
     // shaderpack loader. Counting it meant a Sodium-only instance silently
-    // suppressed this warning while the shaderpack never rendered — Iris is
-    // what actually loads them on top of Sodium.
-    const shaderLoaders = ['iris', 'optifine', 'oculus']
-    const hasShaderLoader = enabled.some((mod) =>
-      shaderLoaders.some((name) => mod.name.toLowerCase().includes(name))
-    )
+    // suppressed this warning while the shaderpack never rendered, since Iris
+    // is what actually loads them on top of Sodium.
+    const hasShaderLoader = enabled.some((mod) => isShaderLoader(mod))
     if (!hasShaderLoader) {
       issues.push({
         id: 'shader-without-loader',

@@ -2131,8 +2131,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Minecraft. Scheiterte eine der späteren Anfragen, ging der gerade neu ausgestellte ' +
       'Microsoft-Schlüssel verloren, während der alte schon ungültig war. Beim nächsten Versuch musste ' +
       'man sich dann komplett neu anmelden, ohne erkennbaren Grund.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'quilt-findet-fabric-mods-nicht',
@@ -2141,8 +2142,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Quilt kann Fabric-Mods laden, und der Launcher zeigt solche Versionen auch als passend an. Die ' +
       'Suche filterte sie trotzdem heraus, „Neueste installieren“ meldete keine passende Version, und ' +
       'Updates für solche Mods wurden nie angezeigt.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'fenster-schliessen-bricht-start-ab',
@@ -2150,8 +2152,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Solange ein Spiel noch Dateien oder Java lädt, läuft noch kein Spielprozess. Das Schließen des ' +
       'Fensters beendete in dieser Phase den ganzen Launcher, und der Start verschwand ohne Meldung.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'live-log-bleibt-nach-fehler-offen',
@@ -2160,8 +2163,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Scheiterte ein Start, bevor Minecraft lief, etwa ohne ausgewähltes Konto oder wegen einer ' +
       'Kompatibilitätssperre, blieb das Live-Log-Fenster mit „Noch keine Ausgabe“ stehen und musste ' +
       'jedes Mal von Hand geschlossen werden.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'live-log-springt-nach-unten',
@@ -2169,8 +2173,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Solange das Spiel Ausgaben schrieb, zog jede neue Zeile die Ansicht ans Ende zurück. Ältere ' +
       'Zeilen, etwa eine Fehlermeldung beim Laden der Mods, ließen sich so kaum lesen.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'instanz-einstellungen-gehen-verloren',
@@ -2178,8 +2183,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer in den Einstellungen einer Instanz etwas änderte und dann auf einen anderen Reiter ' +
       'wechselte, fand die Änderungen beim Zurückkommen nicht mehr vor. Eine Warnung gab es nicht.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'eigenes-bild-wird-zurueckgesetzt',
@@ -2187,8 +2193,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach „Eigenes Bild“ überschrieb das nächste Speichern der Instanz-Einstellungen oder ' +
       '„Hintergrund entfernen“ das neue Bild wieder mit dem vorherigen Symbol.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'arbeitsspeicher-ueber-ram',
@@ -2197,8 +2204,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Auf einem Rechner mit weniger als 4 GB zeigte der Regler bei der Einrichtung und beim Erstellen ' +
       'einer Instanz einen passenden Wert an. Gespeichert wurden aber 4 GB, was den Start des Spiels ' +
       'scheitern lassen kann.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mod-update-doppelt-startbar',
@@ -2207,8 +2215,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer schnell hintereinander bei zwei Mods auf „Update“ klickte, sah beim ersten Mod den ' +
       'Ladekreis verschwinden. Der Knopf war wieder klickbar, obwohl das Update noch lief, und ein ' +
       'zweiter Klick startete es parallel noch einmal.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mod-update-gleicher-dateiname',
@@ -2216,8 +2225,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Manche Mods veröffentlichen neue Versionen unter demselben Dateinamen. Der Launcher hielt eine ' +
       'solche Version für die bereits installierte und bot das Update nie an.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'lokale-datei-nicht-entfernbar',
@@ -2226,9 +2236,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Über „Dateien hinzufügen“ ließen sich auf macOS und Linux Dateien wie „con.jar“ oder mit ' +
       'Leerzeichen am Ende übernehmen. Danach ließen sie sich weder deaktivieren noch entfernen, und ' +
       'die Größenanzeige der ganzen Instanz fiel aus.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-09-26',
-    platforms: ['macOS', 'Linux']
+    platforms: ['macOS', 'Linux'],
+    fixedIn: '1.0.20'
   },
   {
     id: 'shader-warnung-fehlt',
@@ -2237,8 +2248,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Enthielt der Name irgendeines Mods zufällig „iris“, „oculus“ oder „optifine“, ging der Launcher ' +
       'von einem Shader-Mod aus. Shaderpacks blieben dann wirkungslos, ohne dass die ' +
       'Kompatibilitätsprüfung darauf hinwies.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'jetzt-updaten-ohne-pruefung',
@@ -2246,8 +2258,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach dem Aktualisieren veralteter Mods über den Hinweis vor dem Spielstart startete das Spiel ' +
       'ohne erneute Prüfung. Machte ein Update zwei Mods unverträglich, gab es keine Warnung mehr.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'verknuepfung-doppelklick-fehler',
@@ -2256,8 +2269,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Kam eine zweite Startanfrage an, während die erste noch lief, versuchte der Launcher die ' +
       'Instanz zweimal zu starten und zeigte „konnte nicht gestartet werden“, obwohl das Spiel normal ' +
       'startete.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'konten-still-verloren',
@@ -2266,8 +2280,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ließ sich die Datei mit den Konten oder Einstellungen nicht lesen, etwa nach einem ' +
       'Stromausfall, startete der Launcher ohne Hinweis leer und überschrieb die Datei beim nächsten ' +
       'Speichern. Eine Rettung war danach nicht mehr möglich.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'mrpack-export-ohne-sha512',
@@ -2276,8 +2291,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Das Modrinth-Format verlangt für jede Datei neben SHA-1 auch eine SHA-512-Prüfsumme. Der Export ' +
       'schrieb nur SHA-1, sodass andere Launcher oder Modrinth selbst den Pack ablehnen oder warnen ' +
       'konnten.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'java-auswahl-zeigt-automatisch',
@@ -2286,8 +2302,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde die in einer Instanz fest eingestellte Java-Installation entfernt oder verschoben, zeigte ' +
       'die Auswahl „Automatisch verwalten“, obwohl der alte Pfad weiter galt und der Start daran ' +
       'scheiterte.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'einstellung-nicht-gespeichert-angezeigt',
@@ -2296,8 +2313,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Scheiterte das Speichern einer Einstellung mit Schieberegler, zum Beispiel wegen einer ' +
       'gesperrten Datei, verschwand die Fehlermeldung wieder, der Regler zeigte aber weiter den neuen ' +
       'Wert.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'installieren-link-oeffnet-mod-nicht',
@@ -2305,8 +2323,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Ein Installations-Link von einer Mod-Seite führte nur zur allgemeinen Suche. Welcher Mod ' +
       'gemeint war, ging verloren, und man musste ihn selbst suchen.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sortierung-nach-mehr-laden',
@@ -2315,8 +2334,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Mit Modrinth und CurseForge gleichzeitig wurden neu geladene Ergebnisse nur untereinander ' +
       'sortiert und unten angehängt. Ein neuerer oder beliebterer Eintrag konnte so unter älteren ' +
       'stehen.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'update-installiert-beta',
@@ -2325,8 +2345,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Gab es für die genaue Minecraft-Version keine passende Mod-Version, nahm der Launcher die ' +
       'neueste aus derselben Versionsreihe, auch wenn das eine Beta oder Alpha war und eine stabile ' +
       'Version daneben lag.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'forge-gleichzeitig-pruefsummenfehler',
@@ -2335,8 +2356,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurden zwei Instanzen mit demselben Forge- oder NeoForge-Build kurz nacheinander angelegt, ' +
       'liefen beide Installationen gleichzeitig in dieselben Dateien. Eine davon konnte „fehlerhaft ' +
       'geschrieben“ melden oder eine Datei beschädigt zurücklassen.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'quilt-aeltere-beta',
@@ -2345,8 +2367,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Solange es für eine Minecraft-Version nur Beta-Builds von Quilt oder Fabric gab, wurden diese ' +
       'nicht nach ihrer Nummer sortiert. Vorgeschlagen wurde dann unter Umständen eine ältere statt ' +
       'der neuesten Beta.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'aufnahme-stoppt-nicht',
@@ -2355,8 +2378,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lief ein Spiel über einen Neustart des Launchers weiter und wurde im Vollbild aufgenommen, ' +
       'bemerkte der Launcher das Spielende nicht. Die Aufnahme filmte den leeren Desktop bis zur ' +
       'eingestellten Höchstdauer weiter.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'aufnahme-beim-beenden-unvollstaendig',
@@ -2364,8 +2388,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer direkt nach dem Stoppen einer Aufnahme den Launcher beendete, konnte die letzten Sekunden ' +
       'oder die Längenangabe verlieren, ohne Hinweis auf eine unvollständige Datei.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'aufnahme-fremdes-fenster',
@@ -2373,8 +2398,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Gesucht wurde einfach ein Fenster, in dessen Titel „Minecraft“ vorkommt. Ein Browser-Tab oder ' +
       'Video mit diesem Wort konnte so statt des Spiels aufgenommen werden.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'abbrechen-haengt-bei-assets',
@@ -2382,8 +2408,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Die Liste der Spielressourcen wurde als einzige Datei ohne Abbruchmöglichkeit geladen. Bei ' +
       'langsamer Verbindung reagierte „Abbrechen“ dort erst nach mehreren Minuten.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'downloads-ignorieren-wartezeit',
@@ -2392,8 +2419,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Bittet ein Server darum, eine bestimmte Zeit zu warten, hielt sich der Launcher bei ' +
       'Dateidownloads nicht daran und versuchte es zu schnell erneut. So konnten alle Versuche ' +
       'scheitern und „Download fehlgeschlagen“ melden.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'update-neustart-ohne-hinweis',
@@ -2402,8 +2430,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War ein Update schon heruntergeladen, konnte es direkt nach dem Start installiert werden, bevor ' +
       'die Oberfläche bereit war. Der Hinweis „startet gleich neu“ ging dann verloren, und das Fenster ' +
       'verschwand kurz ohne Erklärung.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-waehrend-reparatur',
@@ -2412,8 +2441,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Eine Sicherung ließ sich anlegen, während eine Reparatur oder ein Mod-Update gerade Dateien ' +
       'schrieb. Sie konnte dann eine unvollständige Mod-Datei enthalten, die beim Wiederherstellen ' +
       'Probleme macht.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'verknuepfung-langer-name',
@@ -2421,8 +2451,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Ein sehr langer Instanzname, etwa aus einem Modpack, wurde ungekürzt als Dateiname verwendet. ' +
       'Windows lehnte das ab, und die Meldung nannte den Grund nicht.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   },
   {
     id: 'ordnerimport-abgebrochen-unvollstaendig',
@@ -2431,8 +2462,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde der Import eines Instanzordners abgebrochen, blieb die Instanz mit den bis dahin ' +
       'kopierten Dateien stehen und sah aus wie eine normale Instanz. Welten oder Mods konnten darin ' +
       'unvollständig sein.',
-    state: 'fixing',
-    since: '2026-09-26'
+    state: 'fixed',
+    since: '2026-09-26',
+    fixedIn: '1.0.20'
   }
 ]
 

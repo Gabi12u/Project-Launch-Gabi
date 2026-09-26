@@ -201,6 +201,25 @@ async function createBackupUnlocked(
   const includes = requested.length > 0 ? requested : ['saves', 'config']
   const reason = options.reason ?? 'manual'
 
+  // Same guard `restoreBackupUnlocked` has: a repair rewrites the same
+  // subfolders a backup is about to read from.
+  if (isRepairing(instanceId)) {
+    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+  }
+
+  // Mirrors `restoreBackupUnlocked`'s guard against content work, so a backup
+  // does not zip a mods folder mid write. Exempt for `pre-update`: that
+  // backup is started by `updateAllOnce` itself, from inside the very content
+  // lock it is asking about, before a single mod has been touched, so it must
+  // not trip over its own lock.
+  if (reason !== 'pre-update' && isContentBusy(instanceId)) {
+    throw new Error('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.')
+  }
+
+  // Deliberately no `isRunning`/`isStarting` check here: unlike a restore, a
+  // backup only reads the game folder, and blocking it while Minecraft runs
+  // has never been required.
+
   return withTask(
     `Sicherung von ${instance.name}`,
     'Dateien werden gepackt…',
@@ -282,7 +301,30 @@ async function createBackupUnlocked(
       }
 
       const entries = [entry, ...readIndex(instanceId)]
-      writeIndex(instanceId, entries)
+      try {
+        writeIndex(instanceId, entries)
+      } catch {
+        // A lock held for a moment by a scanner or an indexer is common
+        // enough to deserve one retry before giving up on the zip entirely.
+        await new Promise((r) => setTimeout(r, 300))
+        try {
+          writeIndex(instanceId, entries)
+        } catch (retryErr) {
+          // The zip exists but is not recorded anywhere, so it would be
+          // invisible and unreachable through the UI forever. Removed rather
+          // than left behind as an orphaned file nobody can get to.
+          try {
+            rmSync(target, { force: true })
+          } catch {
+            // best effort
+          }
+          throw new Error(
+            `Die Sicherung konnte nicht eingetragen werden und wurde deshalb verworfen. (${
+              retryErr instanceof Error ? retryErr.message : String(retryErr)
+            })`
+          )
+        }
+      }
 
       // A link was never something a restore could recreate anyway, so it is
       // only worth telling the user about, not failing a backup that is
@@ -458,8 +500,14 @@ function cleanupTempBackupFiles(): void {
  * restore must not stop another's from being recovered, and must not take
  * startup down with it.
  */
+/** What the last `recoverInterruptedRestores` run could not fix, for the UI to show. */
+let lastFailedRecoveries: { instanceId: string; staging: string }[] = []
+
 export function recoverInterruptedRestores(): string[] {
   cleanupTempBackupFiles()
+  // Reset for this run; `failedRestoreRecoveries` only ever reports the
+  // latest attempt, not every failure since the app started.
+  lastFailedRecoveries = []
 
   const recovered: string[] = []
   const root = paths.backups()
@@ -485,15 +533,29 @@ export function recoverInterruptedRestores(): string[] {
     }
 
     for (const name of stagingNames) {
+      const staging = join(instanceDir, name)
       try {
-        const undone = recoverOneInterruptedRestore(instanceId, join(instanceDir, name))
+        const undone = recoverOneInterruptedRestore(instanceId, staging)
         if (undone && !recovered.includes(instanceId)) recovered.push(instanceId)
       } catch (err) {
         logger.error(`Wiederherstellung nach Absturz für ${instanceId}/${name} fehlgeschlagen:`, err)
+        lastFailedRecoveries.push({ instanceId, staging })
       }
     }
   }
   return recovered
+}
+
+/**
+ * Instances whose interrupted restore is still stuck after the last recovery
+ * run, so the parked originals stay untouched but not yet put back.
+ *
+ * Startup only ever logs `recoverOneInterruptedRestore`'s failures, and a log
+ * file is not something a user checks. Without this getter nothing on screen
+ * ever said a restore needed a hand, even though the data itself was safe.
+ */
+export function failedRestoreRecoveries(): { instanceId: string; staging: string }[] {
+  return lastFailedRecoveries
 }
 
 function recoverOneInterruptedRestore(instanceId: string, staging: string): boolean {
@@ -522,16 +584,46 @@ function recoverOneInterruptedRestore(instanceId: string, staging: string): bool
     // The parked copy missing means the rename that would have created it
     // never ran, so `from`, whatever is there, is the untouched original.
     if (!existsSync(item.to)) continue
+
+    // Whatever currently sits in `from` is the half extracted result of the
+    // crashed restore. It is moved aside rather than deleted outright, so a
+    // failure to rename the parked original back cannot lose both copies at
+    // once: the aside copy is only deleted once the original is safely back.
+    const aside = existsSync(item.from) ? `${item.from}.aborted-${randomUUID().slice(0, 8)}` : null
     try {
-      if (existsSync(item.from)) rmSync(item.from, { recursive: true, force: true })
+      if (aside) renameSync(item.from, aside)
+      // The interrupted run may have removed `gameDir` itself.
+      mkdirSync(gameDir, { recursive: true })
       renameSync(item.to, item.from)
     } catch (err) {
       ok = false
+      // The rename back failed. Put the aside copy back so nothing already on
+      // disk before the crash is lost, even though the recovery itself did
+      // not succeed this time.
+      if (aside && !existsSync(item.from)) {
+        try {
+          renameSync(aside, item.from)
+        } catch (undoErr) {
+          logger.error(`Beiseite gelegte Kopie ${aside} konnte nicht zurückbenannt werden:`, undoErr)
+        }
+      }
       logger.error(
         `${item.key} von ${instanceId} konnte nach einem Absturz nicht zurückgeholt werden, ` +
           `die gesicherte Kopie bleibt in ${staging} liegen:`,
         err
       )
+      continue
+    }
+
+    // The original is safely back; the aside copy of the crashed extraction's
+    // half finished result is no longer needed. Best effort only: a failure
+    // here is a harmless leftover folder, not a reason to call this a failure.
+    if (aside) {
+      try {
+        rmSync(aside, { recursive: true, force: true })
+      } catch (cleanupErr) {
+        logger.warn(`Beiseite gelegte Kopie ${aside} konnte nicht entfernt werden:`, cleanupErr)
+      }
     }
   }
 
@@ -549,12 +641,16 @@ function recoverOneInterruptedRestore(instanceId: string, staging: string): bool
   // Something above could not be undone: the staging folder, journal
   // included, is the only record of it and stays put for the next startup
   // to try again, instead of being deleted here and losing that record.
-  if (!ok) return false
+  if (!ok) {
+    lastFailedRecoveries.push({ instanceId, staging })
+    return false
+  }
 
   try {
     rmSync(staging, { recursive: true, force: true })
   } catch (err) {
     logger.warn(`Staging-Ordner ${staging} konnte nicht entfernt werden:`, err)
+    lastFailedRecoveries.push({ instanceId, staging })
     return false
   }
 

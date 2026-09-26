@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { basename, join, resolve } from 'node:path'
+import { basename, resolve } from 'node:path'
 import type {
   CompatibilityIssue,
   ContentItem,
@@ -236,10 +236,16 @@ async function installContentOnce(
   // to share a generic name like "pack.zip" matched each other, and
   // installing one deleted the file and record of the completely unrelated
   // other.
+  // Matched on projectId + provider alone, without regard to file name, so a
+  // release whose file happens to be named the same as the one it replaces
+  // (or a straight re-download of the same version) still counts as "the
+  // same project's old entry" and its world assignments carry over. The
+  // `samePath` check below is what actually protects the freshly written
+  // file from deletion in that case.
   const previous = getInstance(instanceId).content.find(
     (c) =>
       c.type === type &&
-      ((c.projectId === projectId && c.provider === provider && c.fileName !== version.fileName) ||
+      ((c.projectId === projectId && c.provider === provider) ||
         (!c.projectId && bare(c.fileName) === wanted))
   )
   if (previous) {
@@ -442,7 +448,16 @@ async function importContentFileOnce(
   assertNotCopying(instanceId)
   const dir = targetDir(instanceId, type)
   const fileName = basename(sourceFile)
-  const destination = join(dir, fileName)
+  // Validated through the same helper every other write path uses. Joining
+  // the raw name straight in bypassed the checks against NTFS alternate data
+  // streams, reserved device names and the like that `contentFileName` exists
+  // to catch.
+  let destination: string
+  try {
+    destination = contentPath(dir, fileName)
+  } catch {
+    throw new Error(`„${fileName}“ ist als Dateiname nicht erlaubt. Bitte die Datei vorher umbenennen.`)
+  }
 
   copyFileSync(sourceFile, destination)
 
@@ -490,7 +505,6 @@ async function importContentFileOnce(
 function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
   if (!current.versionId) return true
   if (candidate.versionId === current.versionId) return false
-  if (candidate.fileName === current.fileName) return false
   // Once the installed version's own release date is known, compare against
   // that directly. The old installedAt-based rule never noticed a newer
   // release after a deliberate downgrade, since installedAt only records when
@@ -945,9 +959,12 @@ export function instanceContentSize(instanceId: string): number {
   const instance = getInstance(instanceId)
   let total = 0
   for (const item of instance.content) {
-    const file = contentFilePath(instanceId, item)
-    if (!existsSync(file)) continue
+    // `contentFilePath` can itself throw on a bad stored file name; kept
+    // inside the loop's own try/catch so one broken record cannot abort the
+    // size calculation for the whole instance.
     try {
+      const file = contentFilePath(instanceId, item)
+      if (!existsSync(file)) continue
       total += statSync(file).size
     } catch {
       // ignore

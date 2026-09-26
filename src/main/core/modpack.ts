@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
+import { createHash, randomUUID } from 'node:crypto'
+import { createReadStream, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type {
   ContentItem,
@@ -14,10 +14,10 @@ import type {
 import { ensureInstanceLayout, isValidVersionString, paths, safeJoin } from '../paths'
 import { log } from '../logger'
 import { notify } from '../events'
-import { withTask, type Task } from '../tasks'
+import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
-import { createInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
 
 const logger = log('modpack')
@@ -174,7 +174,7 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
     await installMrpackFiles(instance.id, archivePath, index, task)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    markImportFailed(instance.id)
+    markImportFailed(instance.id, name, err)
   })
 
   return instance
@@ -182,10 +182,27 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
 
 /**
  * The import runs detached from the caller, so a failure has to clear the
- * instance's `installing` flag itself — otherwise the card sits at "wird
- * installiert" forever and the user cannot start or repair it.
+ * instance's `installing` flag itself, or delete the instance outright on a
+ * cancel, otherwise the card sits at "wird installiert" forever, or a
+ * cancelled import passes for a real, finished install.
  */
-function markImportFailed(instanceId: string): void {
+function markImportFailed(instanceId: string, name: string, err: unknown): void {
+  if (err instanceof TaskCancelledError) {
+    // The archive itself was only ever read from, so nothing is lost by
+    // starting over.
+    try {
+      deleteInstance(instanceId)
+      return
+    } catch (deleteErr) {
+      logger.warn(`Abgebrochener Import von ${instanceId} konnte nicht gelöscht werden:`, deleteErr)
+      notify(
+        'warning',
+        'Import abgebrochen',
+        `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere sie erneut.`,
+        { route: `/instances/${instanceId}` }
+      )
+    }
+  }
   try {
     persist({ ...getInstance(instanceId), installing: false, installed: false })
   } catch (err) {
@@ -541,7 +558,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     task.update('Import abgeschlossen', 1)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    markImportFailed(instance.id)
+    markImportFailed(instance.id, name, err)
   })
 
   return instance
@@ -582,11 +599,18 @@ function countOverrides(archivePath: string, prefixes: string[]): ImportCounts {
     return counts
   }
 
+  // The empty prefix stands for "no prefix at all" and cannot be matched by
+  // `startsWith('/')` like the others, so it is tried last, as a fallback
+  // once none of the real prefixes matched: a plain zip with mods/ and
+  // config/ right at its root only ever matches this way.
+  const namedPrefixes = prefixes.filter((candidate) => candidate !== '')
+  const hasEmptyPrefix = namedPrefixes.length !== prefixes.length
+
   for (const entry of entries) {
     const lower = entry.name.toLowerCase().replace(/\\/g, '/')
-    const prefix = prefixes.find((candidate) => lower.startsWith(`${candidate}/`))
-    if (!prefix) continue
-    const rest = lower.slice(prefix.length + 1)
+    const prefix = namedPrefixes.find((candidate) => lower.startsWith(`${candidate}/`))
+    if (prefix === undefined && !hasEmptyPrefix) continue
+    const rest = prefix === undefined ? lower : lower.slice(prefix.length + 1)
     if (rest.startsWith('mods/') && rest.endsWith('.jar')) counts.mods++
     else if (rest.startsWith('resourcepacks/') && rest.includes('.')) counts.resourcePacks++
     else if (rest.startsWith('shaderpacks/') && rest.includes('.')) counts.shaderPacks++
@@ -880,6 +904,17 @@ export interface ExportOptions {
   includeFolders?: string[]
 }
 
+/** Hashes a file already on disk, used when the provider did not supply a sha512. */
+function sha512File(file: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha512')
+    createReadStream(file)
+      .on('data', (chunk) => hash.update(chunk))
+      .on('end', () => resolve(hash.digest('hex')))
+      .on('error', reject)
+  })
+}
+
 /**
  * Writes a Modrinth-compatible `.mrpack`. Mods that came from Modrinth become
  * download entries; everything else is bundled into `overrides/` so the pack
@@ -927,9 +962,13 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
           const versions = await modrinth.getVersions(item.projectId)
           const version = versions.find((v) => v.versionId === item.versionId)
           if (version) {
+            // Every entry needs both hashes for other launchers to verify the
+            // download. Modrinth almost always sends sha512 itself; the rare
+            // record without one is hashed from the copy already on disk.
+            const sha512 = version.sha512 ?? (await sha512File(join(paths.gameDir(instanceId), relative)))
             files.push({
               path: relative,
-              hashes: { sha1: version.sha1 },
+              hashes: { sha1: version.sha1, sha512 },
               env: { client: 'required', server: 'optional' },
               downloads: [version.downloadUrl],
               fileSize: version.size ?? 0
