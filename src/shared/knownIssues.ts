@@ -2368,7 +2368,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-09-26'
   },
   {
-    id: 'aufnahme-falsches-fenster',
+    id: 'aufnahme-fremdes-fenster',
     title: 'Die Aufnahme konnte ein anderes Fenster mit „Minecraft“ im Titel filmen',
     detail:
       'Gesucht wurde einfach ein Fenster, in dessen Titel „Minecraft“ vorkommt. Ein Browser-Tab oder ' +

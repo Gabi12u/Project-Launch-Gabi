@@ -2759,7 +2759,7 @@ footer a:hover { color: var(--ink); }
       "since": "2026-09-26"
     },
     {
-      "id": "aufnahme-falsches-fenster",
+      "id": "aufnahme-fremdes-fenster",
       "title": "Die Aufnahme konnte ein anderes Fenster mit „Minecraft“ im Titel filmen",
       "detail": "Gesucht wurde einfach ein Fenster, in dessen Titel „Minecraft“ vorkommt. Ein Browser-Tab oder Video mit diesem Wort konnte so statt des Spiels aufgenommen werden.",
       "state": "fixing",
@@ -3310,8 +3310,8 @@ footer a:hover { color: var(--ink); }
     },
     {
       "id": "aufnahme-falsches-fenster",
-      "title": "Recording could capture another window with \"Minecraft\" in its title",
-      "detail": "The launcher simply looked for a window whose title contains \"Minecraft\". A browser tab or video with that word could be recorded instead of the game.",
+      "title": "With several instances running at once, recording could grab the wrong window",
+      "detail": "Recording picks its capture source by window title, the first window with \"Minecraft\" in it. With several instances running at the same time, that could be a different window than the one recording was started for, with no error at all. The selection now prefers a window whose title contains the started instance’s own Minecraft version. That considerably narrows the common case of different versions, but does not fully solve it: two instances on the exact same Minecraft version running at once still cannot be told apart reliably by window title.",
       "state": "fixed",
       "since": "2026-09-11",
       "fixedIn": "1.0.18"
@@ -4281,7 +4281,7 @@ footer a:hover { color: var(--ink); }
       "since": "2026-09-26"
     },
     {
-      "id": "aufnahme-falsches-fenster",
+      "id": "aufnahme-fremdes-fenster",
       "title": "Recording could capture another window with \"Minecraft\" in its title",
       "detail": "The launcher simply looked for a window whose title contains \"Minecraft\". A browser tab or video with that word could be recorded instead of the game.",
       "state": "fixing",

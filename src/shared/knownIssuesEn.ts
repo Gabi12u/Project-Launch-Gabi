@@ -1543,7 +1543,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Quitting the launcher right after stopping a recording could lose the last seconds or the ' +
       'length information, without any hint that the file was incomplete.'
   },
-  'aufnahme-falsches-fenster': {
+  'aufnahme-fremdes-fenster': {
     title: 'Recording could capture another window with "Minecraft" in its title',
     detail:
       'The launcher simply looked for a window whose title contains "Minecraft". A browser tab or ' +
