@@ -2122,6 +2122,317 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-09-25',
     platforms: ['Windows'],
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'anmeldung-erneuern-verliert-token',
+    title: 'Ein kurzer Verbindungsabbruch beim Erneuern der Anmeldung konnte ein Konto dauerhaft abmelden',
+    detail:
+      'Beim Erneuern der Anmeldung stellt der Launcher nacheinander Anfragen an Microsoft, Xbox und ' +
+      'Minecraft. Scheiterte eine der späteren Anfragen, ging der gerade neu ausgestellte ' +
+      'Microsoft-Schlüssel verloren, während der alte schon ungültig war. Beim nächsten Versuch musste ' +
+      'man sich dann komplett neu anmelden, ohne erkennbaren Grund.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'quilt-findet-fabric-mods-nicht',
+    title: 'Quilt-Instanzen fanden und installierten keine Mods, die nur für Fabric markiert sind',
+    detail:
+      'Quilt kann Fabric-Mods laden, und der Launcher zeigt solche Versionen auch als passend an. Die ' +
+      'Suche filterte sie trotzdem heraus, „Neueste installieren“ meldete keine passende Version, und ' +
+      'Updates für solche Mods wurden nie angezeigt.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'fenster-schliessen-bricht-start-ab',
+    title: 'Das Fenster zu schließen, während ein Spiel noch vorbereitet wurde, brach den Start still ab',
+    detail:
+      'Solange ein Spiel noch Dateien oder Java lädt, läuft noch kein Spielprozess. Das Schließen des ' +
+      'Fensters beendete in dieser Phase den ganzen Launcher, und der Start verschwand ohne Meldung.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'live-log-bleibt-nach-fehler-offen',
+    title: 'Das Live-Log-Fenster blieb offen, wenn der Start schon vor dem Spiel scheiterte',
+    detail:
+      'Scheiterte ein Start, bevor Minecraft lief, etwa ohne ausgewähltes Konto oder wegen einer ' +
+      'Kompatibilitätssperre, blieb das Live-Log-Fenster mit „Noch keine Ausgabe“ stehen und musste ' +
+      'jedes Mal von Hand geschlossen werden.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'live-log-springt-nach-unten',
+    title: 'Das Live-Log sprang beim Hochscrollen immer wieder nach unten',
+    detail:
+      'Solange das Spiel Ausgaben schrieb, zog jede neue Zeile die Ansicht ans Ende zurück. Ältere ' +
+      'Zeilen, etwa eine Fehlermeldung beim Laden der Mods, ließen sich so kaum lesen.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'instanz-einstellungen-gehen-verloren',
+    title: 'Ungespeicherte Instanz-Einstellungen gingen beim Wechsel des Reiters verloren',
+    detail:
+      'Wer in den Einstellungen einer Instanz etwas änderte und dann auf einen anderen Reiter ' +
+      'wechselte, fand die Änderungen beim Zurückkommen nicht mehr vor. Eine Warnung gab es nicht.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'eigenes-bild-wird-zurueckgesetzt',
+    title: 'Ein eigenes Instanzbild wurde beim nächsten Speichern wieder zurückgesetzt',
+    detail:
+      'Nach „Eigenes Bild“ überschrieb das nächste Speichern der Instanz-Einstellungen oder ' +
+      '„Hintergrund entfernen“ das neue Bild wieder mit dem vorherigen Symbol.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'arbeitsspeicher-ueber-ram',
+    title: 'Auf PCs mit wenig Arbeitsspeicher wurden mehr als vorhanden eingestellt',
+    detail:
+      'Auf einem Rechner mit weniger als 4 GB zeigte der Regler bei der Einrichtung und beim Erstellen ' +
+      'einer Instanz einen passenden Wert an. Gespeichert wurden aber 4 GB, was den Start des Spiels ' +
+      'scheitern lassen kann.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'mod-update-doppelt-startbar',
+    title: 'In der Mod-Übersicht ließ sich ein laufendes Update ein zweites Mal starten',
+    detail:
+      'Wer schnell hintereinander bei zwei Mods auf „Update“ klickte, sah beim ersten Mod den ' +
+      'Ladekreis verschwinden. Der Knopf war wieder klickbar, obwohl das Update noch lief, und ein ' +
+      'zweiter Klick startete es parallel noch einmal.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'mod-update-gleicher-dateiname',
+    title: 'Mods mit gleichbleibendem Dateinamen bekamen nie ein Update angezeigt',
+    detail:
+      'Manche Mods veröffentlichen neue Versionen unter demselben Dateinamen. Der Launcher hielt eine ' +
+      'solche Version für die bereits installierte und bot das Update nie an.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'lokale-datei-nicht-entfernbar',
+    title: 'Eine hinzugefügte Datei mit bestimmten Namen ließ sich nicht mehr entfernen',
+    detail:
+      'Über „Dateien hinzufügen“ ließen sich auf macOS und Linux Dateien wie „con.jar“ oder mit ' +
+      'Leerzeichen am Ende übernehmen. Danach ließen sie sich weder deaktivieren noch entfernen, und ' +
+      'die Größenanzeige der ganzen Instanz fiel aus.',
+    state: 'fixing',
+    since: '2026-09-26',
+    platforms: ['macOS', 'Linux']
+  },
+  {
+    id: 'shader-warnung-fehlt',
+    title: 'Die Warnung „Shader ohne Shader-Mod“ fehlte bei manchen Moddateien',
+    detail:
+      'Enthielt der Name irgendeines Mods zufällig „iris“, „oculus“ oder „optifine“, ging der Launcher ' +
+      'von einem Shader-Mod aus. Shaderpacks blieben dann wirkungslos, ohne dass die ' +
+      'Kompatibilitätsprüfung darauf hinwies.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'jetzt-updaten-ohne-pruefung',
+    title: '„Jetzt updaten“ vor dem Start übersprang danach die Kompatibilitätsprüfung',
+    detail:
+      'Nach dem Aktualisieren veralteter Mods über den Hinweis vor dem Spielstart startete das Spiel ' +
+      'ohne erneute Prüfung. Machte ein Update zwei Mods unverträglich, gab es keine Warnung mehr.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'verknuepfung-doppelklick-fehler',
+    title: 'Ein Doppelklick auf eine Desktop-Verknüpfung meldete einen Startfehler',
+    detail:
+      'Kam eine zweite Startanfrage an, während die erste noch lief, versuchte der Launcher die ' +
+      'Instanz zweimal zu starten und zeigte „konnte nicht gestartet werden“, obwohl das Spiel normal ' +
+      'startete.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'konten-still-verloren',
+    title: 'Eine beschädigte Kontendatei löschte still alle gespeicherten Konten',
+    detail:
+      'Ließ sich die Datei mit den Konten oder Einstellungen nicht lesen, etwa nach einem ' +
+      'Stromausfall, startete der Launcher ohne Hinweis leer und überschrieb die Datei beim nächsten ' +
+      'Speichern. Eine Rettung war danach nicht mehr möglich.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'mrpack-export-ohne-sha512',
+    title: 'Exportierte .mrpack-Dateien fehlte eine vorgeschriebene Prüfsumme',
+    detail:
+      'Das Modrinth-Format verlangt für jede Datei neben SHA-1 auch eine SHA-512-Prüfsumme. Der Export ' +
+      'schrieb nur SHA-1, sodass andere Launcher oder Modrinth selbst den Pack ablehnen oder warnen ' +
+      'konnten.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'java-auswahl-zeigt-automatisch',
+    title: 'Eine fest gewählte, inzwischen fehlende Java-Version wurde als „Automatisch“ angezeigt',
+    detail:
+      'Wurde die in einer Instanz fest eingestellte Java-Installation entfernt oder verschoben, zeigte ' +
+      'die Auswahl „Automatisch verwalten“, obwohl der alte Pfad weiter galt und der Start daran ' +
+      'scheiterte.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'einstellung-nicht-gespeichert-angezeigt',
+    title: 'Eine nicht gespeicherte Einstellung blieb in der Oberfläche stehen',
+    detail:
+      'Scheiterte das Speichern einer Einstellung mit Schieberegler, zum Beispiel wegen einer ' +
+      'gesperrten Datei, verschwand die Fehlermeldung wieder, der Regler zeigte aber weiter den neuen ' +
+      'Wert.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'installieren-link-oeffnet-mod-nicht',
+    title: '„Mit Launch Gabi installieren“ öffnete nicht den gewählten Mod',
+    detail:
+      'Ein Installations-Link von einer Mod-Seite führte nur zur allgemeinen Suche. Welcher Mod ' +
+      'gemeint war, ging verloren, und man musste ihn selbst suchen.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'sortierung-nach-mehr-laden',
+    title: 'Die Sortierung der Suche stimmte nach „Mehr laden“ nicht mehr',
+    detail:
+      'Mit Modrinth und CurseForge gleichzeitig wurden neu geladene Ergebnisse nur untereinander ' +
+      'sortiert und unten angehängt. Ein neuerer oder beliebterer Eintrag konnte so unter älteren ' +
+      'stehen.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'update-installiert-beta',
+    title: 'Ein automatisches Update konnte eine Beta statt einer stabilen Version wählen',
+    detail:
+      'Gab es für die genaue Minecraft-Version keine passende Mod-Version, nahm der Launcher die ' +
+      'neueste aus derselben Versionsreihe, auch wenn das eine Beta oder Alpha war und eine stabile ' +
+      'Version daneben lag.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'forge-gleichzeitig-pruefsummenfehler',
+    title: 'Zwei gleichzeitig erstellte Forge-Instanzen konnten einen falschen Prüfsummenfehler melden',
+    detail:
+      'Wurden zwei Instanzen mit demselben Forge- oder NeoForge-Build kurz nacheinander angelegt, ' +
+      'liefen beide Installationen gleichzeitig in dieselben Dateien. Eine davon konnte „fehlerhaft ' +
+      'geschrieben“ melden oder eine Datei beschädigt zurücklassen.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'quilt-aeltere-beta',
+    title: 'Für neue Minecraft-Versionen konnte Quilt eine ältere Beta vorschlagen',
+    detail:
+      'Solange es für eine Minecraft-Version nur Beta-Builds von Quilt oder Fabric gab, wurden diese ' +
+      'nicht nach ihrer Nummer sortiert. Vorgeschlagen wurde dann unter Umständen eine ältere statt ' +
+      'der neuesten Beta.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'aufnahme-stoppt-nicht',
+    title: 'Eine Aufnahme lief nach dem Spielende weiter, wenn der Launcher zwischendurch neu gestartet wurde',
+    detail:
+      'Lief ein Spiel über einen Neustart des Launchers weiter und wurde im Vollbild aufgenommen, ' +
+      'bemerkte der Launcher das Spielende nicht. Die Aufnahme filmte den leeren Desktop bis zur ' +
+      'eingestellten Höchstdauer weiter.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'aufnahme-beim-beenden-unvollstaendig',
+    title: 'Eine gerade beendete Aufnahme konnte beim Schließen des Launchers unvollständig bleiben',
+    detail:
+      'Wer direkt nach dem Stoppen einer Aufnahme den Launcher beendete, konnte die letzten Sekunden ' +
+      'oder die Längenangabe verlieren, ohne Hinweis auf eine unvollständige Datei.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'aufnahme-falsches-fenster',
+    title: 'Die Aufnahme konnte ein anderes Fenster mit „Minecraft“ im Titel filmen',
+    detail:
+      'Gesucht wurde einfach ein Fenster, in dessen Titel „Minecraft“ vorkommt. Ein Browser-Tab oder ' +
+      'Video mit diesem Wort konnte so statt des Spiels aufgenommen werden.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'abbrechen-haengt-bei-assets',
+    title: 'Abbrechen konnte beim Laden der Asset-Liste minutenlang hängen',
+    detail:
+      'Die Liste der Spielressourcen wurde als einzige Datei ohne Abbruchmöglichkeit geladen. Bei ' +
+      'langsamer Verbindung reagierte „Abbrechen“ dort erst nach mehreren Minuten.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'downloads-ignorieren-wartezeit',
+    title: 'Große Installationen konnten bei überlasteten Servern unnötig scheitern',
+    detail:
+      'Bittet ein Server darum, eine bestimmte Zeit zu warten, hielt sich der Launcher bei ' +
+      'Dateidownloads nicht daran und versuchte es zu schnell erneut. So konnten alle Versuche ' +
+      'scheitern und „Download fehlgeschlagen“ melden.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'update-neustart-ohne-hinweis',
+    title: 'Ein bereits geladenes Update konnte den Launcher ohne sichtbaren Hinweis neu starten',
+    detail:
+      'War ein Update schon heruntergeladen, konnte es direkt nach dem Start installiert werden, bevor ' +
+      'die Oberfläche bereit war. Der Hinweis „startet gleich neu“ ging dann verloren, und das Fenster ' +
+      'verschwand kurz ohne Erklärung.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'sicherung-waehrend-reparatur',
+    title: 'Eine Sicherung konnte halb geschriebene Mods enthalten',
+    detail:
+      'Eine Sicherung ließ sich anlegen, während eine Reparatur oder ein Mod-Update gerade Dateien ' +
+      'schrieb. Sie konnte dann eine unvollständige Mod-Datei enthalten, die beim Wiederherstellen ' +
+      'Probleme macht.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'verknuepfung-langer-name',
+    title: 'Verknüpfungen für Instanzen mit sehr langem Namen ließen sich nicht anlegen',
+    detail:
+      'Ein sehr langer Instanzname, etwa aus einem Modpack, wurde ungekürzt als Dateiname verwendet. ' +
+      'Windows lehnte das ab, und die Meldung nannte den Grund nicht.',
+    state: 'fixing',
+    since: '2026-09-26'
+  },
+  {
+    id: 'ordnerimport-abgebrochen-unvollstaendig',
+    title: 'Ein abgebrochener Ordnerimport hinterließ eine scheinbar fertige Instanz',
+    detail:
+      'Wurde der Import eines Instanzordners abgebrochen, blieb die Instanz mit den bis dahin ' +
+      'kopierten Dateien stehen und sah aus wie eine normale Instanz. Welten oder Mods konnten darin ' +
+      'unvollständig sein.',
+    state: 'fixing',
+    since: '2026-09-26'
   }
 ]
 

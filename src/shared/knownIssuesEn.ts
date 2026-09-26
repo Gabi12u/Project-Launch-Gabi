@@ -1382,6 +1382,209 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Windows reserves names such as CON, NUL or COM1. If an instance had such a name, creating its ' +
       'shortcut failed with an unclear message. From 1.0.20 the shortcut gets an adjusted name ' +
       'instead.'
+  },
+  'anmeldung-erneuern-verliert-token': {
+    title: 'A brief connection drop while renewing the sign-in could sign an account out for good',
+    detail:
+      'Renewing the sign-in makes requests to Microsoft, Xbox and Minecraft one after another. If one ' +
+      'of the later requests failed, the freshly issued Microsoft key was lost while the old one was ' +
+      'already invalid. The next attempt then required a full new sign-in for no visible reason.'
+  },
+  'quilt-findet-fabric-mods-nicht': {
+    title: 'Quilt instances did not find or install mods tagged only for Fabric',
+    detail:
+      'Quilt can load Fabric mods, and the launcher also shows such versions as compatible. Search ' +
+      'still filtered them out, "Install latest" reported no matching version, and updates for such ' +
+      'mods were never shown.'
+  },
+  'fenster-schliessen-bricht-start-ab': {
+    title: 'Closing the window while a game was still being prepared silently aborted the launch',
+    detail:
+      'While a game is still downloading files or Java, no game process exists yet. Closing the window ' +
+      'in that phase quit the whole launcher, and the launch vanished without a message.'
+  },
+  'live-log-bleibt-nach-fehler-offen': {
+    title: 'The live log window stayed open when the launch failed before the game started',
+    detail:
+      'If a launch failed before Minecraft ran, for example without a selected account or because of a ' +
+      'compatibility block, the live log window stayed open showing "No output yet" and had to be ' +
+      'closed by hand every time.'
+  },
+  'live-log-springt-nach-unten': {
+    title: 'The live log kept jumping to the bottom while scrolling up',
+    detail:
+      'While the game was writing output, every new line pulled the view back to the end. Older lines, ' +
+      'such as an error while loading mods, were hard to read.'
+  },
+  'instanz-einstellungen-gehen-verloren': {
+    title: 'Unsaved instance settings were lost when switching tabs',
+    detail:
+      'Changing something in an instance’s settings and then switching to another tab lost the changes ' +
+      'without any warning.'
+  },
+  'eigenes-bild-wird-zurueckgesetzt': {
+    title: 'A custom instance image was reset on the next save',
+    detail:
+      'After choosing "Custom image", the next save of the instance settings or "Remove background" ' +
+      'replaced the new image with the previous icon again.'
+  },
+  'arbeitsspeicher-ueber-ram': {
+    title: 'PCs with little memory got more assigned than they have',
+    detail:
+      'On a computer with less than 4 GB, the slider during setup and when creating an instance showed ' +
+      'a fitting value, but 4 GB were saved, which can make the game fail to start.'
+  },
+  'mod-update-doppelt-startbar': {
+    title: 'In the mods overview a running update could be started a second time',
+    detail:
+      'Clicking "Update" on two mods in quick succession removed the spinner from the first one. Its ' +
+      'button became clickable again while the update was still running, and a second click started it ' +
+      'again in parallel.'
+  },
+  'mod-update-gleicher-dateiname': {
+    title: 'Mods that keep the same file name never showed an update',
+    detail:
+      'Some mods publish new versions under the same file name. The launcher took such a version for ' +
+      'the one already installed and never offered the update.'
+  },
+  'lokale-datei-nicht-entfernbar': {
+    title: 'An added file with certain names could no longer be removed',
+    detail:
+      'On macOS and Linux, "Add files" accepted files such as "con.jar" or names with a trailing ' +
+      'space. Afterwards they could neither be disabled nor removed, and the size display of the whole ' +
+      'instance stopped working.'
+  },
+  'shader-warnung-fehlt': {
+    title: 'The "shaders without a shader mod" warning was missing for some mod files',
+    detail:
+      'If any mod’s name happened to contain "iris", "oculus" or "optifine", the launcher assumed a ' +
+      'shader mod was present. Shader packs then did nothing, without the compatibility check pointing ' +
+      'it out.'
+  },
+  'jetzt-updaten-ohne-pruefung': {
+    title: '"Update now" before launching skipped the compatibility check afterwards',
+    detail:
+      'After updating outdated mods from the prompt before launching, the game started without ' +
+      'checking again. If an update made two mods incompatible, there was no warning anymore.'
+  },
+  'verknuepfung-doppelklick-fehler': {
+    title: 'Double-clicking a desktop shortcut reported a launch error',
+    detail:
+      'When a second launch request arrived while the first was still running, the launcher tried to ' +
+      'start the instance twice and showed "could not be started" although the game started normally.'
+  },
+  'konten-still-verloren': {
+    title: 'A damaged accounts file silently deleted all saved accounts',
+    detail:
+      'If the file with the accounts or settings could not be read, for example after a power cut, the ' +
+      'launcher started empty without notice and overwrote the file on the next save. Recovering it ' +
+      'was no longer possible afterwards.'
+  },
+  'mrpack-export-ohne-sha512': {
+    title: 'Exported .mrpack files were missing a required checksum',
+    detail:
+      'The Modrinth format requires a SHA-512 checksum next to SHA-1 for every file. The export only ' +
+      'wrote SHA-1, so other launchers or Modrinth itself could reject the pack or warn about it.'
+  },
+  'java-auswahl-zeigt-automatisch': {
+    title: 'A pinned Java version that no longer exists was shown as "Automatic"',
+    detail:
+      'If the Java installation pinned for an instance was removed or moved, the selection showed ' +
+      '"Manage automatically" while the old path still applied and the launch failed on it.'
+  },
+  'einstellung-nicht-gespeichert-angezeigt': {
+    title: 'A setting that was not saved stayed visible in the interface',
+    detail:
+      'If saving a slider setting failed, for example because the file was locked, the error message ' +
+      'disappeared again while the slider kept showing the new value.'
+  },
+  'installieren-link-oeffnet-mod-nicht': {
+    title: '"Install with Launch Gabi" did not open the chosen mod',
+    detail:
+      'An install link from a mod page only led to the general search. Which mod was meant got lost, ' +
+      'and you had to search for it yourself.'
+  },
+  'sortierung-nach-mehr-laden': {
+    title: 'Search sorting was wrong after "Load more"',
+    detail:
+      'With Modrinth and CurseForge together, newly loaded results were only sorted among themselves ' +
+      'and appended at the bottom. A newer or more popular entry could end up below older ones.'
+  },
+  'update-installiert-beta': {
+    title: 'An automatic update could choose a beta over a stable version',
+    detail:
+      'If there was no mod version for the exact Minecraft version, the launcher took the newest one ' +
+      'from the same version line, even when that was a beta or alpha and a stable version was ' +
+      'available.'
+  },
+  'forge-gleichzeitig-pruefsummenfehler': {
+    title: 'Two Forge instances created at the same time could report a false checksum error',
+    detail:
+      'If two instances with the same Forge or NeoForge build were created shortly after each other, ' +
+      'both installations wrote to the same files at once. One could report "written incorrectly" or ' +
+      'leave a damaged file behind.'
+  },
+  'quilt-aeltere-beta': {
+    title: 'For new Minecraft versions Quilt could suggest an older beta',
+    detail:
+      'While only beta builds of Quilt or Fabric existed for a Minecraft version, they were not sorted ' +
+      'by their number. An older beta instead of the newest one could be suggested.'
+  },
+  'aufnahme-stoppt-nicht': {
+    title: 'A recording kept running after the game ended if the launcher was restarted in between',
+    detail:
+      'If a game kept running across a launcher restart and was recorded in fullscreen, the launcher ' +
+      'did not notice the game ending. The recording kept filming the empty desktop until the ' +
+      'configured maximum length.'
+  },
+  'aufnahme-beim-beenden-unvollstaendig': {
+    title: 'A just finished recording could stay incomplete when closing the launcher',
+    detail:
+      'Quitting the launcher right after stopping a recording could lose the last seconds or the ' +
+      'length information, without any hint that the file was incomplete.'
+  },
+  'aufnahme-falsches-fenster': {
+    title: 'Recording could capture another window with "Minecraft" in its title',
+    detail:
+      'The launcher simply looked for a window whose title contains "Minecraft". A browser tab or ' +
+      'video with that word could be recorded instead of the game.'
+  },
+  'abbrechen-haengt-bei-assets': {
+    title: 'Cancelling could hang for minutes while loading the asset list',
+    detail:
+      'The list of game resources was the only file loaded without a way to cancel. On a slow ' +
+      'connection "Cancel" only reacted there after several minutes.'
+  },
+  'downloads-ignorieren-wartezeit': {
+    title: 'Large installs could fail needlessly when servers were overloaded',
+    detail:
+      'When a server asked to wait for a certain time, the launcher ignored it for file downloads and ' +
+      'retried too quickly. All attempts could then fail with "Download failed".'
+  },
+  'update-neustart-ohne-hinweis': {
+    title: 'An already downloaded update could restart the launcher without a visible notice',
+    detail:
+      'If an update was already downloaded, it could be installed right after start before the ' +
+      'interface was ready. The "restarting shortly" notice was lost, and the window briefly ' +
+      'disappeared without explanation.'
+  },
+  'sicherung-waehrend-reparatur': {
+    title: 'A backup could contain half-written mods',
+    detail:
+      'A backup could be created while a repair or a mod update was writing files. It could then ' +
+      'contain an incomplete mod file that causes problems when restored.'
+  },
+  'verknuepfung-langer-name': {
+    title: 'Shortcuts for instances with a very long name could not be created',
+    detail:
+      'A very long instance name, for example from a modpack, was used as the file name without ' +
+      'shortening it. Windows rejected that, and the message did not say why.'
+  },
+  'ordnerimport-abgebrochen-unvollstaendig': {
+    title: 'A cancelled folder import left an instance that looked complete',
+    detail:
+      'When importing an instance folder was cancelled, the instance stayed with the files copied so ' +
+      'far and looked like a normal instance. Worlds or mods in it could be incomplete.'
   }
 }
 
