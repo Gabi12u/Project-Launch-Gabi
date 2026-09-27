@@ -33,6 +33,7 @@ import { assertNotCopying, isContentBusy, markCopying, unmarkCopying, withConten
 import { isRestoring } from './restoreLock'
 import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
+import { tr } from '@shared/i18n'
 
 const logger = log('instances')
 
@@ -124,7 +125,7 @@ export function invalidateInstanceCache(): void {
 export function getInstance(id: string): Instance {
   if (!loaded) loadInstances()
   const instance = cache.get(id)
-  if (!instance) throw new Error(`Instanz ${id} existiert nicht`)
+  if (!instance) throw new Error(tr(`Instanz ${id} existiert nicht`, `Instance ${id} does not exist`))
   return instance
 }
 
@@ -250,7 +251,7 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
 
   const instance: Instance = normalise(
     {
-      name: options.name.trim() || 'Neue Instanz',
+      name: options.name.trim() || tr('Neue Instanz', 'New instance'),
       description: options.description ?? '',
       group: options.group ?? '',
       mcVersion: options.mcVersion,
@@ -341,34 +342,34 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
   // still downloading the same files, or race a repair rebuilding them at the
   // same time, and whichever finished last would decide what survived.
   if (isRunning(id)) {
-    throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie neu einrichtest.')
+    throw new Error(tr('Die Instanz läuft gerade. Beende Minecraft, bevor du sie neu einrichtest.', 'The instance is running. Close Minecraft before you set it up again.'))
   }
   // A launch can still be downloading files or installing Java when
   // `isRunning` is false, the same reasoning `repairInstance` already applies
   // to this exact hazard.
   if (isStarting(id)) {
-    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.', 'The instance is starting right now. Wait until that is done.'))
   }
   // The other half of the guard `repairInstance` has against `installing`:
   // a repair verifies and rewrites the very files an install downloads, and
   // both persist the instance record when they finish.
   if (isRepairing(id)) {
-    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.', 'This instance is being repaired right now. Wait until that is done.'))
   }
 
   persist({ ...instance, installing: true })
 
   try {
     await withTask(
-      `${instance.name} wird eingerichtet`,
-      'Version wird ermittelt…',
+      tr(`${instance.name} wird eingerichtet`, `Setting up ${instance.name}`),
+      tr('Version wird ermittelt…', 'Determining version…'),
       id,
       async (task) => {
         const current = getInstance(id)
 
         let loaderVersion = current.loaderVersion
         if (current.loader !== 'vanilla' && !loaderVersion) {
-          task.update('Loader-Version wird ermittelt…', null)
+          task.update(tr('Loader-Version wird ermittelt…', 'Determining loader version…'), null)
           loaderVersion = await resolveLatestLoaderVersion(current.loader, current.mcVersion)
           persist({ ...getInstance(id), loaderVersion })
         }
@@ -478,7 +479,7 @@ function assertInside(root: string, candidate: string, label: string): string {
   const resolvedRoot = resolve(root)
   const resolved = resolve(candidate)
   if (resolved !== resolvedRoot && !resolved.startsWith(resolvedRoot + sep)) {
-    throw new Error(`Ungültiger Pfad für ${label}: ${candidate}`)
+    throw new Error(tr(`Ungültiger Pfad für ${label}: ${candidate}`, `Invalid path for ${label}: ${candidate}`))
   }
   return resolved
 }
@@ -494,7 +495,12 @@ function assertInside(root: string, candidate: string, label: string): string {
  */
 function assertInstanceIdle(id: string, actionPastParticiple: string): void {
   if (isRunning(id)) {
-    throw new Error(`Die Instanz läuft gerade und kann nicht ${actionPastParticiple} werden.`)
+    throw new Error(
+      tr(
+        `Die Instanz läuft gerade und kann nicht ${actionPastParticiple} werden.`,
+        `The instance is running and cannot be ${actionPastParticiple}.`
+      )
+    )
   }
 
   // "Running" was the only state this asked about, and it is the last of the
@@ -503,30 +509,35 @@ function assertInstanceIdle(id: string, actionPastParticiple: string): void {
   // below, and each of them survives the deletion as work against files that
   // are no longer there.
   if (isStarting(id)) {
-    throw new Error(`Die Instanz wird gerade gestartet und kann nicht ${actionPastParticiple} werden.`)
+    throw new Error(
+      tr(
+        `Die Instanz wird gerade gestartet und kann nicht ${actionPastParticiple} werden.`,
+        `The instance is starting and cannot be ${actionPastParticiple}.`
+      )
+    )
   }
   if (isContentBusy(id)) {
-    throw new Error('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das fertig ist.')
+    throw new Error(tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das fertig ist.', 'The mods of this instance are being worked on right now. Wait until that is done.'))
   }
   if (isRestoring(id)) {
-    throw new Error('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das fertig ist.')
+    throw new Error(tr('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das fertig ist.', 'A backup is being restored for this instance right now. Wait until that is done.'))
   }
   // Mirrors the guard `launchInstance` has against `isRepairing`: a repair
   // rewrites the client jar, the natives folder, the loader and the mods, and
   // deleting or duplicating that folder while it is only half rebuilt is the
   // same kind of half written state the other four guards already prevent.
   if (isRepairing(id)) {
-    throw new Error('Für diese Instanz läuft gerade eine Reparatur. Warte, bis das fertig ist.')
+    throw new Error(tr('Für diese Instanz läuft gerade eine Reparatur. Warte, bis das fertig ist.', 'A repair is running for this instance right now. Wait until that is done.'))
   }
 }
 
 export function deleteInstance(id: string): void {
-  assertInstanceIdle(id, 'gelöscht')
+  assertInstanceIdle(id, tr('gelöscht', 'deleted'))
 
   // Must be a known instance, not just any id the caller made up.
   if (!cache.has(id)) {
     if (!loaded) loadInstances()
-    if (!cache.has(id)) throw new Error(`Instanz ${id} existiert nicht`)
+    if (!cache.has(id)) throw new Error(tr(`Instanz ${id} existiert nicht`, `Instance ${id} does not exist`))
   }
 
   const dir = assertInside(paths.instances(), paths.instance(id), 'Instanz')
@@ -560,7 +571,10 @@ export function deleteInstance(id: string): void {
     // the cache showing an instance that is no longer what is actually there.
     loadInstances(true)
     throw new Error(
-      `Instanz ${id} konnte nicht vollständig gelöscht werden, eine Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+      tr(
+        `Instanz ${id} konnte nicht vollständig gelöscht werden, eine Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+        `Instance ${id} could not be deleted completely, a file is still in use by another program. Try again.`
+      ),
       { cause: err }
     )
   }
@@ -581,14 +595,14 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   // mid-content-work, mid-restore or mid-repair copied a folder that was being
   // written to at that exact moment, baking the half finished state into the
   // new instance.
-  assertInstanceIdle(id, 'dupliziert')
+  assertInstanceIdle(id, tr('dupliziert', 'duplicated'))
 
   // `assertInstanceIdle` checks the running/starting/content/restore/repair
   // locks, but the background setup `createInstance` starts (~line 271) sets
   // none of those: it is still writing libraries, natives and the loader into
   // the very folder about to be copied.
   if (settingUp.has(id)) {
-    throw new Error('Die Instanz wird gerade eingerichtet und kann noch nicht dupliziert werden.')
+    throw new Error(tr('Die Instanz wird gerade eingerichtet und kann noch nicht dupliziert werden.', 'The instance is being set up and cannot be duplicated yet.'))
   }
 
   const source = getInstance(id)
@@ -976,7 +990,7 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       assertNotCopying(id)
       const instance = getInstance(id)
       const item = instance.content.find((c) => c.id === contentId)
-      if (!item) throw new Error('Inhalt nicht gefunden')
+      if (!item) throw new Error(tr('Inhalt nicht gefunden', 'Content not found'))
 
       const dirMap: Record<ContentItem['type'], string> = {
         mod: paths.mods(id),
@@ -1010,9 +1024,11 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
           if (failed.length > 0) {
             notify(
               'warning',
-              `${item.name}: nicht in alle Welten kopiert`,
-              `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. ` +
-                'Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.'
+              tr(`${item.name}: nicht in alle Welten kopiert`, `${item.name}: not copied into all worlds`),
+              tr(
+                `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.`,
+                `The data pack could not be placed in ${failed.map((w) => `"${w}"`).join(', ')}. Either another file with the same name is already there, or the file is locked right now.`
+              )
             )
           }
         } else {

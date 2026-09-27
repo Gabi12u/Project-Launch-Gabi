@@ -32,7 +32,7 @@ import {
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
-import { locale } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 const logger = log('content')
 
@@ -187,7 +187,10 @@ async function installContentOnce(
 
   if (!version) {
     throw new Error(
-      `Für ${project.name} gibt es keine Version für Minecraft ${instance.mcVersion} (${instance.loader}).`
+      tr(
+        `Für ${project.name} gibt es keine Version für Minecraft ${instance.mcVersion} (${instance.loader}).`,
+        `There is no version of ${project.name} for Minecraft ${instance.mcVersion} (${instance.loader}).`
+      )
     )
   }
 
@@ -195,7 +198,7 @@ async function installContentOnce(
   const dir = targetDir(instanceId, type)
   const destination = contentPath(dir, version.fileName)
 
-  options.task?.update(`${project.name} wird geladen…`, null)
+  options.task?.update(tr(`${project.name} wird geladen…`, `Downloading ${project.name}…`), null)
 
   try {
     await downloadFile({
@@ -211,7 +214,10 @@ async function installContentOnce(
     // the user with nothing pointing at why.
     if (provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
       throw new Error(
-        `${project.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+        tr(
+          `${project.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+          `${project.name} cannot be downloaded directly, the author only allows that through the CurseForge page.`
+        ),
         { cause: err }
       )
     }
@@ -270,7 +276,10 @@ async function installContentOnce(
         } catch (err) {
           rmSync(destination, { force: true })
           throw new Error(
-            `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+            tr(
+              `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+              `${previous.name} could not be replaced, the old file is still in use by another program. Try again.`
+            ),
             { cause: err }
           )
         }
@@ -319,9 +328,11 @@ async function installContentOnce(
       if (!dependency.projectId) {
         notify(
           'warning',
-          `${project.name}: Abhängigkeit fehlt`,
-          'Eine benötigte Erweiterung ist beim Anbieter nicht mehr erhältlich. ' +
-            'Ohne sie startet das Spiel unter Umständen nicht.'
+          tr(`${project.name}: Abhängigkeit fehlt`, `${project.name}: dependency missing`),
+          tr(
+            'Eine benötigte Erweiterung ist beim Anbieter nicht mehr erhältlich. Ohne sie startet das Spiel unter Umständen nicht.',
+            'A required add-on is no longer available from the provider. The game may not start without it.'
+          )
         )
         continue
       }
@@ -338,7 +349,7 @@ async function installContentOnce(
       if (already) continue
 
       try {
-        options.task?.update(`Abhängigkeit wird installiert…`, null)
+        options.task?.update(tr('Abhängigkeit wird installiert…', 'Installing dependency…'), null)
         const sub = await installContent({
           instanceId,
           provider,
@@ -358,9 +369,11 @@ async function installContentOnce(
         logger.warn(`Abhängigkeit ${dependency.projectId} konnte nicht installiert werden:`, err)
         notify(
           'warning',
-          `${project.name}: Abhängigkeit fehlt`,
-          `Eine benötigte Erweiterung konnte nicht geladen werden. ` +
-            `Ohne sie startet das Spiel unter Umständen nicht.`
+          tr(`${project.name}: Abhängigkeit fehlt`, `${project.name}: dependency missing`),
+          tr(
+            'Eine benötigte Erweiterung konnte nicht geladen werden. Ohne sie startet das Spiel unter Umständen nicht.',
+            'A required add-on could not be downloaded. The game may not start without it.'
+          )
         )
       }
     }
@@ -410,7 +423,10 @@ async function removeContentOnce(instanceId: string, contentId: string): Promise
       rmSync(file, { force: true })
     } catch (err) {
       throw new Error(
-        `${item.name} konnte nicht gelöscht werden, die Datei wird noch von einem anderen Programm verwendet.`,
+        tr(
+          `${item.name} konnte nicht gelöscht werden, die Datei wird noch von einem anderen Programm verwendet.`,
+          `${item.name} could not be deleted, the file is still in use by another program.`
+        ),
         { cause: err }
       )
     }
@@ -457,7 +473,12 @@ async function importContentFileOnce(
   try {
     destination = contentPath(dir, fileName)
   } catch {
-    throw new Error(`„${fileName}“ ist als Dateiname nicht erlaubt. Bitte die Datei vorher umbenennen.`)
+    throw new Error(
+      tr(
+        `„${fileName}“ ist als Dateiname nicht erlaubt. Bitte die Datei vorher umbenennen.`,
+        `"${fileName}" is not allowed as a file name. Please rename the file first.`
+      )
+    )
   }
 
   copyFileSync(sourceFile, destination)
@@ -537,7 +558,7 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
     }
 
     index++
-    task?.update(`Prüfe ${item.name}…`, index / Math.max(managed.length, 1))
+    task?.update(tr(`Prüfe ${item.name}…`, `Checking ${item.name}…`), index / Math.max(managed.length, 1))
 
     try {
       const candidate = await bestVersionFor(
@@ -620,7 +641,10 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     // downloads for a later file of an already installed mod.
     if (item.provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
       throw new Error(
-        `Das Update für ${item.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+        tr(
+          `Das Update für ${item.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+          `The update for ${item.name} cannot be downloaded directly, the author only allows that through the CurseForge page.`
+        ),
         { cause: err }
       )
     }
@@ -773,7 +797,7 @@ async function setDatapackWorldsOnce(
   const item = instance.content.find((c) => c.id === contentId)
   if (!item) return null
   if (item.type !== 'datapack') {
-    throw new Error('Nur Data Packs können Welten zugeordnet werden.')
+    throw new Error(tr('Nur Data Packs können Welten zugeordnet werden.', 'Only data packs can be assigned to worlds.'))
   }
 
   let next = Array.from(new Set(worlds))
@@ -808,9 +832,11 @@ function warnWorldCopyFailed(name: string, failed: string[]): void {
   if (failed.length === 0) return
   notify(
     'warning',
-    `${name}: nicht in alle Welten kopiert`,
-    `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. ` +
-      'Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.'
+    tr(`${name}: nicht in alle Welten kopiert`, `${name}: not copied into all worlds`),
+    tr(
+      `In ${failed.map((w) => `„${w}“`).join(', ')} konnte das Data Pack nicht abgelegt werden. Entweder liegt dort schon eine andere Datei mit demselben Namen, oder die Datei ist gerade gesperrt.`,
+      `The data pack could not be placed in ${failed.map((w) => `"${w}"`).join(', ')}. Either another file with the same name is already there, or the file is locked right now.`
+    )
   )
 }
 
@@ -825,11 +851,11 @@ async function updateAllOnce(instanceId: string): Promise<number> {
   assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
 
-  return withTask(`Updates für ${instance.name}`, 'Vorbereitung…', instanceId, async (task) => {
+  return withTask(tr(`Updates für ${instance.name}`, `Updates for ${instance.name}`), tr('Vorbereitung…', 'Preparing…'), instanceId, async (task) => {
     if (instance.settings.backupBeforeUpdates) {
-      task.update('Sicherung wird erstellt…', null)
+      task.update(tr('Sicherung wird erstellt…', 'Creating backup…'), null)
       await createBackup(instanceId, {
-        name: `Vor Mod-Update ${new Date().toLocaleDateString(locale())}`,
+        name: tr(`Vor Mod-Update ${new Date().toLocaleDateString(locale())}`, `Before mod update ${new Date().toLocaleDateString(locale())}`),
         reason: 'pre-update',
         includes: ['saves']
       })
@@ -840,7 +866,7 @@ async function updateAllOnce(instanceId: string): Promise<number> {
 
     for (const item of pending) {
       task.throwIfCancelled()
-      task.update(`${item.name} wird aktualisiert…`, done / Math.max(pending.length, 1))
+      task.update(tr(`${item.name} wird aktualisiert…`, `Updating ${item.name}…`), done / Math.max(pending.length, 1))
       try {
         await applyUpdate(instanceId, item.id)
         done++
@@ -849,7 +875,7 @@ async function updateAllOnce(instanceId: string): Promise<number> {
       }
     }
 
-    task.update(`${done} ${done === 1 ? 'Mod' : 'Mods'} aktualisiert`, 1)
+    task.update(tr(`${done} ${done === 1 ? 'Mod' : 'Mods'} aktualisiert`, `${done} ${done === 1 ? 'mod' : 'mods'} updated`), 1)
     return done
   })
 }
@@ -902,7 +928,10 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
       )
       if (!candidate) {
         throw new Error(
-          `Für ${item.name} gibt es keine Version für Minecraft ${instance.mcVersion} (${instance.loader}).`
+          tr(
+            `Für ${item.name} gibt es keine Version für Minecraft ${instance.mcVersion} (${instance.loader}).`,
+            `There is no version of ${item.name} for Minecraft ${instance.mcVersion} (${instance.loader}).`
+          )
         )
       }
 

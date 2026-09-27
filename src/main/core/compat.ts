@@ -2,6 +2,7 @@ import type { CompatibilityIssue, CompatibilityReport, ContentItem, Instance, Lo
 import { getInstance, syncContentWithDisk } from './instances'
 import { modrinth, curseforge } from '../providers'
 import { log } from '../logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('compat')
 
@@ -128,13 +129,13 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       // Blocking the launch made a harmless leftover file (a mod kept after
       // switching back to vanilla) render the instance unplayable.
       severity: 'warning',
-      title: 'Diese Instanz hat keinen Mod Loader',
-      detail:
-        (enabled.length === 1
-          ? 'In der Instanz liegt 1 Mod, '
-          : `In der Instanz liegen ${enabled.length} Mods, `) +
-        `aber es ist kein Mod Loader installiert. ` +
-        `Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.`
+      title: tr('Diese Instanz hat keinen Mod Loader', 'This instance has no mod loader'),
+      detail: tr(
+        (enabled.length === 1 ? 'In der Instanz liegt 1 Mod, ' : `In der Instanz liegen ${enabled.length} Mods, `) +
+          'aber es ist kein Mod Loader installiert. Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.',
+        (enabled.length === 1 ? 'The instance contains 1 mod, ' : `The instance contains ${enabled.length} mods, `) +
+          'but no mod loader is installed. Without Fabric, Forge, NeoForge or Quilt the mods are simply ignored on start.'
+      )
     })
   }
 
@@ -152,12 +153,13 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `loader-${mod.id}`,
         severity: 'error',
-        title: `${mod.name} passt nicht zum Mod Loader`,
-        detail:
-          `${mod.name} ist für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ` +
-          `${instance.loader}. Der Start würde fehlschlagen.`,
+        title: tr(`${mod.name} passt nicht zum Mod Loader`, `${mod.name} does not fit the mod loader`),
+        detail: tr(
+          `${mod.name} ist für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ${instance.loader}. Der Start würde fehlschlagen.`,
+          `${mod.name} is built for ${mod.loaders.join(', ')}, but this instance uses ${instance.loader}. The launch would fail.`
+        ),
         contentId: mod.id,
-        fix: { kind: 'disable-content', label: 'Mod deaktivieren', contentId: mod.id }
+        fix: { kind: 'disable-content', label: tr('Mod deaktivieren', 'Disable mod'), contentId: mod.id }
       })
     }
 
@@ -167,16 +169,17 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `version-${mod.id}`,
         severity,
-        title: `${mod.name} ist nicht für ${instance.mcVersion} freigegeben`,
-        detail:
-          `Unterstützt laut Angaben: ${mod.gameVersions.slice(0, 6).join(', ') || 'unbekannt'}. ` +
-          `Das kann funktionieren, kann aber auch zu Abstürzen führen.`,
+        title: tr(`${mod.name} ist nicht für ${instance.mcVersion} freigegeben`, `${mod.name} is not released for ${instance.mcVersion}`),
+        detail: tr(
+          `Unterstützt laut Angaben: ${mod.gameVersions.slice(0, 6).join(', ') || 'unbekannt'}. Das kann funktionieren, kann aber auch zu Abstürzen führen.`,
+          `Supported according to its info: ${mod.gameVersions.slice(0, 6).join(', ') || 'unknown'}. It may work, but it can also cause crashes.`
+        ),
         contentId: mod.id,
         fix:
           mod.provider !== 'local' && mod.projectId
             ? {
                 kind: 'update-content',
-                label: 'Passende Version suchen',
+                label: tr('Passende Version suchen', 'Find matching version'),
                 contentId: mod.id,
                 projectId: mod.projectId,
                 provider: mod.provider as 'modrinth' | 'curseforge'
@@ -215,12 +218,15 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         issues.push({
           id: `dep-${mod.id}-${dependency.projectId}`,
           severity: 'error',
-          title: `${mod.name} benötigt ${name}`,
-          detail: `Die Abhängigkeit ${name} ist nicht installiert. Ohne sie startet das Spiel nicht.`,
+          title: tr(`${mod.name} benötigt ${name}`, `${mod.name} requires ${name}`),
+          detail: tr(
+            `Die Abhängigkeit ${name} ist nicht installiert. Ohne sie startet das Spiel nicht.`,
+            `The dependency ${name} is not installed. The game does not start without it.`
+          ),
           contentId: mod.id,
           fix: {
             kind: 'install-dependency',
-            label: `${name} installieren`,
+            label: tr(`${name} installieren`, `Install ${name}`),
             projectId: dependency.projectId,
             provider
           }
@@ -240,14 +246,15 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         issues.push({
           id: `conflict-${mod.id}-${dependency.projectId}`,
           severity: 'error',
-          title: `${mod.name} verträgt sich nicht mit ${conflicting.name}`,
-          detail:
-            `${mod.name} gibt ${conflicting.name} ausdrücklich als inkompatibel an. ` +
-            `Deaktiviere einen der beiden Mods.`,
+          title: tr(`${mod.name} verträgt sich nicht mit ${conflicting.name}`, `${mod.name} does not work with ${conflicting.name}`),
+          detail: tr(
+            `${mod.name} gibt ${conflicting.name} ausdrücklich als inkompatibel an. Deaktiviere einen der beiden Mods.`,
+            `${mod.name} explicitly lists ${conflicting.name} as incompatible. Disable one of the two mods.`
+          ),
           contentId: conflicting.id,
           fix: {
             kind: 'disable-content',
-            label: `${conflicting.name} deaktivieren`,
+            label: tr(`${conflicting.name} deaktivieren`, `Disable ${conflicting.name}`),
             contentId: conflicting.id
           }
         })
@@ -298,14 +305,16 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `duplicate-${key}`,
         severity: 'error',
-        title: `${duplicates[0].name} ist doppelt installiert`,
+        title: tr(`${duplicates[0].name} ist doppelt installiert`, `${duplicates[0].name} is installed twice`),
         detail:
-          `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: ` +
-          duplicates.map((d) => d.fileName).join(', '),
+          tr(
+            `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: `,
+            `There are ${duplicates.length} files of the same mod in the folder: `
+          ) + duplicates.map((d) => d.fileName).join(', '),
         contentId: duplicates[0].id,
         fix: {
           kind: 'remove-content',
-          label: 'Ältere Datei entfernen',
+          label: tr('Ältere Datei entfernen', 'Remove older file'),
           contentId: duplicates[0].id
         }
       })
@@ -318,16 +327,16 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `duplicate-name-${key}`,
         severity: 'warning',
-        title: `${duplicates[0].name}: Name mehrfach vergeben`,
-        detail:
-          `${duplicates.length} Mods tragen den Namen „${duplicates[0].name}“: ` +
-          duplicates.map((d) => d.fileName).join(', ') +
-          `. Das können auch zwei unterschiedliche Mods sein, prüfe von Hand, ob einer davon ein Duplikat ist.`,
+        title: tr(`${duplicates[0].name}: Name mehrfach vergeben`, `${duplicates[0].name}: name used more than once`),
+        detail: tr(
+          `${duplicates.length} Mods tragen den Namen „${duplicates[0].name}“: ${duplicates.map((d) => d.fileName).join(', ')}. Das können auch zwei unterschiedliche Mods sein, prüfe von Hand, ob einer davon ein Duplikat ist.`,
+          `${duplicates.length} mods are named "${duplicates[0].name}": ${duplicates.map((d) => d.fileName).join(', ')}. They may also be two different mods, check by hand whether one of them is a duplicate.`
+        ),
         contentId: duplicates[0].id,
         fix: allLocal
           ? {
               kind: 'remove-content',
-              label: `${duplicates[0].fileName} entfernen`,
+              label: tr(`${duplicates[0].fileName} entfernen`, `Remove ${duplicates[0].fileName}`),
               contentId: duplicates[0].id
             }
           : undefined
@@ -357,16 +366,20 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: 'shader-without-loader',
         severity: 'warning',
-        title: 'Shader ohne Shader-Mod',
+        title: tr('Shader ohne Shader-Mod', 'Shaders without a shader mod'),
         detail: shaderMod
-          ? `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. ` +
-            `Installiere ${shaderMod.name}.`
-          : `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. ` +
-            `Dafür braucht es einen Mod Loader (zum Beispiel Fabric) und Iris.`,
+          ? tr(
+              `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. Installiere ${shaderMod.name}.`,
+              `${shaders.length} shader packs are installed, but no mod that can load them. Install ${shaderMod.name}.`
+            )
+          : tr(
+              `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. Dafür braucht es einen Mod Loader (zum Beispiel Fabric) und Iris.`,
+              `${shaders.length} shader packs are installed, but no mod that can load them. That needs a mod loader (for example Fabric) and Iris.`
+            ),
         fix: shaderMod
           ? {
               kind: 'install-dependency',
-              label: `${shaderMod.name} installieren`,
+              label: tr(`${shaderMod.name} installieren`, `Install ${shaderMod.name}`),
               projectId: shaderMod.projectId,
               provider: 'modrinth'
             }

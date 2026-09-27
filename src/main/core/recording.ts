@@ -18,6 +18,7 @@ import { emit, getMainWindow, notify } from '../events'
 import { log } from '../logger'
 import { tryGetInstance } from './instances'
 import { listAdopted, listRunning, onRunningChanged } from './running'
+import { tr } from '@shared/i18n'
 
 const logger = log('recording')
 
@@ -229,8 +230,11 @@ export function syncRecordingHotkey(): void {
         warned = wanted
         notify(
           'warning',
-          'Aufnahmetaste belegt',
-          `${wanted} wird bereits von einem anderen Programm verwendet. Wähle in den Einstellungen eine andere Taste.`,
+          tr('Aufnahmetaste belegt', 'Recording key taken'),
+          tr(
+            `${wanted} wird bereits von einem anderen Programm verwendet. Wähle in den Einstellungen eine andere Taste.`,
+            `${wanted} is already used by another program. Choose a different key in the settings.`
+          ),
           { route: '/settings?section=recording' }
         )
       }
@@ -352,15 +356,15 @@ async function startRecording(instanceId: string): Promise<void> {
     // exactly that.
     notify(
       'warning',
-      'Aufnahme nicht möglich',
-      'Das Launcher-Fenster ist geschlossen. Aufnahmen brauchen ein offenes Fenster.'
+      tr('Aufnahme nicht möglich', 'Recording not possible'),
+      tr('Das Launcher-Fenster ist geschlossen. Aufnahmen brauchen ein offenes Fenster.', 'The launcher window is closed. Recordings need an open window.')
     )
     return
   }
 
   const source = await pickSource(instanceId)
   if (!source) {
-    notify('error', 'Aufnahme nicht möglich', 'Es wurde keine Bildquelle gefunden.')
+    notify('error', tr('Aufnahme nicht möglich', 'Recording not possible'), tr('Es wurde keine Bildquelle gefunden.', 'No video source was found.'))
     return
   }
 
@@ -374,7 +378,7 @@ async function startRecording(instanceId: string): Promise<void> {
   const stream = createWriteStream(file)
   stream.on('error', (err) => {
     logger.error('Aufnahme konnte nicht geschrieben werden:', err)
-    void failRecording('Die Datei konnte nicht geschrieben werden.', id)
+    void failRecording(tr('Die Datei konnte nicht geschrieben werden.', 'The file could not be written.'), id)
   })
 
   const maxDurationMs = Math.max(1, settings.recordingMaxMinutes) * 60_000
@@ -413,8 +417,11 @@ async function startRecording(instanceId: string): Promise<void> {
   const instanceName = tryGetInstance(instanceId)?.name ?? instanceId
   notify(
     'info',
-    'Aufnahme läuft',
-    `Aufnahme von „${instanceName}“ läuft. Nochmal ${settings.recordingHotkey} drücken beendet sie.`
+    tr('Aufnahme läuft', 'Recording'),
+    tr(
+      `Aufnahme von „${instanceName}“ läuft. Nochmal ${settings.recordingHotkey} drücken beendet sie.`,
+      `Recording "${instanceName}". Press ${settings.recordingHotkey} again to stop.`
+    )
   )
 }
 
@@ -453,7 +460,7 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
 
   const target = instanceId ?? mostRecentlyStarted()
   if (!target) {
-    notify('info', 'Nichts aufzunehmen', 'Starte zuerst eine Instanz.')
+    notify('info', tr('Nichts aufzunehmen', 'Nothing to record'), tr('Starte zuerst eine Instanz.', 'Start an instance first.'))
     return getRecordingState()
   }
 
@@ -597,7 +604,7 @@ async function finishRecordingInner(
     } catch {
       // an empty leftover file is not worth a second error
     }
-    notify('warning', 'Aufnahme leer', 'Es wurden keine Bilddaten empfangen, die Datei wurde verworfen.')
+    notify('warning', tr('Aufnahme leer', 'Recording empty'), tr('Es wurden keine Bilddaten empfangen, die Datei wurde verworfen.', 'No video data was received, the file was discarded.'))
     return
   }
 
@@ -627,9 +634,15 @@ async function finishRecordingInner(
   logger.info(`Aufnahme fertig: ${current.file} (${mb} MB, ${seconds}s)`)
   notify(
     incomplete ? 'warning' : 'success',
-    incomplete ? 'Aufnahme gespeichert, möglicherweise unvollständig' : 'Aufnahme gespeichert',
-    `${seconds} Sekunden, ${mb} MB. Zu finden im Reiter Aufnahmen.` +
-      (incomplete ? ' Das Ende ließ sich nicht mehr abwarten, die letzten Sekunden können fehlen.' : ''),
+    incomplete
+      ? tr('Aufnahme gespeichert, möglicherweise unvollständig', 'Recording saved, possibly incomplete')
+      : tr('Aufnahme gespeichert', 'Recording saved'),
+    tr(
+      `${seconds} Sekunden, ${mb} MB. Zu finden im Reiter Aufnahmen.` +
+        (incomplete ? ' Das Ende ließ sich nicht mehr abwarten, die letzten Sekunden können fehlen.' : ''),
+      `${seconds} seconds, ${mb} MB. You can find it in the Recordings tab.` +
+        (incomplete ? ' The end could not be waited for, the last seconds may be missing.' : '')
+    ),
     { route: `/instances/${current.instanceId}?tab=recordings` }
   )
 }
@@ -665,7 +678,7 @@ async function failRecordingInner(message: string, sessionId?: number): Promise<
     logger.warn(`Fehlgeschlagene Aufnahme ${current.file} konnte nicht entfernt werden:`, err)
   }
   logger.warn(`Aufnahme fehlgeschlagen: ${message}`)
-  notify('error', 'Aufnahme fehlgeschlagen', message)
+  notify('error', tr('Aufnahme fehlgeschlagen', 'Recording failed'), message)
 }
 
 /* ------------------------------------------------------------------ *
@@ -687,7 +700,7 @@ export async function listRecordings(instanceId: string, limit = 40): Promise<St
   // carrying path segments would otherwise list files from outside this
   // instance's own folder.
   if (!tryGetInstance(instanceId)) {
-    throw new Error('Diese Instanz existiert nicht.')
+    throw new Error(tr('Diese Instanz existiert nicht.', 'This instance does not exist.'))
   }
 
   const dir = paths.recordings(instanceId)
@@ -754,20 +767,20 @@ export function deleteRecording(instanceId: string, file: string): void {
   // the permitted folder anywhere on disk and the comparison then passed.
   // `deleteBackup` and `removeContent` guard the same way.
   if (!tryGetInstance(instanceId)) {
-    throw new Error('Diese Instanz existiert nicht.')
+    throw new Error(tr('Diese Instanz existiert nicht.', 'This instance does not exist.'))
   }
 
   const dir = resolve(paths.recordings(instanceId))
   const target = resolve(file)
 
   if (!target.startsWith(dir + sep) || !target.toLowerCase().endsWith('.webm')) {
-    throw new Error('Diese Datei gehört nicht zu den Aufnahmen dieser Instanz.')
+    throw new Error(tr('Diese Datei gehört nicht zu den Aufnahmen dieser Instanz.', 'This file is not one of this instance\'s recordings.'))
   }
 
   // Said plainly instead of letting the delete fail on an open handle, which
   // on Windows surfaces as a bare EBUSY nobody can act on.
   if (session && resolve(session.file) === target) {
-    throw new Error('Diese Aufnahme läuft gerade. Beende sie zuerst.')
+    throw new Error(tr('Diese Aufnahme läuft gerade. Beende sie zuerst.', 'This recording is running right now. Stop it first.'))
   }
 
   rmSync(target, { force: true })

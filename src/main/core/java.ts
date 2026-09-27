@@ -11,6 +11,7 @@ import { downloadFile, fetchJson } from './net'
 import { extractAll, extractTarGz } from './archive'
 import { TaskCancelledError, type Task } from '../tasks'
 import { osArch, osName, type VersionJson } from './mojang'
+import { tr } from '@shared/i18n'
 
 const logger = log('java')
 const execFileAsync = promisify(execFile)
@@ -109,7 +110,7 @@ function parseJavaProperties(output: string): { version: string; vendor: string;
   const vendor = /java\.vendor\s*=\s*(.+)/.exec(output)?.[1]?.trim()
   const arch = /os\.arch\s*=\s*(.+)/.exec(output)?.[1]?.trim()
   if (!version) return null
-  return { version, vendor: vendor ?? 'Unbekannt', arch: arch ?? 'unknown' }
+  return { version, vendor: vendor ?? tr('Unbekannt', 'Unknown'), arch: arch ?? 'unknown' }
 }
 
 /**
@@ -613,7 +614,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   // name and the Adoptium URL below are built from it directly, so a value
   // that is not a plain, small integer is refused before it reaches either.
   if (!Number.isInteger(major) || major < 8 || major > 99) {
-    throw new Error('Ungültige Java-Hauptversion, die Installation wurde abgebrochen.')
+    throw new Error(tr('Ungültige Java-Hauptversion, die Installation wurde abgebrochen.', 'Invalid Java major version, the installation was cancelled.'))
   }
 
   const targetDir = join(paths.java(), `temurin-${major}`)
@@ -628,13 +629,13 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
 
   const metadata = await adoptiumArchiveMetadata(major, imageType)
   if (!metadata) {
-    throw new Error('Die Prüfsumme für Java konnte nicht geladen werden. Versuche es später erneut.')
+    throw new Error(tr('Die Prüfsumme für Java konnte nicht geladen werden. Versuche es später erneut.', 'The checksum for Java could not be loaded. Try again later.'))
   }
 
   const isZip = adoptiumOs() === 'windows'
   const archive = join(paths.cache(), `temurin-${major}.${isZip ? 'zip' : 'tar.gz'}`)
 
-  task?.update(`Lade Java ${major} herunter…`, null)
+  task?.update(tr(`Lade Java ${major} herunter…`, `Downloading Java ${major}…`), null)
   logger.info(`Lade Java ${major} von ${metadata.url}`)
 
   // Staging directory, so a failure cannot leave the existing runtime damaged
@@ -657,7 +658,13 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       // and the real integrity check happens by hand right below.
       await downloadFile({ url: metadata.url, path: archive, size: metadata.size }, (delta) => {
         received += delta
-        task?.update(`Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`, null)
+        task?.update(
+          tr(
+            `Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`,
+            `Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB downloaded`
+          ),
+          null
+        )
       }, 3, task?.signal)
     } catch (err) {
       // The most likely point of failure on a first start, and the one that
@@ -665,8 +672,10 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       // keep their own type so the task system still recognises them.
       if (err instanceof TaskCancelledError) throw err
       throw new Error(
-        `Java ${major} konnte nicht heruntergeladen werden. Prüfe deine Internetverbindung ` +
-          `und versuche es erneut. (${err instanceof Error ? err.message : String(err)})`
+        tr(
+          `Java ${major} konnte nicht heruntergeladen werden. Prüfe deine Internetverbindung und versuche es erneut. (${err instanceof Error ? err.message : String(err)})`,
+          `Java ${major} could not be downloaded. Check your internet connection and try again. (${err instanceof Error ? err.message : String(err)})`
+        )
       )
     }
 
@@ -674,13 +683,13 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
     // download, so a tampered or corrupted archive is caught here and never
     // reaches the extractor. The outer catch below removes the archive on any
     // error thrown inside this try, this one included.
-    task?.update(`Java ${major} · Prüfsumme wird geprüft…`, null)
+    task?.update(tr(`Java ${major} · Prüfsumme wird geprüft…`, `Java ${major} · verifying checksum…`), null)
     const archiveHash = await sha256File(archive)
     if (archiveHash !== metadata.sha256) {
-      throw new Error(`Java ${major} hat eine falsche Prüfsumme und wurde nicht installiert.`)
+      throw new Error(tr(`Java ${major} hat eine falsche Prüfsumme und wurde nicht installiert.`, `Java ${major} has a wrong checksum and was not installed.`))
     }
 
-    task?.update(`Java ${major} wird entpackt…`, null)
+    task?.update(tr(`Java ${major} wird entpackt…`, `Unpacking Java ${major}…`), null)
     rmSync(staging, { recursive: true, force: true })
 
     if (isZip) extractAll(archive, staging, true)
@@ -688,21 +697,24 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
 
     const staged = executableIn(staging)
     if (!staged) {
-      throw new Error(`Java ${major} konnte nicht entpackt werden`)
+      throw new Error(tr(`Java ${major} konnte nicht entpackt werden`, `Java ${major} could not be unpacked`))
     }
 
     // The archive's sha256 is already verified above. Running the unpacked
     // JVM once still catches a half-written extraction or a binary for the
     // wrong architecture, so `targetDir` only ever receives a runtime that
     // provably starts.
-    task?.update(`Java ${major} wird geprüft…`, null)
+    task?.update(tr(`Java ${major} wird geprüft…`, `Checking Java ${major}…`), null)
     const probed = await probeJava(staged)
     if (!probed) {
-      throw new Error(`Java ${major} wurde geladen, lässt sich aber nicht starten.`)
+      throw new Error(tr(`Java ${major} wurde geladen, lässt sich aber nicht starten.`, `Java ${major} was downloaded but cannot be started.`))
     }
     if (probed.major !== major) {
       throw new Error(
-        `Es wurde Java ${probed.major} statt Java ${major} geladen, die Installation wurde verworfen.`
+        tr(
+          `Es wurde Java ${probed.major} statt Java ${major} geladen, die Installation wurde verworfen.`,
+          `Java ${probed.major} was downloaded instead of Java ${major}, the installation was discarded.`
+        )
       )
     }
 
@@ -780,7 +792,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   }
 
   const executable = executableIn(targetDir)
-  if (!executable) throw new Error(`Java ${major} konnte nicht entpackt werden`)
+  if (!executable) throw new Error(tr(`Java ${major} konnte nicht entpackt werden`, `Java ${major} could not be unpacked`))
 
   if (process.platform !== 'win32') {
     try {
@@ -791,7 +803,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   }
 
   const runtime = await probeJava(executable)
-  if (!runtime) throw new Error(`Java ${major} wurde installiert, meldet sich aber nicht`)
+  if (!runtime) throw new Error(tr(`Java ${major} wurde installiert, meldet sich aber nicht`, `Java ${major} was installed but does not respond`))
 
   invalidateJavaCache()
   logger.info(`Java ${runtime.version} installiert nach ${targetDir}`)
@@ -829,9 +841,11 @@ export async function resolveJava(options: {
         )
         notify(
           'warning',
-          'Eingestellte Java-Version passt nicht',
-          `Diese Instanz braucht Java ${major}, die fest eingestellte Installation ist aber Java ${runtime.major}. ` +
-            'Das kann den Start mit einem unklaren Fehler abbrechen.',
+          tr('Eingestellte Java-Version passt nicht', 'Chosen Java version does not fit'),
+          tr(
+            `Diese Instanz braucht Java ${major}, die fest eingestellte Installation ist aber Java ${runtime.major}. Das kann den Start mit einem unklaren Fehler abbrechen.`,
+            `This instance needs Java ${major}, but the pinned installation is Java ${runtime.major}. That can make the launch fail with an unclear error.`
+          ),
           instanceId ? { route: `/instances/${instanceId}?tab=settings` } : undefined
         )
       }
@@ -881,11 +895,18 @@ export async function resolveJava(options: {
 
     const closest = preferred.sort((a, b) => a.major - b.major)[0]
     throw new Error(
-      `Für diese Version wird Java ${major} benötigt.` +
-        (closest
-          ? ` Gefunden wurde nur Java ${preferred.map((r) => r.major).join(', ')}, das damit nicht läuft.`
-          : ' Es wurde keine Java-Installation gefunden.') +
-        ` Aktiviere die automatische Java-Verwaltung in den Einstellungen oder installiere Java ${major}.`
+      tr(
+        `Für diese Version wird Java ${major} benötigt.` +
+          (closest
+            ? ` Gefunden wurde nur Java ${preferred.map((r) => r.major).join(', ')}, das damit nicht läuft.`
+            : ' Es wurde keine Java-Installation gefunden.') +
+          ` Aktiviere die automatische Java-Verwaltung in den Einstellungen oder installiere Java ${major}.`,
+        `This version needs Java ${major}.` +
+          (closest
+            ? ` Only Java ${preferred.map((r) => r.major).join(', ')} was found, which does not run it.`
+            : ' No Java installation was found.') +
+          ` Turn on automatic Java management in the settings or install Java ${major}.`
+      )
     )
   }
 
