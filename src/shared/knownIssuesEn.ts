@@ -1616,6 +1616,13 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'After changing the data folder the launcher immediately showed the new, empty folder. That ' +
       'existing instances are not moved was only mentioned afterwards in a briefly visible message.'
+  },
+  'fehlermeldung-technischer-vorspann': {
+    title: 'Error messages started with a technical prefix',
+    detail:
+      'Many error messages of the launcher began with "Error invoking remote method ..." before the ' +
+      'actual text. Also, cancelling a Microsoft sign-in showed an error message although it was ' +
+      'only cancelled.'
   }
 }
 

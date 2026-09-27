@@ -2517,6 +2517,16 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-27',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'fehlermeldung-technischer-vorspann',
+    title: 'Fehlermeldungen begannen mit einem englischen technischen Vorspann',
+    detail:
+      'Viele Fehlermeldungen des Launchers fingen mit „Error invoking remote method …“ an, bevor ' +
+      'der eigentliche Text kam. Außerdem erschien beim Abbrechen einer Microsoft-Anmeldung eine ' +
+      'Fehlermeldung, obwohl nur abgebrochen wurde.',
+    state: 'fixing',
+    since: '2026-09-28'
   }
 ]
 
