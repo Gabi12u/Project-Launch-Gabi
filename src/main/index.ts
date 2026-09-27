@@ -4,7 +4,7 @@ import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout } from './paths'
 import { getSettings } from './store'
-import { getLanguage, setLanguage } from '@shared/i18n'
+import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
@@ -239,8 +239,8 @@ function createWindow(): BrowserWindow {
     // and leave the user with an invisible window and nothing in the log.
     logger.error('Oberfläche konnte nicht geladen werden:', err)
     dialog.showErrorBox(
-      'Launch Gabi konnte nicht starten',
-      'Die Programmoberfläche konnte nicht geladen werden. Eine Neuinstallation behebt das in der Regel.'
+      tr('Launch Gabi konnte nicht starten', 'Launch Gabi could not start'),
+      tr('Die Programmoberfläche konnte nicht geladen werden. Eine Neuinstallation behebt das in der Regel.', 'The program interface could not be loaded. Reinstalling usually fixes this.')
     )
   }
 
@@ -377,8 +377,11 @@ function bootstrap(): void {
         const name = tryGetInstance(instanceId)?.name ?? instanceId
         notify(
           'warning',
-          'Wiederherstellung rückgängig gemacht',
-          `Eine abgebrochene Wiederherstellung für „${name}“ wurde rückgängig gemacht, der vorherige Stand ist zurück.`
+          tr('Wiederherstellung rückgängig gemacht', 'Restore undone'),
+          tr(
+            `Eine abgebrochene Wiederherstellung für „${name}“ wurde rückgängig gemacht, der vorherige Stand ist zurück.`,
+            `An interrupted restore for "${name}" was undone, the previous state is back.`
+          )
         )
       }
 
@@ -389,9 +392,11 @@ function bootstrap(): void {
         const name = tryGetInstance(instanceId)?.name ?? instanceId
         notify(
           'error',
-          'Wiederherstellung unvollständig',
-          `Nach einem Absturz ließ sich eine Wiederherstellung von „${name}“ nicht vollständig zurücknehmen. ` +
-            `Die gesicherten Dateien liegen noch in ${staging}.`
+          tr('Wiederherstellung unvollständig', 'Restore incomplete'),
+          tr(
+            `Nach einem Absturz ließ sich eine Wiederherstellung von „${name}“ nicht vollständig zurücknehmen. Die gesicherten Dateien liegen noch in ${staging}.`,
+            `After a crash, a restore of "${name}" could not be fully undone. The saved files are still in ${staging}.`
+          )
         )
       }
 
@@ -548,7 +553,7 @@ async function consumePendingLaunch(): Promise<void> {
       const instance = tryGetInstance(instanceId)
       if (!instance) {
         logger.warn(`Verknüpfung zeigt auf unbekannte Instanz ${instanceId}`)
-        notify('error', 'Instanz nicht gefunden', `Die Verknüpfung verweist auf "${instanceId}".`)
+        notify('error', tr('Instanz nicht gefunden', 'Instance not found'), tr(`Die Verknüpfung verweist auf "${instanceId}".`, `The shortcut points to "${instanceId}".`))
         continue
       }
 
@@ -567,10 +572,13 @@ async function consumePendingLaunch(): Promise<void> {
         }
         const result = await dialog.showMessageBox(win as BrowserWindow, {
           type: 'question',
-          title: 'Instanz starten?',
-          message: 'Instanz starten?',
-          detail: `Launch Gabi soll die Instanz „${instance.name}“ starten. Der Aufruf kam über einen Link. Starten?`,
-          buttons: ['Starten', 'Abbrechen'],
+          title: tr('Instanz starten?', 'Start instance?'),
+          message: tr('Instanz starten?', 'Start instance?'),
+          detail: tr(
+            `Launch Gabi soll die Instanz „${instance.name}“ starten. Der Aufruf kam über einen Link. Starten?`,
+            `Launch Gabi is asked to start the instance "${instance.name}". The request came from a link. Start it?`
+          ),
+          buttons: [tr('Starten', 'Start'), tr('Abbrechen', 'Cancel')],
           defaultId: 1,
           cancelId: 1,
           noLink: true
@@ -588,7 +596,7 @@ async function consumePendingLaunch(): Promise<void> {
         await launchInstance({ instanceId })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        notify('error', `${instance.name} konnte nicht gestartet werden`, message)
+        notify('error', tr(`${instance.name} konnte nicht gestartet werden`, `${instance.name} could not be started`), message)
       }
     }
   } finally {
@@ -619,8 +627,8 @@ async function runStartupChecks(): Promise<void> {
   if (total > 0 && settings.notifyOnUpdates) {
     notify(
       'info',
-      `${total} ${total === 1 ? 'Update' : 'Updates'} verfügbar`,
-      'Öffne eine Instanz, um sie zu aktualisieren.',
+      tr(`${total} ${total === 1 ? 'Update' : 'Updates'} verfügbar`, `${total} ${total === 1 ? 'update' : 'updates'} available`),
+      tr('Öffne eine Instanz, um sie zu aktualisieren.', 'Open an instance to update it.'),
       { route: '/instances' }
     )
   }

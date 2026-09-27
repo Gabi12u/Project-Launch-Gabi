@@ -132,7 +132,7 @@ function handle<T extends unknown[], R>(
   ipcMain.handle(channel, async (event, ...args) => {
     if (isGameLogWebContents(event.sender.id) && !GAME_LOG_ALLOWED_CHANNELS.has(channel)) {
       logger.error(`Log-Fenster hat verbotenen Kanal aufgerufen: ${channel}`)
-      throw new Error('Dieser Kanal steht dem Log-Fenster nicht zur Verfügung.')
+      throw new Error(tr('Dieser Kanal steht dem Log-Fenster nicht zur Verfügung.', 'This channel is not available to the log window.'))
     }
     try {
       return await fn(...(args as T))
@@ -162,13 +162,13 @@ function openLauncherPath(target: string): Promise<string> {
 
   const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir.endsWith(sep) ? dir : dir + sep))
   if (!inside) {
-    throw new Error('Dieser Pfad liegt außerhalb der Launcher-Ordner.')
+    throw new Error(tr('Dieser Pfad liegt außerhalb der Launcher-Ordner.', 'This path is outside the launcher folders.'))
   }
   // openPath never rejects: it resolves with an error string, or '' on
   // success. Handing that straight back reported a missing folder or a broken
   // file association to the renderer as if it had worked.
   return shell.openPath(resolved).then((message) => {
-    if (message) throw new Error(`Ordner konnte nicht geöffnet werden: ${message}`)
+    if (message) throw new Error(tr(`Ordner konnte nicht geöffnet werden: ${message}`, `Folder could not be opened: ${message}`))
     return ''
   })
 }
@@ -188,7 +188,10 @@ function openLauncherPath(target: string): Promise<string> {
 function requireStopped(instanceId: string, action: string): void {
   if (isRunning(instanceId) || isStarting(instanceId)) {
     throw new Error(
-      `${action} ist nicht möglich, solange Minecraft läuft. Beende das Spiel und versuche es dann erneut.`
+      tr(
+        `${action} ist nicht möglich, solange Minecraft läuft. Beende das Spiel und versuche es dann erneut.`,
+        `${action} is not possible while Minecraft is running. Close the game and then try again.`
+      )
     )
   }
 }
@@ -232,7 +235,7 @@ export function registerIpc(): void {
   }))
 
   handle(IPC.appOpenExternal, (url: string) => {
-    if (!/^https?:\/\//i.test(url)) throw new Error('Nur http(s)-Links werden geöffnet.')
+    if (!/^https?:\/\//i.test(url)) throw new Error(tr('Nur http(s)-Links werden geöffnet.', 'Only http(s) links are opened.'))
     return shell.openExternal(url)
   })
 
@@ -241,7 +244,7 @@ export function registerIpc(): void {
   handle(IPC.appPickDirectory, async (title?: string) => {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
-      title: title ?? 'Ordner auswählen',
+      title: title ?? tr('Ordner auswählen', 'Choose folder'),
       properties: ['openDirectory', 'createDirectory']
     })
     return result.canceled ? null : result.filePaths[0]
@@ -252,7 +255,7 @@ export function registerIpc(): void {
     async (options: { title?: string; filters?: { name: string; extensions: string[] }[]; multi?: boolean }) => {
       const win = getMainWindow()
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
-        title: options?.title ?? 'Datei auswählen',
+        title: options?.title ?? tr('Datei auswählen', 'Choose file'),
         filters: options?.filters,
         properties: options?.multi ? ['openFile', 'multiSelections'] : ['openFile']
       })
@@ -300,7 +303,7 @@ export function registerIpc(): void {
       patch.dataDirectory !== previous.dataDirectory &&
       runningCount() + startingCount() > 0
     ) {
-      throw new Error('Der Datenordner lässt sich nur wechseln, solange kein Spiel läuft.')
+      throw new Error(tr('Der Datenordner lässt sich nur wechseln, solange kein Spiel läuft.', 'The data folder can only be changed while no game is running.'))
     }
     const next = saveSettings(patch)
 
@@ -391,8 +394,8 @@ export function registerIpc(): void {
       // A folder, not a file: the modpack picker cannot select one, which is
       // why an instance that already exists on disk had no way in at all.
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
-        title: 'Instanz-Ordner auswählen',
-        message: 'Wähle den Ordner einer Instanz (Prism, MultiMC oder ein .minecraft-Ordner).',
+        title: tr('Instanz-Ordner auswählen', 'Choose instance folder'),
+        message: tr('Wähle den Ordner einer Instanz (Prism, MultiMC oder ein .minecraft-Ordner).', 'Choose the folder of an instance (Prism, MultiMC or a .minecraft folder).'),
         buttonLabel: 'Importieren',
         properties: ['openDirectory']
       })
@@ -422,8 +425,11 @@ export function registerIpc(): void {
     const path = createDesktopShortcut(id, iconImages ?? [])
     notify(
       'success',
-      'Verknüpfung erstellt',
-      `${getInstance(id).name} liegt jetzt auf dem Desktop. Ein Doppelklick startet direkt das Spiel.`
+      tr('Verknüpfung erstellt', 'Shortcut created'),
+      tr(
+        `${getInstance(id).name} liegt jetzt auf dem Desktop. Ein Doppelklick startet direkt das Spiel.`,
+        `${getInstance(id).name} is now on your desktop. Double-clicking it starts the game right away.`
+      )
     )
     return path
   })
@@ -435,7 +441,7 @@ export function registerIpc(): void {
   handle(IPC.instanceSetIconImage, async (id: string) => {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
-      title: 'Instanz-Icon auswählen',
+      title: tr('Instanz-Icon auswählen', 'Choose instance icon'),
       filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'ico'] }],
       properties: ['openFile']
     })
@@ -447,7 +453,7 @@ export function registerIpc(): void {
   handle(IPC.instanceSetBackground, async (id: string) => {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
-      title: 'Hintergrundbild auswählen',
+      title: tr('Hintergrundbild auswählen', 'Choose background image'),
       filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
       properties: ['openFile']
     })
@@ -633,13 +639,16 @@ export function registerIpc(): void {
       skipDependencies?: boolean
       worlds?: string[]
     }) => {
-      requireStopped(options.instanceId, 'Mods installieren')
+      requireStopped(options.instanceId, tr('Mods installieren', 'Installing mods'))
       const installed = await installContent(options)
       if (installed.length > 1) {
         notify(
           'success',
-          `${installed[0].name} installiert`,
-          `${installed.length - 1} Abhängigkeit${installed.length > 2 ? 'en' : ''} wurde${installed.length > 2 ? 'n' : ''} automatisch ergänzt.`
+          tr(`${installed[0].name} installiert`, `${installed[0].name} installed`),
+          tr(
+            `${installed.length - 1} Abhängigkeit${installed.length > 2 ? 'en' : ''} wurde${installed.length > 2 ? 'n' : ''} automatisch ergänzt.`,
+            `${installed.length - 1} ${installed.length > 2 ? 'dependencies were' : 'dependency was'} added automatically.`
+          )
         )
       }
       return installed
@@ -647,37 +656,37 @@ export function registerIpc(): void {
   )
 
   handle(IPC.contentRemove, (instanceId: string, contentId: string) => {
-    requireStopped(instanceId, 'Entfernen')
+    requireStopped(instanceId, tr('Entfernen', 'Removing'))
     return removeContent(instanceId, contentId)
   })
 
   handle(IPC.contentToggle, (instanceId: string, contentId: string, enabled: boolean) => {
-    requireStopped(instanceId, enabled ? 'Aktivieren' : 'Deaktivieren')
+    requireStopped(instanceId, enabled ? tr('Aktivieren', 'Enabling') : tr('Deaktivieren', 'Disabling'))
     return toggleContent(instanceId, contentId, enabled)
   })
 
   handle(IPC.contentSetDatapackWorlds, (instanceId: string, contentId: string, worlds: string[]) => {
-    requireStopped(instanceId, 'Welten zuordnen')
+    requireStopped(instanceId, tr('Welten zuordnen', 'Assigning worlds'))
     return setDatapackWorlds(instanceId, contentId, worlds)
   })
 
   handle(IPC.contentCheckUpdates, (instanceId: string) => checkUpdates(instanceId))
 
   handle(IPC.contentUpdate, (instanceId: string, contentId: string) => {
-    requireStopped(instanceId, 'Aktualisieren')
+    requireStopped(instanceId, tr('Aktualisieren', 'Updating'))
     return applyUpdate(instanceId, contentId)
   })
 
   handle(IPC.contentUpdateAll, (instanceId: string) => {
-    requireStopped(instanceId, 'Aktualisieren')
+    requireStopped(instanceId, tr('Aktualisieren', 'Updating'))
     return updateAll(instanceId)
   })
 
   handle(IPC.contentImportFile, async (instanceId: string, type: ContentType) => {
-    requireStopped(instanceId, 'Dateien hinzufügen')
+    requireStopped(instanceId, tr('Dateien hinzufügen', 'Adding files'))
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
-      title: 'Dateien hinzufügen',
+      title: tr('Dateien hinzufügen', 'Add files'),
       filters: [{ name: type === 'mod' ? 'Mods' : 'Archive', extensions: type === 'mod' ? ['jar'] : ['zip'] }],
       properties: ['openFile', 'multiSelections']
     })
@@ -700,7 +709,7 @@ export function registerIpc(): void {
     if (failed.length > 0) {
       notify(
         'warning',
-        items.length > 0 ? 'Nicht alle Dateien importiert' : 'Import fehlgeschlagen',
+        items.length > 0 ? tr('Nicht alle Dateien importiert', 'Not all files imported') : tr('Import fehlgeschlagen', 'Import failed'),
         failed.join(', ')
       )
     }
@@ -712,7 +721,7 @@ export function registerIpc(): void {
   handle(
     IPC.contentApplyFix,
     async (instanceId: string, fix: NonNullable<CompatibilityIssue['fix']>) => {
-      requireStopped(instanceId, 'Automatisch beheben')
+      requireStopped(instanceId, tr('Automatisch beheben', 'Automatic fixing'))
       await applyFix(instanceId, fix)
       return checkCompatibility(instanceId)
     }
@@ -727,7 +736,7 @@ export function registerIpc(): void {
     if (!target) {
       const win = getMainWindow()
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
-        title: 'Modpack importieren',
+        title: tr('Modpack importieren', 'Import modpack'),
         filters: [
           { name: 'Modpacks', extensions: ['mrpack', 'zip'] },
           { name: 'Modrinth Modpack', extensions: ['mrpack'] },
@@ -754,8 +763,8 @@ export function registerIpc(): void {
     if (!target) {
       const win = getMainWindow()
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
-        title: 'Instanz-Ordner auswählen',
-        message: 'Wähle den Ordner einer Instanz (Prism, MultiMC, CurseForge, Modrinth oder ein .minecraft-Ordner).',
+        title: tr('Instanz-Ordner auswählen', 'Choose instance folder'),
+        message: tr('Wähle den Ordner einer Instanz (Prism, MultiMC, CurseForge, Modrinth oder ein .minecraft-Ordner).', 'Choose the folder of an instance (Prism, MultiMC, CurseForge, Modrinth or a .minecraft folder).'),
         buttonLabel: 'Analysieren',
         properties: ['openDirectory']
       })
@@ -770,7 +779,7 @@ export function registerIpc(): void {
     if (!target) {
       const win = getMainWindow()
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
-        title: 'Modpack auswählen',
+        title: tr('Modpack auswählen', 'Choose modpack'),
         buttonLabel: 'Analysieren',
         filters: [
           { name: 'Modpacks', extensions: ['mrpack', 'zip'] },
@@ -797,14 +806,14 @@ export function registerIpc(): void {
     const win = getMainWindow()
 
     const result = await dialog.showSaveDialog(win as BrowserWindow, {
-      title: 'Modpack exportieren',
+      title: tr('Modpack exportieren', 'Export modpack'),
       defaultPath: `${instance.name.replace(/[\\/:*?"<>|]/g, '-')}.mrpack`,
       filters: [{ name: 'Modrinth Modpack', extensions: ['mrpack'] }]
     })
     if (result.canceled || !result.filePath) return null
 
     const file = await exportMrpack(instanceId, { targetFile: result.filePath })
-    notify('success', 'Export abgeschlossen', file)
+    notify('success', tr('Export abgeschlossen', 'Export finished'), file)
     return file
   })
 

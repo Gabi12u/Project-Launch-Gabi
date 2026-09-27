@@ -2,12 +2,13 @@ import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { EVENTS } from '@shared/ipc'
 import type { UpdateStatus } from '@shared/types'
-import { changelogFor } from '@shared/changelog'
+import { changelogLocalized } from '@shared/changelogEn'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { getSettings, saveSettings } from '../store'
 import { runningCount } from './running'
 import { startingCount } from './launch'
+import { getLanguage, tr } from '@shared/i18n'
 
 const logger = log('updater')
 
@@ -98,13 +99,13 @@ export function announceUpdate(): void {
   }
 
   logger.info(`Update abgeschlossen: ${previous} -> ${version}`)
-  const entry = changelogFor(version)
+  const entry = changelogLocalized(getLanguage()).find((release) => release.version === version)
   notify(
     'success',
-    `Update abgeschlossen auf ${version}`,
+    tr(`Update abgeschlossen auf ${version}`, `Updated to ${version}`),
     entry
-      ? `${entry.headline} Hier klicken, um alle Neuerungen zu sehen.`
-      : 'Hier klicken, um die Neuerungen zu sehen.',
+      ? tr(`${entry.headline} Hier klicken, um alle Neuerungen zu sehen.`, `${entry.headline} Click here to see everything that is new.`)
+      : tr('Hier klicken, um die Neuerungen zu sehen.', 'Click here to see what is new.'),
     // No timeout: this is the one message worth still being there when the
     // user looks back at the window a minute after starting.
     { route: '/settings?section=changelog', timeout: 0 }
@@ -125,7 +126,7 @@ function supported(): boolean {
 
 export function initUpdater(): void {
   if (!supported()) {
-    setStatus({ state: 'disabled', detail: 'Updates gibt es nur in der installierten Version.' })
+    setStatus({ state: 'disabled', detail: tr('Updates gibt es nur in der installierten Version.', 'Updates are only available in the installed version.') })
     logger.info('Updater im Entwicklungsmodus deaktiviert')
     return
   }
@@ -152,7 +153,7 @@ export function initUpdater(): void {
   autoUpdater.autoInstallOnAppQuit = false
 
   autoUpdater.on('checking-for-update', () => {
-    setStatus({ state: 'checking', detail: 'Suche nach Updates…' })
+    setStatus({ state: 'checking', detail: tr('Suche nach Updates…', 'Checking for updates…') })
   })
 
   autoUpdater.on('update-available', (info) => {
@@ -162,12 +163,12 @@ export function initUpdater(): void {
       version: info.version,
       notes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
       percent: 0,
-      detail: `Version ${info.version} verfügbar`
+      detail: tr(`Version ${info.version} verfügbar`, `Version ${info.version} available`)
     })
   })
 
   autoUpdater.on('update-not-available', () => {
-    setStatus({ state: 'up-to-date', percent: undefined, detail: 'Launch Gabi ist aktuell.' })
+    setStatus({ state: 'up-to-date', percent: undefined, detail: tr('Launch Gabi ist aktuell.', 'Launch Gabi is up to date.') })
   })
 
   autoUpdater.on('download-progress', (progress) => {
@@ -175,7 +176,7 @@ export function initUpdater(): void {
       state: 'downloading',
       percent: Math.max(0, Math.min(100, progress.percent)),
       bytesPerSecond: progress.bytesPerSecond,
-      detail: `Update wird geladen… ${Math.round(progress.percent)}%`
+      detail: tr(`Update wird geladen… ${Math.round(progress.percent)}%`, `Downloading update… ${Math.round(progress.percent)}%`)
     })
   })
 
@@ -199,9 +200,9 @@ export function initUpdater(): void {
         state: 'installing',
         version: info.version,
         percent: 100,
-        detail: `Version ${info.version} wird installiert…`
+        detail: tr(`Version ${info.version} wird installiert…`, `Installing version ${info.version}…`)
       })
-      notify('info', `Update auf ${info.version}`, 'Launch Gabi startet gleich neu.')
+      notify('info', tr(`Update auf ${info.version}`, `Update to ${info.version}`), tr('Launch Gabi startet gleich neu.', 'Launch Gabi restarts shortly.'))
 
       // Long enough for the renderer to paint the message, short enough that it
       // still feels like part of starting up.
@@ -211,7 +212,7 @@ export function initUpdater(): void {
         // would kill the game they just started.
         if (runningCount() > 0 || startingCount() > 0) {
           logger.info('Installation verschoben, es wurde inzwischen ein Spiel gestartet')
-          setStatus({ state: 'ready', version: info.version, detail: 'Update wartet auf Neustart.' })
+          setStatus({ state: 'ready', version: info.version, detail: tr('Update wartet auf Neustart.', 'Update is waiting for a restart.') })
           return
         }
 
@@ -224,7 +225,7 @@ export function initUpdater(): void {
           autoUpdater.quitAndInstall(true, true)
         } catch (err) {
           logger.error('Automatische Installation fehlgeschlagen:', err)
-          setStatus({ state: 'ready', version: info.version, detail: 'Update wartet auf Neustart.' })
+          setStatus({ state: 'ready', version: info.version, detail: tr('Update wartet auf Neustart.', 'Update is waiting for a restart.') })
         }
       }, 900)
       return
@@ -234,12 +235,12 @@ export function initUpdater(): void {
       state: 'ready',
       version: info.version,
       percent: 100,
-      detail: `Version ${info.version} ist bereit.`
+      detail: tr(`Version ${info.version} ist bereit.`, `Version ${info.version} is ready.`)
     })
     notify(
       'success',
-      `Update auf ${info.version} bereit`,
-      'Die neue Version wird beim nächsten Start installiert. Jetzt neu starten?',
+      tr(`Update auf ${info.version} bereit`, `Update to ${info.version} ready`),
+      tr('Die neue Version wird beim nächsten Start installiert. Jetzt neu starten?', 'The new version is installed on the next start. Restart now?'),
       // No timeout. This announced itself once, faded after a few seconds, and
       // never came back: the periodic check skips itself while an update is
       // already waiting, so someone who was not looking at that moment only
@@ -252,7 +253,7 @@ export function initUpdater(): void {
     const message = err instanceof Error ? err.message : String(err)
     // A failed update check must never look like a broken launcher.
     logger.warn('Update-Prüfung fehlgeschlagen:', message)
-    setStatus({ state: 'error', error: message, detail: 'Update-Prüfung fehlgeschlagen.' })
+    setStatus({ state: 'error', error: message, detail: tr('Update-Prüfung fehlgeschlagen.', 'Update check failed.') })
   })
 
   // The check itself is one small request and runs off the main path, so it
@@ -277,9 +278,9 @@ export function disposeUpdater(): void {
  */
 export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
   if (!supported()) {
-    const detail = 'Updates gibt es nur in der installierten Version.'
+    const detail = tr('Updates gibt es nur in der installierten Version.', 'Updates are only available in the installed version.')
     setStatus({ state: 'disabled', detail })
-    if (manual) notify('info', 'Kein Update möglich', detail)
+    if (manual) notify('info', tr('Kein Update möglich', 'No update possible'), detail)
     return status
   }
 
@@ -297,10 +298,10 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     if (manual) {
       notify(
         'info',
-        status.state === 'ready' ? 'Update bereit' : 'Update wird heruntergeladen',
+        status.state === 'ready' ? tr('Update bereit', 'Update ready') : tr('Update wird heruntergeladen', 'Downloading update'),
         status.state === 'ready'
-          ? 'Ein Update ist bereits heruntergeladen und wartet auf den Neustart.'
-          : 'Ein Update wird gerade heruntergeladen.'
+          ? tr('Ein Update ist bereits heruntergeladen und wartet auf den Neustart.', 'An update is already downloaded and waiting for a restart.')
+          : tr('Ein Update wird gerade heruntergeladen.', 'An update is being downloaded right now.')
       )
     }
     return status
@@ -316,12 +317,16 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     autoUpdater.autoDownload = getSettings().autoUpdate !== false
     await autoUpdater.checkForUpdates()
     if (manual && status.state === 'up-to-date') {
-      notify('info', 'Kein Update verfügbar', `Launch Gabi ${app.getVersion()} ist die neueste Version.`)
+      notify(
+        'info',
+        tr('Kein Update verfügbar', 'No update available'),
+        tr(`Launch Gabi ${app.getVersion()} ist die neueste Version.`, `Launch Gabi ${app.getVersion()} is the newest version.`)
+      )
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    setStatus({ state: 'error', error: message, detail: 'Update-Prüfung fehlgeschlagen.' })
-    if (manual) notify('error', 'Update-Prüfung fehlgeschlagen', message)
+    setStatus({ state: 'error', error: message, detail: tr('Update-Prüfung fehlgeschlagen.', 'Update check failed.') })
+    if (manual) notify('error', tr('Update-Prüfung fehlgeschlagen', 'Update check failed'), message)
   } finally {
     checking = false
   }
@@ -343,8 +348,8 @@ function armCheckTimeout(): void {
     logger.warn('Update-Prüfung hat nicht geantwortet, Sperre wird gelöst')
     setStatus({
       state: 'error',
-      error: 'Zeitüberschreitung',
-      detail: 'Die Update-Prüfung hat nicht geantwortet.'
+      error: tr('Zeitüberschreitung', 'Timed out'),
+      detail: tr('Die Update-Prüfung hat nicht geantwortet.', 'The update check did not respond.')
     })
   }, 120_000)
   guard.unref?.()
@@ -374,8 +379,8 @@ export function installUpdate(): void {
   if (runningCount() > 0) {
     notify(
       'warning',
-      'Update später',
-      'Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.'
+      tr('Update später', 'Update later'),
+      tr('Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.', 'Close Minecraft first, otherwise the update would be installed in the middle of your session.')
     )
     return
   }
@@ -385,8 +390,8 @@ export function installUpdate(): void {
   if (startingCount() > 0) {
     notify(
       'warning',
-      'Update später',
-      'Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.'
+      tr('Update später', 'Update later'),
+      tr('Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.', 'A game is starting right now. Wait until Minecraft is open, then it works.')
     )
     return
   }
@@ -402,16 +407,16 @@ export function installUpdate(): void {
     if (runningCount() > 0) {
       notify(
         'warning',
-        'Update später',
-        'Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.'
+        tr('Update später', 'Update later'),
+        tr('Beende erst Minecraft, das Update wird sonst mitten in der Sitzung eingespielt.', 'Close Minecraft first, otherwise the update would be installed in the middle of your session.')
       )
       return
     }
     if (startingCount() > 0) {
       notify(
         'warning',
-        'Update später',
-        'Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.'
+        tr('Update später', 'Update later'),
+        tr('Ein Spielstart läuft gerade. Warte, bis Minecraft offen ist, dann geht es.', 'A game is starting right now. Wait until Minecraft is open, then it works.')
       )
       return
     }

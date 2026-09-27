@@ -17,6 +17,7 @@ import { isContentBusy } from './contentLock'
 // straight out of `repair.ts` here would close that loop. See the comment on
 // `repairLock.ts` itself.
 import { isRepairing } from './repairLock'
+import { tr } from '@shared/i18n'
 
 const logger = log('backups')
 
@@ -32,7 +33,7 @@ function backupPath(instanceId: string, fileName: string): string {
   const dir = resolve(paths.instanceBackups(instanceId))
   const target = resolve(dir, fileName)
   if (!target.startsWith(dir + sep)) {
-    throw new Error(`Die Sicherung ${fileName} liegt nicht im Sicherungsordner dieser Instanz.`)
+    throw new Error(tr(`Die Sicherung ${fileName} liegt nicht im Sicherungsordner dieser Instanz.`, `The backup ${fileName} is not in this instance's backup folder.`))
   }
   return target
 }
@@ -58,7 +59,7 @@ function assertBackupIdSafe(instanceId: string): void {
   const root = resolve(paths.backups())
   const dir = resolve(paths.instanceBackups(instanceId))
   if (dir !== root && !dir.startsWith(root + sep)) {
-    throw new Error(`Ungültige Instanz-Kennung für Sicherungen: ${instanceId}`)
+    throw new Error(tr(`Ungültige Instanz-Kennung für Sicherungen: ${instanceId}`, `Invalid instance ID for backups: ${instanceId}`))
   }
 }
 
@@ -204,7 +205,7 @@ async function createBackupUnlocked(
   // Same guard `restoreBackupUnlocked` has: a repair rewrites the same
   // subfolders a backup is about to read from.
   if (isRepairing(instanceId)) {
-    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.', 'This instance is being repaired right now. Wait until that is done.'))
   }
 
   // Mirrors `restoreBackupUnlocked`'s guard against content work, so a backup
@@ -213,7 +214,7 @@ async function createBackupUnlocked(
   // lock it is asking about, before a single mod has been touched, so it must
   // not trip over its own lock.
   if (reason !== 'pre-update' && isContentBusy(instanceId)) {
-    throw new Error('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.', 'The mods of this instance are being worked on right now. Wait until that is done.'))
   }
 
   // Deliberately no `isRunning`/`isStarting` check here: unlike a restore, a
@@ -221,8 +222,8 @@ async function createBackupUnlocked(
   // has never been required.
 
   return withTask(
-    `Sicherung von ${instance.name}`,
-    'Dateien werden gepackt…',
+    tr(`Sicherung von ${instance.name}`, `Backup of ${instance.name}`),
+    tr('Dateien werden gepackt…', 'Packing files…'),
     instanceId,
     async (task) => {
       const dir = paths.instanceBackups(instanceId)
@@ -247,7 +248,7 @@ async function createBackupUnlocked(
       const existing = includes.filter((key) => existsSync(join(gameDir, key)))
 
       if (existing.length === 0) {
-        throw new Error('Es gibt nichts zu sichern - die gewählten Ordner sind leer.')
+        throw new Error(tr('Es gibt nichts zu sichern, die gewählten Ordner sind leer.', 'There is nothing to back up, the chosen folders are empty.'))
       }
 
       const skipped: string[] = []
@@ -272,9 +273,12 @@ async function createBackupUnlocked(
         if (skipped.length > 0) {
           const running = isRunning(instanceId)
           throw new Error(
-            `${skipped.length} ${skipped.length === 1 ? 'Datei konnte' : 'Dateien konnten'} nicht ` +
-              `gelesen werden (z. B. ${skipped[0]}), die Sicherung wäre unvollständig.` +
-              (running ? ' Beende Minecraft und versuche es erneut.' : '')
+            tr(
+              `${skipped.length} ${skipped.length === 1 ? 'Datei konnte' : 'Dateien konnten'} nicht gelesen werden (z. B. ${skipped[0]}), die Sicherung wäre unvollständig.` +
+                (running ? ' Beende Minecraft und versuche es erneut.' : ''),
+              `${skipped.length} ${skipped.length === 1 ? 'file' : 'files'} could not be read (e.g. ${skipped[0]}), the backup would be incomplete.` +
+                (running ? ' Close Minecraft and try again.' : '')
+            )
           )
         }
       } catch (err) {
@@ -292,7 +296,12 @@ async function createBackupUnlocked(
         id: randomUUID(),
         instanceId,
         instanceName: instance.name,
-        name: options.name?.trim() || `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
+        name:
+          options.name?.trim() ||
+          tr(
+            `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
+            `Backup from ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`
+          ),
         fileName,
         createdAt: Date.now(),
         size: statSync(target).size,
@@ -319,9 +328,10 @@ async function createBackupUnlocked(
             // best effort
           }
           throw new Error(
-            `Die Sicherung konnte nicht eingetragen werden und wurde deshalb verworfen. (${
-              retryErr instanceof Error ? retryErr.message : String(retryErr)
-            })`
+            tr(
+              `Die Sicherung konnte nicht eingetragen werden und wurde deshalb verworfen. (${retryErr instanceof Error ? retryErr.message : String(retryErr)})`,
+              `The backup could not be recorded and was therefore discarded. (${retryErr instanceof Error ? retryErr.message : String(retryErr)})`
+            )
           )
         }
       }
@@ -333,9 +343,11 @@ async function createBackupUnlocked(
         const one = skippedLinks.length === 1
         notify(
           'warning',
-          `${instance.name}: Verknüpfungen nicht gesichert`,
-          `${skippedLinks.length} ${one ? 'Verknüpfung wurde' : 'Verknüpfungen wurden'} übersprungen und ` +
-            `${one ? 'ist' : 'sind'} nicht in der Sicherung enthalten (z. B. ${skippedLinks[0]}).`
+          tr(`${instance.name}: Verknüpfungen nicht gesichert`, `${instance.name}: links not backed up`),
+          tr(
+            `${skippedLinks.length} ${one ? 'Verknüpfung wurde' : 'Verknüpfungen wurden'} übersprungen und ${one ? 'ist' : 'sind'} nicht in der Sicherung enthalten (z. B. ${skippedLinks[0]}).`,
+            `${skippedLinks.length} ${one ? 'link was' : 'links were'} skipped and ${one ? 'is' : 'are'} not in the backup (e.g. ${skippedLinks[0]}).`
+          )
         )
       }
 
@@ -679,7 +691,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   getInstance(instanceId)
 
   if (isRunning(instanceId)) {
-    throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du eine Sicherung einspielst.')
+    throw new Error(tr('Die Instanz läuft gerade. Beende Minecraft, bevor du eine Sicherung einspielst.', 'The instance is running. Close Minecraft before you restore a backup.'))
   }
   // `launchInstance` refuses to start while a restore is in progress
   // (`isRestoring`), but this was never the other half of that: between
@@ -689,7 +701,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   // moved the worlds aside and unpacked an archive over a folder the launch
   // was about to write into.
   if (isStarting(instanceId)) {
-    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.', 'The instance is starting right now. Wait until that is done.'))
   }
 
   // A repair rewrites the same subfolders (saves, config, possibly mods) a
@@ -697,7 +709,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   // run at the same time and leave half written files behind depending on
   // timing.
   if (isRepairing(instanceId)) {
-    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.', 'This instance is being repaired right now. Wait until that is done.'))
   }
 
   // Content work (installing, updating, removing) writes into `mods` while
@@ -706,15 +718,15 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   // but ordinary content operations only take the content lock.
   if (isContentBusy(instanceId)) {
     throw new Error(
-      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+      tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.', 'The mods of this instance are being worked on right now. Wait until that is done.')
     )
   }
 
   const entry = readIndex(instanceId).find((e) => e.id === backupId)
-  if (!entry) throw new Error('Sicherung nicht gefunden')
+  if (!entry) throw new Error(tr('Sicherung nicht gefunden', 'Backup not found'))
 
   const archive = backupPath(instanceId, entry.fileName)
-  if (!existsSync(archive)) throw new Error('Die Sicherungsdatei fehlt auf der Festplatte.')
+  if (!existsSync(archive)) throw new Error(tr('Die Sicherungsdatei fehlt auf der Festplatte.', 'The backup file is missing from the disk.'))
 
   const instance = getInstance(instanceId)
   // `entry.includes` is data written to `backups.json` at an earlier point in
@@ -730,51 +742,52 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   inUse.add(entry.id)
   try {
     await withTask(
-      `Sicherung wird eingespielt`,
-      `${entry.name} wird wiederhergestellt…`,
+      tr('Sicherung wird eingespielt', 'Restoring backup'),
+      tr(`${entry.name} wird wiederhergestellt…`, `Restoring ${entry.name}…`),
       instanceId,
       async (task) => {
         // 1. Prove the archive is readable BEFORE touching a single game file.
         // `existsSync` above only says the file is there, not that it is intact.
-        task.update('Sicherung wird geprüft…', null)
+        task.update(tr('Sicherung wird geprüft…', 'Checking backup…'), null)
         let entryCount = 0
         try {
           entryCount = listEntries(archive).length
         } catch (err) {
           throw new Error(
-            `Die Sicherung ist beschädigt und wurde nicht eingespielt. Deine Daten sind unverändert. (${
-              err instanceof Error ? err.message : String(err)
-            })`
+            tr(
+              `Die Sicherung ist beschädigt und wurde nicht eingespielt. Deine Daten sind unverändert. (${err instanceof Error ? err.message : String(err)})`,
+              `The backup is damaged and was not restored. Your data is unchanged. (${err instanceof Error ? err.message : String(err)})`
+            )
           )
         }
         if (entryCount === 0) {
-          throw new Error('Die Sicherung ist leer und wurde nicht eingespielt. Deine Daten sind unverändert.')
+          throw new Error(tr('Die Sicherung ist leer und wurde nicht eingespielt. Deine Daten sind unverändert.', 'The backup is empty and was not restored. Your data is unchanged.'))
         }
 
         // 2. Safety net. A failure here used to be logged and ignored, which is
         // exactly the situation where the restore must NOT continue.
-        task.update('Aktueller Stand wird gesichert…', null)
+        task.update(tr('Aktueller Stand wird gesichert…', 'Backing up the current state…'), null)
         const hasCurrentData = includes.some((key) => existsSync(join(paths.gameDir(instanceId), key)))
         if (hasCurrentData) {
           try {
             // Unlocked on purpose: this restore already holds the instance
             // lock, and the public entry point would wait on itself forever.
             await createBackupUnlocked(instanceId, {
-              name: `Automatisch vor Wiederherstellung`,
+              name: tr('Automatisch vor Wiederherstellung', 'Automatic, before restore'),
               reason: 'automatic',
               includes
             })
           } catch (err) {
             throw new Error(
-              `Die Sicherheitskopie des aktuellen Stands ist fehlgeschlagen, deshalb wurde nichts ` +
-                `überschrieben. Deine Daten sind unverändert. (${
-                  err instanceof Error ? err.message : String(err)
-                })`
+              tr(
+                `Die Sicherheitskopie des aktuellen Stands ist fehlgeschlagen, deshalb wurde nichts überschrieben. Deine Daten sind unverändert. (${err instanceof Error ? err.message : String(err)})`,
+                `Backing up the current state failed, so nothing was overwritten. Your data is unchanged. (${err instanceof Error ? err.message : String(err)})`
+              )
             )
           }
         }
 
-        task.update('Dateien werden zurückgespielt…', null)
+        task.update(tr('Dateien werden zurückgespielt…', 'Restoring files…'), null)
         const gameDir = paths.gameDir(instanceId)
 
         // 3. Move the current folders aside instead of deleting them, so a failed
@@ -804,7 +817,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             archive,
             gameDir,
             (done, total) => {
-              task.update(`Wird entpackt… ${done} von ${total}`, total > 0 ? done / total : null)
+              task.update(tr(`Wird entpackt… ${done} von ${total}`, `Unpacking… ${done} of ${total}`), total > 0 ? done / total : null)
             },
             // Cancelling now actually stops the unpacking. It used to only set
             // a flag nobody read, so the run carried on over the user's files
@@ -875,36 +888,45 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           // parked folder was renamed back and nothing new was left behind.
           if (stranded.length === 0 && newLeftover.length === 0) {
             throw new Error(
-              `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. ${reason}`
+              tr(
+                `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. ${reason}`,
+                `The restore failed, the previous state was brought back. ${reason}`
+              )
             )
           }
 
           const details: string[] = []
           if (strandedLeftover.length > 0) {
             details.push(
-              `${strandedLeftover.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt ` +
-                `unverändert in ${parked}, im Instanzordner selbst kann aber noch ein unvollständig ` +
-                `entpackter Rest der Wiederherstellung liegen`
+              tr(
+                `${strandedLeftover.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt unverändert in ${parked}, im Instanzordner selbst kann aber noch ein unvollständig entpackter Rest der Wiederherstellung liegen`,
+                `${strandedLeftover.join(', ')} could not be brought back; the old state is unchanged in ${parked}, but a partly unpacked leftover of the restore may still be in the instance folder itself`
+              )
             )
           }
           const strandedMissing = stranded.filter((key) => !strandedLeftover.includes(key))
           if (strandedMissing.length > 0) {
             details.push(
-              `${strandedMissing.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt ` +
-                `unverändert in ${parked} und fehlt im Moment im Instanzordner`
+              tr(
+                `${strandedMissing.join(', ')} konnte(n) nicht zurückgeholt werden; der alte Stand liegt unverändert in ${parked} und fehlt im Moment im Instanzordner`,
+                `${strandedMissing.join(', ')} could not be brought back; the old state is unchanged in ${parked} and is currently missing from the instance folder`
+              )
             )
           }
           if (newLeftover.length > 0) {
             details.push(
-              `${newLeftover.join(', ')} gab es vorher nicht und konnte(n) nicht wieder entfernt werden; ` +
-                `dort liegt jetzt möglicherweise ein unvollständig entpackter Rest der Sicherung`
+              tr(
+                `${newLeftover.join(', ')} gab es vorher nicht und konnte(n) nicht wieder entfernt werden; dort liegt jetzt möglicherweise ein unvollständig entpackter Rest der Sicherung`,
+                `${newLeftover.join(', ')} did not exist before and could not be removed again; a partly unpacked leftover of the backup may now be there`
+              )
             )
           }
 
           throw new Error(
-            `Die Wiederherstellung ist fehlgeschlagen, und der vorherige Stand wurde NICHT vollständig ` +
-              `zurückgeholt. ${details.join('. ')}. Schließe Minecraft und alles, was auf den ` +
-              `Instanzordner zugreift, und ordne die genannten Ordner von Hand. ${reason}`
+            tr(
+              `Die Wiederherstellung ist fehlgeschlagen, und der vorherige Stand wurde NICHT vollständig zurückgeholt. ${details.join('. ')}. Schließe Minecraft und alles, was auf den Instanzordner zugreift, und ordne die genannten Ordner von Hand. ${reason}`,
+              `The restore failed, and the previous state was NOT fully brought back. ${details.join('. ')}. Close Minecraft and everything that accesses the instance folder, and sort the named folders by hand. ${reason}`
+            )
           )
         }
 
@@ -943,7 +965,7 @@ export async function deleteBackup(instanceId: string, backupId: string): Promis
     if (!entry) return
 
     if (inUse.has(entry.id)) {
-      throw new Error('Diese Sicherung wird gerade eingespielt und kann nicht gelöscht werden.')
+      throw new Error(tr('Diese Sicherung wird gerade eingespielt und kann nicht gelöscht werden.', 'This backup is being restored right now and cannot be deleted.'))
     }
 
     rmSync(backupPath(instanceId, entry.fileName), { force: true })
