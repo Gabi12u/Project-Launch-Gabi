@@ -4,6 +4,7 @@ import { formatTime } from '../lib/format'
 import { refreshSettings } from '../lib/store'
 import { Ambient } from '../components/Ambient'
 import { IconClose, IconMinimize } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 /**
  * The whole content of the separate live-log window opened for every launch,
@@ -93,7 +94,7 @@ export function GameLogWindow({
   // alone, since the taskbar entry follows the document title, not that
   // initial value.
   useEffect(() => {
-    document.title = `Live-Log: ${instanceName}`
+    document.title = tr(`Live-Log: ${instanceName}`, `Live log: ${instanceName}`)
   }, [instanceName])
 
   // This window is a separate renderer process with its own, otherwise
@@ -118,14 +119,14 @@ export function GameLogWindow({
           <button
             className="win-btn no-drag"
             onClick={() => window.gabi.window.minimize()}
-            aria-label="Minimieren"
+            aria-label={tr('Minimieren', 'Minimize')}
           >
             <IconMinimize />
           </button>
           <button
             className="win-btn close no-drag"
             onClick={() => window.gabi.window.close()}
-            aria-label="Schließen"
+            aria-label={tr('Schließen', 'Close')}
           >
             <IconClose />
           </button>
@@ -148,11 +149,11 @@ export function GameLogWindow({
               className="btn sm"
               onClick={() => void navigator.clipboard.writeText(lines.map((line) => line.text).join('\n'))}
             >
-              Protokoll kopieren
+              {tr('Protokoll kopieren', 'Copy log')}
             </button>
             {!ended && (
               <button className="btn sm danger" onClick={() => void window.gabi.launch.stop(instanceId)}>
-                Beenden
+                {tr('Beenden', 'Stop')}
               </button>
             )}
           </div>
@@ -165,7 +166,7 @@ export function GameLogWindow({
           style={{ flex: 1, minHeight: 0 }}
         >
           {lines.length === 0 ? (
-            <div className="muted" style={{ padding: 12 }}>Noch keine Ausgabe.</div>
+            <div className="muted" style={{ padding: 12 }}>{tr('Noch keine Ausgabe.', 'No output yet.')}</div>
           ) : (
             lines.map((line, index) => (
               <div key={index} className={`log-line ${line.stream === 'launcher' ? 'launcher' : line.level}`}>

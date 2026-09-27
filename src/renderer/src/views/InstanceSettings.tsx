@@ -7,6 +7,7 @@ import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
 import { SettingToggle } from '../components/ui'
 import { IconImage, IconRefresh, IconTrash } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 interface Props {
   instance: InstanceDetail
@@ -205,9 +206,9 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       await onChanged()
       setDirty(false)
       onDirtyChange?.(false)
-      toast('success', 'Gespeichert', `${savedName} wurde aktualisiert.`)
+      toast('success', tr('Gespeichert', 'Saved'), tr(`${savedName} wurde aktualisiert.`, `${savedName} was updated.`))
     } catch (err) {
-      toastError(err, 'Speichern fehlgeschlagen')
+      toastError(err, tr('Speichern fehlgeschlagen', 'Saving failed'))
     } finally {
       setSaving(false)
     }
@@ -217,8 +218,8 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
     <div className="col gap-32">
       {/* --- Appearance --------------------------------------------- */}
       <section className="setting-group">
-        <h3>Darstellung</h3>
-        <p className="hint">Name, Icon und Farbe dieser Instanz.</p>
+        <h3>{tr('Darstellung', 'Appearance')}</h3>
+        <p className="hint">{tr('Name, Icon und Farbe dieser Instanz.', 'Name, icon and color of this instance.')}</p>
 
         <div className="col gap-16">
           <div className="row gap-16 wrap">
@@ -227,10 +228,10 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               <input id="is-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="is-gruppe">Gruppe</label>
+              <label className="label" htmlFor="is-gruppe">{tr('Gruppe', 'Group')}</label>
               <input id="is-gruppe"
                 className="input"
-                placeholder="z. B. Modded"
+                placeholder={tr('z. B. Modded', 'e.g. Modded')}
                 value={group}
                 onChange={(e) => setGroup(e.target.value)}
               />
@@ -238,10 +239,10 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-beschreibung">Beschreibung</label>
+            <label className="label" htmlFor="is-beschreibung">{tr('Beschreibung', 'Description')}</label>
             <input id="is-beschreibung"
               className="input"
-              placeholder="Worum geht es in dieser Instanz?"
+              placeholder={tr('Worum geht es in dieser Instanz?', 'What is this instance about?')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -282,11 +283,11 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                     baseline.current = JSON.stringify(fields)
                     setIcon(fresh.appearance.icon)
                     await onChanged()
-                    toast('success', 'Icon gesetzt')
+                    toast('success', tr('Icon gesetzt', 'Icon set'))
                   }
                 }}
               >
-                <IconImage size={14} /> Eigenes Bild
+                <IconImage size={14} /> {tr('Eigenes Bild', 'Custom image')}
               </button>
               <button
                 className="btn sm"
@@ -294,11 +295,11 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                   const result = await window.gabi.instances.setBackground(instance.id)
                   if (result) {
                     await onChanged()
-                    toast('success', 'Hintergrund gesetzt')
+                    toast('success', tr('Hintergrund gesetzt', 'Background set'))
                   }
                 }}
               >
-                <IconImage size={14} /> Hintergrundbild
+                <IconImage size={14} /> {tr('Hintergrundbild', 'Background image')}
               </button>
               {instance.appearance.background && (
                 <button
@@ -314,14 +315,14 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                     await onChanged()
                   }}
                 >
-                  <IconTrash size={14} /> Hintergrund entfernen
+                  <IconTrash size={14} /> {tr('Hintergrund entfernen', 'Remove background')}
                 </button>
               )}
             </div>
           </div>
 
           <div className="field">
-            <label className="label" id="is-akzentfarbe">Akzentfarbe</label>
+            <label className="label" id="is-akzentfarbe">{tr('Akzentfarbe', 'Accent color')}</label>
             <div role="group" aria-labelledby="is-akzentfarbe" className="swatches">
               {ACCENT_CHOICES.map((choice) => (
                 <button
@@ -339,13 +340,13 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
 
       {/* --- Performance --------------------------------------------- */}
       <section className="setting-group">
-        <h3>Leistung</h3>
-        <p className="hint">Arbeitsspeicher und Java-Einstellungen für diese Instanz.</p>
+        <h3>{tr('Leistung', 'Performance')}</h3>
+        <p className="hint">{tr('Arbeitsspeicher und Java-Einstellungen für diese Instanz.', 'Memory and Java settings for this instance.')}</p>
 
         <div className="col gap-16">
           <div className="field">
             <label className="label" htmlFor="is-arbeitsspeicher">
-              Arbeitsspeicher: {formatMemory(Math.min(memory, memoryMax))}
+              {tr('Arbeitsspeicher', 'Memory')}: {formatMemory(Math.min(memory, memoryMax))}
             </label>
             <input id="is-arbeitsspeicher"
               className="range"
@@ -357,25 +358,27 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               onChange={(e) => setMemory(Number(e.target.value))}
             />
             <span className="hint">
-              Mehr ist nicht automatisch besser. Über 8 GB bringt bei den meisten Modpacks nichts mehr und
-              kann die Garbage Collection sogar verlangsamen.
+              {tr(
+                'Mehr ist nicht automatisch besser. Über 8 GB bringt bei den meisten Modpacks nichts mehr und kann die Garbage Collection sogar verlangsamen.',
+                'More is not automatically better. Above 8 GB most modpacks gain nothing, and it can even slow down garbage collection.'
+              )}
             </span>
           </div>
 
           <div className="field">
-            <label className="label" id="is-java-version">Java-Version</label>
+            <label className="label" id="is-java-version">{tr('Java-Version', 'Java version')}</label>
             <div role="group" aria-labelledby="is-java-version" className="row gap-8">
               <select className="select" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
-                <option value="">Automatisch verwalten (empfohlen)</option>
+                <option value="">{tr('Automatisch verwalten (empfohlen)', 'Manage automatically (recommended)')}</option>
                 {/* Covers a path from a runtime that was since removed or never
                     detected; without this the select would silently jump to
                     "Automatisch verwalten" while the instance kept using it. */}
                 {javaPath && !runtimes.some((runtime) => runtime.path === javaPath) && (
-                  <option value={javaPath}>{javaPath} (nicht gefunden)</option>
+                  <option value={javaPath}>{javaPath} {tr('(nicht gefunden)', '(not found)')}</option>
                 )}
                 {runtimes.map((runtime) => (
                   <option key={runtime.path} value={runtime.path}>
-                    Java {runtime.major} · {runtime.version} {runtime.managed ? '(verwaltet)' : ''}
+                    Java {runtime.major} · {runtime.version} {runtime.managed ? tr('(verwaltet)', '(managed)') : ''}
                   </option>
                 ))}
               </select>
@@ -383,25 +386,29 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                 className="btn icon"
                 onClick={async () => {
                   setRuntimes(await window.gabi.java.detect())
-                  toast('info', 'Java-Suche abgeschlossen')
+                  toast('info', tr('Java-Suche abgeschlossen', 'Java search finished'))
                 }}
-                aria-label="Neu suchen"
+                aria-label={tr('Neu suchen', 'Search again')}
               >
                 <IconRefresh size={15} />
               </button>
             </div>
             <span className="hint">
-              Automatisch bedeutet: Launch Gabi wählt die von Mojang für {instance.mcVersion} vorgegebene
-              Java-Version und lädt sie bei Bedarf selbst herunter.
+              {tr(
+                `Automatisch bedeutet: Launch Gabi wählt die von Mojang für ${instance.mcVersion} vorgegebene Java-Version und lädt sie bei Bedarf selbst herunter.`,
+                `Automatic means: Launch Gabi picks the Java version Mojang specifies for ${instance.mcVersion} and downloads it by itself when needed.`
+              )}
             </span>
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-jvm-argumente">JVM-Argumente</label>
+            <label className="label" htmlFor="is-jvm-argumente">{tr('JVM-Argumente', 'JVM arguments')}</label>
             <textarea id="is-jvm-argumente" className="textarea" value={jvmArgs} onChange={(e) => setJvmArgs(e.target.value)} />
             <span className="hint">
-              Die Voreinstellung enthält bewährte G1GC-Flags für modded Minecraft. Nur ändern, wenn du weißt,
-              was du tust.
+              {tr(
+                'Die Voreinstellung enthält bewährte G1GC-Flags für modded Minecraft. Nur ändern, wenn du weißt, was du tust.',
+                'The default contains proven G1GC flags for modded Minecraft. Only change it if you know what you are doing.'
+              )}
             </span>
           </div>
         </div>
@@ -409,11 +416,11 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
 
       {/* --- Window ---------------------------------------------------- */}
       <section className="setting-group">
-        <h3>Fenster & Start</h3>
+        <h3>{tr('Fenster & Start', 'Window & launch')}</h3>
 
         <SettingToggle
-          label="Vollbild starten"
-          hint="Minecraft startet direkt im Vollbildmodus."
+          label={tr('Vollbild starten', 'Start in fullscreen')}
+          hint={tr('Minecraft startet direkt im Vollbildmodus.', 'Minecraft starts directly in fullscreen mode.')}
           checked={fullscreen}
           onChange={setFullscreen}
         />
@@ -421,7 +428,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         {!fullscreen && (
           <div className="row gap-16 mt-12">
             <div className="field grow">
-              <label className="label" htmlFor="is-fensterbreite">Fensterbreite</label>
+              <label className="label" htmlFor="is-fensterbreite">{tr('Fensterbreite', 'Window width')}</label>
               <input id="is-fensterbreite"
                 className="input"
                 type="number"
@@ -431,7 +438,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               />
             </div>
             <div className="field grow">
-              <label className="label" htmlFor="is-fensterhohe">Fensterhöhe</label>
+              <label className="label" htmlFor="is-fensterhohe">{tr('Fensterhöhe', 'Window height')}</label>
               <input id="is-fensterhohe"
                 className="input"
                 type="number"
@@ -444,22 +451,22 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         )}
 
         <div className="field mt-16">
-          <label className="label" htmlFor="is-launcher-verhalten-beim-star">Launcher-Verhalten beim Start</label>
+          <label className="label" htmlFor="is-launcher-verhalten-beim-star">{tr('Launcher-Verhalten beim Start', 'Launcher behavior on launch')}</label>
           <select id="is-launcher-verhalten-beim-star"
             className="select"
             value={behaviour}
             onChange={(e) => setBehaviour(e.target.value as LaunchBehaviour)}
           >
-            <option value="keep">Launcher offen lassen</option>
-            <option value="hide">Launcher ausblenden</option>
-            <option value="close">Launcher minimieren</option>
+            <option value="keep">{tr('Launcher offen lassen', 'Keep the launcher open')}</option>
+            <option value="hide">{tr('Launcher ausblenden', 'Hide the launcher')}</option>
+            <option value="close">{tr('Launcher minimieren', 'Minimize the launcher')}</option>
           </select>
         </div>
 
         <div className="mt-16">
           <SettingToggle
-            label="Vor Mod-Updates sichern"
-            hint="Legt automatisch eine Sicherung der Welten an, bevor Mods aktualisiert werden."
+            label={tr('Vor Mod-Updates sichern', 'Back up before mod updates')}
+            hint={tr('Legt automatisch eine Sicherung der Welten an, bevor Mods aktualisiert werden.', 'Automatically backs up your worlds before mods are updated.')}
             checked={backupBeforeUpdates}
             onChange={setBackupBeforeUpdates}
           />
@@ -468,12 +475,12 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
 
       {/* --- Advanced -------------------------------------------------- */}
       <section className="setting-group">
-        <h3>Erweitert</h3>
-        <p className="hint">Nur nötig für Spezialfälle wie Aufnahme-Tools oder eigene Startskripte.</p>
+        <h3>{tr('Erweitert', 'Advanced')}</h3>
+        <p className="hint">{tr('Nur nötig für Spezialfälle wie Aufnahme-Tools oder eigene Startskripte.', 'Only needed for special cases such as recording tools or custom start scripts.')}</p>
 
         <div className="col gap-16">
           <div className="field">
-            <label className="label" htmlFor="is-umgebungsvariablen">Umgebungsvariablen</label>
+            <label className="label" htmlFor="is-umgebungsvariablen">{tr('Umgebungsvariablen', 'Environment variables')}</label>
             <textarea id="is-umgebungsvariablen"
               className="textarea"
               placeholder="KEY=VALUE&#10;MESA_GL_VERSION_OVERRIDE=4.5"
@@ -484,28 +491,28 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-befehl-vor-dem-start">Befehl vor dem Start</label>
+            <label className="label" htmlFor="is-befehl-vor-dem-start">{tr('Befehl vor dem Start', 'Command before launch')}</label>
             <input id="is-befehl-vor-dem-start"
               className="input"
-              placeholder="z. B. ein Skript, das etwas vorbereitet"
+              placeholder={tr('z. B. ein Skript, das etwas vorbereitet', 'e.g. a script that prepares something')}
               value={preLaunch}
               onChange={(e) => setPreLaunch(e.target.value)}
             />
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="is-wrapper-befehl">Wrapper-Befehl</label>
+            <label className="label" htmlFor="is-wrapper-befehl">{tr('Wrapper-Befehl', 'Wrapper command')}</label>
             <input id="is-wrapper-befehl"
               className="input"
-              placeholder="z. B. gamemoderun"
+              placeholder={tr('z. B. gamemoderun', 'e.g. gamemoderun')}
               value={wrapper}
               onChange={(e) => setWrapper(e.target.value)}
             />
             <span className="hint">
-              Wird dem Java-Aufruf vorangestellt. Der Befehl muss Java selbst übernehmen, also per
-              exec ersetzen, und darf es nicht im Hintergrund starten. Sonst hält der Launcher das
-              Spiel für beendet, sobald der Wrapper fertig ist, und Mod-Änderungen sind dann nicht
-              mehr gesperrt.
+              {tr(
+                'Wird dem Java-Aufruf vorangestellt. Der Befehl muss Java selbst übernehmen, also per exec ersetzen, und darf es nicht im Hintergrund starten. Sonst hält der Launcher das Spiel für beendet, sobald der Wrapper fertig ist, und Mod-Änderungen sind dann nicht mehr gesperrt.',
+                'Is put in front of the Java call. The command has to take over Java itself, replacing itself via exec, and must not start it in the background. Otherwise the launcher considers the game closed as soon as the wrapper finishes, and mod changes are no longer locked.'
+              )}
             </span>
           </div>
         </div>
@@ -527,11 +534,11 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           }}
         >
           <span className="hint grow" style={{ alignSelf: 'center' }}>
-            Es gibt ungespeicherte Änderungen.
+            {tr('Es gibt ungespeicherte Änderungen.', 'You have unsaved changes.')}
           </span>
           <button className="btn primary" onClick={save} disabled={saving}>
             {saving && <span className="spinner" />}
-            Speichern
+            {tr('Speichern', 'Save')}
           </button>
         </div>
       )}

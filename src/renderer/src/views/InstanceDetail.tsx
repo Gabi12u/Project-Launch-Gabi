@@ -51,17 +51,18 @@ import {
   IconX} from '../components/Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from '../components/ContextMenu'
 import { VersionPicker } from '../components/VersionPicker'
+import { tr } from '@shared/i18n'
 
 type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'recordings' | 'logs' | 'settings'
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Übersicht' },
-  { id: 'content', label: 'Installiert' },
-  { id: 'browse', label: 'Inhalte finden' },
-  { id: 'worlds', label: 'Welten' },
-  { id: 'recordings', label: 'Aufnahmen' },
+  { id: 'overview', label: tr('Übersicht', 'Overview') },
+  { id: 'content', label: tr('Installiert', 'Installed') },
+  { id: 'browse', label: tr('Inhalte finden', 'Find content') },
+  { id: 'worlds', label: tr('Welten', 'Worlds') },
+  { id: 'recordings', label: tr('Aufnahmen', 'Recordings') },
   { id: 'logs', label: 'Log' },
-  { id: 'settings', label: 'Einstellungen' }
+  { id: 'settings', label: tr('Einstellungen', 'Settings') }
 ]
 
 /**
@@ -133,7 +134,7 @@ export function InstanceDetailView({
       if (mounted.current) setInstance(detail)
     } catch (err) {
       if (!mounted.current) return
-      toastError(err, 'Instanz konnte nicht geladen werden')
+      toastError(err, tr('Instanz konnte nicht geladen werden', 'Instance could not be loaded'))
       navigate('/instances')
     }
   }, [instanceId])
@@ -148,7 +149,7 @@ export function InstanceDetailView({
       setPreflight(flight)
       setReport(compat)
     } catch (err) {
-      toastError(err, 'Prüfung fehlgeschlagen')
+      toastError(err, tr('Prüfung fehlgeschlagen', 'Check failed'))
     } finally {
       setChecking(false)
     }
@@ -168,17 +169,23 @@ export function InstanceDetailView({
 
       toast(
         failed > 0 ? 'warning' : 'success',
-        'Reparatur abgeschlossen',
-        `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ` +
-          `${result.repairedFiles} erneuert, ${repaired} ${pluralise(repaired, 'Bereich', 'Bereiche')} korrigiert` +
-          (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
-          '.',
+        tr('Reparatur abgeschlossen', 'Repair finished'),
+        tr(
+          `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ` +
+            `${result.repairedFiles} erneuert, ${repaired} ${pluralise(repaired, 'Bereich', 'Bereiche')} korrigiert` +
+            (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
+            '.',
+          `${result.checkedFiles} ${pluralise(result.checkedFiles, 'file', 'files')} checked, ` +
+            `${result.repairedFiles} replaced, ${repaired} ${pluralise(repaired, 'area', 'areas')} fixed` +
+            (failed > 0 ? `, ${failed} ${pluralise(failed, 'step', 'steps')} failed` : '') +
+            '.'
+        ),
         9000
       )
       await load()
       await runChecks()
     } catch (err) {
-      toastError(err, 'Reparatur fehlgeschlagen')
+      toastError(err, tr('Reparatur fehlgeschlagen', 'Repair failed'))
     } finally {
       setRepairing(false)
     }
@@ -187,11 +194,11 @@ export function InstanceDetailView({
   const remove = async (): Promise<void> => {
     try {
       await window.gabi.instances.remove(instanceId)
-      toast('info', 'Instanz gelöscht', instance?.name)
+      toast('info', tr('Instanz gelöscht', 'Instance deleted'), instance?.name)
       await refreshInstances()
       navigate('/instances')
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht gelöscht werden')
+      toastError(err, tr('Instanz konnte nicht gelöscht werden', 'Instance could not be deleted'))
     }
   }
 
@@ -199,11 +206,11 @@ export function InstanceDetailView({
     setDuplicating(true)
     try {
       const created = await window.gabi.instances.duplicate(instanceId)
-      toast('success', 'Instanz dupliziert', created.name)
+      toast('success', tr('Instanz dupliziert', 'Instance duplicated'), created.name)
       await refreshInstances()
       navigate(`/instances/${created.id}`)
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht dupliziert werden')
+      toastError(err, tr('Instanz konnte nicht dupliziert werden', 'Instance could not be duplicated'))
     } finally {
       setDuplicating(false)
     }
@@ -226,7 +233,7 @@ export function InstanceDetailView({
     <div className="col gap-24">
       <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/instances')}>
         <IconChevronLeft size={14} />
-        Alle Instanzen
+        {tr('Alle Instanzen', 'All instances')}
       </button>
 
       {/* --- Header ------------------------------------------------- */}
@@ -275,7 +282,7 @@ export function InstanceDetailView({
               {instance.installing && (
                 <span className="badge accent">
                   <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-                  Wird eingerichtet
+                  {tr('Wird eingerichtet', 'Setting up')}
                 </span>
               )}
             </div>
@@ -284,7 +291,7 @@ export function InstanceDetailView({
           <div className="col gap-10" style={{ alignItems: 'flex-end' }}>
             {running ? (
               <button className="btn-play stop" onClick={() => void stopInstance(instanceId)}>
-                <IconStop size={18} /> BEENDEN
+                <IconStop size={18} /> {tr('BEENDEN', 'STOP')}
               </button>
             ) : (
               // Also blocked while a repair runs: it is replacing the very
@@ -296,7 +303,7 @@ export function InstanceDetailView({
                 onClick={() => void startInstance(instanceId, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? 'STARTET…' : 'SPIELEN'}
+                {busy ? tr('STARTET…', 'STARTING…') : tr('SPIELEN', 'PLAY')}
               </button>
             )}
 
@@ -319,19 +326,19 @@ export function InstanceDetailView({
       {/* --- Action bar ---------------------------------------------- */}
       <div className="row gap-8 wrap">
         <button className="btn sm" onClick={() => void window.gabi.instances.openFolder(instanceId)}>
-          <IconFolder size={14} /> Ordner
+          <IconFolder size={14} /> {tr('Ordner', 'Folder')}
         </button>
         <button className="btn sm" onClick={() => void createShortcut(instanceId)}>
-          <IconLink size={14} /> Desktop-Verknüpfung
+          <IconLink size={14} /> {tr('Desktop-Verknüpfung', 'Desktop shortcut')}
         </button>
         <button
           className="btn sm"
           onClick={() => setConfirmRepair(true)}
           disabled={repairing || running}
-          title="Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods."
+          title={tr('Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods.', 'Checks all game files, downloads damaged ones again and removes mods installed twice.')}
         >
           {repairing ? <span className="spinner" /> : <IconWrench size={14} />}
-          Reparieren
+          {tr('Reparieren', 'Repair')}
         </button>
         <button
           className="btn sm"
@@ -339,7 +346,7 @@ export function InstanceDetailView({
           disabled={duplicating || running || busy || instance.installing || repairing}
         >
           {duplicating ? <span className="spinner" /> : <IconCopy size={14} />}
-          Duplizieren
+          {tr('Duplizieren', 'Duplicate')}
         </button>
         <button
           className="btn sm"
@@ -347,28 +354,28 @@ export function InstanceDetailView({
             try {
               await window.gabi.modpacks.export(instanceId)
             } catch (err) {
-              toastError(err, 'Export fehlgeschlagen')
+              toastError(err, tr('Export fehlgeschlagen', 'Export failed'))
             }
           }}
         >
-          <IconUpload size={14} /> Als Modpack exportieren
+          <IconUpload size={14} /> {tr('Als Modpack exportieren', 'Export as modpack')}
         </button>
         <button
           className="btn sm"
           onClick={async () => {
             try {
               await window.gabi.backups.create(instanceId, { includes: ['saves', 'config'] })
-              toast('success', 'Sicherung erstellt', 'Welten und Konfiguration wurden gesichert.')
+              toast('success', tr('Sicherung erstellt', 'Backup created'), tr('Welten und Konfiguration wurden gesichert.', 'Worlds and config were backed up.'))
             } catch (err) {
-              toastError(err, 'Sicherung fehlgeschlagen')
+              toastError(err, tr('Sicherung fehlgeschlagen', 'Backup failed'))
             }
           }}
         >
-          <IconSave size={14} /> Sichern
+          <IconSave size={14} /> {tr('Sichern', 'Back up')}
         </button>
         <div className="grow" />
         <button className="btn sm danger" onClick={() => setConfirmDelete(true)} disabled={running}>
-          <IconTrash size={14} /> Löschen
+          <IconTrash size={14} /> {tr('Löschen', 'Delete')}
         </button>
       </div>
 
@@ -440,13 +447,16 @@ export function InstanceDetailView({
 
       <Confirm
         open={confirmDelete}
-        title="Instanz löschen?"
+        title={tr('Instanz löschen?', 'Delete instance?')}
         danger
-        confirmLabel="Endgültig löschen"
+        confirmLabel={tr('Endgültig löschen', 'Delete permanently')}
         message={
           <>
-            <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots, Aufnahmen und
-            Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
+            <strong>{instance.name}</strong>{' '}
+            {tr(
+              'wird mit allen Mods, Welten, Screenshots, Aufnahmen und Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.',
+              'will be deleted permanently with all mods, worlds, screenshots, recordings and backups. This cannot be undone.'
+            )}
           </>
         }
         onConfirm={remove}
@@ -455,12 +465,14 @@ export function InstanceDetailView({
 
       <Confirm
         open={confirmRepair}
-        title="Instanz reparieren?"
-        confirmLabel="Reparieren"
+        title={tr('Instanz reparieren?', 'Repair instance?')}
+        confirmLabel={tr('Reparieren', 'Repair')}
         message={
           <>
-            Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods. Deine
-            Welten und Einstellungen bleiben erhalten.
+            {tr(
+              'Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods. Deine Welten und Einstellungen bleiben erhalten.',
+              'Checks all game files, downloads damaged ones again and removes mods installed twice. Your worlds and settings are kept.'
+            )}
           </>
         }
         onConfirm={async () => {
@@ -472,10 +484,10 @@ export function InstanceDetailView({
 
       <Confirm
         open={pendingTab !== null}
-        title="Ungespeicherte Änderungen verwerfen?"
+        title={tr('Ungespeicherte Änderungen verwerfen?', 'Discard unsaved changes?')}
         danger
-        confirmLabel="Verwerfen"
-        message="Die Einstellungen dieser Instanz wurden noch nicht gespeichert. Beim Wechsel gehen sie verloren."
+        confirmLabel={tr('Verwerfen', 'Discard')}
+        message={tr('Die Einstellungen dieser Instanz wurden noch nicht gespeichert. Beim Wechsel gehen sie verloren.', 'The settings of this instance have not been saved yet. They will be lost if you switch.')}
         onConfirm={() => {
           setSettingsDirty(false)
           if (pendingTab) setTab(pendingTab)
@@ -512,10 +524,10 @@ function OverviewTab({
     <div className="col gap-24">
       <section className="col gap-12">
         <div className="row-between">
-          <h2 className="section-title">Vor dem Start</h2>
+          <h2 className="section-title">{tr('Vor dem Start', 'Before launch')}</h2>
           <button className="btn ghost sm" onClick={onRefresh} disabled={checking}>
             {checking ? <span className="spinner" /> : <IconRefresh size={14} />}
-            Neu prüfen
+            {tr('Neu prüfen', 'Check again')}
           </button>
         </div>
 
@@ -527,25 +539,25 @@ function OverviewTab({
           />
           <Cell
             label="Java"
-            value={preflight?.java ? `Java ${preflight.java.major}` : 'Wird geladen'}
-            hint={preflight?.java ? (preflight.java.managed ? 'verwaltet' : 'System') : 'bei Bedarf'}
+            value={preflight?.java ? `Java ${preflight.java.major}` : tr('Wird geladen', 'Loading')}
+            hint={preflight?.java ? (preflight.java.managed ? tr('verwaltet', 'managed') : tr('System', 'system')) : tr('bei Bedarf', 'when needed')}
           />
           <Cell
             label="RAM"
             value={formatMemory(instance.settings.memoryMb)}
-            hint={preflight ? `von ${formatMemory(preflight.systemMemoryMb)}` : undefined}
+            hint={preflight ? tr(`von ${formatMemory(preflight.systemMemoryMb)}`, `of ${formatMemory(preflight.systemMemoryMb)}`) : undefined}
           />
-          <Cell label="Mods" value={String(preflight?.enabledModCount ?? 0)} hint={`${preflight?.modCount ?? 0} installiert`} />
-          <Cell label="Resourcepacks" value={String(preflight?.resourcePackCount ?? 0)} />
-          <Cell label="Shader" value={String(preflight?.shaderCount ?? 0)} />
+          <Cell label="Mods" value={String(preflight?.enabledModCount ?? 0)} hint={tr(`${preflight?.modCount ?? 0} installiert`, `${preflight?.modCount ?? 0} installed`)} />
+          <Cell label={tr('Resourcepacks', 'Resource packs')} value={String(preflight?.resourcePackCount ?? 0)} />
+          <Cell label={tr('Shader', 'Shaders')} value={String(preflight?.shaderCount ?? 0)} />
           {preflight && preflight.downloadSizeMb > 0 && (
-            <Cell label="Noch zu laden" value={`${preflight.downloadSizeMb} MB`} />
+            <Cell label={tr('Noch zu laden', 'Still to download')} value={`${preflight.downloadSizeMb} MB`} />
           )}
         </div>
       </section>
 
       <section className="col gap-12">
-        <h2 className="section-title">Mod-Kompatibilität</h2>
+        <h2 className="section-title">{tr('Mod-Kompatibilität', 'Mod compatibility')}</h2>
         <CompatibilityPanel
           report={report}
           instanceId={instance.id}
@@ -555,24 +567,24 @@ function OverviewTab({
       </section>
 
       <section className="col gap-12">
-        <h2 className="section-title">Statistik</h2>
+        <h2 className="section-title">{tr('Statistik', 'Statistics')}</h2>
         <div className="stat-grid">
           <div className="stat">
-            <div className="stat-label">Gesamte Spielzeit</div>
+            <div className="stat-label">{tr('Gesamte Spielzeit', 'Total play time')}</div>
             <div className="stat-value">{formatPlayTime(instance.totalPlayMs)}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Sitzungen</div>
+            <div className="stat-label">{tr('Sitzungen', 'Sessions')}</div>
             <div className="stat-value">{instance.sessions.length}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Zuletzt gespielt</div>
+            <div className="stat-label">{tr('Zuletzt gespielt', 'Last played')}</div>
             <div className="stat-value" style={{ fontSize: 16 }}>
               {formatRelative(instance.lastPlayed)}
             </div>
           </div>
           <div className="stat">
-            <div className="stat-label">Letzte Sitzung</div>
+            <div className="stat-label">{tr('Letzte Sitzung', 'Last session')}</div>
             <div className="stat-value" style={{ fontSize: 16 }}>
               {lastSession ? formatPlayTime(lastSession.durationMs) : '-'}
             </div>
@@ -592,7 +604,7 @@ function OverviewTab({
                   </div>
                   <div className="content-meta">
                     {formatPlayTime(session.durationMs)}
-                    {session.crashed && <span className="badge danger">Absturz (Code {session.exitCode})</span>}
+                    {session.crashed && <span className="badge danger">{tr(`Absturz (Code ${session.exitCode})`, `Crash (code ${session.exitCode})`)}</span>}
                   </div>
                 </div>
               </div>
@@ -620,8 +632,8 @@ function Cell({ label, value, hint }: { label: string; value: string; hint?: str
 
 const CONTENT_TABS: { id: ContentType; label: string }[] = [
   { id: 'mod', label: 'Mods' },
-  { id: 'resourcepack', label: 'Resourcepacks' },
-  { id: 'shaderpack', label: 'Shader' },
+  { id: 'resourcepack', label: tr('Resourcepacks', 'Resource packs') },
+  { id: 'shaderpack', label: tr('Shader', 'Shaders') },
   { id: 'datapack', label: 'Data Packs' }
 ]
 
@@ -629,8 +641,8 @@ type ContentSortKey = 'name' | 'added' | 'provider'
 
 const CONTENT_SORT_OPTIONS: { value: ContentSortKey; label: string }[] = [
   { value: 'name', label: 'Name' },
-  { value: 'added', label: 'Zuletzt hinzugefügt' },
-  { value: 'provider', label: 'Anbieter' }
+  { value: 'added', label: tr('Zuletzt hinzugefügt', 'Recently added') },
+  { value: 'provider', label: tr('Anbieter', 'Source') }
 ]
 
 function ContentTab({
@@ -681,12 +693,19 @@ function ContentTab({
       const count = updated.content.filter((c) => c.update).length
       toast(
         count > 0 ? 'info' : 'success',
-        count > 0 ? `${count} ${pluralise(count, 'Update', 'Updates')} verfügbar` : 'Alles aktuell',
-        count > 0 ? 'Du kannst einzeln oder alle auf einmal aktualisieren.' : undefined
+        count > 0
+          ? tr(
+              `${count} ${pluralise(count, 'Update', 'Updates')} verfügbar`,
+              `${count} ${pluralise(count, 'update', 'updates')} available`
+            )
+          : tr('Alles aktuell', 'Everything is up to date'),
+        count > 0
+          ? tr('Du kannst einzeln oder alle auf einmal aktualisieren.', 'You can update them one by one or all at once.')
+          : undefined
       )
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update-Prüfung fehlgeschlagen')
+      toastError(err, tr('Update-Prüfung fehlgeschlagen', 'Update check failed'))
     } finally {
       setChecking(false)
     }
@@ -696,10 +715,10 @@ function ContentTab({
     setChecking(true)
     try {
       const count = await window.gabi.content.updateAll(instance.id)
-      toast('success', `${count} ${pluralise(count, 'Mod', 'Mods')} aktualisiert`)
+      toast('success', tr(`${count} ${pluralise(count, 'Mod', 'Mods')} aktualisiert`, `${count} ${pluralise(count, 'mod', 'mods')} updated`))
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
     } finally {
       setChecking(false)
     }
@@ -715,10 +734,10 @@ function ContentTab({
     setUpdating(item.id)
     try {
       await window.gabi.content.update(instance.id, item.id)
-      toast('success', `${item.name} aktualisiert`)
+      toast('success', tr(`${item.name} aktualisiert`, `${item.name} updated`))
       await onChanged()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
     } finally {
       setUpdating(null)
     }
@@ -730,10 +749,10 @@ function ContentTab({
   const runRemove = async (item: ContentItem): Promise<void> => {
     try {
       await window.gabi.content.remove(instance.id, item.id)
-      toast('info', `${item.name} entfernt`)
+      toast('info', tr(`${item.name} entfernt`, `${item.name} removed`))
       await onChanged()
     } catch (err) {
-      toastError(err, 'Entfernen fehlgeschlagen')
+      toastError(err, tr('Entfernen fehlgeschlagen', 'Removing failed'))
     } finally {
       setConfirmRemove(null)
     }
@@ -762,7 +781,7 @@ function ContentTab({
           <IconPackage size={15} />
           <input
             className="input"
-            placeholder="Filtern…"
+            placeholder={tr('Filtern…', 'Filter…')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -774,7 +793,7 @@ function ContentTab({
 
         <button className="btn sm" onClick={checkUpdates} disabled={checking}>
           {checking ? <span className="spinner" /> : <IconRefresh size={14} />}
-          Auf Updates prüfen
+          {tr('Auf Updates prüfen', 'Check for updates')}
         </button>
 
         {updates > 0 && (
@@ -785,7 +804,10 @@ function ContentTab({
             title={blockedReason ?? undefined}
           >
             <IconDownload size={14} />
-            {updates} {pluralise(updates, 'Update', 'Updates')} installieren
+            {tr(
+              `${updates} ${pluralise(updates, 'Update', 'Updates')} installieren`,
+              `Install ${updates} ${pluralise(updates, 'update', 'updates')}`
+            )}
           </button>
         )}
 
@@ -795,23 +817,32 @@ function ContentTab({
             try {
               const added = await window.gabi.content.importFile(instance.id, type)
               if (added.length > 0) {
-                toast('success', `${added.length} ${pluralise(added.length, 'Datei', 'Dateien')} hinzugefügt`)
+                toast(
+                  'success',
+                  tr(
+                    `${added.length} ${pluralise(added.length, 'Datei', 'Dateien')} hinzugefügt`,
+                    `${added.length} ${pluralise(added.length, 'file', 'files')} added`
+                  )
+                )
                 await onChanged()
               }
             } catch (err) {
-              toastError(err, 'Import fehlgeschlagen')
+              toastError(err, tr('Import fehlgeschlagen', 'Import failed'))
             }
           }}
         >
-          <IconUpload size={14} /> Datei hinzufügen
+          <IconUpload size={14} /> {tr('Datei hinzufügen', 'Add file')}
         </button>
       </div>
 
       {items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Nichts installiert"
-          message={`Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden“, um welche zu installieren.`}
+          title={tr('Nichts installiert', 'Nothing installed')}
+          message={tr(
+            `Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden“, um welche zu installieren.`,
+            `All ${CONTENT_TABS.find((t) => t.id === type)?.label} of this instance show up here. Use the "Find content" tab to install some.`
+          )}
         />
       ) : (
         <div className="col gap-8">
@@ -847,7 +878,7 @@ function ContentTab({
                 await window.gabi.content.toggle(instance.id, item.id, enabled)
                 await onChanged()
               } catch (err) {
-                toastError(err, enabled ? 'Aktivieren fehlgeschlagen' : 'Deaktivieren fehlgeschlagen')
+                toastError(err, enabled ? tr('Aktivieren fehlgeschlagen', 'Enabling failed') : tr('Deaktivieren fehlgeschlagen', 'Disabling failed'))
               }
             },
             onUpdate: (item) => setConfirmUpdate(item),
@@ -871,17 +902,19 @@ function ContentTab({
 
       <Confirm
         open={confirmUpdate !== null}
-        title="Mod aktualisieren"
+        title={tr('Mod aktualisieren', 'Update mod')}
         message={
           confirmUpdate && (
             <>
-              Nur „{confirmUpdate.name}“ auf {confirmUpdate.update?.versionNumber} aktualisieren? Die
-              bisherige Datei wird dabei entfernt.
+              {tr(
+                `Nur „${confirmUpdate.name}“ auf ${confirmUpdate.update?.versionNumber} aktualisieren? Die bisherige Datei wird dabei entfernt.`,
+                `Update only "${confirmUpdate.name}" to ${confirmUpdate.update?.versionNumber}? The previous file will be removed.`
+              )}
             </>
           )
         }
-        confirmLabel="Ja, aktualisieren"
-        cancelLabel="Nein"
+        confirmLabel={tr('Ja, aktualisieren', 'Yes, update')}
+        cancelLabel={tr('Nein', 'No')}
         onConfirm={async () => {
           const item = confirmUpdate
           setConfirmUpdate(null)
@@ -892,10 +925,13 @@ function ContentTab({
 
       <Confirm
         open={confirmRemove !== null}
-        title={confirmRemove ? `„${confirmRemove.name}“ entfernen?` : ''}
+        title={confirmRemove ? tr(`„${confirmRemove.name}“ entfernen?`, `Remove "${confirmRemove.name}"?`) : ''}
         danger
-        confirmLabel="Entfernen"
-        message="Die Datei wird dabei endgültig gelöscht. Wenn du den Mod nur vorübergehend nicht willst, schalte ihn stattdessen aus."
+        confirmLabel={tr('Entfernen', 'Remove')}
+        message={tr(
+          'Die Datei wird dabei endgültig gelöscht. Wenn du den Mod nur vorübergehend nicht willst, schalte ihn stattdessen aus.',
+          'The file will be deleted permanently. If you only want to do without the mod for a while, turn it off instead.'
+        )}
         onConfirm={() => (confirmRemove ? runRemove(confirmRemove) : Promise.resolve())}
         onCancel={() => setConfirmRemove(null)}
       />
@@ -903,17 +939,17 @@ function ContentTab({
       {worldsFor && (
         <WorldPickerModal
           instanceId={instance.id}
-          title={`Welten für ${worldsFor.name}`}
+          title={tr(`Welten für ${worldsFor.name}`, `Worlds for ${worldsFor.name}`)}
           initialSelected={worldsFor.worlds ?? []}
           onClose={() => setWorldsFor(null)}
           onConfirm={async (worlds) => {
             try {
               await window.gabi.content.setDatapackWorlds(instance.id, worldsFor.id, worlds)
-              toast('success', 'Welten aktualisiert', worldsFor.name)
+              toast('success', tr('Welten aktualisiert', 'Worlds updated'), worldsFor.name)
               setWorldsFor(null)
               await onChanged()
             } catch (err) {
-              toastError(err, 'Welten konnten nicht aktualisiert werden')
+              toastError(err, tr('Welten konnten nicht aktualisiert werden', 'Worlds could not be updated'))
             }
           }}
         />
@@ -945,38 +981,40 @@ function contentMenuItems(
 
   return [
     {
-      label: item.enabled ? 'Deaktivieren' : 'Aktivieren',
+      label: item.enabled ? tr('Deaktivieren', 'Disable') : tr('Aktivieren', 'Enable'),
       icon: item.enabled ? <IconX size={14} /> : <IconCheck size={14} />,
       disabled: blocked,
       disabledReason: reason,
       onSelect: () => handlers.onToggle(item, !item.enabled)
     },
     {
-      label: item.update ? `Auf ${item.update.versionNumber} aktualisieren` : 'Kein Update verfügbar',
+      label: item.update
+        ? tr(`Auf ${item.update.versionNumber} aktualisieren`, `Update to ${item.update.versionNumber}`)
+        : tr('Kein Update verfügbar', 'No update available'),
       icon: <IconDownload size={14} />,
       disabled: blocked || !item.update,
-      disabledReason: blocked ? reason : 'Dieser Eintrag ist bereits aktuell.',
+      disabledReason: blocked ? reason : tr('Dieser Eintrag ist bereits aktuell.', 'This item is already up to date.'),
       onSelect: () => handlers.onUpdate(item)
     },
     {
-      label: 'Version wählen…',
+      label: tr('Version wählen…', 'Choose version…'),
       icon: <IconLayers size={14} />,
       disabled: blocked || local,
       disabledReason: blocked
         ? reason
-        : 'Diese Datei wurde von Hand hinzugefügt, es gibt keine Versionsliste.',
+        : tr('Diese Datei wurde von Hand hinzugefügt, es gibt keine Versionsliste.', 'This file was added by hand, there is no version list.'),
       onSelect: () => handlers.onPickVersion(item)
     },
     {
-      label: 'Projektseite öffnen',
+      label: tr('Projektseite öffnen', 'Open project page'),
       icon: <IconExternal size={14} />,
       disabled: !item.pageUrl,
-      disabledReason: 'Für diesen Eintrag ist keine Seite hinterlegt.',
+      disabledReason: tr('Für diesen Eintrag ist keine Seite hinterlegt.', 'There is no page for this item.'),
       separated: true,
       onSelect: () => handlers.onOpenPage(item)
     },
     {
-      label: 'Entfernen',
+      label: tr('Entfernen', 'Remove'),
       icon: <IconTrash size={14} />,
       danger: true,
       disabled: blocked,
@@ -1028,7 +1066,7 @@ function ContentRow({
         <div className="row gap-8">
           <span className="content-name truncate">{item.name}</span>
           <span className={`provider-tag ${item.provider}`}>
-            {item.provider === 'modrinth' ? 'MR' : item.provider === 'curseforge' ? 'CF' : 'LOKAL'}
+            {item.provider === 'modrinth' ? 'MR' : item.provider === 'curseforge' ? 'CF' : tr('LOKAL', 'LOCAL')}
           </span>
           {item.update && <span className="badge warn">Update</span>}
         </div>
@@ -1042,8 +1080,8 @@ function ContentRow({
           {item.type === 'datapack' && (
             <span>
               {item.worlds && item.worlds.length > 0
-                ? `Welten: ${item.worlds.join(', ')}`
-                : 'Keiner Welt zugeordnet'}
+                ? tr(`Welten: ${item.worlds.join(', ')}`, `Worlds: ${item.worlds.join(', ')}`)
+                : tr('Keiner Welt zugeordnet', 'Not assigned to any world')}
             </span>
           )}
           <span className="truncate mono" style={{ opacity: 0.6 }}>
@@ -1060,7 +1098,7 @@ function ContentRow({
             disabled={blocked}
             title={blocked ? reason : undefined}
           >
-            <IconCube size={13} /> Welten wählen
+            <IconCube size={13} /> {tr('Welten wählen', 'Choose worlds')}
           </button>
         )}
         {item.update && (
@@ -1078,7 +1116,7 @@ function ContentRow({
           <button
             className="btn ghost icon sm"
             onClick={() => void window.gabi.app.openExternal(item.pageUrl as string)}
-            aria-label="Projektseite"
+            aria-label={tr('Projektseite', 'Project page')}
           >
             <IconExternal size={14} />
           </button>
@@ -1087,16 +1125,16 @@ function ContentRow({
           className="btn sm"
           onClick={() => onToggle(!item.enabled)}
           disabled={blocked}
-          title={blocked ? reason : item.enabled ? 'Deaktivieren' : 'Aktivieren'}
+          title={blocked ? reason : item.enabled ? tr('Deaktivieren', 'Disable') : tr('Aktivieren', 'Enable')}
         >
-          {item.enabled ? 'An' : 'Aus'}
+          {item.enabled ? tr('An', 'On') : tr('Aus', 'Off')}
         </button>
         <button
           className="btn ghost icon sm"
           onClick={onRemove}
           disabled={blocked}
           title={blocked ? reason : undefined}
-          aria-label="Entfernen"
+          aria-label={tr('Entfernen', 'Remove')}
         >
           <IconTrash size={14} />
         </button>
@@ -1122,8 +1160,8 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
     return (
       <EmptyState
         icon={<IconCube size={26} />}
-        title="Noch keine Welten"
-        message="Sobald du in dieser Instanz eine Welt erstellst, erscheint sie hier, inklusive Größe und letztem Spielstand."
+        title={tr('Noch keine Welten', 'No worlds yet')}
+        message={tr('Sobald du in dieser Instanz eine Welt erstellst, erscheint sie hier, inklusive Größe und letztem Spielstand.', 'As soon as you create a world in this instance, it shows up here, including its size and when it was last played.')}
       />
     )
   }
@@ -1137,12 +1175,12 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
             <div className="content-name">{world.name}</div>
             <div className="content-meta">
               <span>{formatBytes(world.sizeBytes)}</span>
-              <span>Zuletzt: {formatRelative(world.lastPlayed)}</span>
+              <span>{tr('Zuletzt', 'Last played')}: {formatRelative(world.lastPlayed)}</span>
             </div>
           </div>
           <div className="content-actions">
             <button className="btn sm" onClick={() => void window.gabi.app.openPath(world.folder)}>
-              <IconFolder size={13} /> Öffnen
+              <IconFolder size={13} /> {tr('Öffnen', 'Open')}
             </button>
           </div>
         </div>
@@ -1224,10 +1262,10 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const remove = async (clip: RecordingInfo): Promise<void> => {
     try {
       await window.gabi.instances.deleteRecording(instanceId, clip.file)
-      toast('success', 'Aufnahme gelöscht')
+      toast('success', tr('Aufnahme gelöscht', 'Recording deleted'))
       await load()
     } catch (err) {
-      toastError(err, 'Aufnahme konnte nicht gelöscht werden')
+      toastError(err, tr('Aufnahme konnte nicht gelöscht werden', 'Recording could not be deleted'))
     } finally {
       setConfirmDelete(null)
     }
@@ -1237,8 +1275,8 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
     return (
       <EmptyState
         icon={<IconFilm size={26} />}
-        title="Noch nichts aufgenommen"
-        message="Drücke im Spiel F2 für einen Screenshot oder die Aufnahmetaste für ein Video. Beides taucht dann hier auf."
+        title={tr('Noch nichts aufgenommen', 'Nothing recorded yet')}
+        message={tr('Drücke im Spiel F2 für einen Screenshot oder die Aufnahmetaste für ein Video. Beides taucht dann hier auf.', 'Press F2 in game for a screenshot or the recording key for a video. Both show up here.')}
       />
     )
   }
@@ -1250,7 +1288,10 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
           <div
             key={moment.key}
             className={`shot${moment.kind === 'clip' ? ' is-clip' : ''}`}
-            aria-label={`${moment.kind === 'clip' ? 'Aufnahme' : 'Screenshot'} ${formatDateTime(moment.at)} öffnen`}
+            aria-label={tr(
+              `${moment.kind === 'clip' ? 'Aufnahme' : 'Screenshot'} ${formatDateTime(moment.at)} öffnen`,
+              `Open ${moment.kind === 'clip' ? 'recording' : 'screenshot'} ${formatDateTime(moment.at)}`
+            )}
             {...clickable(() => void window.gabi.app.openPath(moment.file))}
           >
             {moment.preview && <img src={moment.preview} alt="" loading="lazy" />}
@@ -1270,8 +1311,8 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
                 <span className="shot-size">{formatBytes(moment.sizeBytes ?? 0)}</span>
                 <button
                   className="shot-remove"
-                  title="Aufnahme löschen"
-                  aria-label="Aufnahme löschen"
+                  title={tr('Aufnahme löschen', 'Delete recording')}
+                  aria-label={tr('Aufnahme löschen', 'Delete recording')}
                   onClick={(event) => {
                     // Without this the tile's own click handler fires too and
                     // opens the very video the user is trying to delete.
@@ -1290,9 +1331,12 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
       <Confirm
         open={confirmDelete !== null}
-        title="Aufnahme löschen"
-        message={`${confirmDelete?.fileName ?? ''} wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.`}
-        confirmLabel="Löschen"
+        title={tr('Aufnahme löschen', 'Delete recording')}
+        message={tr(
+          `${confirmDelete?.fileName ?? ''} wird endgültig gelöscht. Das lässt sich nicht rückgängig machen.`,
+          `${confirmDelete?.fileName ?? ''} will be deleted permanently. This cannot be undone.`
+        )}
+        confirmLabel={tr('Löschen', 'Delete')}
         danger
         onConfirm={() => (confirmDelete ? remove(confirmDelete) : Promise.resolve())}
         onCancel={() => setConfirmDelete(null)}
@@ -1361,13 +1405,13 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
       <div className="row gap-12 wrap">
         <div className="segmented">
           <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
-            Alles
+            {tr('Alles', 'All')}
           </button>
           <button className={filter === 'warn' ? 'active' : ''} onClick={() => setFilter('warn')}>
-            Warnungen
+            {tr('Warnungen', 'Warnings')}
           </button>
           <button className={filter === 'error' ? 'active' : ''} onClick={() => setFilter('error')}>
-            Fehler
+            {tr('Fehler', 'Errors')}
           </button>
         </div>
 
@@ -1384,17 +1428,17 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
           className="btn sm"
           onClick={() => void navigator.clipboard.writeText(lines.map((l) => l.text).join('\n'))}
         >
-          Log kopieren
+          {tr('Log kopieren', 'Copy log')}
         </button>
         <button className="btn sm" onClick={() => setLines([])}>
-          Leeren
+          {tr('Leeren', 'Clear')}
         </button>
       </div>
 
       <div className="log-view" ref={boxRef}>
         {shown.length === 0 ? (
           <div className="muted" style={{ padding: 12 }}>
-            Noch keine Ausgabe. Starte die Instanz, um das Live-Log zu sehen.
+            {tr('Noch keine Ausgabe. Starte die Instanz, um das Live-Log zu sehen.', 'No output yet. Start the instance to see the live log.')}
           </div>
         ) : (
           shown.map((line, index) => (

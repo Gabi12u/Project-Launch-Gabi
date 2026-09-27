@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type JSX } from 'react'
 import type { WorldInfo } from '@shared/api'
 import { toastError } from '../lib/store'
 import { Modal } from './ui'
+import { tr } from '@shared/i18n'
 
 interface Props {
   instanceId: string
@@ -23,7 +24,7 @@ interface Props {
  */
 export function WorldPickerModal({
   instanceId,
-  title = 'Welten wählen',
+  title,
   subtitle,
   initialSelected = [],
   onConfirm,
@@ -47,7 +48,7 @@ export function WorldPickerModal({
       })
       .catch((err) => {
         if (!current) return
-        toastError(err, 'Welten konnten nicht geladen werden')
+        toastError(err, tr('Welten konnten nicht geladen werden', 'Worlds could not be loaded'))
         setLoadFailed(true)
         setWorlds([])
       })
@@ -81,18 +82,18 @@ export function WorldPickerModal({
   return (
     <Modal
       open
-      title={title}
-      subtitle={subtitle ?? 'Data Packs wirken nur in Welten, denen sie zugeordnet sind.'}
+      title={title ?? tr('Welten wählen', 'Choose worlds')}
+      subtitle={subtitle ?? tr('Data Packs wirken nur in Welten, denen sie zugeordnet sind.', 'Data packs only work in worlds they are assigned to.')}
       onClose={onClose}
       busy={applying}
       footer={
         <>
           <button className="btn ghost" onClick={onClose} disabled={applying}>
-            Abbrechen
+            {tr('Abbrechen', 'Cancel')}
           </button>
           <button className="btn primary" onClick={() => void confirm()} disabled={applying || worlds === null}>
             {applying && <span className="spinner" />}
-            Übernehmen
+            {tr('Übernehmen', 'Apply')}
           </button>
         </>
       }
@@ -101,15 +102,17 @@ export function WorldPickerModal({
         <div className="skeleton" style={{ height: 120 }} />
       ) : loadFailed ? (
         <div className="col gap-12" style={{ alignItems: 'flex-start' }}>
-          <p className="hint">Die Welten dieser Instanz konnten nicht gelesen werden.</p>
+          <p className="hint">{tr('Die Welten dieser Instanz konnten nicht gelesen werden.', 'The worlds of this instance could not be read.')}</p>
           <button type="button" className="btn sm" onClick={() => load()}>
-            Erneut versuchen
+            {tr('Erneut versuchen', 'Try again')}
           </button>
         </div>
       ) : worlds.length === 0 ? (
         <p className="hint">
-          Diese Instanz hat noch keine Welten. Sobald du eine erstellst, kannst du das Data Pack ihr
-          zuordnen.
+          {tr(
+            'Diese Instanz hat noch keine Welten. Sobald du eine erstellst, kannst du das Data Pack ihr zuordnen.',
+            'This instance has no worlds yet. As soon as you create one, you can assign the data pack to it.'
+          )}
         </p>
       ) : (
         <div className="col gap-12">
@@ -119,7 +122,7 @@ export function WorldPickerModal({
             style={{ cursor: 'pointer', alignSelf: 'flex-start' }}
             onClick={() => setSelected(allSelected ? new Set() : new Set(worlds.map((w) => w.name)))}
           >
-            Alle Welten
+            {tr('Alle Welten', 'All worlds')}
           </button>
 
           <div className="col gap-4">
