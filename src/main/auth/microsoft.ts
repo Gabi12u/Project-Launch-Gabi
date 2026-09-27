@@ -1,12 +1,13 @@
 import { safeStorage } from 'electron'
 import { randomUUID, createHash } from 'node:crypto'
-import type { Account, DeviceCodePrompt, LanguageId } from '@shared/types'
+import type { Account, DeviceCodePrompt } from '@shared/types'
 import { EVENTS } from '@shared/ipc'
 import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
 import { fetchJson, httpRequest, HttpError } from '../core/net'
 import { log } from '../logger'
 import { reportError, scrub } from '../core/reports'
+import { tr } from '@shared/i18n'
 
 const logger = log('auth')
 
@@ -82,19 +83,11 @@ function announceInsecureStorage(): void {
   if (insecureStorageAnnounced) return
   insecureStorageAnnounced = true
 
-  const language: LanguageId = getSettings().language
-  const { title, message } =
-    language === 'en'
-      ? {
-          title: 'Login token stored unencrypted',
-          message:
-            'This device offers no encryption for stored data, so the Microsoft login token is being kept as plain text. See the account settings for more.'
-        }
-      : {
-          title: 'Anmeldetoken unverschlüsselt gespeichert',
-          message:
-            'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Einstellungen unter Accounts.'
-        }
+  const title = tr('Anmeldetoken unverschlüsselt gespeichert', 'Login token stored unencrypted')
+  const message = tr(
+    'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Einstellungen unter Accounts.',
+    'This device offers no encryption for stored data, so the Microsoft login token is being kept as plain text. See the account settings for more.'
+  )
 
   notify('warning', title, message, { route: '/settings?section=accounts' })
 }
@@ -140,7 +133,7 @@ function decrypt(value: string, secure: boolean | undefined): string {
     return safeStorage.decryptString(Buffer.from(value, 'base64'))
   } catch (err) {
     logger.warn('Token konnte nicht entschlüsselt werden:', err)
-    throw new UnreadableTokenError('Gespeicherte Anmeldung ist unlesbar geworden.')
+    throw new UnreadableTokenError(tr('Gespeicherte Anmeldung ist unlesbar geworden.', 'The saved sign-in has become unreadable.'))
   }
 }
 
@@ -224,11 +217,14 @@ export function cancelLogin(): void {
  * Runs the full Microsoft -> Xbox Live -> XSTS -> Minecraft chain.
  * The user code is pushed to the renderer so the UI can show it while we poll.
  */
+/** Also compared by message in the renderer, which runs in the same language. */
+const cancelledMessage = (): string => tr('Anmeldung abgebrochen', 'Sign-in cancelled')
+
 export async function loginWithMicrosoft(): Promise<Account> {
   const clientId = getSettings().microsoftClientId
   if (!clientId) {
     throw new Error(
-      'Es ist keine Microsoft-Anwendungs-ID hinterlegt. Trage sie in den Einstellungen unter "Accounts" ein.'
+      tr('Es ist keine Microsoft-Anwendungs-ID hinterlegt. Trage sie in den Einstellungen unter "Accounts" ein.', 'No Microsoft application ID is set. Enter it in the settings under "Accounts".')
     )
   }
 
@@ -254,12 +250,15 @@ export async function loginWithMicrosoft(): Promise<Account> {
       expiresIn: device.expires_in,
       message:
         device.message ??
-        `Öffne ${device.verification_uri} und gib den Code ${device.user_code} ein.`
+        tr(
+          `Öffne ${device.verification_uri} und gib den Code ${device.user_code} ein.`,
+          `Open ${device.verification_uri} and enter the code ${device.user_code}.`
+        )
     }
     // Same guard as everywhere else in this function: a login retired by a
     // newer attempt (see `activeLogins` above) must not push its device code
     // to the UI, overwriting the code the user is actually looking at.
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
     emit(EVENTS.deviceCode, prompt)
     logger.info(`Device-Code ${device.user_code} ausgegeben, gültig ${device.expires_in}s`)
 
@@ -268,9 +267,9 @@ export async function loginWithMicrosoft(): Promise<Account> {
     // completeMinecraftLogin makes three more network calls and writes the
     // account file. A login retired during those seconds must not touch the
     // UI of the one that replaced it.
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
     const account = await completeMinecraftLogin(token, session, clientId)
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
 
     emit(EVENTS.deviceCode, null)
     return account
@@ -288,14 +287,14 @@ export async function loginWithMicrosoft(): Promise<Account> {
           // can carry the account's email, gamertag or XUID in clear text.
           `Rumpf: ${scrub(err.body || '(leer)').slice(0, 300)}`
       )
-    } else if (err instanceof Error && err.message !== 'Anmeldung abgebrochen') {
+    } else if (err instanceof Error && err.message !== cancelledMessage()) {
       logger.error('Anmeldung fehlgeschlagen:', err)
     }
 
     // Reported as well, not only logged. This is the exact fault we have had
     // described to us from the outside and never once been able to look at.
     // A cancellation is the user's own doing and no fault at all.
-    if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
+    if (!(err instanceof Error && err.message === cancelledMessage())) {
       const detail =
         err instanceof HttpError
           ? `HTTP ${err.status} von ${err.url}
@@ -322,7 +321,7 @@ Rumpf: ${scrub(err.body || '(leer)').slice(0, 800)}`
  */
 export function technicalSuffix(status?: number, code?: string): string {
   const bits = [code, status ? `HTTP ${status}` : ''].filter(Boolean)
-  return bits.length ? ` (technisch: ${bits.join(', ')})` : ''
+  return bits.length ? ` (${tr('technisch', 'technical')}: ${bits.join(', ')})` : ''
 }
 
 /**
@@ -345,18 +344,12 @@ export function technicalSuffix(status?: number, code?: string): string {
  */
 export function explainInvalidGrant(body: string): string {
   if (/device_code'? is not valid/i.test(body)) {
-    return 'Der Anmeldecode ist abgelaufen. Bitte erneut versuchen und den Code zügig eingeben.'
+    return tr('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen und den Code zügig eingeben.', 'The sign-in code has expired. Please try again and enter the code quickly.')
   }
   if (/user could not be authenticated|user interaction is required/i.test(body)) {
-    return (
-      'Die Anmeldung bei Microsoft wurde nicht abgeschlossen. Bitte erneut versuchen und im ' +
-      'Browser bis zum Ende durchgehen, auch die Nachfrage nach der Berechtigung.'
-    )
+    return tr('Die Anmeldung bei Microsoft wurde nicht abgeschlossen. Bitte erneut versuchen und im Browser bis zum Ende durchgehen, auch die Nachfrage nach der Berechtigung.', 'Signing in with Microsoft was not completed. Please try again and go through to the end in the browser, including the permission prompt.')
   }
-  return (
-    'Microsoft hat den Anmeldecode abgelehnt. Bitte erneut versuchen. ' +
-    'Bleibt es dabei, hilft ein Screenshot dieser Meldung weiter.'
-  )
+  return tr('Microsoft hat den Anmeldecode abgelehnt. Bitte erneut versuchen. Bleibt es dabei, hilft ein Screenshot dieser Meldung weiter.', 'Microsoft rejected the sign-in code. Please try again. If it keeps happening, a screenshot of this message helps.')
 }
 
 async function pollForToken(
@@ -384,9 +377,9 @@ async function pollForToken(
   }
 
   while (Date.now() < deadline) {
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
     await new Promise((resolve) => setTimeout(resolve, interval))
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
 
     try {
       polls++
@@ -405,7 +398,7 @@ async function pollForToken(
       // breath, or start a second login that retires this one — without this
       // the retired loop still wrote an account, resolved an abandoned
       // promise, and blanked the device code of the newer attempt.
-      if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+      if (session.cancelled) throw new Error(cancelledMessage())
       return token
     } catch (err) {
       if (!(err instanceof HttpError)) throw err
@@ -419,12 +412,12 @@ async function pollForToken(
           interval += 5000
           continue
         case 'authorization_declined':
-          throw new Error('Die Anmeldung wurde im Browser abgelehnt.' + technicalSuffix(err.status, err.code))
+          throw new Error(tr('Die Anmeldung wurde im Browser abgelehnt.', 'The sign-in was declined in the browser.') + technicalSuffix(err.status, err.code))
         case 'expired_token':
         case 'code_expired':
-          throw new Error('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.')
+          throw new Error(tr('Der Anmeldecode ist abgelaufen. Bitte erneut versuchen.', 'The sign-in code has expired. Please try again.'))
         case 'bad_verification_code':
-          throw new Error('Der Anmeldecode wurde nicht akzeptiert. Bitte erneut versuchen.' + technicalSuffix(err.status, err.code))
+          throw new Error(tr('Der Anmeldecode wurde nicht akzeptiert. Bitte erneut versuchen.', 'The sign-in code was not accepted. Please try again.') + technicalSuffix(err.status, err.code))
 
         /*
          * `invalid_grant` heisst hier immer: diesen Code nehme ich nicht
@@ -487,7 +480,7 @@ async function pollForToken(
   }
 
   throw new Error(
-    `Der Anmeldecode ist nach ${since()} abgelaufen. Bitte erneut versuchen.`
+    tr(`Der Anmeldecode ist nach ${since()} abgelaufen. Bitte erneut versuchen.`, `The sign-in code expired after ${since()}. Please try again.`)
   )
 }
 
@@ -514,36 +507,23 @@ function describeXboxFailure(err: HttpError): string | null {
 
   switch (xerr) {
     case 2148916233:
-      return (
-        'Zu diesem Microsoft-Account gehört noch kein Xbox-Profil. Melde dich einmal auf ' +
-        'xbox.com an, lege dort ein Profil an, und versuche es danach erneut.'
-      )
+      return tr('Zu diesem Microsoft-Account gehört noch kein Xbox-Profil. Melde dich einmal auf xbox.com an, lege dort ein Profil an, und versuche es danach erneut.', 'This Microsoft account has no Xbox profile yet. Sign in once on xbox.com, create a profile there, and then try again.')
     case 2148916235:
-      return (
-        'Xbox Live ist im Land dieses Accounts nicht verfügbar. Die Anmeldung ist damit ' +
-        'leider nicht möglich.'
-      )
+      return tr('Xbox Live ist im Land dieses Accounts nicht verfügbar. Die Anmeldung ist damit leider nicht möglich.', 'Xbox Live is not available in the country of this account. Unfortunately signing in is not possible.')
     case 2148916236:
     case 2148916237:
-      return (
-        'Dieser Account benötigt eine Altersverifikation. Führe sie einmal auf xbox.com ' +
-        'durch und versuche es danach erneut.'
-      )
+      return tr('Dieser Account benötigt eine Altersverifikation. Führe sie einmal auf xbox.com durch und versuche es danach erneut.', 'This account needs age verification. Complete it once on xbox.com and then try again.')
     case 2148916238:
-      return (
-        'Dieser Account gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet ' +
-        'sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen ' +
-        'freigeben, danach ist die Anmeldung möglich.'
-      )
+      return tr('Dieser Account gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen freigeben, danach ist die Anmeldung möglich.', 'This account belongs to a child and has to be part of a Microsoft family. An adult in the family has to allow it in the Xbox family settings, then signing in works.')
     default:
       if (xerr) {
-        return (
-          `Xbox Live hat die Anmeldung abgelehnt (Code ${xerr}). Melde dich einmal auf ` +
-          'xbox.com an und versuche es danach erneut.'
+        return tr(
+          `Xbox Live hat die Anmeldung abgelehnt (Code ${xerr}). Melde dich einmal auf xbox.com an und versuche es danach erneut.`,
+          `Xbox Live rejected the sign-in (code ${xerr}). Sign in once on xbox.com and then try again.`
         )
       }
       // No numeric code, but Xbox still named the reason in plain text.
-      if (body.Message) return `Xbox Live hat die Anmeldung abgelehnt: ${body.Message}`
+      if (body.Message) return tr(`Xbox Live hat die Anmeldung abgelehnt: ${body.Message}`, `Xbox Live rejected the sign-in: ${body.Message}`)
       return null
   }
 }
@@ -578,11 +558,11 @@ async function xboxLogin(microsoftAccessToken: string): Promise<{ token: string;
   )
 
   const uhs = xbl.DisplayClaims?.xui?.[0]?.uhs
-  if (!uhs) throw new Error('Xbox Live hat keine Benutzerkennung geliefert')
+  if (!uhs) throw new Error(tr('Xbox Live hat keine Benutzerkennung geliefert', 'Xbox Live returned no user ID'))
   // The token itself was never checked. A 200 carrying `uhs` but no `Token`
   // sent `UserTokens: [undefined]` onwards, which fails several calls later
   // with something unreadable instead of here with a plain message.
-  if (!xbl.Token) throw new Error('Xbox Live hat kein Token geliefert')
+  if (!xbl.Token) throw new Error(tr('Xbox Live hat kein Token geliefert', 'Xbox Live returned no token'))
   return { token: xbl.Token, uhs }
 }
 
@@ -600,8 +580,8 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
   const uhs = xsts.DisplayClaims?.xui?.[0]?.uhs
   // Same guard as `xboxLogin`: a 200 with an unexpected body shape would
   // otherwise surface as a raw TypeError instead of a readable message.
-  if (!uhs) throw new Error('XSTS hat keine Benutzerkennung geliefert')
-  if (!xsts.Token) throw new Error('XSTS hat kein Token geliefert')
+  if (!uhs) throw new Error(tr('XSTS hat keine Benutzerkennung geliefert', 'XSTS returned no user ID'))
+  if (!xsts.Token) throw new Error(tr('XSTS hat kein Token geliefert', 'XSTS returned no token'))
   return { token: xsts.Token, uhs }
 }
 
@@ -619,19 +599,9 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
  */
 export function explainMinecraftForbidden(clientId: string): string {
   if (GUID.test(clientId.trim())) {
-    return (
-      'Microsoft hat die Anmeldung angenommen, aber Minecraft lässt diese Anwendung nicht an ' +
-      'seine Schnittstelle. Eine eigene Anwendungs-ID muss dafür einmalig von Mojang freigegeben ' +
-      'werden. Das Formular dafür ist https://aka.ms/mce-reviewappid, dort wird die ID ' +
-      'eingetragen. Bis die Freigabe da ist, hilft nur, die ID in den Einstellungen wieder zu ' +
-      'leeren.'
-    )
+    return tr('Microsoft hat die Anmeldung angenommen, aber Minecraft lässt diese Anwendung nicht an seine Schnittstelle. Eine eigene Anwendungs-ID muss dafür einmalig von Mojang freigegeben werden. Das Formular dafür ist https://aka.ms/mce-reviewappid, dort wird die ID eingetragen. Bis die Freigabe da ist, hilft nur, die ID in den Einstellungen wieder zu leeren.', 'Microsoft accepted the sign-in, but Minecraft does not let this application use its interface. A custom application ID has to be approved once by Mojang for that. The form for it is https://aka.ms/mce-reviewappid, where the ID is entered. Until it is approved, the only fix is to clear the ID in the settings again.')
   }
-  return (
-    'Minecraft hat die Anmeldung abgelehnt. Die mitgelieferte Anwendungs-ID gehört dem ' +
-    'offiziellen Launcher und wird von Microsoft zunehmend nur noch dort akzeptiert. Eine eigene, ' +
-    'von Mojang freigegebene ID lässt sich in den Einstellungen unter Accounts eintragen.'
-  )
+  return tr('Minecraft hat die Anmeldung abgelehnt. Die mitgelieferte Anwendungs-ID gehört dem offiziellen Launcher und wird von Microsoft zunehmend nur noch dort akzeptiert. Eine eigene, von Mojang freigegebene ID lässt sich in den Einstellungen unter Accounts eintragen.', 'Minecraft rejected the sign-in. The included application ID belongs to the official launcher and Microsoft increasingly only accepts it there. A custom ID approved by Mojang can be entered in the settings under Accounts.')
 }
 
 /**
@@ -649,26 +619,14 @@ export function explainMissingProfile(entitlements: string[]): string {
   const hasJava = entitlements.some((name) => /product_minecraft|game_minecraft/i.test(name))
 
   if (hasGamePass) {
-    return (
-      'Dieser Account hat Minecraft über den Game Pass, aber noch keinen Spielernamen für die ' +
-      'Java Edition. Starte Minecraft Java einmal über die Xbox-App oder den offiziellen ' +
-      'Minecraft-Launcher und lege dort einen Namen fest. Danach funktioniert die Anmeldung hier.'
-    )
+    return tr('Dieser Account hat Minecraft über den Game Pass, aber noch keinen Spielernamen für die Java Edition. Starte Minecraft Java einmal über die Xbox-App oder den offiziellen Minecraft-Launcher und lege dort einen Namen fest. Danach funktioniert die Anmeldung hier.', 'This account has Minecraft through Game Pass, but no player name for Java Edition yet. Start Minecraft Java once through the Xbox app or the official Minecraft Launcher and set a name there. After that, signing in works here.')
   }
 
   if (hasJava) {
-    return (
-      'Dieser Account besitzt die Java Edition, hat aber noch keinen Spielernamen. Lege auf ' +
-      'minecraft.net einen fest und melde dich danach erneut an.'
-    )
+    return tr('Dieser Account besitzt die Java Edition, hat aber noch keinen Spielernamen. Lege auf minecraft.net einen fest und melde dich danach erneut an.', 'This account owns Java Edition but has no player name yet. Set one on minecraft.net and then sign in again.')
   }
 
-  return (
-    'Für diesen Account gibt es noch kein Minecraft-Java-Profil. Das trifft auf Accounts zu, die ' +
-    'Java Edition weder gekauft noch über den Game Pass haben, und auf solche, bei denen noch ' +
-    'kein Spielername festgelegt wurde. Hast du Game Pass, starte Minecraft Java einmal über ' +
-    'die Xbox-App. Hast du gekauft, lege den Namen auf minecraft.net fest.'
-  )
+  return tr('Für diesen Account gibt es noch kein Minecraft-Java-Profil. Das trifft auf Accounts zu, die Java Edition weder gekauft noch über den Game Pass haben, und auf solche, bei denen noch kein Spielername festgelegt wurde. Hast du Game Pass, starte Minecraft Java einmal über die Xbox-App. Hast du gekauft, lege den Namen auf minecraft.net fest.', 'There is no Minecraft Java profile for this account yet. This applies to accounts that have neither bought Java Edition nor have it through Game Pass, and to those where no player name has been set yet. If you have Game Pass, start Minecraft Java once through the Xbox app. If you bought it, set the name on minecraft.net.')
 }
 
 async function completeMinecraftLogin(
@@ -688,7 +646,7 @@ async function completeMinecraftLogin(
    * message.
    */
   const abortIfCancelled = (): void => {
-    if (session.cancelled) throw new Error('Anmeldung abgebrochen')
+    if (session.cancelled) throw new Error(cancelledMessage())
   }
 
   const xbl = await xboxLogin(token.access_token)
@@ -831,7 +789,7 @@ const refreshing = new Map<string, Promise<string>>()
 export async function getValidAccessToken(accountId: string): Promise<string> {
   const accounts = readAccounts()
   const account = accounts.find((a) => a.id === accountId)
-  if (!account) throw new Error('Account nicht gefunden')
+  if (!account) throw new Error(tr('Account nicht gefunden', 'Account not found'))
   if (account.type === 'offline') return ''
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
@@ -860,7 +818,7 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // this account may have written fresh tokens while we were queued.
   const accounts = readAccounts()
   const account = accounts.find((a) => a.id === accountId)
-  if (!account) throw new Error('Account nicht gefunden')
+  if (!account) throw new Error(tr('Account nicht gefunden', 'Account not found'))
 
   const stillValid = account.expiresAt && account.expiresAt - 60_000 > Date.now()
   if (stillValid && account.accessToken) {
@@ -872,7 +830,7 @@ async function refreshAccessToken(accountId: string): Promise<string> {
     ? decryptOrEmpty(account.refreshToken, refreshSecureOf(account))
     : ''
   if (!refreshToken) {
-    throw new Error(`Die Sitzung von ${account.username} ist abgelaufen. Bitte neu anmelden.`)
+    throw new Error(tr(`Die Sitzung von ${account.username} ist abgelaufen. Bitte neu anmelden.`, `The session of ${account.username} has expired. Please sign in again.`))
   }
 
   logger.info(`Erneuere Token für ${account.username}`)
@@ -1015,7 +973,7 @@ export function offlineUuid(username: string): string {
 export function createOfflineAccount(username: string): Account {
   const clean = username.trim()
   if (!/^[A-Za-z0-9_]{3,16}$/.test(clean)) {
-    throw new Error('Der Name muss 3-16 Zeichen lang sein und darf nur Buchstaben, Zahlen und _ enthalten.')
+    throw new Error(tr('Der Name muss 3-16 Zeichen lang sein und darf nur Buchstaben, Zahlen und _ enthalten.', 'The name has to be 3-16 characters long and may only contain letters, numbers and _.'))
   }
 
   const accounts = readAccounts().map((a) => ({ ...a, active: false }))

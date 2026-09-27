@@ -60,7 +60,7 @@ export function AccountModal({
       if (ticket !== attempt.current) return
       // A cancel the user asked for themselves is not a failure and needs no
       // alarming message; the dialog has already returned to its normal state.
-      if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
+      if (!(err instanceof Error && err.message === tr('Anmeldung abgebrochen', 'Sign-in cancelled'))) {
         toastError(err, tr('Anmeldung fehlgeschlagen', 'Sign-in failed'))
       }
       setPrompt(null)

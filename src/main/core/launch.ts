@@ -55,6 +55,7 @@ import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
 import { dropLogBuffer, getLogBuffer, pushLog } from './instanceLog'
+import { tr } from '@shared/i18n'
 
 const logger = log('launch')
 
@@ -357,7 +358,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   // natives folder and the mods are being replaced, and a launch into that
   // starts a JVM against files that are half written or briefly absent.
   if (isRepairing(instanceId)) {
-    throw new Error('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird gerade repariert. Warte, bis das abgeschlossen ist.', 'This instance is being repaired right now. Wait until that is done.'))
   }
 
   // Any content work at all, not just the compatibility window's automatic
@@ -367,7 +368,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   // straight into a mods folder that did not match itself.
   if (isContentBusy(instanceId)) {
     throw new Error(
-      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+      tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.', 'The mods of this instance are being worked on right now. Wait until that is done.')
     )
   }
 
@@ -377,7 +378,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   // rollback. Only backup-against-backup was guarded before.
   if (isRestoring(instanceId)) {
     throw new Error(
-      'Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.'
+      tr('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.', 'A backup is being restored for this instance right now. Wait until that is done.')
     )
   }
 
@@ -388,14 +389,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     const orphan = getAdopted(instanceId)
     throw new Error(
       orphan
-        ? `Minecraft läuft für diese Instanz noch aus einer früheren Sitzung (PID ${orphan.pid}). ` +
-          `Beende das Spiel, danach lässt sich die Instanz wieder starten.`
-        : 'Diese Instanz läuft bereits.'
+        ? tr(
+            `Minecraft läuft für diese Instanz noch aus einer früheren Sitzung (PID ${orphan.pid}). Beende das Spiel, danach lässt sich die Instanz wieder starten.`,
+            `Minecraft is still running for this instance from an earlier session (PID ${orphan.pid}). Close the game, then the instance can be started again.`
+          )
+        : tr('Diese Instanz läuft bereits.', 'This instance is already running.')
     )
   }
   const settings = getSettings()
   const instance = getInstance(instanceId)
-  const task = new Task(`${instance.name} wird gestartet`, 'Vorbereitung…', instanceId)
+  const task = new Task(tr(`${instance.name} wird gestartet`, `Starting ${instance.name}`), tr('Vorbereitung…', 'Preparing…'), instanceId)
 
   // Kept outside the try so the catch can still reach a process that was
   // already spawned when the launch fell over.
@@ -425,20 +428,20 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   stopRequested.delete(instanceId)
 
   try {
-    setStatus(instanceId, 'preparing', 'Vorbereitung…')
+    setStatus(instanceId, 'preparing', tr('Vorbereitung…', 'Preparing…'))
     openGameLogWindow(instanceId, instance.name)
 
     // 1. Account -----------------------------------------------------
     const stored = getActiveAccount()
     if (!stored) {
-      throw new Error('Kein Account ausgewählt. Melde dich zuerst an oder lege ein Offline-Profil an.')
+      throw new Error(tr('Kein Account ausgewählt. Melde dich zuerst an oder lege ein Offline-Profil an.', 'No account selected. Sign in first or create an offline profile.'))
     }
 
     let accessToken = '0'
     let xuid = ''
     let userType = 'legacy'
     if (stored.type === 'microsoft') {
-      task.update('Anmeldung wird geprüft…', null)
+      task.update(tr('Anmeldung wird geprüft…', 'Checking sign-in…'), null)
       accessToken = await getValidAccessToken(stored.id)
       userType = 'msa'
       xuid = stored.uuid.replace(/-/g, '')
@@ -448,20 +451,22 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     // 2. Compatibility ----------------------------------------------
     if (!options.ignoreIssues) {
-      setStatus(instanceId, 'checking', 'Mods werden geprüft…')
-      task.update('Mod-Kompatibilität wird geprüft…', null)
+      setStatus(instanceId, 'checking', tr('Mods werden geprüft…', 'Checking mods…'))
+      task.update(tr('Mod-Kompatibilität wird geprüft…', 'Checking mod compatibility…'), null)
       const report = await checkCompatibility(instanceId)
       if (!report.launchable) {
         const blocking = report.issues.filter((i) => i.severity === 'error')
         throw new Error(
-          `Start blockiert: ${blocking[0]?.title ?? 'Es wurden Probleme gefunden.'} ` +
-            `(${blocking.length} ${blocking.length === 1 ? 'Problem' : 'Probleme'})`
+          tr(
+            `Start blockiert: ${blocking[0]?.title ?? 'Es wurden Probleme gefunden.'} (${blocking.length} ${blocking.length === 1 ? 'Problem' : 'Probleme'})`,
+            `Launch blocked: ${blocking[0]?.title ?? 'Problems were found.'} (${blocking.length} ${blocking.length === 1 ? 'problem' : 'problems'})`
+          )
         )
       }
     }
 
     // 3. Game files --------------------------------------------------
-    setStatus(instanceId, 'downloading', 'Dateien werden geprüft…')
+    setStatus(instanceId, 'downloading', tr('Dateien werden geprüft…', 'Checking files…'))
     const versionId = await resolveVersionId(instance)
     const versionJson = await loadVersionJson(versionId)
 
@@ -472,7 +477,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     }
 
     // 4. Java --------------------------------------------------------
-    setStatus(instanceId, 'installing-java', 'Java wird vorbereitet…')
+    setStatus(instanceId, 'installing-java', tr('Java wird vorbereitet…', 'Preparing Java…'))
     const javaMajor = instance.settings.javaMajorOverride ?? requiredJavaMajor(versionJson, instance.mcVersion)
     const explicitJavaPath = instance.settings.javaPath || undefined
     if (explicitJavaPath) {
@@ -488,7 +493,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     logger.info(`Starte ${instance.name} mit Java ${java.version} (${java.path})`)
 
     // 5. Natives -----------------------------------------------------
-    setStatus(instanceId, 'launching', 'Natives werden entpackt…')
+    setStatus(instanceId, 'launching', tr('Natives werden entpackt…', 'Unpacking natives…'))
     const nativesDir = paths.natives(versionId)
     const libraries = resolveLibraries(versionJson)
 
@@ -524,10 +529,14 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     if (missing.length > 0) {
       const names = missing.slice(0, 3).map((l) => basename(l.path))
       throw new Error(
-        `${missing.length} ${missing.length === 1 ? 'Bibliothek fehlt' : 'Bibliotheken fehlen'} ` +
-          `und konnten nicht geladen werden: ${names.join(', ')}` +
-          (missing.length > 3 ? ' und weitere' : '') +
-          '. Pruefe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".'
+        tr(
+          `${missing.length} ${missing.length === 1 ? 'Bibliothek fehlt' : 'Bibliotheken fehlen'} und konnten nicht geladen werden: ${names.join(', ')}` +
+            (missing.length > 3 ? ' und weitere' : '') +
+            '. Prüfe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".',
+          `${missing.length} ${missing.length === 1 ? 'library is' : 'libraries are'} missing and could not be downloaded: ${names.join(', ')}` +
+            (missing.length > 3 ? ' and more' : '') +
+            '. Check your internet connection and start again, or use "Repair".'
+        )
       )
     }
 
@@ -540,8 +549,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     const clientJar = clientJarPath(instance.mcVersion)
     if (!existsSync(clientJar)) {
       throw new Error(
-        'Die Spieldatei client.jar fehlt und konnte nicht geladen werden. ' +
-          'Pruefe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".'
+        tr('Die Spieldatei client.jar fehlt und konnte nicht geladen werden. Prüfe deine Internetverbindung und starte danach erneut, oder nutze "Reparieren".', 'The game file client.jar is missing and could not be downloaded. Check your internet connection and start again, or use "Repair".')
       )
     }
     classpath.push(clientJar)
@@ -692,7 +700,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // 9. Spawn -------------------------------------------------------
     if (userText(instance.settings.preLaunchCommand).trim()) {
       await ensureApproved(instanceId, instance.name, 'preLaunch', instance.settings.preLaunchCommand)
-      task.update('Pre-Launch-Befehl läuft…', null)
+      task.update(tr('Pre-Launch-Befehl läuft…', 'Running pre-launch command…'), null)
       await runPreLaunch(instance, gameDir, task)
     }
 
@@ -717,7 +725,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       instanceId,
       stream: 'launcher',
       level: 'info',
-      text: `Starte Minecraft ${instance.mcVersion} (${versionId}) mit ${memory} MB RAM · Java ${java.major}`,
+      text: tr(
+        `Starte Minecraft ${instance.mcVersion} (${versionId}) mit ${memory} MB RAM · Java ${java.major}`,
+        `Starting Minecraft ${instance.mcVersion} (${versionId}) with ${memory} MB RAM · Java ${java.major}`
+      ),
       time: Date.now()
     })
 
@@ -734,7 +745,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       process: child,
       startedAt,
       versionId,
-      status: { instanceId, phase: 'running', detail: 'Läuft', progress: null, pid: child.pid, startedAt }
+      status: { instanceId, phase: 'running', detail: tr('Läuft', 'Running'), progress: null, pid: child.pid, startedAt }
     })
 
     // The steps after this can still throw — `markPlayed` writes instance.json,
@@ -749,7 +760,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         instanceId,
         stream: 'launcher',
         level: 'error',
-        text: `Prozessfehler: ${err.message}`,
+        text: tr(`Prozessfehler: ${err.message}`, `Process error: ${err.message}`),
         time: Date.now()
       })
 
@@ -759,7 +770,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // blocking the launcher's own update, until the app is restarted.
       if (!spawned) {
         clearRunning(instanceId)
-        setStatus(instanceId, 'idle', `Java konnte nicht gestartet werden: ${err.message}`)
+        setStatus(instanceId, 'idle', tr(`Java konnte nicht gestartet werden: ${err.message}`, `Java could not be started: ${err.message}`))
         // The exit handler below is the only other place this runs, and a
         // failed spawn never reaches it. Left uncalled, the claim on this
         // version's natives never clears, so the "wipe and re-extract if
@@ -815,9 +826,11 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         )
         notify(
           'warning',
-          'Wrapper-Befehl gibt das Spiel nicht weiter',
-          `"${wrapper}" hat sich sofort beendet. Läuft Minecraft trotzdem, weiß der Launcher nichts davon, ` +
-            'und Mod-Änderungen sind dann nicht mehr gesperrt. Der Befehl muss Java per exec übernehmen.',
+          tr('Wrapper-Befehl gibt das Spiel nicht weiter', 'Wrapper command does not hand the game over'),
+          tr(
+            `"${wrapper}" hat sich sofort beendet. Läuft Minecraft trotzdem, weiß der Launcher nichts davon, und Mod-Änderungen sind dann nicht mehr gesperrt. Der Befehl muss Java per exec übernehmen.`,
+            `"${wrapper}" exited right away. If Minecraft is still running, the launcher does not know about it, and mod changes are no longer locked. The command has to take over Java via exec.`
+          ),
           { route: `/instances/${instanceId}?tab=settings` }
         )
       }
@@ -829,8 +842,11 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         stream: 'launcher',
         level: crashed ? 'error' : 'info',
         text: crashed
-          ? `Minecraft wurde mit Code ${code} beendet${signal ? ` (Signal ${signal})` : ''}.`
-          : 'Minecraft wurde beendet.',
+          ? tr(
+              `Minecraft wurde mit Code ${code} beendet${signal ? ` (Signal ${signal})` : ''}.`,
+              `Minecraft exited with code ${code}${signal ? ` (signal ${signal})` : ''}.`
+            )
+          : tr('Minecraft wurde beendet.', 'Minecraft closed.'),
         time: endedAt
       })
 
@@ -838,7 +854,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // is only exiting because that failure killed it. Overwriting the reason
       // with "Beendet" would hide what actually went wrong.
       if (!launchFailed) {
-        setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? `Absturz (Code ${code})` : 'Beendet', {
+        setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? tr(`Absturz (Code ${code})`, `Crash (code ${code})`) : tr('Beendet', 'Closed'), {
           exitCode: code
         })
 
@@ -856,21 +872,24 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
                 const report = await checkCompatibility(instanceId)
                 const blocking = report.issues.find((i) => i.severity === 'error')
                 hint = blocking
-                  ? ` Vermutlich liegt es an einem Mod: ${blocking.title}.`
-                  : ' Häufig liegt das an einem Mod, der nicht zu dieser Version passt.'
+                  ? tr(` Vermutlich liegt es an einem Mod: ${blocking.title}.`, ` It is probably caused by a mod: ${blocking.title}.`)
+                  : ' ' + tr('Häufig liegt das an einem Mod, der nicht zu dieser Version passt.', 'This is often caused by a mod that does not fit this version.')
               } catch {
-                hint = ' Häufig liegt das an einem Mod, der nicht zu dieser Version passt.'
+                hint = ' ' + tr('Häufig liegt das an einem Mod, der nicht zu dieser Version passt.', 'This is often caused by a mod that does not fit this version.')
               }
             }
             notify(
               'error',
-              `${instance.name} ist abgestürzt`,
-              `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
+              tr(`${instance.name} ist abgestürzt`, `${instance.name} crashed`),
+              tr(
+                `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
+                `Minecraft exited with code ${code}.${hint} You can find the log in the instance tab.`
+              ),
               { route: `/instances/${instanceId}?tab=logs` }
             )
           })()
         } else if (getSettings().notifyOnGameExit) {
-          notify('info', `${instance.name} beendet`, `Spielzeit: ${minutes} Minuten`)
+          notify('info', tr(`${instance.name} beendet`, `${instance.name} closed`), tr(`Spielzeit: ${minutes} Minuten`, `Play time: ${minutes} minutes`))
         }
       }
 
@@ -912,8 +931,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       logger.warn(`Spielzeit für ${instanceId} nicht gespeichert:`, err)
     }
 
-    setStatus(instanceId, 'running', 'Minecraft läuft', { pid: child.pid, startedAt })
-    task.done('Minecraft gestartet')
+    setStatus(instanceId, 'running', tr('Minecraft läuft', 'Minecraft is running'), { pid: child.pid, startedAt })
+    task.done(tr('Minecraft gestartet', 'Minecraft started'))
 
     try {
       handleWindowBehaviour(instance)
@@ -1082,7 +1101,10 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
         killHarder()
         reject(
           new Error(
-            `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`
+            tr(
+              `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`,
+              `Pre-launch command ran longer than ${PRE_LAUNCH_TIMEOUT_MS / 60_000} minutes and was stopped.`
+            )
           )
         )
       })
@@ -1101,7 +1123,7 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
       settle(() => {
         if (task.cancelled) return reject(new TaskCancelledError())
         if (code === 0) return resolve()
-        reject(new Error(`Pre-Launch-Befehl endete mit Code ${code}`))
+        reject(new Error(tr(`Pre-Launch-Befehl endete mit Code ${code}`, `Pre-launch command exited with code ${code}`)))
       })
     )
   })
@@ -1161,12 +1183,11 @@ export function stopInstance(instanceId: string, immediate = false): void {
     if (orphan) {
       clearRunning(instanceId)
       logger.info(`Übernommener Eintrag für ${instanceId} (PID ${orphan.pid}) verworfen`)
-      setStatus(instanceId, 'idle', 'Eintrag entfernt, die Instanz lässt sich wieder starten.')
+      setStatus(instanceId, 'idle', tr('Eintrag entfernt, die Instanz lässt sich wieder starten.', 'Entry removed, the instance can be started again.'))
       notify(
         'info',
-        'Eintrag entfernt',
-        `Falls Minecraft noch offen ist, schließe das Fenster selbst. Dieser Launcher kann es ` +
-          `nicht beenden, weil es eine frühere Sitzung gestartet hat.`
+        tr('Eintrag entfernt', 'Entry removed'),
+        tr('Falls Minecraft noch offen ist, schließe das Fenster selbst. Dieser Launcher kann es nicht beenden, weil es eine frühere Sitzung gestartet hat.', 'If Minecraft is still open, close the window yourself. This launcher cannot stop it because an earlier session started it.')
       )
       return
     }
@@ -1188,7 +1209,7 @@ export function stopInstance(instanceId: string, immediate = false): void {
     instanceId,
     stream: 'launcher',
     level: 'warn',
-    text: 'Minecraft wird beendet…',
+    text: tr('Minecraft wird beendet…', 'Stopping Minecraft…'),
     time: Date.now()
   })
 
@@ -1236,7 +1257,7 @@ export function stopInstance(instanceId: string, immediate = false): void {
           instanceId,
           stream: 'launcher',
           level: 'error',
-          text: 'Minecraft ließ sich nicht beenden. Schließe das Spiel selbst oder beende es über den Task-Manager.',
+          text: tr('Minecraft ließ sich nicht beenden. Schließe das Spiel selbst oder beende es über den Task-Manager.', 'Minecraft could not be stopped. Close the game yourself or end it in the Task Manager.'),
           time: Date.now()
         })
       }, 5000)
