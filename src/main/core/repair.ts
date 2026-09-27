@@ -20,6 +20,7 @@ import { isNativesClaimed } from './launch'
 import { clearRepairing, isRepairing, markRepairing } from './repairLock'
 import { pushLog } from './instanceLog'
 import { ensureJavaPathApproved } from './commandApproval'
+import { tr } from '@shared/i18n'
 
 const logger = log('repair')
 
@@ -157,13 +158,13 @@ export function findDuplicateContent(content: ContentItem[]): ContentItem[] {
 
 export async function repairInstance(instanceId: string): Promise<RepairReport> {
   if (isRunning(instanceId)) {
-    throw new Error('Die Instanz läuft gerade. Beende Minecraft, bevor du sie reparierst.')
+    throw new Error(tr('Die Instanz läuft gerade. Beende Minecraft, bevor du sie reparierst.', 'The instance is running. Close Minecraft before you repair it.'))
   }
   // Mirrors the guard `launchInstance` has against `isRepairing`: a launch can
   // still be downloading files or installing Java when `isRunning` is false,
   // and repairing the same folder underneath it is what this closes.
   if (isStarting(instanceId)) {
-    throw new Error('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Die Instanz wird gerade gestartet. Warte, bis das abgeschlossen ist.', 'The instance is starting right now. Wait until that is done.'))
   }
 
   // The other half of the guard `restoreBackupUnlocked` has against a repair:
@@ -172,12 +173,12 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   // `isRestoring` is set.
   if (isRestoring(instanceId)) {
     throw new Error(
-      'Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.'
+      tr('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.', 'A backup is being restored for this instance right now. Wait until that is done.')
     )
   }
 
   if (isRepairing(instanceId)) {
-    throw new Error('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird bereits repariert. Warte, bis das abgeschlossen ist.', 'This instance is already being repaired. Wait until that is done.'))
   }
 
   // The mirror of the guard `launch.ts` grew: a repair rebuilds the same mods
@@ -185,7 +186,7 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   // the content list. Whoever finished second used to decide what survived.
   if (isContentBusy(instanceId)) {
     throw new Error(
-      'An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.'
+      tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.', 'The mods of this instance are being worked on right now. Wait until that is done.')
     )
   }
 
@@ -195,7 +196,7 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   // files this would verify and delete, and both write the instance record at
   // the end — the loser's `installed` flag then describes the other one's work.
   if (instance.installing) {
-    throw new Error('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.')
+    throw new Error(tr('Diese Instanz wird gerade eingerichtet. Warte, bis das abgeschlossen ist.', 'This instance is being set up right now. Wait until that is done.'))
   }
 
   markRepairing(instanceId)
@@ -210,7 +211,7 @@ async function runRepair(
   instanceId: string,
   instance: ReturnType<typeof getInstance>
 ): Promise<RepairReport> {
-  return withTask(`${instance.name} wird repariert`, 'Prüfung startet…', instanceId, async (task) => {
+  return withTask(tr(`${instance.name} wird repariert`, `Repairing ${instance.name}`), tr('Prüfung startet…', 'Starting check…'), instanceId, async (task) => {
     const report: RepairReport = {
       instanceId,
       checkedFiles: 0,
@@ -228,32 +229,37 @@ async function runRepair(
       )
     }
 
-    repairLog(instanceId, 'info', `Starte Reparatur der Instanz "${instance.name}"`)
+    repairLog(instanceId, 'info', tr(`Starte Reparatur der Instanz "${instance.name}"`, `Starting repair of instance "${instance.name}"`))
 
     // 1. Folder layout ------------------------------------------------
-    task.update('Ordnerstruktur wird geprüft…', 0.02)
-    repairLog(instanceId, 'check', 'Überprüfe Ordnerstruktur')
+    task.update(tr('Ordnerstruktur wird geprüft…', 'Checking folder structure…'), 0.02)
+    repairLog(instanceId, 'check', tr('Überprüfe Ordnerstruktur', 'Checking folder structure'))
     const missingFolders = [paths.gameDir(instanceId), paths.mods(instanceId), paths.saves(instanceId)].filter(
       (dir) => !existsSync(dir)
     )
     try {
       ensureInstanceLayout(instanceId)
       step(
-        'Ordnerstruktur',
+        tr('Ordnerstruktur', 'Folder structure'),
         missingFolders.length > 0 ? 'repaired' : 'ok',
-        missingFolders.length > 0 ? `${missingFolders.length} Ordner neu angelegt` : 'Vollständig'
+        missingFolders.length > 0
+          ? tr(`${missingFolders.length} Ordner neu angelegt`, `${missingFolders.length} folders created`)
+          : tr('Vollständig', 'Complete')
       )
     } catch (err) {
       rethrowIfCancelled(err)
-      step('Ordnerstruktur', 'failed', err instanceof Error ? err.message : String(err))
+      step(tr('Ordnerstruktur', 'Folder structure'), 'failed', err instanceof Error ? err.message : String(err))
     }
 
     // 2. Mod loader ---------------------------------------------------
-    task.update('Mod Loader wird geprüft…', 0.08)
+    task.update(tr('Mod Loader wird geprüft…', 'Checking mod loader…'), 0.08)
     repairLog(
       instanceId,
       'check',
-      `Überprüfe Loader (${instance.loader === 'vanilla' ? 'Vanilla' : instance.loader}) für Minecraft ${instance.mcVersion}`
+      tr(
+        `Überprüfe Loader (${instance.loader === 'vanilla' ? 'Vanilla' : instance.loader}) für Minecraft ${instance.mcVersion}`,
+        `Checking loader (${instance.loader === 'vanilla' ? 'Vanilla' : instance.loader}) for Minecraft ${instance.mcVersion}`
+      )
     )
     let versionId: string
     try {
@@ -261,13 +267,13 @@ async function runRepair(
       const versionFile = join(paths.version(versionId), `${versionId}.json`)
 
       if (!existsSync(versionFile) && instance.loader !== 'vanilla') {
-        repairLog(instanceId, 'warning', `${instance.loader}-Profil fehlt oder ist unvollständig`)
-        task.update('Mod Loader wird neu installiert…', 0.1)
-        repairLog(instanceId, 'fix', `Installiere ${instance.loader} neu`)
+        repairLog(instanceId, 'warning', tr(`${instance.loader}-Profil fehlt oder ist unvollständig`, `${instance.loader} profile is missing or incomplete`))
+        task.update(tr('Mod Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.1)
+        repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
         versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
-        step('Mod Loader', 'repaired', `${instance.loader} neu installiert`)
+        step(tr('Mod Loader', 'Mod loader'), 'repaired', tr(`${instance.loader} neu installiert`, `${instance.loader} reinstalled`))
       } else {
-        step('Mod Loader', 'ok', instance.loader === 'vanilla' ? 'Vanilla' : `${instance.loader} vorhanden`)
+        step(tr('Mod Loader', 'Mod loader'), 'ok', instance.loader === 'vanilla' ? 'Vanilla' : tr(`${instance.loader} vorhanden`, `${instance.loader} present`))
       }
     } catch (err) {
       // Reported and returned, not rethrown. Throwing here discarded the whole
@@ -277,13 +283,13 @@ async function runRepair(
       // line either way. A cancellation is the one exception: it must end the
       // whole task as cancelled, not as a failed "Mod Loader" step.
       rethrowIfCancelled(err)
-      step('Mod Loader', 'failed', err instanceof Error ? err.message : String(err))
+      step(tr('Mod Loader', 'Mod loader'), 'failed', err instanceof Error ? err.message : String(err))
       return report
     }
 
     // 3. Minecraft files ----------------------------------------------
-    task.update('Minecraft-Dateien werden geprüft…', 0.15)
-    repairLog(instanceId, 'check', `Überprüfe Minecraft-Version: ${instance.mcVersion}`)
+    task.update(tr('Minecraft-Dateien werden geprüft…', 'Checking Minecraft files…'), 0.15)
+    repairLog(instanceId, 'check', tr(`Überprüfe Minecraft-Version: ${instance.mcVersion}`, `Checking Minecraft version: ${instance.mcVersion}`))
 
     let versionJson: VersionJson
     let versionJsonRebuilt = false
@@ -296,9 +302,9 @@ async function runRepair(
       rethrowIfCancelled(err)
       if (!(err instanceof SyntaxError)) {
         step(
-          'Minecraft & Bibliotheken',
+          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
           'failed',
-          `Die Versionsdatei ${versionId}.json ist unbrauchbar: ` +
+          tr(`Die Versionsdatei ${versionId}.json ist unbrauchbar: `, `The version file ${versionId}.json is unusable: `) +
             (err instanceof Error ? err.message : String(err))
         )
         return report
@@ -308,15 +314,17 @@ async function runRepair(
       // through. Removing it and rebuilding once recovers the same way a
       // missing file already does, instead of failing the whole repair over
       // damage a plain reinstall would fix without anyone noticing.
-      repairLog(instanceId, 'warning', `Versionsdatei ${versionId}.json ist beschädigt`)
+      repairLog(instanceId, 'warning', tr(`Versionsdatei ${versionId}.json ist beschädigt`, `Version file ${versionId}.json is damaged`))
       // Rebuilding reruns the loader installer, which rewrites shared library
       // jars; a running instance on the same version has those open.
       if (activeVersionIds().includes(versionId) || isNativesClaimed(versionId)) {
         step(
-          'Minecraft & Bibliotheken',
+          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
           'failed',
-          `Die Versionsdatei ${versionId}.json ist beschädigt. Sie wird nicht neu erstellt, solange eine ` +
-            'andere Instanz mit derselben Version läuft. Beende sie und starte die Reparatur erneut.'
+          tr(
+            `Die Versionsdatei ${versionId}.json ist beschädigt. Sie wird nicht neu erstellt, solange eine andere Instanz mit derselben Version läuft. Beende sie und starte die Reparatur erneut.`,
+            `The version file ${versionId}.json is damaged. It is not rebuilt while another instance with the same version is running. Close it and start the repair again.`
+          )
         )
         return report
       }
@@ -330,9 +338,12 @@ async function runRepair(
       } catch (retryErr) {
         rethrowIfCancelled(retryErr)
         step(
-          'Minecraft & Bibliotheken',
+          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
           'failed',
-          `Die Versionsdatei ${versionId}.json war beschädigt und konnte nicht neu erstellt werden: ` +
+          tr(
+            `Die Versionsdatei ${versionId}.json war beschädigt und konnte nicht neu erstellt werden: `,
+            `The version file ${versionId}.json was damaged and could not be rebuilt: `
+          ) +
             (retryErr instanceof Error ? retryErr.message : String(retryErr))
         )
         return report
@@ -371,13 +382,15 @@ async function runRepair(
     // it for a second launch of the same version.
     const versionInUse = (): boolean => activeVersionIds().includes(versionId) || isNativesClaimed(versionId)
 
-    const rebuiltNote = versionJsonRebuilt ? `Versionsdatei ${versionId}.json war beschädigt und wurde neu erstellt. ` : ''
+    const rebuiltNote = versionJsonRebuilt
+      ? tr(`Versionsdatei ${versionId}.json war beschädigt und wurde neu erstellt. `, `Version file ${versionId}.json was damaged and has been rebuilt. `)
+      : ''
 
     if (versionInUse()) {
       step(
-        'Minecraft & Bibliotheken',
+        tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
         versionJsonRebuilt ? 'repaired' : 'failed',
-        `${rebuiltNote}Übersprungen: eine andere Instanz mit derselben Version läuft gerade.`
+        rebuiltNote + tr('Übersprungen: eine andere Instanz mit derselben Version läuft gerade.', 'Skipped: another instance with the same version is running right now.')
       )
     } else {
       // Items without a hash have nothing `isSatisfied` can verify but existence, so a
@@ -397,8 +410,8 @@ async function runRepair(
       }
 
       if (broken > 0) {
-        repairLog(instanceId, 'warning', `${broken} von ${items.length} Dateien fehlen oder sind beschädigt`)
-        repairLog(instanceId, 'fix', 'Lade fehlende oder beschädigte Dateien erneut')
+        repairLog(instanceId, 'warning', tr(`${broken} von ${items.length} Dateien fehlen oder sind beschädigt`, `${broken} of ${items.length} files are missing or damaged`))
+        repairLog(instanceId, 'fix', tr('Lade fehlende oder beschädigte Dateien erneut', 'Downloading missing or damaged files again'))
       }
 
       // Deliberately no rmSync beforehand. downloadAll verifies each file
@@ -409,15 +422,15 @@ async function runRepair(
       // content step was already fixed for.
       try {
         task.span(0.15, 0.55)
-        await downloadAll(items, { task, label: 'Beschädigte Dateien' })
+        await downloadAll(items, { task, label: tr('Beschädigte Dateien', 'Damaged files') })
         report.repairedFiles += broken
         step(
-          'Minecraft & Bibliotheken',
+          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
           broken > 0 || versionJsonRebuilt ? 'repaired' : 'ok',
           rebuiltNote +
             (broken > 0
-              ? `${broken} von ${items.length} Dateien erneuert`
-              : `${items.length} Dateien in Ordnung`)
+              ? tr(`${broken} von ${items.length} Dateien erneuert`, `${broken} of ${items.length} files replaced`)
+              : tr(`${items.length} Dateien in Ordnung`, `${items.length} files OK`))
         )
       } catch (err) {
         // Reported, not thrown: assets, mods and Java can still be checked and
@@ -425,7 +438,7 @@ async function runRepair(
         // the exception, it must end the whole task, not just this step.
         rethrowIfCancelled(err)
         step(
-          'Minecraft & Bibliotheken',
+          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
           'failed',
           rebuiltNote + (err instanceof Error ? err.message : String(err))
         )
@@ -435,21 +448,21 @@ async function runRepair(
     }
 
     // 4. Assets --------------------------------------------------------
-    task.update('Assets werden geprüft…', 0.6)
-    repairLog(instanceId, 'check', 'Überprüfe Spiel-Assets')
+    task.update(tr('Assets werden geprüft…', 'Checking assets…'), 0.6)
+    repairLog(instanceId, 'check', tr('Überprüfe Spiel-Assets', 'Checking game assets'))
     if (versionInUse()) {
       // installVersion re-fetches the client jar and every library alongside
       // the assets, the same shared files step 3 stands down from. Skipping
       // that check here would have written them under a running game anyway.
-      step('Spiel-Assets', 'failed', 'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.')
+      step(tr('Spiel-Assets', 'Game assets'), 'failed', tr('Übersprungen: eine andere Instanz mit derselben Version läuft gerade.', 'Skipped: another instance with the same version is running right now.'))
     } else {
       task.span(0.6, 0.8)
       try {
         await installVersion(versionJson, instance.mcVersion, task)
-        step('Spiel-Assets', 'ok', 'Vollständig')
+        step(tr('Spiel-Assets', 'Game assets'), 'ok', tr('Vollständig', 'Complete'))
       } catch (err) {
         rethrowIfCancelled(err)
-        step('Spiel-Assets', 'failed', err instanceof Error ? err.message : String(err))
+        step(tr('Spiel-Assets', 'Game assets'), 'failed', err instanceof Error ? err.message : String(err))
       } finally {
         task.span(0, 1)
       }
@@ -457,15 +470,15 @@ async function runRepair(
 
     // 5. Natives -------------------------------------------------------
     task.throwIfCancelled()
-    task.update('Natives werden erneuert…', 0.82)
-    repairLog(instanceId, 'check', 'Überprüfe native Bibliotheken')
+    task.update(tr('Natives werden erneuert…', 'Renewing natives…'), 0.82)
+    repairLog(instanceId, 'check', tr('Überprüfe native Bibliotheken', 'Checking native libraries'))
     if (versionInUse()) {
-      step('Natives', 'failed', 'Übersprungen: eine andere Instanz mit derselben Version läuft gerade.')
+      step('Natives', 'failed', tr('Übersprungen: eine andere Instanz mit derselben Version läuft gerade.', 'Skipped: another instance with the same version is running right now.'))
     } else {
       try {
         rmSync(paths.natives(versionId), { recursive: true, force: true })
         mkdirSync(paths.natives(versionId), { recursive: true })
-        step('Natives', 'repaired', 'Werden beim nächsten Start neu entpackt')
+        step('Natives', 'repaired', tr('Werden beim nächsten Start neu entpackt', 'Unpacked again on the next start'))
       } catch (err) {
         rethrowIfCancelled(err)
         step('Natives', 'failed', err instanceof Error ? err.message : String(err))
@@ -474,7 +487,7 @@ async function runRepair(
 
     // 6. Content files -------------------------------------------------
     task.throwIfCancelled()
-    task.update('Mods werden geprüft…', 0.86)
+    task.update(tr('Mods werden geprüft…', 'Checking mods…'), 0.86)
 
     let restored = 0
     let removed = 0
@@ -497,7 +510,10 @@ async function runRepair(
         await syncContentWithDisk(instanceId)
       } catch (err) {
         rethrowIfCancelled(err)
-        contentStepError = `Abgleich mit dem Dateisystem fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`
+        contentStepError = tr(
+          `Abgleich mit dem Dateisystem fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
+          `Syncing with the file system failed: ${err instanceof Error ? err.message : String(err)}`
+        )
         return
       }
 
@@ -525,7 +541,7 @@ async function runRepair(
       const current = getInstance(instanceId)
       const survivors = [...current.content]
       contentCount = current.content.length
-      repairLog(instanceId, 'check', `Analysiere ${contentCount} installierte Mods`)
+      repairLog(instanceId, 'check', tr(`Analysiere ${contentCount} installierte Mods`, `Analyzing ${contentCount} installed mods`))
       // What the list looked like before the downloads below, which take
       // seconds to minutes. Used at the end to tell our own changes apart from
       // someone else's.
@@ -568,14 +584,21 @@ async function runRepair(
         repairLog(
           instanceId,
           'warning',
-          `${item.name} ${missing ? 'fehlt' : 'scheint beschädigt zu sein'} (${item.fileName})`
+          tr(
+            `${item.name} ${missing ? 'fehlt' : 'scheint beschädigt zu sein'} (${item.fileName})`,
+            `${item.name} ${missing ? 'is missing' : 'seems to be damaged'} (${item.fileName})`
+          )
         )
 
         if (item.provider === 'local' || !item.projectId) {
           if (missing) {
             survivors.splice(survivors.indexOf(item), 1)
             removed++
-            repairLog(instanceId, 'fix', `${item.name} ist eine lokale Datei ohne bekannte Quelle, Eintrag entfernt`)
+            repairLog(
+              instanceId,
+              'fix',
+              tr(`${item.name} ist eine lokale Datei ohne bekannte Quelle, Eintrag entfernt`, `${item.name} is a local file with no known source, entry removed`)
+            )
           } else {
             // Present but corrupt, with no known source to re-download from:
             // there is nothing here that can be fixed automatically. This
@@ -586,7 +609,10 @@ async function runRepair(
             repairLog(
               instanceId,
               'warning',
-              `${item.name} ist eine lokale Datei ohne bekannte Quelle und lässt sich nicht automatisch reparieren`
+              tr(
+                `${item.name} ist eine lokale Datei ohne bekannte Quelle und lässt sich nicht automatisch reparieren`,
+                `${item.name} is a local file with no known source and cannot be repaired automatically`
+              )
             )
           }
           continue
@@ -609,7 +635,10 @@ async function runRepair(
             repairLog(
               instanceId,
               'warning',
-              `Keine passende Version von ${item.name} für Minecraft ${current.mcVersion} (${current.loader}) gefunden`
+              tr(
+                `Keine passende Version von ${item.name} für Minecraft ${current.mcVersion} (${current.loader}) gefunden`,
+                `No matching version of ${item.name} found for Minecraft ${current.mcVersion} (${current.loader})`
+              )
             )
             continue
           }
@@ -617,7 +646,10 @@ async function runRepair(
           repairLog(
             instanceId,
             'check',
-            `Ersatz für ${item.name} passt zu Minecraft ${current.mcVersion} und ${current.loader}: Version ${version.versionNumber}`
+            tr(
+              `Ersatz für ${item.name} passt zu Minecraft ${current.mcVersion} und ${current.loader}: Version ${version.versionNumber}`,
+              `Replacement for ${item.name} fits Minecraft ${current.mcVersion} and ${current.loader}: version ${version.versionNumber}`
+            )
           )
 
           const target = contentFilePath(instanceId, { ...item, fileName: version.fileName })
@@ -635,7 +667,7 @@ async function runRepair(
               movedAside = true
             }
 
-            repairLog(instanceId, 'fix', `Lade ${version.fileName}`)
+            repairLog(instanceId, 'fix', tr(`Lade ${version.fileName}`, `Downloading ${version.fileName}`))
             await downloadFile(
               {
                 url: version.downloadUrl,
@@ -652,13 +684,13 @@ async function runRepair(
             // is a second, independent look rather than the only one — the
             // point is for the log to say plainly that the new file was
             // checked, not just that a download call returned.
-            repairLog(instanceId, 'verify', `Überprüfe ${version.fileName}`)
+            repairLog(instanceId, 'verify', tr(`Überprüfe ${version.fileName}`, `Checking ${version.fileName}`))
             if (!existsSync(target)) {
-              throw new Error(`${version.fileName} fehlt nach dem Download`)
+              throw new Error(tr(`${version.fileName} fehlt nach dem Download`, `${version.fileName} is missing after the download`))
             }
             const actualHash = await sha1File(target)
             if (version.sha1 && actualHash.toLowerCase() !== version.sha1.toLowerCase()) {
-              throw new Error(`${version.fileName} hat nach dem Download eine falsche Prüfsumme`)
+              throw new Error(tr(`${version.fileName} hat nach dem Download eine falsche Prüfsumme`, `${version.fileName} has a wrong checksum after the download`))
             }
 
             if (movedAside) rmSync(aside, { force: true })
@@ -671,7 +703,7 @@ async function runRepair(
               size: version.size
             }
             restored++
-            repairLog(instanceId, 'success', `${version.fileName} erfolgreich repariert`)
+            repairLog(instanceId, 'success', tr(`${version.fileName} erfolgreich repariert`, `${version.fileName} repaired successfully`))
           } catch (err) {
             if (movedAside && !existsSync(file)) {
               try {
@@ -692,7 +724,7 @@ async function runRepair(
           failed.push(item.name)
           const message = err instanceof Error ? err.message : String(err)
           logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
-          repairLog(instanceId, 'error', `${item.name} konnte nicht repariert werden: ${message}`)
+          repairLog(instanceId, 'error', tr(`${item.name} konnte nicht repariert werden: ${message}`, `${item.name} could not be repaired: ${message}`))
         }
       }
 
@@ -722,7 +754,10 @@ async function runRepair(
         persist({ ...latest, content: merged })
       } catch (err) {
         rethrowIfCancelled(err)
-        contentStepError = `Änderungen konnten nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`
+        contentStepError = tr(
+          `Änderungen konnten nicht gespeichert werden: ${err instanceof Error ? err.message : String(err)}`,
+          `Changes could not be saved: ${err instanceof Error ? err.message : String(err)}`
+        )
       }
     })
     report.repairedFiles += restored
@@ -738,34 +773,45 @@ async function runRepair(
     }
 
     if (contentStepError) {
-      step('Mods & Inhalte', 'failed', contentStepError)
+      step(tr('Mods & Inhalte', 'Mods & content'), 'failed', contentStepError)
     } else {
       const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
       const unresolved = failed.length > 0 || incompatible > 0
       const parts = [
-        ...(duplicatesRemoved > 0 ? [`${duplicatesRemoved} doppelt installierte entfernt`] : []),
-        `${restored} neu geladen`,
-        `${removed} verwaiste Einträge entfernt`,
-        ...(incompatible > 0 ? [`${incompatible} inkompatibel (keine passende Version gefunden)`] : []),
-        ...(outdated > 0 ? [`${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`] : [])
+        ...(duplicatesRemoved > 0 ? [tr(`${duplicatesRemoved} doppelt installierte entfernt`, `${duplicatesRemoved} duplicates removed`)] : []),
+        tr(`${restored} neu geladen`, `${restored} downloaded again`),
+        tr(`${removed} verwaiste Einträge entfernt`, `${removed} orphaned entries removed`),
+        ...(incompatible > 0
+          ? [tr(`${incompatible} inkompatibel (keine passende Version gefunden)`, `${incompatible} incompatible (no matching version found)`)]
+          : []),
+        ...(outdated > 0
+          ? [
+              tr(
+                `${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`,
+                `${outdated} ${outdated === 1 ? 'outdated mod' : 'outdated mods'} found`
+              )
+            ]
+          : [])
       ]
       step(
-        'Mods & Inhalte',
+        tr('Mods & Inhalte', 'Mods & content'),
         unresolved ? 'failed' : changed ? 'repaired' : 'ok',
         failed.length > 0
-          ? `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` +
-            (failed.length > 3 ? ' und weitere' : '')
+          ? tr(
+              `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` + (failed.length > 3 ? ' und weitere' : ''),
+              `${parts.join(', ')}, ${failed.length} failed: ${failed.slice(0, 3).join(', ')}` + (failed.length > 3 ? ' and more' : '')
+            )
           : changed || unresolved
             ? parts.join(', ')
             : outdated > 0
-              ? `${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`
-              : `${contentCount} Dateien in Ordnung`
+              ? tr(`${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`, `${contentCount} files OK, ${parts[parts.length - 1]}`)
+              : tr(`${contentCount} Dateien in Ordnung`, `${contentCount} files OK`)
       )
     }
 
     // 7. Java ----------------------------------------------------------
-    task.update('Java wird geprüft…', 0.95)
-    repairLog(instanceId, 'check', 'Überprüfe Java')
+    task.update(tr('Java wird geprüft…', 'Checking Java…'), 0.95)
+    repairLog(instanceId, 'check', tr('Überprüfe Java', 'Checking Java'))
     try {
       // Re-read rather than the `instance` captured at the very start of this
       // function: a repair can run for minutes, and `instance.settings` is
@@ -795,22 +841,25 @@ async function runRepair(
 
     // 8. Corrupt logs / crash leftovers --------------------------------
     task.throwIfCancelled()
-    task.update('Aufräumen…', 0.99)
+    task.update(tr('Aufräumen…', 'Cleaning up…'), 0.99)
     // Was performed but never reported: the function ran eight steps and the
     // report only ever listed seven, so the user never learned whether
     // anything was swept up or whether the sweep itself failed.
     try {
       const swept = await cleanTempFiles(instanceId)
       step(
-        'Aufräumen',
+        tr('Aufräumen', 'Cleanup'),
         swept > 0 ? 'repaired' : 'ok',
         swept > 0
-          ? `${swept} ${swept === 1 ? 'unterbrochener Download' : 'unterbrochene Downloads'} entfernt`
-          : 'Keine Reste gefunden'
+          ? tr(
+              `${swept} ${swept === 1 ? 'unterbrochener Download' : 'unterbrochene Downloads'} entfernt`,
+              `${swept} ${swept === 1 ? 'interrupted download' : 'interrupted downloads'} removed`
+            )
+          : tr('Keine Reste gefunden', 'No leftovers found')
       )
     } catch (err) {
       rethrowIfCancelled(err)
-      step('Aufräumen', 'failed', err instanceof Error ? err.message : String(err))
+      step(tr('Aufräumen', 'Cleanup'), 'failed', err instanceof Error ? err.message : String(err))
     }
 
     // Computed before the write below, not after: this used to persist
@@ -826,7 +875,9 @@ async function runRepair(
     repairLog(
       instanceId,
       anyFailed ? 'warning' : 'success',
-      anyFailed ? 'Einige Probleme konnten nicht automatisch behoben werden' : 'Reparatur erfolgreich'
+      anyFailed
+        ? tr('Einige Probleme konnten nicht automatisch behoben werden', 'Some problems could not be fixed automatically')
+        : tr('Reparatur erfolgreich', 'Repair successful')
     )
 
     task.update('Reparatur abgeschlossen', 1)

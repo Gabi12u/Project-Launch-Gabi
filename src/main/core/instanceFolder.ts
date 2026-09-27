@@ -23,6 +23,7 @@ import { log } from '../logger'
 import { notify } from '../events'
 import { TaskCancelledError, withTask } from '../tasks'
 import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { tr } from '@shared/i18n'
 
 const logger = log('folder-import')
 
@@ -626,10 +627,10 @@ function looksLikeGameDir(dir: string): boolean {
 
 export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   if (!existsSync(sourceDir) || !statSync(sourceDir).isDirectory()) {
-    throw new Error('Der gewählte Pfad ist kein Ordner.')
+    throw new Error(tr('Der gewählte Pfad ist kein Ordner.', 'The chosen path is not a folder.'))
   }
 
-  const folderName = basename(sourceDir) || 'Importierte Instanz'
+  const folderName = basename(sourceDir) || tr('Importierte Instanz', 'Imported instance')
 
   // 1. Prism / MultiMC / PolyMC ---------------------------------------
   const packFile = join(sourceDir, 'mmc-pack.json')
@@ -650,15 +651,15 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
     const { loader, loaderVersion, mcVersion } = loaderFromComponents(components)
     if (!mcVersion) {
-      throw new Error('In der mmc-pack.json fehlt die Minecraft-Version, der Ordner wurde nicht importiert.')
+      throw new Error(tr('In der mmc-pack.json fehlt die Minecraft-Version, der Ordner wurde nicht importiert.', 'The mmc-pack.json has no Minecraft version, the folder was not imported.'))
     }
     // Both ids become path segments (paths.version(), paths.natives()), so a
     // crafted mmc-pack.json cannot be allowed to smuggle a separator or ".." in.
     if (!isValidVersionString(mcVersion)) {
-      throw new Error('Die Minecraft-Version in der mmc-pack.json ist ungültig.')
+      throw new Error(tr('Die Minecraft-Version in der mmc-pack.json ist ungültig.', 'The Minecraft version in the mmc-pack.json is invalid.'))
     }
     if (loaderVersion && !isValidVersionString(loaderVersion)) {
-      throw new Error('Die Mod-Loader-Version in der mmc-pack.json ist ungültig.')
+      throw new Error(tr('Die Mod-Loader-Version in der mmc-pack.json ist ungültig.', 'The mod loader version in the mmc-pack.json is invalid.'))
     }
 
     // MultiMC wrote "minecraft", Prism writes ".minecraft".
@@ -667,7 +668,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
       .find((path) => existsSync(path))
 
     if (!gameDir) {
-      throw new Error('Im Instanz-Ordner fehlt der Unterordner ".minecraft".')
+      throw new Error(tr('Im Instanz-Ordner fehlt der Unterordner ".minecraft".', 'The instance folder has no ".minecraft" subfolder.'))
     }
 
     const cfg = readInstanceCfg(join(sourceDir, 'instance.cfg'))
@@ -700,10 +701,10 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     const gameDir = join(sourceDir, 'minecraft')
     if (parsed && parsed.mcVersion && existsSync(gameDir)) {
       if (!isValidVersionString(parsed.mcVersion)) {
-        throw new Error('Die Minecraft-Version in der instance.json ist ungültig.')
+        throw new Error(tr('Die Minecraft-Version in der instance.json ist ungültig.', 'The Minecraft version in the instance.json is invalid.'))
       }
       if (parsed.loaderVersion && !isValidVersionString(parsed.loaderVersion)) {
-        throw new Error('Die Mod-Loader-Version in der instance.json ist ungültig.')
+        throw new Error(tr('Die Mod-Loader-Version in der instance.json ist ungültig.', 'The mod loader version in the instance.json is invalid.'))
       }
       return {
         flavour: 'launchgabi',
@@ -724,7 +725,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
   const external: { read: LauncherRead | null; flavour: SourceFlavour; note: string }[] = [
     { read: readCurseForgeInstance(sourceDir), flavour: 'curseforge', note: 'CurseForge' },
     { read: readGdLauncherConfig(sourceDir), flavour: 'gdlauncher', note: 'GDLauncher' },
-    { read: readModrinthProfile(sourceDir), flavour: 'modrinth-app', note: 'der Modrinth App' }
+    { read: readModrinthProfile(sourceDir), flavour: 'modrinth-app', note: tr('der Modrinth App', 'the Modrinth App') }
   ]
   for (const candidate of external) {
     if (!candidate.read) continue
@@ -734,10 +735,10 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
     // inside each reader above, since those already catch and swallow every
     // error to fall through to the next candidate.
     if (!isValidVersionString(candidate.read.mcVersion)) {
-      throw new Error(`Die Minecraft-Version aus ${candidate.note} ist ungültig.`)
+      throw new Error(tr(`Die Minecraft-Version aus ${candidate.note} ist ungültig.`, `The Minecraft version from ${candidate.note} is invalid.`))
     }
     if (candidate.read.loaderVersion && !isValidVersionString(candidate.read.loaderVersion)) {
-      throw new Error(`Die Mod-Loader-Version aus ${candidate.note} ist ungültig.`)
+      throw new Error(tr(`Die Mod-Loader-Version aus ${candidate.note} ist ungültig.`, `The mod loader version from ${candidate.note} is invalid.`))
     }
     return {
       flavour: candidate.flavour,
@@ -758,8 +759,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
   if (!gameDir) {
     throw new Error(
-      'In diesem Ordner wurde keine Instanz erkannt. Erwartet wird ein Prism-/MultiMC-Ordner, ' +
-        'ein Launch-Gabi-Ordner oder ein ".minecraft"-Ordner mit mods/ oder saves/.'
+      tr('In diesem Ordner wurde keine Instanz erkannt. Erwartet wird ein Prism-/MultiMC-Ordner, ein Launch-Gabi-Ordner oder ein ".minecraft"-Ordner mit mods/ oder saves/.', 'No instance was found in this folder. Expected is a Prism/MultiMC folder, a Launch Gabi folder or a ".minecraft" folder with mods/ or saves/.')
     )
   }
 
@@ -782,9 +782,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
   if (!guessed) {
     throw new Error(
-      'Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Das passiert, wenn der ' +
-        'Ordner weder einen "versions"-Unterordner noch eine gespeicherte Welt enthält. Lege die ' +
-        'Instanz von Hand an und kopiere die Dateien anschließend über "Ordner öffnen" hinein.'
+      tr('Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Das passiert, wenn der Ordner weder einen "versions"-Unterordner noch eine gespeicherte Welt enthält. Lege die Instanz von Hand an und kopiere die Dateien anschließend über "Ordner öffnen" hinein.', 'The Minecraft version of this folder could not be determined. This happens when the folder has neither a "versions" subfolder nor a saved world. Create the instance by hand and then copy the files in via "Open folder".')
     )
   }
 
@@ -795,7 +793,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
   return {
     flavour: client?.flavour ?? 'minecraft',
-    name: folderName === '.minecraft' ? 'Importiertes Minecraft' : folderName,
+    name: folderName === '.minecraft' ? tr('Importiertes Minecraft', 'Imported Minecraft') : folderName,
     mcVersion: guessed.mcVersion,
     loader: guessed.loader,
     loaderVersion: guessed.loaderVersion,
@@ -885,14 +883,14 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
     return {
       path: sourceDir,
       kind: 'unknown',
-      sourceLabel: 'Unbekannt',
+      sourceLabel: tr('Unbekannt', 'Unknown'),
       name: basename(sourceDir) || 'Import',
       mcVersion: null,
       loader: null,
       loaderVersion: '',
       versionGuessed: false,
       counts: { mods: 0, resourcePacks: 0, shaderPacks: 0, worlds: 0, configs: 0 },
-      findings: [{ level: 'blocker', title: 'Der gewählte Pfad ist kein Ordner.' }],
+      findings: [{ level: 'blocker', title: tr('Der gewählte Pfad ist kein Ordner.', 'The chosen path is not a folder.') }],
       estimatedBytes: 0,
       canImport: false
     }
@@ -926,24 +924,24 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
   if (detected) {
     findings.push({
       level: 'ok',
-      title: `Als ${FLAVOUR_SOURCE_NAMES[detected.flavour]} erkannt`,
+      title: tr(`Als ${FLAVOUR_SOURCE_NAMES[detected.flavour]} erkannt`, `Recognized as ${FLAVOUR_SOURCE_NAMES[detected.flavour]}`),
       detail: `Minecraft ${detected.mcVersion}${
-        detected.loader !== 'vanilla' ? `, ${detected.loader} ${detected.loaderVersion}`.trimEnd() : ', ohne Mod-Loader'
+        detected.loader !== 'vanilla'
+          ? `, ${detected.loader} ${detected.loaderVersion}`.trimEnd()
+          : tr(', ohne Mod-Loader', ', without mod loader')
       }`
     })
   } else {
     findings.push({
       level: 'blocker',
-      title: 'Der Ordner konnte keinem bekannten Launcher zugeordnet werden',
+      title: tr('Der Ordner konnte keinem bekannten Launcher zugeordnet werden', 'The folder could not be matched to any known launcher'),
       detail: detectionError ?? undefined
     })
     if (anyContent) {
       findings.push({
         level: 'warn',
-        title: 'Es wurden trotzdem Inhalte gefunden',
-        detail:
-          'Ein Import ist möglich, die Minecraft-Version und der Mod-Loader müssen dann aber von Hand ' +
-          'gewählt werden.'
+        title: tr('Es wurden trotzdem Inhalte gefunden', 'Content was found anyway'),
+        detail: tr('Ein Import ist möglich, die Minecraft-Version und der Mod-Loader müssen dann aber von Hand gewählt werden.', 'An import is possible, but the Minecraft version and mod loader then have to be chosen by hand.')
       })
     }
   }
@@ -956,33 +954,31 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
   if (versionGuessed) {
     findings.push({
       level: 'warn',
-      title: 'Die Minecraft-Version wurde geschätzt',
-      detail:
-        'Dieser Ordner führt keine eigene Beschreibung mit, die Version stammt daher aus dem ' +
-        'Ordnerinhalt. Prüfe sie, bevor du importierst.'
+      title: tr('Die Minecraft-Version wurde geschätzt', 'The Minecraft version was estimated'),
+      detail: tr('Dieser Ordner führt keine eigene Beschreibung mit, die Version stammt daher aus dem Ordnerinhalt. Prüfe sie, bevor du importierst.', 'This folder has no description of its own, so the version comes from its contents. Check it before you import.')
     })
   }
 
   if (gameDir && counts.mods > 0 && detected?.loader === 'vanilla') {
     findings.push({
       level: 'warn',
-      title: `${counts.mods} Mods gefunden, aber kein Mod-Loader erkannt`,
-      detail: 'Ohne Loader startet Minecraft die Mods nicht. Der Loader lässt sich nachträglich setzen.'
+      title: tr(`${counts.mods} Mods gefunden, aber kein Mod-Loader erkannt`, `${counts.mods} mods found, but no mod loader recognized`),
+      detail: tr('Ohne Loader startet Minecraft die Mods nicht. Der Loader lässt sich nachträglich setzen.', 'Without a loader Minecraft does not load the mods. The loader can be set afterwards.')
     })
   }
 
   if (gameDir && !anyContent) {
     findings.push({
       level: 'blocker',
-      title: 'In diesem Ordner wurden keine Mods, Welten oder Konfigurationen gefunden',
-      detail: 'Es gäbe nichts zu übernehmen.'
+      title: tr('In diesem Ordner wurden keine Mods, Welten oder Konfigurationen gefunden', 'No mods, worlds or configs were found in this folder'),
+      detail: tr('Es gäbe nichts zu übernehmen.', 'There would be nothing to take over.')
     })
   }
 
   return {
     path: sourceDir,
     kind: detected?.flavour ?? 'unknown',
-    sourceLabel: detected ? FLAVOUR_SOURCE_NAMES[detected.flavour] : 'Unbekannt',
+    sourceLabel: detected ? FLAVOUR_SOURCE_NAMES[detected.flavour] : tr('Unbekannt', 'Unknown'),
     name: detected?.name ?? basename(sourceDir) ?? 'Import',
     mcVersion: detected?.mcVersion ?? null,
     loader: detected?.loader ?? null,
@@ -1137,15 +1133,32 @@ async function copyGameFiles(
   return { files, skippedLinks }
 }
 
+// Getters, since this module loads before the language is set.
 const FLAVOUR_LABELS: Record<SourceFlavour, string> = {
-  prism: 'Aus Prism/MultiMC übernommen',
-  launchgabi: 'Aus einem Launch-Gabi-Ordner übernommen',
-  curseforge: 'Aus der CurseForge-App übernommen',
-  gdlauncher: 'Aus GDLauncher übernommen',
-  'modrinth-app': 'Aus der Modrinth-App übernommen',
-  lunar: 'Aus Lunar Client übernommen',
-  feather: 'Aus Feather Client übernommen',
-  minecraft: 'Aus einem Minecraft-Ordner übernommen'
+  get prism() {
+    return tr('Aus Prism/MultiMC übernommen', 'Taken over from Prism/MultiMC')
+  },
+  get launchgabi() {
+    return tr('Aus einem Launch-Gabi-Ordner übernommen', 'Taken over from a Launch Gabi folder')
+  },
+  get curseforge() {
+    return tr('Aus der CurseForge-App übernommen', 'Taken over from the CurseForge app')
+  },
+  get gdlauncher() {
+    return tr('Aus GDLauncher übernommen', 'Taken over from GDLauncher')
+  },
+  get 'modrinth-app'() {
+    return tr('Aus der Modrinth-App übernommen', 'Taken over from the Modrinth App')
+  },
+  get lunar() {
+    return tr('Aus Lunar Client übernommen', 'Taken over from Lunar Client')
+  },
+  get feather() {
+    return tr('Aus Feather Client übernommen', 'Taken over from Feather Client')
+  },
+  get minecraft() {
+    return tr('Aus einem Minecraft-Ordner übernommen', 'Taken over from a Minecraft folder')
+  },
 }
 
 /** Short source names for the analysis screen, without the "übernommen". */
@@ -1157,7 +1170,9 @@ const FLAVOUR_SOURCE_NAMES: Record<SourceFlavour, string> = {
   'modrinth-app': 'Modrinth App',
   lunar: 'Lunar Client',
   feather: 'Feather Client',
-  minecraft: 'Minecraft-Ordner'
+  get minecraft() {
+    return tr('Minecraft-Ordner', 'Minecraft folder')
+  },
 }
 
 /**
@@ -1187,15 +1202,15 @@ export async function importInstanceFolder(
     icon: '📥'
   })
 
-  void withTask(`${name} wird importiert`, 'Dateien werden kopiert…', instance.id, async (task) => {
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Dateien werden kopiert…', 'Copying files…'), instance.id, async (task) => {
     ensureInstanceLayout(instance.id)
     const target = paths.gameDir(instance.id)
 
-    task.update('Welten, Mods und Konfigurationen werden kopiert…', null)
+    task.update(tr('Welten, Mods und Konfigurationen werden kopiert…', 'Copying worlds, mods and configs…'), null)
     const { files: copied, skippedLinks } = await copyGameFiles(
       detected.gameDir,
       target,
-      (n) => task.update(`${n} Dateien kopiert…`, null),
+      (n) => task.update(tr(`${n} Dateien kopiert…`, `${n} files copied…`), null),
       () => task.throwIfCancelled()
     )
     logger.info(
@@ -1203,7 +1218,7 @@ export async function importInstanceFolder(
         (skippedLinks > 0 ? `, ${skippedLinks} Verknüpfung(en) außerhalb des Ordners übersprungen` : '')
     )
 
-    task.update('Mods werden erfasst…', 0.9)
+    task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.9)
     await syncContentWithDisk(instance.id)
 
     // The base setup (Minecraft itself) that `createInstance` started in the
@@ -1213,17 +1228,23 @@ export async function importInstanceFolder(
     if (!baseSetupOk) {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
       throw new Error(
-        'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+        tr('Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.', 'Minecraft itself could not be set up. Use "Repair" to try again.')
       )
     }
 
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update(
-      `Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})` +
-        (skippedLinks > 0
-          ? `, ${skippedLinks} ${skippedLinks === 1 ? 'Verknüpfung zeigte' : 'Verknüpfungen zeigten'} nach ` +
-            `außerhalb des Ordners und wurde${skippedLinks === 1 ? '' : 'n'} übersprungen`
-          : ''),
+      tr(
+        `Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})` +
+          (skippedLinks > 0
+            ? `, ${skippedLinks} ${skippedLinks === 1 ? 'Verknüpfung zeigte' : 'Verknüpfungen zeigten'} nach ` +
+              `außerhalb des Ordners und wurde${skippedLinks === 1 ? '' : 'n'} übersprungen`
+            : ''),
+        `Import finished (${copied} ${copied === 1 ? 'file' : 'files'})` +
+          (skippedLinks > 0
+            ? `, ${skippedLinks} ${skippedLinks === 1 ? 'link pointed' : 'links pointed'} outside the folder and ${skippedLinks === 1 ? 'was' : 'were'} skipped`
+            : '')
+      ),
       1
     )
   }).catch((err) => {
@@ -1240,8 +1261,11 @@ export async function importInstanceFolder(
         logger.warn(`Abgebrochener Ordner-Import von ${instance.id} konnte nicht gelöscht werden:`, deleteErr)
         notify(
           'warning',
-          'Import abgebrochen',
-          `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere den Ordner erneut.`,
+          tr('Import abgebrochen', 'Import cancelled'),
+          tr(
+            `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere den Ordner erneut.`,
+            `"${name}" was cancelled and is incomplete. Delete the instance and import the folder again.`
+          ),
           { route: `/instances/${instance.id}` }
         )
       }
