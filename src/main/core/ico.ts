@@ -1,3 +1,4 @@
+import { tr } from '@shared/i18n'
 /**
  * Minimal ICO writer.
  *
@@ -33,7 +34,7 @@ export function buildIco(sources: IcoSource[]): Buffer {
     .filter((s) => isPng(s.png) && s.size > 0 && s.size <= 256)
     .sort((a, b) => b.size - a.size)
 
-  if (images.length === 0) throw new Error('Keine Bilddaten für das Icon')
+  if (images.length === 0) throw new Error(tr('Keine Bilddaten für das Icon', 'No image data for the icon'))
 
   const header = Buffer.alloc(HEADER_SIZE)
   header.writeUInt16LE(0, 0) // reserved
@@ -66,7 +67,7 @@ export function buildIco(sources: IcoSource[]): Buffer {
 /** Decodes a `data:image/png;base64,…` URL into raw bytes. */
 export function decodeDataUrl(dataUrl: string): Buffer {
   const comma = dataUrl.indexOf(',')
-  if (comma === -1) throw new Error('Ungültige Bilddaten')
+  if (comma === -1) throw new Error(tr('Ungültige Bilddaten', 'Invalid image data'))
   return Buffer.from(dataUrl.slice(comma + 1), 'base64')
 }
 

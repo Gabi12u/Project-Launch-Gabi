@@ -8,6 +8,7 @@ import { paths } from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { TaskCancelledError, type Task } from '../tasks'
+import { tr } from '@shared/i18n'
 
 const logger = log('net')
 
@@ -57,7 +58,7 @@ function errorMessageOf(status: number, url: string, body: string): string {
   } catch {
     // not a JSON error body
   }
-  return `HTTP ${status} für ${url}`
+  return tr(`HTTP ${status} für ${url}`, `HTTP ${status} for ${url}`)
 }
 
 /** Only the plain seconds form of `Retry-After`; the HTTP-date form is rare enough here not to bother with. */
@@ -182,7 +183,7 @@ async function fetchFollowingSafeRedirects(url: string, init: RequestInit): Prom
   for (let hop = 0; hop <= 5; hop++) {
     const parsed = new URL(current)
     if (isPrivateAddress(parsed.hostname)) {
-      throw new Error(`Adresse "${parsed.hostname}" ist eine lokale/interne Adresse und wird abgelehnt.`)
+      throw new Error(tr(`Adresse "${parsed.hostname}" ist eine lokale/interne Adresse und wird abgelehnt.`, `Address "${parsed.hostname}" is a local/internal address and is rejected.`))
     }
 
     const res = await fetch(current, { ...init, redirect: 'manual' })
@@ -192,7 +193,7 @@ async function fetchFollowingSafeRedirects(url: string, init: RequestInit): Prom
 
     current = new URL(location, current).toString()
   }
-  throw new Error(`Zu viele Umleitungen für ${url}.`)
+  throw new Error(tr(`Zu viele Umleitungen für ${url}.`, `Too many redirects for ${url}.`))
 }
 
 /**
@@ -407,7 +408,7 @@ async function fetchToFile(
       }
       throw new HttpError(res.status, item.url, body)
     }
-    if (!res.body) throw new Error(`Leere Antwort für ${item.url}`)
+    if (!res.body) throw new Error(tr(`Leere Antwort für ${item.url}`, `Empty response for ${item.url}`))
 
     const hash = createHash('sha1')
     const source = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0])
@@ -424,12 +425,15 @@ async function fetchToFile(
     if (item.sha1) {
       const actual = hash.digest('hex')
       if (actual !== item.sha1.toLowerCase()) {
-        throw new Error(`Prüfsumme falsch für ${item.url} (erwartet ${item.sha1}, erhalten ${actual})`)
+        throw new Error(tr(`Prüfsumme falsch für ${item.url} (erwartet ${item.sha1}, erhalten ${actual})`, `Wrong checksum for ${item.url} (expected ${item.sha1}, got ${actual})`))
       }
     } else if (item.size !== undefined && attemptBytes !== item.size) {
       // Without a hash the length is the only integrity signal available.
       throw new Error(
-        `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${item.size} Bytes)`
+        tr(
+          `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${item.size} Bytes)`,
+          `Incomplete download of ${item.url} (${attemptBytes} instead of ${item.size} bytes)`
+        )
       )
     } else if (item.size === undefined) {
       // Neither hash nor expected size: loader libraries resolved through a
@@ -442,7 +446,10 @@ async function fetchToFile(
       const declared = Number(res.headers.get('content-length'))
       if (Number.isFinite(declared) && declared > 0 && attemptBytes !== declared) {
         throw new Error(
-          `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${declared} Bytes)`
+          tr(
+            `Unvollständiger Download von ${item.url} (${attemptBytes} statt ${declared} Bytes)`,
+            `Incomplete download of ${item.url} (${attemptBytes} instead of ${declared} bytes)`
+          )
         )
       }
     }
@@ -539,7 +546,7 @@ export async function downloadFile(
   // host or a checksum mismatch tells the user what to do, the bound alone
   // tells them nothing.
   if (waitedError !== undefined) throw waitedError
-  throw new Error(`Download für ${item.path} kam nicht zum Zug`)
+  throw new Error(tr(`Download für ${item.path} kam nicht zum Zug`, `Download for ${item.path} never ran`))
 }
 
 function formatBytes(bytes: number): string {
@@ -573,7 +580,7 @@ export async function downloadAll(
   items: DownloadItem[],
   options: DownloadAllOptions = {}
 ): Promise<void> {
-  const { task, label = 'Lade Dateien', onFile, onError } = options
+  const { task, label = tr('Lade Dateien', 'Downloading files'), onFile, onError } = options
   // `Math.max(1, NaN)` is NaN, and a NaN worker count builds an empty pool:
   // the batch resolved immediately, reporting every download as done without a
   // single byte transferred.
@@ -605,7 +612,7 @@ export async function downloadAll(
   }
 
   if (pending.length === 0) {
-    task?.update(`${label}: nichts zu tun`, 1)
+    task?.update(tr(`${label}: nichts zu tun`, `${label}: nothing to do`), 1)
     return
   }
 

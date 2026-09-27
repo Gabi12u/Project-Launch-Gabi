@@ -6,6 +6,7 @@ import { fetchJson, fetchJsonCached } from '../core/net'
 import type { VersionJson } from '../core/mojang'
 import { log } from '../logger'
 import type { Task } from '../tasks'
+import { tr } from '@shared/i18n'
 
 const logger = log('fabric')
 
@@ -82,7 +83,7 @@ export async function listFabricLikeVersions(
   // repeating the crash long after the API recovered. Now caught explicitly
   // and treated the same as any other failed lookup, not a silent empty list.
   if (!Array.isArray(entries)) {
-    throw new Error(`Unerwartete Antwort der ${loader}-API für ${mcVersion}`)
+    throw new Error(tr(`Unerwartete Antwort der ${loader}-API für ${mcVersion}`, `Unexpected response from the ${loader} API for ${mcVersion}`))
   }
 
   // Neither API documents the array's order, and Quilt's in particular is
@@ -134,7 +135,13 @@ export async function installFabricLike(
   loaderVersion: string,
   task?: Task
 ): Promise<string> {
-  task?.update(`${loader === 'fabric' ? 'Fabric' : 'Quilt'} ${loaderVersion} wird eingerichtet…`, null)
+  task?.update(
+    tr(
+      `${loader === 'fabric' ? 'Fabric' : 'Quilt'} ${loaderVersion} wird eingerichtet…`,
+      `Setting up ${loader === 'fabric' ? 'Fabric' : 'Quilt'} ${loaderVersion}…`
+    ),
+    null
+  )
 
   const url =
     `${ENDPOINTS[loader]}/versions/loader/${encodeURIComponent(mcVersion)}/` +
@@ -158,6 +165,6 @@ export async function resolveLatestFabricLike(
 ): Promise<string> {
   const versions = await listFabricLikeVersions(loader, mcVersion)
   const stable = versions.find((v) => v.stable) ?? versions[0]
-  if (!stable) throw new Error(`Für Minecraft ${mcVersion} gibt es keine ${loader}-Version`)
+  if (!stable) throw new Error(tr(`Für Minecraft ${mcVersion} gibt es keine ${loader}-Version`, `There is no ${loader} version for Minecraft ${mcVersion}`))
   return stable.version
 }

@@ -6,6 +6,7 @@ import { paths, safeJoin } from '../paths'
 import { downloadAll, downloadFile, fetchJsonCached, type DownloadItem } from './net'
 import type { Task } from '../tasks'
 import { log } from '../logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('mojang')
 
@@ -232,11 +233,14 @@ export async function loadVersionJson(
   // stack overflow rather than a usable error.
   if (seen.has(versionId)) {
     throw new Error(
-      `Zirkuläre inheritsFrom-Kette in der Versionsdefinition: ${[...seen, versionId].join(' -> ')}`
+      tr(
+        `Zirkuläre inheritsFrom-Kette in der Versionsdefinition: ${[...seen, versionId].join(' -> ')}`,
+        `Circular inheritsFrom chain in the version definition: ${[...seen, versionId].join(' -> ')}`
+      )
     )
   }
   if (seen.size > 16) {
-    throw new Error(`inheritsFrom-Kette ist zu tief verschachtelt (${[...seen].join(' -> ')})`)
+    throw new Error(tr(`inheritsFrom-Kette ist zu tief verschachtelt (${[...seen].join(' -> ')})`, `inheritsFrom chain is nested too deeply (${[...seen].join(' -> ')})`))
   }
 
   const file = join(paths.version(versionId), `${versionId}.json`)
@@ -247,7 +251,7 @@ export async function loadVersionJson(
   } else {
     const manifest = await getVersionManifest()
     const entry = manifest.versions.find((v) => v.id === versionId)
-    if (!entry) throw new Error(`Minecraft-Version ${versionId} ist unbekannt`)
+    if (!entry) throw new Error(tr(`Minecraft-Version ${versionId} ist unbekannt`, `Minecraft version ${versionId} is unknown`))
     // Routed through downloadFile so the manifest's own sha1 is actually
     // checked. Before this, a tampered redirect or a compromised mirror
     // could hand back a version JSON that pointed libraries and the client
@@ -339,7 +343,7 @@ function mavenUrl(base: string, relative: string): string {
     logger.warn(`Bibliothek ohne Prüfsumme wird über HTTPS statt HTTP geladen: ${url}`)
     return url.replace(/^http:\/\//i, 'https://')
   }
-  throw new Error(`Bibliothek verweist auf ein unerwartetes Protokoll: ${url}`)
+  throw new Error(tr(`Bibliothek verweist auf ein unerwartetes Protokoll: ${url}`, `Library points to an unexpected protocol: ${url}`))
 }
 
 export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
@@ -484,10 +488,10 @@ export async function installVersion(
   // `within` nests, so this keeps whatever slice the caller reserved for us
   // instead of taking over the whole bar.
   if (task) {
-    await task.within(0, 0.35, () => downloadAll(items, { task, label: 'Minecraft-Dateien' }))
+    await task.within(0, 0.35, () => downloadAll(items, { task, label: tr('Minecraft-Dateien', 'Minecraft files') }))
     await task.within(0.35, 1, () => installAssets(version, task))
   } else {
-    await downloadAll(items, { label: 'Minecraft-Dateien' })
+    await downloadAll(items, { label: tr('Minecraft-Dateien', 'Minecraft files') })
     await installAssets(version)
   }
 }
@@ -515,7 +519,7 @@ export async function installAssets(version: VersionJson, task?: Task): Promise<
     // The hash is both the URL and the file name on disk, so a crafted index
     // could otherwise steer the write out of the objects folder.
     if (!ASSET_HASH.test(obj.hash)) {
-      throw new Error(`Ungültiger Asset-Hash im Index "${version.assetIndex?.id}": "${obj.hash}"`)
+      throw new Error(tr(`Ungültiger Asset-Hash im Index "${version.assetIndex?.id}": "${obj.hash}"`, `Invalid asset hash in index "${version.assetIndex?.id}": "${obj.hash}"`))
     }
     return {
       url: `${RESOURCES_BASE}/${obj.hash.slice(0, 2)}/${obj.hash}`,
@@ -525,7 +529,7 @@ export async function installAssets(version: VersionJson, task?: Task): Promise<
     }
   })
 
-  await downloadAll(items, { task, label: 'Spiel-Assets' })
+  await downloadAll(items, { task, label: tr('Spiel-Assets', 'Game assets') })
   logger.info(`Assets für Index ${version.assetIndex.id} vollständig (${objects.length} Objekte)`)
 }
 

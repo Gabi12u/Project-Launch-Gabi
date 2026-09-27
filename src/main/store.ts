@@ -6,6 +6,7 @@ import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/d
 import type { Account, LauncherSettings } from '@shared/types'
 import { log } from './logger'
 import { notify } from './events'
+import { tr } from '@shared/i18n'
 
 const logger = log('store')
 
@@ -59,8 +60,11 @@ export function readJson<T>(file: string, fallback: T, quarantine = false): T {
       renameSync(file, corrupted)
       notify(
         'warning',
-        'Datei beschädigt',
-        `Die Datei ${basename(file)} war beschädigt und wurde als ${basename(corrupted)} beiseitegelegt.`
+        tr('Datei beschädigt', 'File damaged'),
+        tr(
+          `Die Datei ${basename(file)} war beschädigt und wurde als ${basename(corrupted)} beiseitegelegt.`,
+          `The file ${basename(file)} was damaged and was set aside as ${basename(corrupted)}.`
+        )
       )
     } catch (renameErr) {
       logger.warn(`Konnte ${file} nicht beiseitelegen:`, renameErr)
@@ -215,7 +219,7 @@ function assertDirectoryUsable(dir: string): void {
     unlinkSync(probe)
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
-    throw new Error(`Der gewählte Ordner kann nicht verwendet werden: ${reason}`)
+    throw new Error(tr(`Der gewählte Ordner kann nicht verwendet werden: ${reason}`, `The chosen folder cannot be used: ${reason}`))
   }
 }
 

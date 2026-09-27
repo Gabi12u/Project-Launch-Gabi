@@ -9,6 +9,7 @@ import type {
 import * as modrinth from './modrinth'
 import * as curseforge from './curseforge'
 import { log } from '../logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('providers')
 
@@ -30,7 +31,7 @@ export async function searchAll(query: SearchQuery): Promise<SearchResponse> {
           if (!curseforge.hasApiKey()) {
             errors.push({
               provider: 'curseforge',
-              message: 'Kein CurseForge-API-Schlüssel hinterlegt.'
+              message: tr('Kein CurseForge-API-Schlüssel hinterlegt.', 'No CurseForge API key set.')
             })
             return { items: [], total: 0 }
           }

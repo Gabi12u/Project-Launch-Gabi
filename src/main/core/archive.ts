@@ -22,6 +22,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { safeJoin } from '../paths'
 import { log } from '../logger'
 import { TaskCancelledError } from '../tasks'
+import { tr } from '@shared/i18n'
 
 const logger = log('archive')
 
@@ -42,7 +43,10 @@ const MAX_ENTRY_SIZE = 1024 * 1024 * 1024
 export function assertReasonableSize(entry: { header: { size: number }; entryName: string }): void {
   if (entry.header.size > MAX_ENTRY_SIZE) {
     throw new Error(
-      `${entry.entryName} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`
+      tr(
+        `${entry.entryName} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`,
+        `${entry.entryName} unpacks to more than ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, rejected.`
+      )
     )
   }
 }
@@ -60,7 +64,7 @@ const MAX_METADATA_SIZE = 32 * 1024 * 1024
 
 function assertReasonableMetadataSize(entry: { header: { size: number }; entryName: string }): void {
   if (entry.header.size > MAX_METADATA_SIZE) {
-    throw new Error(`Die Datei "${entry.entryName}" im Archiv ist unplausibel groß.`)
+    throw new Error(tr(`Die Datei "${entry.entryName}" im Archiv ist unplausibel groß.`, `The file "${entry.entryName}" in the archive is implausibly large.`))
   }
 }
 
@@ -81,7 +85,7 @@ function assertReasonableArchive(
 ): void {
   if (entries.length > MAX_ARCHIVE_ENTRIES) {
     throw new Error(
-      `${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`
+      tr(`${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`, `${archivePath} contains more than ${MAX_ARCHIVE_ENTRIES} entries, rejected.`)
     )
   }
   let total = 0
@@ -413,7 +417,7 @@ export async function zipFolder(
     // `safeJoin` guards against again on the way back in during a restore.
     if (rel === '..' || rel.startsWith('../')) {
       logger.warn(`Überspringe Eintrag außerhalb des Sicherungsordners: ${rel}`)
-      options.onSkip?.(rel, new Error('Pfad liegt außerhalb des Sicherungsordners'))
+      options.onSkip?.(rel, new Error(tr('Pfad liegt außerhalb des Sicherungsordners', 'Path is outside the backup folder')))
       continue
     }
     const entryName = options.prefix ? `${options.prefix}/${rel}` : rel
@@ -561,7 +565,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
     // traversal the '..'-segment filter below never sees because it is never
     // split out into a segment of its own.
     if (name.includes('\\') || name.includes(':')) {
-      throw new Error(`Ungültiger Pfad im Archiv: "${name}"`)
+      throw new Error(tr(`Ungültiger Pfad im Archiv: "${name}"`, `Invalid path in archive: "${name}"`))
     }
     const dest = join(targetDir, ...name.split('/').filter((p) => p && p !== '..'))
 
@@ -630,7 +634,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           entryCount++
           if (entryCount > MAX_ARCHIVE_ENTRIES) {
             throw new Error(
-              `${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`
+              tr(`${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`, `${archivePath} contains more than ${MAX_ARCHIVE_ENTRIES} entries, rejected.`)
             )
           }
 
@@ -641,7 +645,10 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           // size straight into memory with nothing looking at it first.
           if (size > MAX_ENTRY_SIZE) {
             throw new Error(
-              `${fullPath} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`
+              tr(
+                `${fullPath} entpackt auf mehr als ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, abgelehnt.`,
+                `${fullPath} unpacks to more than ${Math.round(MAX_ENTRY_SIZE / 1024 / 1024)} MB, rejected.`
+              )
             )
           }
           totalSize += size

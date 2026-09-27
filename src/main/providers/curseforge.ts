@@ -10,6 +10,7 @@ import type {
 import { fetchJson } from '../core/net'
 import { getSettings } from '../store'
 import { log } from '../logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('curseforge')
 
@@ -51,8 +52,7 @@ const SORT_FIELD: Record<SearchQuery['sort'], number> = {
 export class MissingApiKeyError extends Error {
   constructor() {
     super(
-      'Für CurseForge wird ein API-Schlüssel benötigt. Du kannst ihn kostenlos unter ' +
-        'console.curseforge.com erstellen und in den Einstellungen eintragen.'
+      tr('Für CurseForge wird ein API-Schlüssel benötigt. Du kannst ihn kostenlos unter console.curseforge.com erstellen und in den Einstellungen eintragen.', 'CurseForge needs an API key. You can create one for free at console.curseforge.com and enter it in the settings.')
     )
     this.name = 'MissingApiKeyError'
   }

@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import { getSettings } from './store'
+import { tr } from '@shared/i18n'
 
 /**
  * All launcher data lives under one root so it can be moved or backed up in
@@ -68,21 +69,21 @@ export function safeJoin(root: string, relative: string): string {
   // would quietly turn "/etc/passwd" into "<root>/etc/passwd" — not an escape,
   // but not what the archive asked for either, so it is refused.
   if (normalised.startsWith('/')) {
-    throw new Error(`Absoluter Pfad im Archiv ist nicht erlaubt: "${relative}"`)
+    throw new Error(tr(`Absoluter Pfad im Archiv ist nicht erlaubt: "${relative}"`, `Absolute path in archive is not allowed: "${relative}"`))
   }
 
   const parts = normalised.split('/').filter((part) => part.length > 0 && part !== '.')
 
   if (parts.length === 0) {
-    throw new Error(`Ungültiger Pfad im Archiv: "${relative}"`)
+    throw new Error(tr(`Ungültiger Pfad im Archiv: "${relative}"`, `Invalid path in archive: "${relative}"`))
   }
   for (const part of parts) {
     if (part === '..') {
-      throw new Error(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`)
+      throw new Error(tr(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`, `Path points outside the target folder: "${relative}"`))
     }
     // "C:", "\\server" and NTFS alternate data streams.
     if (/^[a-z]:$/i.test(part) || part.includes(':')) {
-      throw new Error(`Absoluter Pfad im Archiv ist nicht erlaubt: "${relative}"`)
+      throw new Error(tr(`Absoluter Pfad im Archiv ist nicht erlaubt: "${relative}"`, `Absolute path in archive is not allowed: "${relative}"`))
     }
   }
 
@@ -101,7 +102,7 @@ export function safeJoin(root: string, relative: string): string {
   // write rejected.
   const rootWithSep = resolvedRoot.endsWith(sep) ? resolvedRoot : resolvedRoot + sep
   if (!resolvedTarget.startsWith(rootWithSep)) {
-    throw new Error(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`)
+    throw new Error(tr(`Pfad zeigt aus dem Zielordner heraus: "${relative}"`, `Path points outside the target folder: "${relative}"`))
   }
   return target
 }
@@ -123,7 +124,7 @@ export function safeJoin(root: string, relative: string): string {
 export function contentFileName(fileName: string): string {
   const safe = basename(fileName.replace(/\\/g, '/'))
   if (!safe || safe === '.' || safe === '..') {
-    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+    throw new Error(tr(`Ungültiger Dateiname: "${fileName}"`, `Invalid file name: "${fileName}"`))
   }
   // A ':' turns an otherwise ordinary looking name into an NTFS alternate
   // data stream ("mod.jar:payload.exe"), and a control character breaks
@@ -131,14 +132,14 @@ export function contentFileName(fileName: string): string {
   // it by Windows' own file APIs, so "mod.jar" and "mod.jar." would end up as
   // the exact same file on disk without this being caught here first.
   if (/[\x00-\x1f\x7f:]/.test(safe) || safe.endsWith('.') || safe.endsWith(' ')) {
-    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+    throw new Error(tr(`Ungültiger Dateiname: "${fileName}"`, `Invalid file name: "${fileName}"`))
   }
   // A reserved device name stays reserved with any extension attached
   // ("CON.jar" fails exactly like "CON" does), so only the part before the
   // first dot is checked against the list `sanitizeVersionId` already uses.
   const stem = safe.slice(0, safe.indexOf('.') === -1 ? safe.length : safe.indexOf('.'))
   if (RESERVED_WINDOWS_NAMES.has(stem.toLowerCase())) {
-    throw new Error(`Ungültiger Dateiname: "${fileName}"`)
+    throw new Error(tr(`Ungültiger Dateiname: "${fileName}"`, `Invalid file name: "${fileName}"`))
   }
   return safe
 }
@@ -242,11 +243,11 @@ export function contentDir(instanceId: string, type: string): string {
  */
 export function assertWorldExists(instanceId: string, world: string): void {
   if (!world || world.includes('/') || world.includes('\\') || world === '.' || world === '..') {
-    throw new Error(`Ungültiger Weltname: "${world}"`)
+    throw new Error(tr(`Ungültiger Weltname: "${world}"`, `Invalid world name: "${world}"`))
   }
   const dir = join(paths.saves(instanceId), world)
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
-    throw new Error(`Die Welt "${world}" wurde nicht gefunden.`)
+    throw new Error(tr(`Die Welt "${world}" wurde nicht gefunden.`, `The world "${world}" was not found.`))
   }
 }
 

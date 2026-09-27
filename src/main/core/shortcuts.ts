@@ -5,6 +5,7 @@ import { paths, RESERVED_WINDOWS_NAMES } from '../paths'
 import { log } from '../logger'
 import { getInstance } from './instances'
 import { icoFromDataUrls } from './ico'
+import { tr } from '@shared/i18n'
 
 const logger = log('shortcuts')
 
@@ -185,13 +186,16 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
     const ok = shell.writeShortcutLink(linkPath, 'create', {
       target,
       args,
-      description: `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
+      description: tr(
+        `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
+        `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) via Launch Gabi`
+      ),
       cwd: app.getAppPath(),
       icon,
       iconIndex: 0
     })
 
-    if (!ok) throw new Error('Windows hat das Anlegen der Verknüpfung abgelehnt.')
+    if (!ok) throw new Error(tr('Windows hat das Anlegen der Verknüpfung abgelehnt.', 'Windows refused to create the shortcut.'))
     logger.info(`Verknüpfung erstellt: ${linkPath} (Icon: ${icon})`)
     return linkPath
   }
@@ -203,7 +207,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
       '[Desktop Entry]',
       'Type=Application',
       `Name=${fileName}`,
-      `Comment=${singleLine(instance.name)} - Minecraft ${instance.mcVersion}`,
+      `Comment=${singleLine(instance.name)}: Minecraft ${instance.mcVersion}`,
       `Exec="${target}" ${args}`,
       ...(iconFile ? [`Icon=${iconFile}`] : []),
       'Terminal=false',

@@ -3,6 +3,7 @@ import { EVENTS } from '@shared/ipc'
 import type { TaskProgress } from '@shared/types'
 import { emit } from './events'
 import { log } from './logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('tasks')
 
@@ -25,7 +26,7 @@ function forget(id: string): void {
 
 export class TaskCancelledError extends Error {
   constructor() {
-    super('Vorgang abgebrochen')
+    super(tr('Vorgang abgebrochen', 'Task cancelled'))
     this.name = 'TaskCancelledError'
   }
 }
@@ -176,7 +177,7 @@ export function cancelTask(id: string): void {
   // result, so a cancel click that lands just after it completed would
   // otherwise relabel it "Wird abgebrochen…" while it still reads as done.
   if (task && task.state === 'running') {
-    task.detail = 'Wird abgebrochen…'
+    task.detail = tr('Wird abgebrochen…', 'Cancelling…')
     task.updatedAt = Date.now()
     emit(EVENTS.taskUpdate, { ...task })
   }

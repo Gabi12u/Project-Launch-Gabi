@@ -29,6 +29,7 @@ import { join } from 'node:path'
 import { app } from 'electron'
 import { paths } from '../paths'
 import { log } from '../logger'
+import { tr } from '@shared/i18n'
 
 const logger = log('startscreen')
 
@@ -261,7 +262,7 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
           // exact version, not built to span several versions.
           min_format: format,
           max_format: format,
-          description: 'Launch Gabi, eigene Startseite (Beta)'
+          description: tr('Launch Gabi, eigene Startseite (Beta)', 'Launch Gabi, custom title screen (beta)')
         }
       },
       null,
@@ -276,7 +277,7 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
     // forever, with nothing anywhere to notice it.
     const rewritten = zip.getEntry('pack.mcmeta')?.getData().toString('utf8')
     if (rewritten !== mcmetaJson) {
-      throw new Error('pack.mcmeta wurde nicht wie erwartet aktualisiert')
+      throw new Error(tr('pack.mcmeta wurde nicht wie erwartet aktualisiert', 'pack.mcmeta was not updated as expected'))
     }
 
     // Written to a temp file in the same folder and renamed over the target:

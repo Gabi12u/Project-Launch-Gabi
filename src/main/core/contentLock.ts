@@ -1,3 +1,4 @@
+import { tr } from '@shared/i18n'
 /**
  * Marks instances whose content folder is being rewritten right now.
  *
@@ -44,7 +45,7 @@ export function unmarkCopying(instanceId: string): void {
 /** Thrown by a content mutation while `duplicateInstance` is still copying this instance's folder. */
 export function assertNotCopying(instanceId: string): void {
   if (copying.has(instanceId)) {
-    throw new Error('Die Instanz wird gerade kopiert, bitte kurz warten.')
+    throw new Error(tr('Die Instanz wird gerade kopiert, bitte kurz warten.', 'The instance is being copied right now, please wait a moment.'))
   }
 }
 

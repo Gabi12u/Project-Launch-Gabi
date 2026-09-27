@@ -5,6 +5,7 @@ import { basename, isAbsolute, join } from 'node:path'
 import { getMainWindow } from '../events'
 import { log } from '../logger'
 import { readJson, writeJsonAtomic } from '../store'
+import { tr } from '@shared/i18n'
 
 const logger = log('commandApproval')
 
@@ -23,10 +24,30 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath'
 /** Executables an explicit `javaPath` may point at, matched case-insensitively. */
 const JAVA_EXECUTABLE_NAMES = ['java', 'javaw', 'java.exe', 'javaw.exe']
 
-const KIND_TEXT: Record<CommandKind, { title: string; verb: string }> = {
-  wrapper: { title: 'Wrapper-Befehl erlauben', verb: 'beim Start als Wrapper-Befehl ausführen' },
-  preLaunch: { title: 'Pre-Launch-Befehl erlauben', verb: 'vor dem Start ausführen' },
-  javaPath: { title: 'Java-Pfad erlauben', verb: 'zum Starten als Java verwenden' }
+// A function, since this module loads before the language is set.
+function kindText(kind: CommandKind): { title: string; detail: (name: string, value: string) => string } {
+  const texts = {
+    wrapper: {
+      title: tr('Wrapper-Befehl erlauben', 'Allow wrapper command'),
+      verb: [tr('beim Start als Wrapper-Befehl ausführen', 'run as a wrapper command on launch'), 'run as a wrapper command on launch']
+    },
+    preLaunch: {
+      title: tr('Pre-Launch-Befehl erlauben', 'Allow pre-launch command'),
+      verb: [tr('vor dem Start ausführen', 'run before launch'), 'run before launch']
+    },
+    javaPath: {
+      title: tr('Java-Pfad erlauben', 'Allow Java path'),
+      verb: [tr('zum Starten als Java verwenden', 'use as Java for launching'), 'use as Java for launching']
+    }
+  }[kind]
+  return {
+    title: texts.title,
+    detail: (name, value) =>
+      tr(
+        `Die Instanz „${name}“ möchte folgenden Befehl ${texts.verb[0]}:\n\n${value}\n\nErlaube das nur, wenn du diesen Befehl oder Pfad selbst eingerichtet hast.`,
+        `The instance "${name}" wants to ${texts.verb[1]}:\n\n${value}\n\nOnly allow this if you set up this command or path yourself.`
+      )
+  }
 }
 
 function isUncPath(value: string): boolean {
@@ -44,11 +65,11 @@ function isUncPath(value: string): boolean {
  */
 export function validateJavaPath(path: string): void {
   if (!isAbsolute(path) || isUncPath(path)) {
-    throw new Error('Der eingestellte Java-Pfad muss ein absoluter, lokaler Pfad sein (kein Netzwerkpfad).')
+    throw new Error(tr('Der eingestellte Java-Pfad muss ein absoluter, lokaler Pfad sein (kein Netzwerkpfad).', 'The chosen Java path has to be an absolute, local path (no network path).'))
   }
   const name = basename(path).toLowerCase()
   if (!JAVA_EXECUTABLE_NAMES.includes(name)) {
-    throw new Error('Der eingestellte Java-Pfad muss auf java, javaw, java.exe oder javaw.exe zeigen.')
+    throw new Error(tr('Der eingestellte Java-Pfad muss auf java, javaw, java.exe oder javaw.exe zeigen.', 'The chosen Java path has to point to java, javaw, java.exe or javaw.exe.'))
   }
 }
 
@@ -117,7 +138,7 @@ export async function ensureApproved(
   const key = approvalKey(instanceId, kind, value)
   if (key in loadApprovals()) return
 
-  const { title, verb } = KIND_TEXT[kind]
+  const { title, detail } = kindText(kind)
   const win = getMainWindow()
   // A dialog parented to a hidden or minimised window can end up out of
   // sight on Windows, leaving the launch waiting on a box nobody sees.
@@ -130,10 +151,8 @@ export async function ensureApproved(
     type: 'warning',
     title,
     message: title,
-    detail:
-      `Die Instanz „${instanceName}“ möchte folgenden Befehl ${verb}:\n\n${value}\n\n` +
-      'Erlaube das nur, wenn du diesen Befehl oder Pfad selbst eingerichtet hast.',
-    buttons: ['Erlauben', 'Abbrechen'],
+    detail: detail(instanceName, value),
+    buttons: [tr('Erlauben', 'Allow'), tr('Abbrechen', 'Cancel')],
     defaultId: 1,
     cancelId: 1,
     noLink: true
@@ -141,7 +160,7 @@ export async function ensureApproved(
 
   if (result.response !== 0) {
     logger.warn(`Befehl für ${instanceId} (${kind}) abgelehnt`)
-    throw new Error('Start abgebrochen: der Befehl wurde nicht erlaubt.')
+    throw new Error(tr('Start abgebrochen: der Befehl wurde nicht erlaubt.', 'Launch cancelled: the command was not allowed.'))
   }
 
   const approvals = { ...loadApprovals(), [key]: Date.now() }

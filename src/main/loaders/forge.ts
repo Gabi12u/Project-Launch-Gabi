@@ -21,6 +21,7 @@ import { resolveJava, requiredJavaMajor } from '../core/java'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { TaskCancelledError, type Task } from '../tasks'
+import { tr } from '@shared/i18n'
 
 const logger = log('forge')
 const execFileAsync = promisify(execFile)
@@ -262,7 +263,7 @@ async function mavenSha1(url: string, signal?: AbortSignal): Promise<string> {
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1000))
   }
   throw new Error(
-    'Die Prüfsumme des Installers konnte nicht geladen werden. Versuche es später erneut.'
+    tr('Die Prüfsumme des Installers konnte nicht geladen werden. Versuche es später erneut.', 'The checksum of the installer could not be loaded. Try again later.')
   )
 }
 
@@ -288,11 +289,11 @@ function resolveArgument(
 
 async function mainClassOf(jarPath: string): Promise<string> {
   const manifest = await readEntryText(jarPath, 'META-INF/MANIFEST.MF')
-  if (!manifest) throw new Error(`Kein Manifest in ${jarPath}`)
+  if (!manifest) throw new Error(tr(`Kein Manifest in ${jarPath}`, `No manifest in ${jarPath}`))
   // Manifest lines wrap at 72 bytes with a leading space on continuations.
   const unfolded = manifest.replace(/\r\n[ ]/g, '').replace(/\n[ ]/g, '')
   const match = /Main-Class:\s*(.+)/.exec(unfolded)
-  if (!match) throw new Error(`Keine Main-Class in ${jarPath}`)
+  if (!match) throw new Error(tr(`Keine Main-Class in ${jarPath}`, `No Main-Class in ${jarPath}`))
   return match[1].trim()
 }
 
@@ -350,7 +351,7 @@ async function installForgeLikeInner(
   task?: Task
 ): Promise<string> {
   const label = loader === 'forge' ? 'Forge' : 'NeoForge'
-  task?.update(`${label} ${loaderVersion} wird geladen…`, null)
+  task?.update(tr(`${label} ${loaderVersion} wird geladen…`, `Downloading ${label} ${loaderVersion}…`), null)
 
   const url = await installerUrl(loader, mcVersion, loaderVersion)
   const installer = join(paths.cache(), `${loader}-${mcVersion}-${loaderVersion}-installer.jar`)
@@ -369,7 +370,7 @@ async function installForgeLikeInner(
     // installer. The cached copy is still discarded so a retry does not just
     // replay the same broken read.
     rmSync(installer, { force: true })
-    throw new Error(`${label}-Installer enthält kein install_profile.json`)
+    throw new Error(tr(`${label}-Installer enthält kein install_profile.json`, `${label} installer contains no install_profile.json`))
   }
 
   if (!isModern(profile)) {
@@ -384,7 +385,7 @@ async function installForgeLikeInner(
     // when the jar itself cannot be read, so the cached copy is discarded
     // instead of blocking every future install attempt with the same file.
     rmSync(installer, { force: true })
-    throw new Error(`${label}-Installer enthält kein ${jsonEntry}`)
+    throw new Error(tr(`${label}-Installer enthält kein ${jsonEntry}`, `${label} installer contains no ${jsonEntry}`))
   }
 
   // The id comes straight out of the installer's own JSON, so it is not
@@ -399,7 +400,7 @@ async function installForgeLikeInner(
   // every step below has actually finished.
 
   // 2. The vanilla client jar is the input for every patcher ----------
-  task?.update('Basis-Minecraft wird vorbereitet…', null)
+  task?.update(tr('Basis-Minecraft wird vorbereitet…', 'Preparing base Minecraft…'), null)
   const vanilla = await loadVersionJson(mcVersion)
   const vanillaJar = clientJarPath(mcVersion)
   if (vanilla.downloads?.client) {
@@ -417,13 +418,13 @@ async function installForgeLikeInner(
   }
 
   // 3. Libraries: the installer's own plus the ones the game needs ----
-  task?.update(`${label}-Bibliotheken werden geladen…`, null)
+  task?.update(tr(`${label}-Bibliotheken werden geladen…`, `Downloading ${label} libraries…`), null)
   const installerLibs = resolveLibraries({ ...versionJson, libraries: profile.libraries ?? [] })
   const gameLibs = resolveLibraries(versionJson)
 
   await downloadAll(
     [...installerLibs, ...gameLibs].map((l) => l.download).filter((d): d is NonNullable<typeof d> => Boolean(d)),
-    { task, label: `${label}-Bibliotheken` }
+    { task, label: tr(`${label}-Bibliotheken`, `${label} libraries`) }
   )
 
   // Installers embed jars (the universal and sometimes patched client) in a
@@ -507,7 +508,7 @@ async function installForgeLikeInner(
         task?.throwIfCancelled()
         const processor = processors[i]
         task?.update(
-          `${label} wird installiert · Schritt ${i + 1}/${processors.length}`,
+          tr(`${label} wird installiert · Schritt ${i + 1}/${processors.length}`, `Installing ${label} · step ${i + 1}/${processors.length}`),
           (i + 1) / processors.length
         )
 
@@ -541,7 +542,7 @@ async function installForgeLikeInner(
           // flag is what tells a cancel apart from a genuine processor crash.
           if (task?.cancelled) throw new TaskCancelledError()
           const detail = err instanceof Error ? err.message : String(err)
-          throw new Error(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`)
+          throw new Error(tr(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`, `${label} installation step ${i + 1} failed: ${detail}`))
         }
 
         // Each processor declares the sha1 its outputs must have. Exit code zero
@@ -556,14 +557,19 @@ async function installForgeLikeInner(
 
           if (!existsSync(outputPath)) {
             throw new Error(
-              `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} nicht erzeugt.`
+              tr(
+                `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} nicht erzeugt.`,
+                `${label} installation step ${i + 1} did not create ${basename(outputPath)}.`
+              )
             )
           }
           const actual = await sha1File(outputPath)
           if (actual !== expected.toLowerCase()) {
             throw new Error(
-              `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} fehlerhaft geschrieben ` +
-                `(erwartet ${expected}, erhalten ${actual}).`
+              tr(
+                `${label}-Installationsschritt ${i + 1} hat ${basename(outputPath)} fehlerhaft geschrieben (erwartet ${expected}, erhalten ${actual}).`,
+                `${label} installation step ${i + 1} wrote ${basename(outputPath)} incorrectly (expected ${expected}, got ${actual}).`
+              )
             )
           }
         }
@@ -594,7 +600,7 @@ async function installLegacyForge(
   mcVersion: string,
   task?: Task
 ): Promise<string> {
-  task?.update('Forge (Legacy) wird installiert…', null)
+  task?.update(tr('Forge (Legacy) wird installiert…', 'Installing Forge (legacy)…'), null)
 
   const versionJson = profile.versionInfo
   // Same reasoning as the modern path above: this id is not trusted before it
@@ -622,7 +628,7 @@ async function installLegacyForge(
   const libs = resolveLibraries(versionJson)
   await downloadAll(
     libs.map((l) => l.download).filter((d): d is NonNullable<typeof d> => Boolean(d)),
-    { task, label: 'Forge-Bibliotheken' }
+    { task, label: tr('Forge-Bibliotheken', 'Forge libraries') }
   )
 
   writeJsonAtomic(join(paths.version(versionId), `${versionId}.json`), versionJson)
@@ -638,7 +644,7 @@ export async function resolveLatestForgeLike(
   const versions = await listForgeLikeVersions(loader, mcVersion)
   const best = versions.find((v) => v.recommended) ?? versions.find((v) => v.stable) ?? versions[0]
   if (!best) {
-    throw new Error(`Für Minecraft ${mcVersion} gibt es keine ${loader}-Version`)
+    throw new Error(tr(`Für Minecraft ${mcVersion} gibt es keine ${loader}-Version`, `There is no ${loader} version for Minecraft ${mcVersion}`))
   }
   return best.version
 }
