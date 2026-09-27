@@ -4,6 +4,7 @@ import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
 import { initials, skinHeadStyle } from '../lib/format'
 import { Confirm, CopyButton, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
+import { tr } from '@shared/i18n'
 
 /** Player names Mojang accepts for an offline profile. */
 const OFFLINE_NAME_RE = /^[A-Za-z0-9_]{3,16}$/
@@ -51,7 +52,7 @@ export function AccountModal({
     try {
       const account = await window.gabi.accounts.loginMicrosoft()
       if (ticket !== attempt.current) return
-      toast('success', 'Angemeldet', `Willkommen, ${account.username}!`)
+      toast('success', tr('Angemeldet', 'Signed in'), tr(`Willkommen, ${account.username}!`, `Welcome, ${account.username}!`))
       await refreshAccounts()
       setPrompt(null)
       if (closeOnSuccess) onClose()
@@ -60,7 +61,7 @@ export function AccountModal({
       // A cancel the user asked for themselves is not a failure and needs no
       // alarming message; the dialog has already returned to its normal state.
       if (!(err instanceof Error && err.message === 'Anmeldung abgebrochen')) {
-        toastError(err, 'Anmeldung fehlgeschlagen')
+        toastError(err, tr('Anmeldung fehlgeschlagen', 'Sign-in failed'))
       }
       setPrompt(null)
     } finally {
@@ -96,12 +97,12 @@ export function AccountModal({
     setCreatingOffline(true)
     try {
       const account = await window.gabi.accounts.loginOffline(offlineName.trim())
-      toast('success', 'Offline-Profil angelegt', account.username)
+      toast('success', tr('Offline-Profil angelegt', 'Offline profile created'), account.username)
       setOfflineName('')
       await refreshAccounts()
       if (closeOnSuccess) onClose()
     } catch (err) {
-      toastError(err, 'Profil konnte nicht angelegt werden')
+      toastError(err, tr('Profil konnte nicht angelegt werden', 'Profile could not be created'))
     } finally {
       setCreatingOffline(false)
     }
@@ -119,15 +120,15 @@ export function AccountModal({
       await refreshAccounts()
       setConfirmRemove(null)
     } catch (err) {
-      toastError(err, 'Account konnte nicht entfernt werden')
+      toastError(err, tr('Account konnte nicht entfernt werden', 'Account could not be removed'))
     }
   }
 
   return (
     <Modal
       open={open}
-      title="Accounts"
-      subtitle="Melde dich mit Microsoft an, um online zu spielen, oder nutze ein Offline-Profil zum Testen."
+      title={tr('Accounts', 'Accounts')}
+      subtitle={tr('Melde dich mit Microsoft an, um online zu spielen, oder nutze ein Offline-Profil zum Testen.', 'Sign in with Microsoft to play online, or use an offline profile for testing.')}
       // Every close path cancels a login in flight first. The old condition
       // (`busy && prompt`) left a gap: between clicking "log in" and the device
       // code arriving there is one network round trip during which closing went
@@ -159,21 +160,21 @@ export function AccountModal({
           <div className="col gap-12">
             <button className="btn primary block lg" onClick={loginMicrosoft} disabled={busy}>
               {busy ? <span className="spinner" /> : <IconUser size={17} />}
-              Mit Microsoft anmelden
+              {tr('Mit Microsoft anmelden', 'Sign in with Microsoft')}
             </button>
 
             <div className="row gap-12" style={{ color: 'var(--text-4)', fontSize: 12 }}>
               <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
-              oder
+              {tr('oder', 'or')}
               <div style={{ flex: 1, height: 1, background: 'var(--line)' }} />
             </div>
 
             <div className="field">
-              <label className="label" id="am-offline-profil">Offline-Profil</label>
+              <label className="label" id="am-offline-profil">{tr('Offline-Profil', 'Offline profile')}</label>
               <div role="group" aria-labelledby="am-offline-profil" className="row gap-8">
                 <input
                   className="input"
-                  placeholder="Spielername"
+                  placeholder={tr('Spielername', 'Player name')}
                   value={offlineName}
                   maxLength={16}
                   onChange={(event) => setOfflineName(event.target.value)}
@@ -184,17 +185,19 @@ export function AccountModal({
                   onClick={loginOffline}
                   disabled={creatingOffline || !offlineValid}
                 >
-                  Anlegen
+                  {tr('Anlegen', 'Create')}
                 </button>
               </div>
               {offlineName.length > 0 && !offlineValid && (
                 <span className="hint" style={{ color: 'var(--danger)' }}>
-                  Nur Buchstaben, Zahlen und Unterstriche, 3 bis 16 Zeichen.
+                  {tr('Nur Buchstaben, Zahlen und Unterstriche, 3 bis 16 Zeichen.', 'Only letters, numbers and underscores, 3 to 16 characters.')}
                 </span>
               )}
               <span className="hint">
-                Offline-Profile funktionieren nur auf Servern ohne Online-Modus und in Einzelspieler-Welten.
-                Mindestens 3 Zeichen, nur Buchstaben, Zahlen und Unterstriche.
+                {tr(
+                  'Offline-Profile funktionieren nur auf Servern ohne Online-Modus und in Einzelspieler-Welten. Mindestens 3 Zeichen, nur Buchstaben, Zahlen und Unterstriche.',
+                  'Offline profiles only work on servers without online mode and in singleplayer worlds. At least 3 characters, only letters, numbers and underscores.'
+                )}
               </span>
             </div>
           </div>
@@ -203,14 +206,17 @@ export function AccountModal({
 
       <Confirm
         open={confirmRemove !== null}
-        title="Account entfernen?"
+        title={tr('Account entfernen?', 'Remove account?')}
         danger
         message={
           confirmRemove
-            ? `${confirmRemove.username} wird aus diesem Launcher entfernt. Ein Microsoft-Account lässt sich jederzeit erneut anmelden, ein Offline-Profil danach nicht wiederherstellen.`
+            ? tr(
+                `${confirmRemove.username} wird aus diesem Launcher entfernt. Ein Microsoft-Account lässt sich jederzeit erneut anmelden, ein Offline-Profil danach nicht wiederherstellen.`,
+                `${confirmRemove.username} will be removed from this launcher. A Microsoft account can be signed in again at any time, an offline profile cannot be restored afterwards.`
+              )
             : ''
         }
-        confirmLabel="Entfernen"
+        confirmLabel={tr('Entfernen', 'Remove')}
         onConfirm={remove}
         onCancel={() => setConfirmRemove(null)}
       />
@@ -241,11 +247,11 @@ function AccountRow({
       <div className="grow">
         <div className="content-name">{account.username}</div>
         <div className="content-meta">
-          <span>{account.type === 'microsoft' ? 'Microsoft-Account' : 'Offline-Profil'}</span>
-          {expired && <span className="badge warn">Sitzung abgelaufen</span>}
+          <span>{account.type === 'microsoft' ? tr('Microsoft-Account', 'Microsoft account') : tr('Offline-Profil', 'Offline profile')}</span>
+          {expired && <span className="badge warn">{tr('Sitzung abgelaufen', 'Session expired')}</span>}
           {account.active && (
             <span className="badge ok dot">
-              <IconCheck size={11} /> Aktiv
+              <IconCheck size={11} /> {tr('Aktiv', 'Active')}
             </span>
           )}
         </div>
@@ -254,10 +260,10 @@ function AccountRow({
       <div className="content-actions">
         {!account.active && (
           <button className="btn sm" onClick={onActivate}>
-            Auswählen
+            {tr('Auswählen', 'Select')}
           </button>
         )}
-        <button className="btn ghost icon sm" onClick={onRemove} aria-label="Entfernen">
+        <button className="btn ghost icon sm" onClick={onRemove} aria-label={tr('Entfernen', 'Remove')}>
           <IconTrash size={15} />
         </button>
       </div>
@@ -285,10 +291,12 @@ function DeviceCodePanel({
   return (
     <div className="col gap-20">
       <div className="col gap-8">
-        <div style={{ fontSize: 15, fontWeight: 650 }}>Anmeldung bei Microsoft</div>
+        <div style={{ fontSize: 15, fontWeight: 650 }}>{tr('Anmeldung bei Microsoft', 'Signing in with Microsoft')}</div>
         <p className="hint">
-          Öffne die Seite, melde dich mit deinem Microsoft-Account an und gib dort den folgenden Code ein.
-          Danach geht es hier automatisch weiter.
+          {tr(
+            'Öffne die Seite, melde dich mit deinem Microsoft-Account an und gib dort den folgenden Code ein. Danach geht es hier automatisch weiter.',
+            'Open the page, sign in with your Microsoft account and enter the following code there. After that it continues here automatically.'
+          )}
         </p>
       </div>
 
@@ -300,20 +308,23 @@ function DeviceCodePanel({
           onClick={() => void window.gabi.app.openExternal(prompt.verificationUri)}
         >
           <IconExternal size={16} />
-          Anmeldeseite öffnen
+          {tr('Anmeldeseite öffnen', 'Open sign-in page')}
         </button>
-        <CopyButton value={prompt.userCode} label="Code kopieren" />
+        <CopyButton value={prompt.userCode} label={tr('Code kopieren', 'Copy code')} />
       </div>
 
       <div className="row-between">
         <span className="hint">
           <span className="spinner" style={{ display: 'inline-block', marginRight: 8 }} />
           {remaining > 0
-            ? `Warte auf Bestätigung… (noch ${minutes}:${String(seconds).padStart(2, '0')})`
-            : 'Code abgelaufen, wird geprüft…'}
+            ? tr(
+                `Warte auf Bestätigung… (noch ${minutes}:${String(seconds).padStart(2, '0')})`,
+                `Waiting for confirmation… (${minutes}:${String(seconds).padStart(2, '0')} left)`
+              )
+            : tr('Code abgelaufen, wird geprüft…', 'Code expired, checking…')}
         </span>
         <button className="btn ghost sm" onClick={onCancel}>
-          Abbrechen
+          {tr('Abbrechen', 'Cancel')}
         </button>
       </div>
     </div>

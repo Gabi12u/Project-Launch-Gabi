@@ -5,6 +5,7 @@ import { LOADER_LABELS } from '../lib/format'
 import { ContentBrowser } from '../components/ContentBrowser'
 import { EmptyState } from '../components/ui'
 import { IconCompass, IconPlus } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 /**
  * Global content discovery. Because installing needs a target, the user picks
@@ -77,15 +78,15 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">Entdecken</h1>
+          <h1 className="page-title">{tr('Entdecken', 'Discover')}</h1>
           <p className="page-sub">
-            Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.
+            {tr('Modpacks, Mods, Shader und Resourcepacks von Modrinth und CurseForge, alles in einer Suche.', 'Modpacks, mods, shaders and resource packs from Modrinth and CurseForge, all in one search.')}
           </p>
         </div>
 
         {instances.length > 0 && (
           <div className="row gap-8">
-            <span className="hint">Ziel-Instanz:</span>
+            <span className="hint">{tr('Ziel-Instanz:', 'Target instance:')}</span>
             <select
               className="select"
               style={{ width: 240 }}
@@ -105,12 +106,15 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
       {instances.length === 0 ? (
         <EmptyState
           icon={<IconCompass size={26} />}
-          title="Erst eine Instanz, dann die Mods"
-          message="Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit."
+          title={tr('Erst eine Instanz, dann die Mods', 'First an instance, then the mods')}
+          message={tr(
+            'Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit.',
+            'Mods are always installed into a specific instance. Create one first. Modpacks can be installed without an instance, they bring their own.'
+          )}
           action={
             <button className="btn primary" onClick={() => setState({ createOpen: true })}>
               <IconPlus size={16} />
-              Instanz erstellen
+              {tr('Instanz erstellen', 'Create instance')}
             </button>
           }
         />
@@ -119,10 +123,10 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
           {instance && (
             <div className="row gap-8 wrap">
               <span className="badge accent">
-                Ziel: {instance.name} · Minecraft {instance.mcVersion} · {LOADER_LABELS[instance.loader]}
+                {tr('Ziel', 'Target')}: {instance.name} · Minecraft {instance.mcVersion} · {LOADER_LABELS[instance.loader]}
               </span>
               <span className="hint">
-                Modpacks bringen ihre eigene Instanz mit und ignorieren die Auswahl.
+                {tr('Modpacks bringen ihre eigene Instanz mit und ignorieren die Auswahl.', 'Modpacks bring their own instance and ignore this selection.')}
               </span>
             </div>
           )}

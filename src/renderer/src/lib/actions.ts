@@ -1,5 +1,6 @@
 import { getState, promptToast, refreshInstances, setState, toast, toastError } from './store'
 import { renderInstanceIcon } from './icon'
+import { tr } from '@shared/i18n'
 
 /**
  * Starts an instance. The compatibility check runs first so blocking problems
@@ -12,11 +13,11 @@ export async function startInstance(instanceId: string, instanceName: string): P
   if (accounts.length === 0) {
     promptToast(
       'warning',
-      'Kein Account',
-      'Melde dich zuerst mit Microsoft an oder lege ein Offline-Profil an.',
+      tr('Kein Account', 'No account'),
+      tr('Melde dich zuerst mit Microsoft an oder lege ein Offline-Profil an.', 'Sign in with Microsoft first or create an offline profile.'),
       [
         {
-          label: 'Account hinzufügen',
+          label: tr('Account hinzufügen', 'Add account'),
           primary: true,
           onClick: () => setState({ accountModalOpen: true })
         }
@@ -40,8 +41,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          `${instanceName} kann nicht starten`,
-          'Es gibt Probleme mit den Mods. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          tr(`${instanceName} kann nicht starten`, `${instanceName} cannot start`),
+          tr('Es gibt Probleme mit den Mods. Schließe den offenen Hinweis, dann zeigen wir sie dir.', 'There are problems with the mods. Close the open notice, then we will show them to you.'),
           8000
         )
         return
@@ -62,8 +63,8 @@ export async function startInstance(instanceId: string, instanceName: string): P
       if (claimed && claimed.instanceId !== instanceId) {
         toast(
           'warning',
-          `${instanceName} kann nicht starten`,
-          'Es gibt veraltete Mods bei einer anderen Instanz. Schließe den offenen Hinweis, dann zeigen wir sie dir.',
+          tr(`${instanceName} kann nicht starten`, `${instanceName} cannot start`),
+          tr('Es gibt veraltete Mods bei einer anderen Instanz. Schließe den offenen Hinweis, dann zeigen wir sie dir.', 'Another instance has outdated mods. Close the open notice, then we will show them to you.'),
           8000
         )
         return
@@ -76,7 +77,7 @@ export async function startInstance(instanceId: string, instanceName: string): P
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, `${instanceName} konnte nicht gestartet werden`)
+    toastError(err, tr(`${instanceName} konnte nicht gestartet werden`, `${instanceName} could not be started`))
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -89,7 +90,7 @@ export async function startInstanceForced(instanceId: string, instanceName: stri
     await window.gabi.launch.start(instanceId, { ignoreIssues: true })
     await refreshInstances()
   } catch (err) {
-    toastError(err, `${instanceName} konnte nicht gestartet werden`)
+    toastError(err, tr(`${instanceName} konnte nicht gestartet werden`, `${instanceName} could not be started`))
   } finally {
     setState((current) => ({ starting: current.starting.filter((id) => id !== instanceId) }))
   }
@@ -99,7 +100,7 @@ export async function stopInstance(instanceId: string): Promise<void> {
   try {
     await window.gabi.launch.stop(instanceId)
   } catch (err) {
-    toastError(err, 'Minecraft konnte nicht beendet werden')
+    toastError(err, tr('Minecraft konnte nicht beendet werden', 'Minecraft could not be stopped'))
   }
 }
 
@@ -129,7 +130,7 @@ export async function createShortcut(instanceId: string): Promise<void> {
 
     await window.gabi.instances.createShortcut(instanceId, iconImages)
   } catch (err) {
-    toastError(err, 'Verknüpfung konnte nicht erstellt werden')
+    toastError(err, tr('Verknüpfung konnte nicht erstellt werden', 'Shortcut could not be created'))
   }
 }
 
@@ -137,10 +138,10 @@ export async function importModpack(): Promise<void> {
   try {
     const instance = await window.gabi.modpacks.import()
     if (!instance) return
-    toast('success', 'Import gestartet', `${instance.name} wird eingerichtet.`)
+    toast('success', tr('Import gestartet', 'Import started'), tr(`${instance.name} wird eingerichtet.`, `Setting up ${instance.name}.`))
     await refreshInstances()
   } catch (err) {
-    toastError(err, 'Modpack konnte nicht importiert werden')
+    toastError(err, tr('Modpack konnte nicht importiert werden', 'Modpack could not be imported'))
   }
 }
 
@@ -151,11 +152,14 @@ export async function importInstanceFolder(): Promise<void> {
     if (!instance) return
     toast(
       'success',
-      'Import gestartet',
-      `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`
+      tr('Import gestartet', 'Import started'),
+      tr(
+        `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`,
+        `Taking over ${instance.name}. Worlds, mods and settings are being copied.`
+      )
     )
     await refreshInstances()
   } catch (err) {
-    toastError(err, 'Ordner konnte nicht importiert werden')
+    toastError(err, tr('Ordner konnte nicht importiert werden', 'Folder could not be imported'))
   }
 }

@@ -19,6 +19,7 @@ import {
   IconSearch,
   IconSparkle
 } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 interface Row {
   instance: InstanceSummary
@@ -64,7 +65,7 @@ export function ModsView(): JSX.Element {
       }
       if (request === requestId.current) setRows(collected)
     } catch (err) {
-      if (request === requestId.current) toastError(err, 'Mods konnten nicht geladen werden')
+      if (request === requestId.current) toastError(err, tr('Mods konnten nicht geladen werden', 'Mods could not be loaded'))
     } finally {
       if (request === requestId.current) setLoading(false)
     }
@@ -94,22 +95,33 @@ export function ModsView(): JSX.Element {
       if (failed.length > 0) {
         toast(
           'warning',
-          `${failed.length} ${pluralise(failed.length, 'Instanz', 'Instanzen')} nicht prüfbar`,
-          `${total} ${pluralise(total, 'Update', 'Updates')} in den übrigen gefunden. ` +
-            `Fehlgeschlagen: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
+          tr(
+            `${failed.length} ${pluralise(failed.length, 'Instanz', 'Instanzen')} nicht prüfbar`,
+            `${failed.length} ${pluralise(failed.length, 'instance', 'instances')} could not be checked`
+          ),
+          tr(
+            `${total} ${pluralise(total, 'Update', 'Updates')} in den übrigen gefunden. ` +
+              `Fehlgeschlagen: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}`,
+            `${total} ${pluralise(total, 'update', 'updates')} found in the others. ` +
+              `Failed: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' and more' : ''}`
+          ),
           8000
         )
       } else {
         toast(
           total > 0 ? 'info' : 'success',
-          total > 0 ? `${total} ${pluralise(total, 'Update', 'Updates')} gefunden` : 'Alles aktuell',
-          total > 0 ? 'Du kannst sie einzeln oder pro Instanz installieren.' : undefined
+          total > 0
+            ? tr(`${total} ${pluralise(total, 'Update', 'Updates')} gefunden`, `${total} ${pluralise(total, 'update', 'updates')} found`)
+            : tr('Alles aktuell', 'Everything is up to date'),
+          total > 0
+            ? tr('Du kannst sie einzeln oder pro Instanz installieren.', 'You can install them one by one or per instance.')
+            : undefined
         )
       }
       await refreshInstances()
       await load()
     } catch (err) {
-      toastError(err, 'Update-Prüfung fehlgeschlagen')
+      toastError(err, tr('Update-Prüfung fehlgeschlagen', 'Update check failed'))
     } finally {
       setChecking(false)
     }
@@ -155,25 +167,32 @@ export function ModsView(): JSX.Element {
       if (skipped.length > 0 && failed.length === 0) {
         toast(
           'warning',
-          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`,
-          `Übersprungen, weil gerade in Benutzung: ${skipped.join(', ')}`,
+          tr(`${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`, `${total} ${pluralise(total, 'mod', 'mods')} updated`),
+          tr(`Übersprungen, weil gerade in Benutzung: ${skipped.join(', ')}`, `Skipped because in use right now: ${skipped.join(', ')}`),
           8000
         )
       } else if (failed.length > 0) {
         toast(
           'warning',
-          `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert, ${failed.length} fehlgeschlagen`,
-          `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}. ` +
-            `Grund: ${reasons[0] ?? 'unbekannt'}`,
+          tr(
+            `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert, ${failed.length} fehlgeschlagen`,
+            `${total} ${pluralise(total, 'mod', 'mods')} updated, ${failed.length} failed`
+          ),
+          tr(
+            `Nicht aktualisiert: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''}. ` +
+              `Grund: ${reasons[0] ?? 'unbekannt'}`,
+            `Not updated: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' and more' : ''}. ` +
+              `Reason: ${reasons[0] ?? 'unknown'}`
+          ),
           9000
         )
       } else {
-        toast('success', `${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`)
+        toast('success', tr(`${total} ${pluralise(total, 'Mod', 'Mods')} aktualisiert`, `${total} ${pluralise(total, 'mod', 'mods')} updated`))
       }
       await refreshInstances()
       await load()
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
     } finally {
       setChecking(false)
     }
@@ -206,16 +225,21 @@ export function ModsView(): JSX.Element {
         <div>
           <h1 className="page-title">Mods</h1>
           <p className="page-sub">
-            Alle Inhalte über sämtliche Instanzen hinweg, {rows.length}{' '}
-            {pluralise(rows.length, 'Eintrag', 'Einträge')}
-            {totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : ''}.
+            {tr(
+              `Alle Inhalte über sämtliche Instanzen hinweg, ${rows.length} ${pluralise(rows.length, 'Eintrag', 'Einträge')}` +
+                (totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} verfügbar` : '') +
+                '.',
+              `All content across every instance, ${rows.length} ${pluralise(rows.length, 'entry', 'entries')}` +
+                (totalUpdates > 0 ? `, ${totalUpdates} ${pluralise(totalUpdates, 'update', 'updates')} available` : '') +
+                '.'
+            )}
           </p>
         </div>
 
         <div className="row gap-8">
           <button className="btn" onClick={checkAll} disabled={checking || instances.length === 0}>
             {checking ? <span className="spinner" /> : <IconRefresh size={16} />}
-            Auf Updates prüfen
+            {tr('Auf Updates prüfen', 'Check for updates')}
           </button>
           {totalUpdates > 0 && (
             <button
@@ -224,12 +248,15 @@ export function ModsView(): JSX.Element {
               disabled={checking || updatableInstances.length === 0}
               title={
                 updatableInstances.length === 0
-                  ? 'Alle betroffenen Instanzen laufen gerade oder werden bearbeitet.'
+                  ? tr('Alle betroffenen Instanzen laufen gerade oder werden bearbeitet.', 'All affected instances are running or being worked on right now.')
                   : undefined
               }
             >
               <IconSparkle size={16} />
-              {totalUpdates} {pluralise(totalUpdates, 'Update', 'Updates')} installieren
+              {tr(
+                `${totalUpdates} ${pluralise(totalUpdates, 'Update', 'Updates')} installieren`,
+                `Install ${totalUpdates} ${pluralise(totalUpdates, 'update', 'updates')}`
+              )}
             </button>
           )}
         </div>
@@ -238,11 +265,11 @@ export function ModsView(): JSX.Element {
       {instances.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Keine Instanzen"
-          message="Sobald du eine Instanz mit Mods hast, siehst du hier alles auf einen Blick."
+          title={tr('Keine Instanzen', 'No instances')}
+          message={tr('Sobald du eine Instanz mit Mods hast, siehst du hier alles auf einen Blick.', 'As soon as you have an instance with mods, you see everything here at a glance.')}
           action={
             <button className="btn primary" onClick={() => navigate('/instances')}>
-              Zu den Instanzen
+              {tr('Zu den Instanzen', 'Go to instances')}
             </button>
           }
         />
@@ -253,7 +280,7 @@ export function ModsView(): JSX.Element {
               <IconSearch size={16} />
               <input
                 className="input"
-                placeholder="Mods durchsuchen…"
+                placeholder={tr('Mods durchsuchen…', 'Search mods…')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -265,7 +292,7 @@ export function ModsView(): JSX.Element {
               value={instanceFilter}
               onChange={(event) => setInstanceFilter(event.target.value)}
             >
-              <option value="all">Alle Instanzen</option>
+              <option value="all">{tr('Alle Instanzen', 'All instances')}</option>
               {instances.map((instance) => (
                 <option key={instance.id} value={instance.id}>
                   {instance.name}
@@ -277,7 +304,7 @@ export function ModsView(): JSX.Element {
               className={`btn ${onlyUpdates ? 'primary' : ''}`}
               onClick={() => setOnlyUpdates((value) => !value)}
             >
-              Nur mit Update
+              {tr('Nur mit Update', 'Only with update')}
             </button>
           </div>
 
@@ -290,23 +317,26 @@ export function ModsView(): JSX.Element {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={<IconPackage size={26} />}
-              title="Noch keine Mods installiert"
-              message="Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus, Launch Gabi installiert Abhängigkeiten automatisch mit."
+              title={tr('Noch keine Mods installiert', 'No mods installed yet')}
+              message={tr(
+                'Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus, Launch Gabi installiert Abhängigkeiten automatisch mit.',
+                'All mods, resource packs and shaders from your instances gather here. Pick something under "Discover", Launch Gabi installs dependencies along automatically.'
+              )}
               action={
                 <button className="btn primary" onClick={() => navigate('/discover')}>
                   <IconSearch size={16} />
-                  Mods entdecken
+                  {tr('Mods entdecken', 'Discover mods')}
                 </button>
               }
             />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={<IconPackage size={26} />}
-              title={onlyUpdates ? 'Alles aktuell' : 'Nichts gefunden'}
+              title={onlyUpdates ? tr('Alles aktuell', 'Everything is up to date') : tr('Nichts gefunden', 'Nothing found')}
               message={
                 onlyUpdates
-                  ? 'Für keine deiner Instanzen liegen Updates vor.'
-                  : 'Keine Inhalte passen zu diesem Filter.'
+                  ? tr('Für keine deiner Instanzen liegen Updates vor.', 'There are no updates for any of your instances.')
+                  : tr('Keine Inhalte passen zu diesem Filter.', 'No content matches this filter.')
               }
             />
           ) : (
@@ -332,7 +362,7 @@ export function ModsView(): JSX.Element {
                             : 'LOKAL'}
                       </span>
                       {row.item.update && <span className="badge warn">Update</span>}
-                      {!row.item.enabled && <span className="badge">Deaktiviert</span>}
+                      {!row.item.enabled && <span className="badge">{tr('Deaktiviert', 'Disabled')}</span>}
                     </div>
 
                     <div className="content-meta">
@@ -370,11 +400,11 @@ export function ModsView(): JSX.Element {
                           setUpdating((current) => new Set(current).add(row.item.id))
                           try {
                             await window.gabi.content.update(row.instance.id, row.item.id)
-                            toast('success', `${row.item.name} aktualisiert`)
+                            toast('success', tr(`${row.item.name} aktualisiert`, `${row.item.name} updated`))
                             await refreshInstances()
                             await load()
                           } catch (err) {
-                            toastError(err, 'Update fehlgeschlagen')
+                            toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
                           } finally {
                             setUpdating((current) => {
                               const next = new Set(current)
@@ -392,7 +422,7 @@ export function ModsView(): JSX.Element {
                       <button
                         className="btn ghost icon sm"
                         onClick={() => void window.gabi.app.openExternal(row.item.pageUrl as string)}
-                        aria-label="Projektseite"
+                        aria-label={tr('Projektseite', 'Project page')}
                       >
                         <IconExternal size={14} />
                       </button>
@@ -400,7 +430,7 @@ export function ModsView(): JSX.Element {
                     <button
                       className="btn ghost icon sm"
                       onClick={() => navigate(`/instances/${row.instance.id}?tab=content`)}
-                      aria-label="In der Instanz öffnen"
+                      aria-label={tr('In der Instanz öffnen', 'Open in instance')}
                     >
                       <IconChevronRight size={15} />
                     </button>

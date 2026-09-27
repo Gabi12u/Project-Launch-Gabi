@@ -6,19 +6,20 @@ import { formatMemory } from '../lib/format'
 import { LogoLockup } from '../components/Logo'
 import { AccountModal } from '../components/AccountModal'
 import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 /** German names for the accent swatches, read out by screen readers instead of the raw hex value. */
 const ACCENT_NAMES: Record<string, string> = {
-  '#7c5cff': 'Lila',
-  '#4f7bff': 'Blau',
-  '#22c6f2': 'Türkis',
-  '#25d0a1': 'Smaragd',
-  '#5ec26a': 'Grün',
-  '#f2c33d': 'Gelb',
-  '#ff8a3d': 'Orange',
-  '#ff5c7a': 'Rot',
-  '#e254d8': 'Pink',
-  '#9aa4c4': 'Graublau'
+  '#7c5cff': tr('Lila', 'Purple'),
+  '#4f7bff': tr('Blau', 'Blue'),
+  '#22c6f2': tr('Türkis', 'Turquoise'),
+  '#25d0a1': tr('Smaragd', 'Emerald'),
+  '#5ec26a': tr('Grün', 'Green'),
+  '#f2c33d': tr('Gelb', 'Yellow'),
+  '#ff8a3d': tr('Orange', 'Orange'),
+  '#ff5c7a': tr('Rot', 'Red'),
+  '#e254d8': tr('Pink', 'Pink'),
+  '#9aa4c4': tr('Graublau', 'Slate blue')
 }
 
 const TOTAL_STEPS = 3
@@ -70,11 +71,11 @@ export function Onboarding(): JSX.Element {
         onboarded: true
       })
       if (saved) {
-        toast('success', 'Willkommen bei Launch Gabi', 'Leg direkt deine erste Instanz an.')
+        toast('success', tr('Willkommen bei Launch Gabi', 'Welcome to Launch Gabi'), tr('Leg direkt deine erste Instanz an.', 'Go ahead and create your first instance.'))
         setState({ createOpen: true })
       }
     } catch (err) {
-      toastError(err, 'Einrichtung fehlgeschlagen')
+      toastError(err, tr('Einrichtung fehlgeschlagen', 'Setup failed'))
     } finally {
       setFinishing(false)
     }
@@ -90,7 +91,7 @@ export function Onboarding(): JSX.Element {
             ))}
           </div>
           <span className="hint">
-            Schritt {step + 1} von {TOTAL_STEPS}
+            {tr(`Schritt ${step + 1} von ${TOTAL_STEPS}`, `Step ${step + 1} of ${TOTAL_STEPS}`)}
           </span>
         </div>
 
@@ -98,19 +99,22 @@ export function Onboarding(): JSX.Element {
           <div className="col gap-24">
             <LogoLockup />
             <div className="col gap-12">
-              <h2 style={{ fontSize: 22 }}>Schön, dass du da bist.</h2>
+              <h2 style={{ fontSize: 22 }}>{tr('Schön, dass du da bist.', 'Great to have you here.')}</h2>
               <p style={{ color: 'var(--text-2)', lineHeight: 1.7, fontSize: 14 }}>
-                Launch Gabi verwaltet beliebig viele voneinander getrennte Minecraft-Installationen. Jede
-                davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten, nichts kommt sich
-                in die Quere.
+                {tr(
+                  'Launch Gabi verwaltet beliebig viele voneinander getrennte Minecraft-Installationen. Jede davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten, nichts kommt sich in die Quere.',
+                  'Launch Gabi manages as many separate Minecraft installations as you like. Each has its own version, its own mods and its own worlds, nothing gets in the way of anything else.'
+                )}
               </p>
               <p style={{ color: 'var(--text-3)', lineHeight: 1.7, fontSize: 13.5 }}>
-                Um Java, Mod Loader und Abhängigkeiten musst du dich nicht kümmern. Das erledigt der Launcher
-                im Hintergrund.
+                {tr(
+                  'Um Java, Mod Loader und Abhängigkeiten musst du dich nicht kümmern. Das erledigt der Launcher im Hintergrund.',
+                  'You do not have to worry about Java, mod loaders and dependencies. The launcher takes care of that in the background.'
+                )}
               </p>
             </div>
             <button className="btn primary lg" onClick={() => setStep(1)}>
-              Einrichtung starten
+              {tr('Einrichtung starten', 'Start setup')}
               <IconChevronRight size={16} />
             </button>
           </div>
@@ -119,12 +123,12 @@ export function Onboarding(): JSX.Element {
         {step === 1 && (
           <div className="col gap-24">
             <div className="col gap-6">
-              <h2 style={{ fontSize: 22 }}>Wie soll es aussehen?</h2>
-              <p className="hint">Kannst du später jederzeit ändern.</p>
+              <h2 style={{ fontSize: 22 }}>{tr('Wie soll es aussehen?', 'How should it look?')}</h2>
+              <p className="hint">{tr('Kannst du später jederzeit ändern.', 'You can change this any time later.')}</p>
             </div>
 
             <div className="field">
-              <label className="label" id="ob-akzentfarbe">Akzentfarbe</label>
+              <label className="label" id="ob-akzentfarbe">{tr('Akzentfarbe', 'Accent color')}</label>
               <div role="group" aria-labelledby="ob-akzentfarbe" className="swatches">
                 {ACCENT_CHOICES.map((color) => (
                   <button
@@ -144,7 +148,7 @@ export function Onboarding(): JSX.Element {
 
             <div className="field">
               <label className="label" htmlFor="ob-standard-arbeitsspeicher">
-                Standard-Arbeitsspeicher: {formatMemory(effectiveMemory)}
+                {tr('Standard-Arbeitsspeicher', 'Default memory')}: {formatMemory(effectiveMemory)}
               </label>
               <input id="ob-standard-arbeitsspeicher"
                 className="range"
@@ -156,16 +160,16 @@ export function Onboarding(): JSX.Element {
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
-                Für Vanilla reichen 2-4 GB. Große Modpacks laufen mit 6-8 GB am rundesten.
+                {tr('Für Vanilla reichen 2-4 GB. Große Modpacks laufen mit 6-8 GB am rundesten.', '2-4 GB is enough for vanilla. Large modpacks run best with 6-8 GB.')}
               </span>
             </div>
 
             <div className="option" style={{ cursor: 'default' }}>
               <div className="row-between">
                 <div className="col gap-4">
-                  <span className="option-name">Java automatisch verwalten</span>
+                  <span className="option-name">{tr('Java automatisch verwalten', 'Manage Java automatically')}</span>
                   <span className="option-desc">
-                    Launch Gabi lädt die passende Java-Version selbst herunter, du musst nichts installieren.
+                    {tr('Launch Gabi lädt die passende Java-Version selbst herunter, du musst nichts installieren.', 'Launch Gabi downloads the right Java version by itself, you do not have to install anything.')}
                   </span>
                 </div>
                 <button
@@ -179,11 +183,11 @@ export function Onboarding(): JSX.Element {
 
             <div className="row gap-8">
               <button className="btn ghost" onClick={() => setStep(0)}>
-                Zurück
+                {tr('Zurück', 'Back')}
               </button>
               <div className="grow" />
               <button className="btn primary" onClick={() => setStep(2)}>
-                Weiter
+                {tr('Weiter', 'Next')}
                 <IconChevronRight size={15} />
               </button>
             </div>
@@ -193,10 +197,9 @@ export function Onboarding(): JSX.Element {
         {step === 2 && (
           <div className="col gap-24">
             <div className="col gap-6">
-              <h2 style={{ fontSize: 22 }}>Dein Account</h2>
+              <h2 style={{ fontSize: 22 }}>{tr('Dein Account', 'Your account')}</h2>
               <p className="hint">
-                Für Online-Server brauchst du einen Microsoft-Account. Zum Ausprobieren reicht ein
-                Offline-Profil.
+                {tr('Für Online-Server brauchst du einen Microsoft-Account. Zum Ausprobieren reicht ein Offline-Profil.', 'For online servers you need a Microsoft account. An offline profile is enough to try things out.')}
               </p>
             </div>
 
@@ -207,35 +210,40 @@ export function Onboarding(): JSX.Element {
                 </div>
                 <div className="grow">
                   <div className="issue-title">
-                    {accounts.find((a) => a.active)?.username ?? accounts[0].username} ist angemeldet
+                    {tr(
+                      `${accounts.find((a) => a.active)?.username ?? accounts[0].username} ist angemeldet`,
+                      `${accounts.find((a) => a.active)?.username ?? accounts[0].username} is signed in`
+                    )}
                   </div>
                   <div className="issue-detail">
-                    {accounts.length > 1 ? `${accounts.length} Profile hinterlegt.` : 'Alles bereit.'}
+                    {accounts.length > 1
+                      ? tr(`${accounts.length} Profile hinterlegt.`, `${accounts.length} profiles saved.`)
+                      : tr('Alles bereit.', 'All set.')}
                   </div>
                 </div>
                 <button className="btn sm" onClick={() => setAccountOpen(true)}>
-                  Verwalten
+                  {tr('Verwalten', 'Manage')}
                 </button>
               </div>
             ) : (
               <button className="btn primary lg block" onClick={() => setAccountOpen(true)}>
                 <IconUser size={17} />
-                Account hinzufügen
+                {tr('Account hinzufügen', 'Add account')}
               </button>
             )}
 
             <p className="hint">
-              Du kannst diesen Schritt überspringen und dich später jederzeit über die Seitenleiste anmelden.
+              {tr('Du kannst diesen Schritt überspringen und dich später jederzeit über die Seitenleiste anmelden.', 'You can skip this step and sign in later at any time from the sidebar.')}
             </p>
 
             <div className="row gap-8">
               <button className="btn ghost" onClick={() => setStep(1)}>
-                Zurück
+                {tr('Zurück', 'Back')}
               </button>
               <div className="grow" />
               <button className="btn primary" onClick={finish} disabled={finishing}>
                 {finishing ? <span className="spinner" /> : <IconSparkle size={15} />}
-                Los geht's
+                {tr("Los geht's", "Let's go")}
               </button>
             </div>
           </div>

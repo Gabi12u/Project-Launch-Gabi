@@ -22,11 +22,12 @@ import {
   IconSearch,
   IconWarning
 } from './Icons'
+import { tr } from '@shared/i18n'
 
 const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
   mod: 'Mods',
-  resourcepack: 'Resourcepacks',
-  shaderpack: 'Shader',
+  resourcepack: tr('Resourcepacks', 'Resource packs'),
+  shaderpack: tr('Shader', 'Shaders'),
   datapack: 'Data Packs',
   modpack: 'Modpacks'
 }
@@ -70,8 +71,8 @@ function sortMerged(items: SearchResultItem[], sort: SearchQuery['sort']): Searc
  */
 function describeDependencies(names: string[]): string {
   if (names.length <= 1) return names[0] ?? ''
-  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}`
-  return `${names[0]}, ${names[1]} und ${names.length - 2} weitere`
+  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} ${tr('und', 'and')} ${names[names.length - 1]}`
+  return tr(`${names[0]}, ${names[1]} und ${names.length - 2} weitere`, `${names[0]}, ${names[1]} and ${names.length - 2} more`)
 }
 
 interface Props {
@@ -168,7 +169,7 @@ export function ContentBrowser({
         if (current) setDetail(details)
       })
       .catch((err) => {
-        if (current) toastError(err, 'Projekt konnte nicht geöffnet werden')
+        if (current) toastError(err, tr('Projekt konnte nicht geöffnet werden', 'Project could not be opened'))
       })
     return () => {
       current = false
@@ -210,7 +211,7 @@ export function ContentBrowser({
           // An appended page is left alone: losing what is already on screen
           // because page four failed would be worse.
           if (!append) setResponse(null)
-          toastError(err, 'Suche fehlgeschlagen')
+          toastError(err, tr('Suche fehlgeschlagen', 'Search failed'))
         }
       } finally {
         if (id === requestId.current) setLoading(false)
@@ -233,7 +234,7 @@ export function ContentBrowser({
     try {
       if (item.type === 'modpack') {
         await window.gabi.modpacks.installFromProvider(item.provider, item.projectId, versionId)
-        toast('success', 'Modpack wird installiert', item.name)
+        toast('success', tr('Modpack wird installiert', 'Installing modpack'), item.name)
       } else {
         const installed = await window.gabi.content.install({
           instanceId,
@@ -245,16 +246,19 @@ export function ContentBrowser({
         })
         toast(
           'success',
-          `${item.name} installiert`,
+          tr(`${item.name} installiert`, `${item.name} installed`),
           installed.length > 1
-            ? `Inklusive ${describeDependencies(installed.slice(1).map((dep) => dep.name))}.`
+            ? tr(
+                `Inklusive ${describeDependencies(installed.slice(1).map((dep) => dep.name))}.`,
+                `Including ${describeDependencies(installed.slice(1).map((dep) => dep.name))}.`
+              )
             : undefined
         )
       }
       onInstalled?.()
       await refreshInstances()
     } catch (err) {
-      toastError(err, `${item.name} konnte nicht installiert werden`)
+      toastError(err, tr(`${item.name} konnte nicht installiert werden`, `${item.name} could not be installed`))
     } finally {
       setInstalling((current) => {
         const next = new Set(current)
@@ -282,7 +286,7 @@ export function ContentBrowser({
           <IconSearch size={16} />
           <input
             className="input"
-            placeholder={`${TYPE_LABELS[type]} durchsuchen…`}
+            placeholder={tr(`${TYPE_LABELS[type]} durchsuchen…`, `Search ${TYPE_LABELS[type].toLowerCase()}…`)}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -306,9 +310,9 @@ export function ContentBrowser({
           value={sort}
           onChange={setSort}
           options={[
-            { value: 'relevance', label: 'Relevanz' },
+            { value: 'relevance', label: tr('Relevanz', 'Relevance') },
             { value: 'downloads', label: 'Downloads' },
-            { value: 'updated', label: 'Aktualisiert' }
+            { value: 'updated', label: tr('Aktualisiert', 'Updated') }
           ]}
         />
       </div>
@@ -321,7 +325,7 @@ export function ContentBrowser({
             style={{ cursor: 'pointer' }}
           >
             {useVersionFilter ? <IconCheck size={11} /> : null}
-            Nur passend für {mcVersion}
+            {tr('Nur passend für', 'Only for')} {mcVersion}
             {loader && loader !== 'vanilla' ? ` · ${loader}` : ''}
           </button>
         )}
@@ -331,7 +335,7 @@ export function ContentBrowser({
           style={{ cursor: 'pointer' }}
           title={
             providers.length === 1 && providers.includes('modrinth')
-              ? 'Mindestens eine Quelle muss aktiv sein'
+              ? tr('Mindestens eine Quelle muss aktiv sein', 'At least one source has to stay active')
               : undefined
           }
           onClick={() =>
@@ -353,7 +357,7 @@ export function ContentBrowser({
           style={{ cursor: 'pointer' }}
           title={
             providers.length === 1 && providers.includes('curseforge')
-              ? 'Mindestens eine Quelle muss aktiv sein'
+              ? tr('Mindestens eine Quelle muss aktiv sein', 'At least one source has to stay active')
               : undefined
           }
           onClick={() =>
@@ -370,7 +374,7 @@ export function ContentBrowser({
 
         {response && (
           <span className="muted" style={{ marginLeft: 'auto' }}>
-            {formatNumber(response.total)} Treffer
+            {formatNumber(response.total)} {tr('Treffer', 'results')}
           </span>
         )}
       </div>
@@ -381,10 +385,12 @@ export function ContentBrowser({
             <IconWarning size={16} />
           </div>
           <div className="grow">
-            <div className="issue-title">CurseForge ist nicht verbunden</div>
+            <div className="issue-title">{tr('CurseForge ist nicht verbunden', 'CurseForge is not connected')}</div>
             <div className="issue-detail">
-              Für die CurseForge-Suche wird ein kostenloser API-Schlüssel benötigt. Du kannst ihn in den
-              Einstellungen unter „Inhalte“ eintragen. Modrinth funktioniert auch ohne.
+              {tr(
+                'Für die CurseForge-Suche wird ein kostenloser API-Schlüssel benötigt. Du kannst ihn in den Einstellungen unter „Inhalte“ eintragen. Modrinth funktioniert auch ohne.',
+                'Searching CurseForge needs a free API key. You can enter it in the settings under "Content". Modrinth works without one.'
+              )}
             </div>
           </div>
         </div>
@@ -399,13 +405,19 @@ export function ContentBrowser({
       ) : response && response.items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
-          title="Nichts gefunden"
+          title={tr('Nichts gefunden', 'Nothing found')}
           message={
             emptyDueToMissingKey
-              ? 'CurseForge ist als einzige Quelle aktiv, aber ohne API-Schlüssel liefert es keine Ergebnisse. Trage einen Schlüssel in den Einstellungen ein oder schalte Modrinth mit dazu.'
+              ? tr(
+                  'CurseForge ist als einzige Quelle aktiv, aber ohne API-Schlüssel liefert es keine Ergebnisse. Trage einen Schlüssel in den Einstellungen ein oder schalte Modrinth mit dazu.',
+                  'CurseForge is the only active source, but without an API key it returns no results. Enter a key in the settings or turn Modrinth on as well.'
+                )
               : useVersionFilter && mcVersion
-                ? `Für Minecraft ${mcVersion} gibt es dazu nichts. Schalte den Versionsfilter aus, um breiter zu suchen.`
-                : 'Versuche einen anderen Suchbegriff.'
+                ? tr(
+                    `Für Minecraft ${mcVersion} gibt es dazu nichts. Schalte den Versionsfilter aus, um breiter zu suchen.`,
+                    `There is nothing for Minecraft ${mcVersion}. Turn off the version filter to search more broadly.`
+                  )
+                : tr('Versuche einen anderen Suchbegriff.', 'Try a different search term.')
           }
         />
       ) : (
@@ -441,7 +453,7 @@ export function ContentBrowser({
               }}
             >
               {loading ? <span className="spinner" /> : null}
-              Mehr laden
+              {tr('Mehr laden', 'Load more')}
             </button>
           )}
         </>
@@ -466,7 +478,7 @@ export function ContentBrowser({
       {worldPickFor && instanceId && (
         <WorldPickerModal
           instanceId={instanceId}
-          title={`Welten für ${worldPickFor.item.name}`}
+          title={tr(`Welten für ${worldPickFor.item.name}`, `Worlds for ${worldPickFor.item.name}`)}
           onClose={() => setWorldPickFor(null)}
           onConfirm={async (worlds) => {
             const target = worldPickFor
@@ -546,7 +558,7 @@ function ProjectCard({
           ) : (
             <IconDownload size={14} />
           )}
-          {installed ? 'Installiert' : installing ? '' : 'Installieren'}
+          {installed ? tr('Installiert', 'Installed') : installing ? '' : tr('Installieren', 'Install')}
         </button>
       )}
     </article>
@@ -618,7 +630,7 @@ function ProjectModal({
         setVersions(details.versions)
       })
       .catch((err) => {
-        if (current) toastError(err, 'Projekt konnte nicht geladen werden')
+        if (current) toastError(err, tr('Projekt konnte nicht geladen werden', 'Project could not be loaded'))
       })
       .finally(() => {
         if (current) setLoading(false)
@@ -666,7 +678,10 @@ function ProjectModal({
       open
       title={item.name}
       subtitle={
-        [item.author ? `von ${item.author}` : null, installedItem ? `Bereits installiert: ${installedItem.version}` : null]
+        [
+          item.author ? tr(`von ${item.author}`, `by ${item.author}`) : null,
+          installedItem ? tr(`Bereits installiert: ${installedItem.version}`, `Already installed: ${installedItem.version}`) : null
+        ]
           .filter(Boolean)
           .join(' · ') || undefined
       }
@@ -676,7 +691,10 @@ function ProjectModal({
         <>
           <button className="btn ghost" onClick={() => void window.gabi.app.openExternal(item.pageUrl)}>
             <IconExternal size={14} />
-            Auf {item.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'} öffnen
+            {tr(
+              `Auf ${item.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'} öffnen`,
+              `Open on ${item.provider === 'modrinth' ? 'Modrinth' : 'CurseForge'}`
+            )}
           </button>
           <div className="grow" />
           {instanceId && (
@@ -684,10 +702,10 @@ function ProjectModal({
               className="btn primary"
               onClick={() => onInstall(selected || undefined)}
               disabled={installing || (!selected && installedIsLatest)}
-              title={!selected && installedIsLatest ? 'Diese Version ist schon installiert' : undefined}
+              title={!selected && installedIsLatest ? tr('Diese Version ist schon installiert', 'This version is already installed') : undefined}
             >
               {installing ? <span className="spinner" /> : <IconDownload size={15} />}
-              {selected ? 'Diese Version installieren' : 'Neueste installieren'}
+              {selected ? tr('Diese Version installieren', 'Install this version') : tr('Neueste installieren', 'Install latest')}
             </button>
           )}
         </>
@@ -721,14 +739,14 @@ function ProjectModal({
 
           <div className="col gap-12">
             <div className="row-between">
-              <h3 className="section-title">Versionen</h3>
+              <h3 className="section-title">{tr('Versionen', 'Versions')}</h3>
               {mcVersion && (
                 <button
                   className={`badge ${onlyCompatible ? 'accent' : ''}`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setOnlyCompatible((value) => !value)}
                 >
-                  Nur kompatible
+                  {tr('Nur kompatible', 'Compatible only')}
                 </button>
               )}
             </div>
@@ -739,10 +757,12 @@ function ProjectModal({
                   <IconWarning size={16} />
                 </div>
                 <div>
-                  <div className="issue-title">Keine passende Version</div>
+                  <div className="issue-title">{tr('Keine passende Version', 'No matching version')}</div>
                   <div className="issue-detail">
-                    Für Minecraft {mcVersion} {loader && loader !== 'vanilla' ? `(${loader})` : ''} gibt es
-                    keine Veröffentlichung. Schalte den Filter aus, um alle Versionen zu sehen.
+                    {tr(
+                      `Für Minecraft ${mcVersion} ${loader && loader !== 'vanilla' ? `(${loader})` : ''} gibt es keine Veröffentlichung. Schalte den Filter aus, um alle Versionen zu sehen.`,
+                      `There is no release for Minecraft ${mcVersion} ${loader && loader !== 'vanilla' ? `(${loader})` : ''}. Turn off the filter to see all versions.`
+                    )}
                   </div>
                 </div>
               </div>

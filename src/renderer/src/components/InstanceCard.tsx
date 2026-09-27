@@ -8,6 +8,7 @@ import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/fo
 import { IconCopy, IconExternal, IconFolder, IconPlay, IconStar, IconStarFilled, IconStop, IconTrash } from './Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from './ContextMenu'
 import { Confirm } from './ui'
+import { tr } from '@shared/i18n'
 
 export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.Element {
   const { starting } = useStore()
@@ -28,10 +29,10 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
     setDuplicating(true)
     try {
       await window.gabi.instances.duplicate(instance.id)
-      toast('success', 'Instanz dupliziert', instance.name)
+      toast('success', tr('Instanz dupliziert', 'Instance duplicated'), instance.name)
       await refreshInstances()
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht dupliziert werden')
+      toastError(err, tr('Instanz konnte nicht dupliziert werden', 'Instance could not be duplicated'))
     } finally {
       setDuplicating(false)
     }
@@ -40,10 +41,10 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
   const remove = async (): Promise<void> => {
     try {
       await window.gabi.instances.remove(instance.id)
-      toast('info', 'Instanz gelöscht', instance.name)
+      toast('info', tr('Instanz gelöscht', 'Instance deleted'), instance.name)
       await refreshInstances()
     } catch (err) {
-      toastError(err, 'Instanz konnte nicht gelöscht werden')
+      toastError(err, tr('Instanz konnte nicht gelöscht werden', 'Instance could not be deleted'))
     } finally {
       setConfirmDelete(false)
     }
@@ -51,7 +52,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
 
   const menuItems: MenuItem[] = [
     {
-      label: instance.running ? 'Beenden' : 'Spielen',
+      label: instance.running ? tr('Beenden', 'Stop') : tr('Spielen', 'Play'),
       icon: instance.running ? <IconStop size={14} /> : <IconPlay size={14} />,
       disabled: !instance.running && (isStarting || instance.installing),
       onSelect: () => {
@@ -60,29 +61,29 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
       }
     },
     {
-      label: 'Öffnen',
+      label: tr('Öffnen', 'Open'),
       icon: <IconExternal size={14} />,
       onSelect: () => navigate(`/instances/${instance.id}`)
     },
     {
-      label: 'Ordner öffnen',
+      label: tr('Ordner öffnen', 'Open folder'),
       icon: <IconFolder size={14} />,
       onSelect: () => void window.gabi.instances.openFolder(instance.id)
     },
     {
-      label: 'Duplizieren',
+      label: tr('Duplizieren', 'Duplicate'),
       icon: <IconCopy size={14} />,
       disabled: duplicateBlocked || duplicating,
-      disabledReason: 'Die Instanz läuft gerade oder wird gerade bearbeitet.',
+      disabledReason: tr('Die Instanz läuft gerade oder wird gerade bearbeitet.', 'The instance is running or being worked on right now.'),
       separated: true,
       onSelect: () => void duplicate()
     },
     {
-      label: 'Löschen',
+      label: tr('Löschen', 'Delete'),
       icon: <IconTrash size={14} />,
       danger: true,
       disabled: instance.running,
-      disabledReason: 'Beende die Instanz zuerst.',
+      disabledReason: tr('Beende die Instanz zuerst.', 'Stop the instance first.'),
       onSelect: () => setConfirmDelete(true)
     }
   ]
@@ -109,7 +110,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
               event.stopPropagation()
               void toggleFavorite(instance.id, !instance.favorite)
             }}
-            aria-label={instance.favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}
+            aria-label={instance.favorite ? tr('Favorit entfernen', 'Remove favorite') : tr('Als Favorit markieren', 'Mark as favorite')}
           >
             {instance.favorite ? <IconStarFilled size={14} /> : <IconStar size={14} />}
           </button>
@@ -119,7 +120,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
       <div className="instance-body">
         <div className="row-between" style={{ gap: 8 }}>
           <span className="instance-name truncate">{instance.name}</span>
-          {instance.running && <span className="badge ok dot live">Läuft</span>}
+          {instance.running && <span className="badge ok dot live">{tr('Läuft', 'Running')}</span>}
           {instance.installing && !instance.running && (
             <span className="badge accent">
               <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
@@ -153,7 +154,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
         </div>
 
         <div className="instance-tags" style={{ fontSize: 11.5, color: 'var(--text-4)' }}>
-          Zuletzt gespielt: {formatRelative(instance.lastPlayed)}
+          {tr('Zuletzt gespielt', 'Last played')}: {formatRelative(instance.lastPlayed)}
         </div>
 
         <div className="instance-actions">
@@ -166,7 +167,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
               }}
             >
               <IconStop size={13} />
-              Beenden
+              {tr('Beenden', 'Stop')}
             </button>
           ) : (
             <button
@@ -178,7 +179,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
               }}
             >
               {isStarting ? <span className="spinner" /> : <IconPlay size={13} />}
-              {isStarting ? 'Startet…' : 'Spielen'}
+              {isStarting ? tr('Startet…', 'Starting…') : tr('Spielen', 'Play')}
             </button>
           )}
           <button
@@ -188,7 +189,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
               navigate(`/instances/${instance.id}`)
             }}
           >
-            Öffnen
+            {tr('Öffnen', 'Open')}
           </button>
         </div>
       </div>
@@ -198,13 +199,12 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
 
     <Confirm
       open={confirmDelete}
-      title="Instanz löschen?"
+      title={tr('Instanz löschen?', 'Delete instance?')}
       danger
-      confirmLabel="Endgültig löschen"
+      confirmLabel={tr('Endgültig löschen', 'Delete permanently')}
       message={
         <>
-          <strong>{instance.name}</strong> wird mit allen Mods, Welten, Screenshots, Aufnahmen und
-          Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.
+          <strong>{instance.name}</strong> {tr('wird mit allen Mods, Welten, Screenshots, Aufnahmen und Sicherungen unwiderruflich gelöscht. Das lässt sich nicht rückgängig machen.', 'will be deleted permanently with all mods, worlds, screenshots, recordings and backups. This cannot be undone.')}
         </>
       }
       onConfirm={remove}

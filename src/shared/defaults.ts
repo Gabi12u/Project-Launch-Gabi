@@ -1,4 +1,5 @@
 import type { InstanceSettings, LauncherSettings, LoaderId } from './types'
+import { tr } from './i18n'
 
 /**
  * Client id of the official Minecraft launcher application. Launch Gabi used
@@ -96,31 +97,41 @@ export const LOADERS: { id: LoaderId; name: string; blurb: string; accent: strin
   {
     id: 'vanilla',
     name: 'Vanilla',
-    blurb: 'Reines Minecraft ohne Mod-Unterstützung.',
+    get blurb() {
+      return tr('Reines Minecraft ohne Mod-Unterstützung.', 'Plain Minecraft without mod support.')
+    },
     accent: '#5ec26a'
   },
   {
     id: 'fabric',
     name: 'Fabric',
-    blurb: 'Leichtgewichtig und schnell aktualisiert. Beste Wahl für Performance-Mods.',
+    get blurb() {
+      return tr('Leichtgewichtig und schnell aktualisiert. Beste Wahl für Performance-Mods.', 'Lightweight and updated quickly. Best choice for performance mods.')
+    },
     accent: '#c8a165'
   },
   {
     id: 'neoforge',
     name: 'NeoForge',
-    blurb: 'Moderner Forge-Nachfolger für aktuelle Versionen.',
+    get blurb() {
+      return tr('Moderner Forge-Nachfolger für aktuelle Versionen.', 'Modern Forge successor for current versions.')
+    },
     accent: '#e07a3f'
   },
   {
     id: 'forge',
     name: 'Forge',
-    blurb: 'Der Klassiker mit der größten Mod-Bibliothek.',
+    get blurb() {
+      return tr('Der Klassiker mit der größten Mod-Bibliothek.', 'The classic with the biggest mod library.')
+    },
     accent: '#4b6fa8'
   },
   {
     id: 'quilt',
     name: 'Quilt',
-    blurb: 'Fabric-kompatibler Fork mit erweitertem Mod-System.',
+    get blurb() {
+      return tr('Fabric-kompatibler Fork mit erweitertem Mod-System.', 'Fabric compatible fork with an extended mod system.')
+    },
     accent: '#9a5cc6'
   }
 ]
