@@ -4,20 +4,21 @@ import { navigate, toast, toastError, useStore } from '../lib/store'
 import { formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
 import { Confirm, EmptyState, Modal, ProgressBar } from '../components/ui'
 import { IconFolder, IconRefresh, IconSave, IconTrash, IconUpload } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 const REASON_LABELS: Record<BackupEntry['reason'], string> = {
-  manual: 'Manuell',
-  automatic: 'Automatisch',
-  'pre-update': 'Vor Mod-Update',
-  'pre-repair': 'Vor Reparatur'
+  manual: tr('Manuell', 'Manual'),
+  automatic: tr('Automatisch', 'Automatic'),
+  'pre-update': tr('Vor Mod-Update', 'Before mod update'),
+  'pre-repair': tr('Vor Reparatur', 'Before repair')
 }
 
 const FOLDER_LABELS: Record<string, string> = {
-  saves: 'Welten',
-  config: 'Konfiguration',
-  mods: 'Mods',
-  resourcepacks: 'Resourcepacks',
-  shaderpacks: 'Shader',
+  saves: tr('Welten', 'Worlds'),
+  config: tr('Konfiguration', 'Config'),
+  mods: tr('Mods', 'Mods'),
+  resourcepacks: tr('Resourcepacks', 'Resource packs'),
+  shaderpacks: tr('Shader', 'Shaders'),
   screenshots: 'Screenshots'
 }
 
@@ -39,7 +40,7 @@ export function BackupsView(): JSX.Element {
   const restoreTask = restoring
     ? tasks.find(
         (t) =>
-          t.instanceId === restoring.instanceId && t.state === 'running' && t.title === 'Sicherung wird eingespielt'
+          t.instanceId === restoring.instanceId && t.state === 'running' && t.title === tr('Sicherung wird eingespielt', 'Restoring backup')
       )
     : undefined
 
@@ -48,7 +49,7 @@ export function BackupsView(): JSX.Element {
     try {
       setBackups(await window.gabi.backups.list())
     } catch (err) {
-      toastError(err, 'Sicherungen konnten nicht geladen werden')
+      toastError(err, tr('Sicherungen konnten nicht geladen werden', 'Backups could not be loaded'))
     } finally {
       setLoading(false)
     }
@@ -69,18 +70,21 @@ export function BackupsView(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">Backups</h1>
+          <h1 className="page-title">{tr('Backups', 'Backups')}</h1>
           <p className="page-sub">
             {backups.length > 0
-              ? `${backups.length} ${pluralise(backups.length, 'Sicherung', 'Sicherungen')} · ${formatBytes(totalSize)} belegt`
-              : 'Sichere deine Welten, bevor du an Mods schraubst.'}
+              ? tr(
+                  `${backups.length} ${pluralise(backups.length, 'Sicherung', 'Sicherungen')} · ${formatBytes(totalSize)} belegt`,
+                  `${backups.length} ${pluralise(backups.length, 'backup', 'backups')} · ${formatBytes(totalSize)} used`
+                )
+              : tr('Sichere deine Welten, bevor du an Mods schraubst.', 'Back up your worlds before you tinker with mods.')}
           </p>
         </div>
 
         <div className="row gap-8">
           <button className="btn" onClick={load} disabled={loading}>
             {loading ? <span className="spinner" /> : <IconRefresh size={16} />}
-            Aktualisieren
+            {tr('Aktualisieren', 'Refresh')}
           </button>
           <button
             className="btn primary"
@@ -88,7 +92,7 @@ export function BackupsView(): JSX.Element {
             onClick={() => setCreateFor(instances[0]?.id ?? null)}
           >
             <IconSave size={16} />
-            Sicherung erstellen
+            {tr('Sicherung erstellen', 'Create backup')}
           </button>
         </div>
       </header>
@@ -101,7 +105,7 @@ export function BackupsView(): JSX.Element {
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           >
-            <option value="all">Alle Instanzen</option>
+            <option value="all">{tr('Alle Instanzen', 'All instances')}</option>
             {instances.map((instance) => (
               <option key={instance.id} value={instance.id}>
                 {instance.name}
@@ -120,17 +124,20 @@ export function BackupsView(): JSX.Element {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<IconSave size={26} />}
-          title="Keine Sicherungen"
-          message="Eine Sicherung packt Welten und Konfiguration einer Instanz in ein Archiv. Praktisch, bevor du Mods aktualisierst oder etwas Größeres umbaust."
+          title={tr('Keine Sicherungen', 'No backups')}
+          message={tr(
+            'Eine Sicherung packt Welten und Konfiguration einer Instanz in ein Archiv. Praktisch, bevor du Mods aktualisierst oder etwas Größeres umbaust.',
+            'A backup packs the worlds and config of an instance into an archive. Handy before you update mods or change something bigger.'
+          )}
           action={
             instances.length > 0 ? (
               <button className="btn primary" onClick={() => setCreateFor(instances[0].id)}>
                 <IconSave size={16} />
-                Erste Sicherung erstellen
+                {tr('Erste Sicherung erstellen', 'Create first backup')}
               </button>
             ) : (
               <button className="btn" onClick={() => navigate('/instances')}>
-                Zu den Instanzen
+                {tr('Zu den Instanzen', 'Go to instances')}
               </button>
             )
           }
@@ -165,19 +172,19 @@ export function BackupsView(): JSX.Element {
               <div className="content-actions">
                 <button className="btn sm primary" onClick={() => setRestoring(backup)}>
                   <IconUpload size={13} />
-                  Wiederherstellen
+                  {tr('Wiederherstellen', 'Restore')}
                 </button>
                 <button
                   className="btn ghost icon sm"
                   onClick={() => void window.gabi.backups.openFolder(backup.instanceId)}
-                  aria-label="Ordner öffnen"
+                  aria-label={tr('Ordner öffnen', 'Open folder')}
                 >
                   <IconFolder size={14} />
                 </button>
                 <button
                   className="btn ghost icon sm"
                   onClick={() => setDeleting(backup)}
-                  aria-label="Löschen"
+                  aria-label={tr('Löschen', 'Delete')}
                 >
                   <IconTrash size={14} />
                 </button>
@@ -195,8 +202,8 @@ export function BackupsView(): JSX.Element {
 
       <Confirm
         open={restoring !== null}
-        title="Sicherung wiederherstellen?"
-        confirmLabel="Wiederherstellen"
+        title={tr('Sicherung wiederherstellen?', 'Restore backup?')}
+        confirmLabel={tr('Wiederherstellen', 'Restore')}
         message={
           restoring ? (
             restoreTask ? (
@@ -206,12 +213,16 @@ export function BackupsView(): JSX.Element {
               </div>
             ) : (
               <>
-                {pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner')}{' '}
-                <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong> in{' '}
-                <strong>{restoring.instanceName}</strong>{' '}
-                {pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom{' '}
-                {formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch
-                gesichert.
+                {tr(
+                  pluralise(restoring.includes.length, 'Der Ordner', 'Die Ordner'),
+                  pluralise(restoring.includes.length, 'The folder', 'The folders')
+                )}{' '}
+                <strong>{restoring.includes.map((k) => FOLDER_LABELS[k] ?? k).join(', ')}</strong>{' '}
+                {tr('in', 'in')} <strong>{restoring.instanceName}</strong>{' '}
+                {tr(
+                  `${pluralise(restoring.includes.length, 'wird', 'werden')} durch den Stand vom ${formatDateTime(restoring.createdAt)} ersetzt. Der aktuelle Stand wird vorher automatisch gesichert.`,
+                  `${pluralise(restoring.includes.length, 'is', 'are')} replaced with the state from ${formatDateTime(restoring.createdAt)}. The current state is backed up automatically first.`
+                )}
               </>
             )
           ) : null
@@ -220,11 +231,11 @@ export function BackupsView(): JSX.Element {
           if (!restoring) return
           try {
             await window.gabi.backups.restore(restoring.instanceId, restoring.id)
-            toast('success', 'Wiederhergestellt', restoring.name)
+            toast('success', tr('Wiederhergestellt', 'Restored'), restoring.name)
             setRestoring(null)
             await load()
           } catch (err) {
-            toastError(err, 'Wiederherstellung fehlgeschlagen')
+            toastError(err, tr('Wiederherstellung fehlgeschlagen', 'Restore failed'))
           }
         }}
         onCancel={() => setRestoring(null)}
@@ -232,13 +243,14 @@ export function BackupsView(): JSX.Element {
 
       <Confirm
         open={deleting !== null}
-        title="Sicherung löschen?"
+        title={tr('Sicherung löschen?', 'Delete backup?')}
         danger
-        confirmLabel="Löschen"
+        confirmLabel={tr('Löschen', 'Delete')}
         message={
           deleting ? (
             <>
-              <strong>{deleting.name}</strong> ({formatBytes(deleting.size)}) wird endgültig gelöscht.
+              <strong>{deleting.name}</strong> ({formatBytes(deleting.size)}){' '}
+              {tr('wird endgültig gelöscht.', 'will be deleted permanently.')}
             </>
           ) : null
         }
@@ -249,7 +261,7 @@ export function BackupsView(): JSX.Element {
             setDeleting(null)
             await load()
           } catch (err) {
-            toastError(err, 'Löschen fehlgeschlagen')
+            toastError(err, tr('Löschen fehlgeschlagen', 'Deleting failed'))
           }
         }}
         onCancel={() => setDeleting(null)}
@@ -282,7 +294,7 @@ function CreateBackupModal({
   const targetName = instances.find((i) => i.id === target)?.name
   const createTask = busy
     ? tasks.find(
-        (t) => t.instanceId === target && t.state === 'running' && t.title === `Sicherung von ${targetName}`
+        (t) => t.instanceId === target && t.state === 'running' && t.title === tr(`Sicherung von ${targetName}`, `Backup of ${targetName}`)
       )
     : undefined
 
@@ -308,11 +320,11 @@ function CreateBackupModal({
         name: name.trim() || undefined,
         includes
       })
-      toast('success', 'Sicherung erstellt', `${entry.name} · ${formatBytes(entry.size)}`)
+      toast('success', tr('Sicherung erstellt', 'Backup created'), `${entry.name} · ${formatBytes(entry.size)}`)
       await onCreated()
       onClose()
     } catch (err) {
-      toastError(err, 'Sicherung fehlgeschlagen')
+      toastError(err, tr('Sicherung fehlgeschlagen', 'Backup failed'))
     } finally {
       setBusy(false)
     }
@@ -321,25 +333,25 @@ function CreateBackupModal({
   return (
     <Modal
       open={instanceId !== null}
-      title="Sicherung erstellen"
-      subtitle="Wähle aus, was gesichert werden soll."
+      title={tr('Sicherung erstellen', 'Create backup')}
+      subtitle={tr('Wähle aus, was gesichert werden soll.', 'Choose what to back up.')}
       onClose={onClose}
       busy={busy}
       footer={
         <>
           <button className="btn ghost" onClick={onClose} disabled={busy}>
-            Abbrechen
+            {tr('Abbrechen', 'Cancel')}
           </button>
           <button className="btn primary" onClick={create} disabled={busy || includes.length === 0}>
             {busy ? <span className="spinner" /> : <IconSave size={15} />}
-            Sicherung erstellen
+            {tr('Sicherung erstellen', 'Create backup')}
           </button>
         </>
       }
     >
       <div className="col gap-16">
         <div className="field">
-          <label className="label" htmlFor="bk-instanz">Instanz</label>
+          <label className="label" htmlFor="bk-instanz">{tr('Instanz', 'Instance')}</label>
           <select id="bk-instanz" className="select" value={target} onChange={(event) => setTarget(event.target.value)}>
             {instances.map((instance) => (
               <option key={instance.id} value={instance.id}>
@@ -350,17 +362,17 @@ function CreateBackupModal({
         </div>
 
         <div className="field">
-          <label className="label" htmlFor="bk-bezeichnung-optional">Bezeichnung (optional)</label>
+          <label className="label" htmlFor="bk-bezeichnung-optional">{tr('Bezeichnung (optional)', 'Name (optional)')}</label>
           <input id="bk-bezeichnung-optional"
             className="input"
-            placeholder="z. B. Vor dem großen Umbau"
+            placeholder={tr('z. B. Vor dem großen Umbau', 'e.g. Before the big rebuild')}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
         </div>
 
         <div className="field">
-          <label className="label" id="bk-inhalte">Inhalte</label>
+          <label className="label" id="bk-inhalte">{tr('Inhalte', 'Contents')}</label>
           <div role="group" aria-labelledby="bk-inhalte" className="row gap-8 wrap">
             {Object.entries(FOLDER_LABELS).map(([key, label]) => (
               <button
@@ -374,7 +386,10 @@ function CreateBackupModal({
             ))}
           </div>
           <span className="hint">
-            Welten und Konfiguration reichen meist. Mods mitzusichern macht das Archiv deutlich größer.
+            {tr(
+              'Welten und Konfiguration reichen meist. Mods mitzusichern macht das Archiv deutlich größer.',
+              'Worlds and config are usually enough. Including mods makes the archive much bigger.'
+            )}
           </span>
         </div>
 

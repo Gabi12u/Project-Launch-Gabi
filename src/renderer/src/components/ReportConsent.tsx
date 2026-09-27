@@ -2,6 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import { saveSettings, useStore } from '../lib/store'
 import { Modal } from './ui'
 import { IconShield } from './Icons'
+import { tr } from '@shared/i18n'
 
 /**
  * Asks once whether faults may be sent in, and never again.
@@ -46,46 +47,50 @@ export function ReportConsent(): JSX.Element | null {
   return (
     <Modal
       open
-      title="Dürfen wir Fehler sehen?"
-      subtitle="Einmal entscheiden, jederzeit änderbar."
+      title={tr('Dürfen wir Fehler sehen?', 'May we see errors?')}
+      subtitle={tr('Einmal entscheiden, jederzeit änderbar.', 'Decide once, change any time.')}
       onClose={() => setDismissed(true)}
       footer={
         <>
           <button className="btn ghost" onClick={() => answer(false)}>
-            Nein, danke
+            {tr('Nein, danke', 'No, thanks')}
           </button>
           <button className="btn primary" onClick={() => answer(true)}>
             <IconShield size={14} />
-            Ja, Fehler senden
+            {tr('Ja, Fehler senden', 'Yes, send errors')}
           </button>
         </>
       }
     >
       <div className="col gap-12">
         <p>
-          Wenn im Launcher etwas schiefgeht, kann automatisch ein kurzer Bericht an die
-          Entwicklung gehen. Damit finden wir Fehler, von denen sonst nie jemand erfährt.
+          {tr(
+            'Wenn im Launcher etwas schiefgeht, kann automatisch ein kurzer Bericht an die Entwicklung gehen. Damit finden wir Fehler, von denen sonst nie jemand erfährt.',
+            'When something goes wrong in the launcher, a short report can be sent to the developer automatically. That way we find errors nobody would otherwise ever hear about.'
+          )}
         </p>
 
         <div className="setting-group" style={{ margin: 0 }}>
-          <h3>Was gesendet wird</h3>
+          <h3>{tr('Was gesendet wird', 'What is sent')}</h3>
           <ul className="hint bullet-list">
-            <li>Die Fehlermeldung und wo im Programm sie aufgetreten ist</li>
-            <li>Die Version von Launch Gabi und dein Betriebssystem</li>
+            <li>{tr('Die Fehlermeldung und wo im Programm sie aufgetreten ist', 'The error message and where in the program it happened')}</li>
+            <li>{tr('Die Version von Launch Gabi und dein Betriebssystem', 'The version of Launch Gabi and your operating system')}</li>
           </ul>
 
-          <h3 style={{ marginTop: 14 }}>Was nicht gesendet wird</h3>
+          <h3 style={{ marginTop: 14 }}>{tr('Was nicht gesendet wird', 'What is not sent')}</h3>
           <ul className="hint bullet-list">
-            <li>Dein Minecraft-Name, deine UUID und deine Zugangsdaten</li>
-            <li>Dein Windows-Benutzername, auch nicht versteckt in Dateipfaden</li>
-            <li>Deine IP-Adresse wird nicht gespeichert</li>
-            <li>Nichts aus deinen Welten, Mods oder Screenshots</li>
+            <li>{tr('Dein Minecraft-Name, deine UUID und deine Zugangsdaten', 'Your Minecraft name, your UUID and your credentials')}</li>
+            <li>{tr('Dein Windows-Benutzername, auch nicht versteckt in Dateipfaden', 'Your Windows user name, not even hidden in file paths')}</li>
+            <li>{tr('Deine IP-Adresse wird nicht gespeichert', 'Your IP address is not stored')}</li>
+            <li>{tr('Nichts aus deinen Welten, Mods oder Screenshots', 'Nothing from your worlds, mods or screenshots')}</li>
           </ul>
         </div>
 
         <p className="hint">
-          Berichte werden immer auch bei dir gespeichert, damit du selbst nachsehen kannst, was
-          gesendet wurde. Zu finden unter Einstellungen, Fehlerberichte.
+          {tr(
+            'Berichte werden immer auch bei dir gespeichert, damit du selbst nachsehen kannst, was gesendet wurde. Zu finden unter Einstellungen, Fehlerberichte.',
+            'Reports are always stored on your computer too, so you can check yourself what was sent. You can find them under Settings, Error reports.'
+          )}
         </p>
       </div>
     </Modal>

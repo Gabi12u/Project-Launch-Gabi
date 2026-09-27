@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { navigate } from '../lib/store'
 import { IconRefresh, IconWarning } from './Icons'
+import { tr } from '@shared/i18n'
 
 interface Props {
   children: ReactNode
@@ -82,10 +83,12 @@ export class ErrorBoundary extends Component<Props, State> {
         }}
       >
         <IconWarning size={30} />
-        <div style={{ fontSize: 16, fontWeight: 650 }}>Hier ist etwas schiefgelaufen</div>
+        <div style={{ fontSize: 16, fontWeight: 650 }}>{tr('Hier ist etwas schiefgelaufen', 'Something went wrong here')}</div>
         <p className="hint" style={{ maxWidth: 440 }}>
-          Diese Ansicht hat einen Fehler ausgelöst, mit dem nicht gerechnet wurde. Der Rest von
-          Launch Gabi läuft weiter.
+          {tr(
+            'Diese Ansicht hat einen Fehler ausgelöst, mit dem nicht gerechnet wurde. Der Rest von Launch Gabi läuft weiter.',
+            'This view ran into an unexpected error. The rest of Launch Gabi keeps running.'
+          )}
         </p>
         <p className="mono hint" style={{ maxWidth: 480, wordBreak: 'break-word', opacity: 0.8 }}>
           {error.message}
@@ -93,15 +96,15 @@ export class ErrorBoundary extends Component<Props, State> {
         <div className="row gap-8">
           {full ? (
             <button className="btn primary" onClick={() => window.location.reload()}>
-              <IconRefresh size={14} /> Launcher neu laden
+              <IconRefresh size={14} /> {tr('Launcher neu laden', 'Reload launcher')}
             </button>
           ) : (
             <>
               <button className="btn" onClick={this.retry}>
-                <IconRefresh size={14} /> Erneut versuchen
+                <IconRefresh size={14} /> {tr('Erneut versuchen', 'Try again')}
               </button>
               <button className="btn primary" onClick={this.goHome}>
-                Zur Startseite
+                {tr('Zur Startseite', 'Go to home')}
               </button>
             </>
           )}
