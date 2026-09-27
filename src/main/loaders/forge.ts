@@ -513,7 +513,7 @@ async function installForgeLikeInner(
         )
 
         const jar = libraryPath(processor.jar)
-        if (!existsSync(jar)) throw new Error(`Prozessor-Jar fehlt: ${processor.jar}`)
+        if (!existsSync(jar)) throw new Error(tr(`Prozessor-Jar fehlt: ${processor.jar}`, `Processor jar missing: ${processor.jar}`))
 
         const classpath = [...processor.classpath.map(libraryPath), jar]
         const args = processor.args.map((arg) => resolveArgument(arg, data))

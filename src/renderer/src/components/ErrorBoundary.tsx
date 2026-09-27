@@ -104,7 +104,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <IconRefresh size={14} /> {tr('Erneut versuchen', 'Try again')}
               </button>
               <button className="btn primary" onClick={this.goHome}>
-                {tr('Zur Startseite', 'Go to home')}
+                {tr('Zur Startseite', 'Back to Home')}
               </button>
             </>
           )}

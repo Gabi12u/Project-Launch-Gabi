@@ -643,9 +643,10 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
         : []
     } catch (err) {
       throw new Error(
-        `Die mmc-pack.json in diesem Ordner ist beschädigt und konnte nicht gelesen werden. (${
-          err instanceof Error ? err.message : String(err)
-        })`
+        tr(
+          `Die mmc-pack.json in diesem Ordner ist beschädigt und konnte nicht gelesen werden. (${err instanceof Error ? err.message : String(err)})`,
+          `The mmc-pack.json in this folder is damaged and could not be read. (${err instanceof Error ? err.message : String(err)})`
+        )
       )
     }
 
@@ -759,7 +760,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
   if (!gameDir) {
     throw new Error(
-      tr('In diesem Ordner wurde keine Instanz erkannt. Erwartet wird ein Prism-/MultiMC-Ordner, ein Launch-Gabi-Ordner oder ein ".minecraft"-Ordner mit mods/ oder saves/.', 'No instance was found in this folder. Expected is a Prism/MultiMC folder, a Launch Gabi folder or a ".minecraft" folder with mods/ or saves/.')
+      tr('In diesem Ordner wurde keine Instanz erkannt. Erwartet wird ein Prism-/MultiMC-Ordner, ein Launch-Gabi-Ordner oder ein ".minecraft"-Ordner mit mods/ oder saves/.', 'No instance was found in this folder. It should be a Prism/MultiMC folder, a Launch Gabi folder or a ".minecraft" folder with mods/ or saves/.')
     )
   }
 

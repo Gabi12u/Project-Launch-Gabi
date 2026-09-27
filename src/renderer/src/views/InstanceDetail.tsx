@@ -841,7 +841,7 @@ function ContentTab({
           title={tr('Nichts installiert', 'Nothing installed')}
           message={tr(
             `Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden“, um welche zu installieren.`,
-            `All ${CONTENT_TABS.find((t) => t.id === type)?.label} of this instance show up here. Use the "Find content" tab to install some.`
+            `Everything under ${CONTENT_TABS.find((t) => t.id === type)?.label} in this instance shows up here. Use the "Find content" tab to install some.`
           )}
         />
       ) : (

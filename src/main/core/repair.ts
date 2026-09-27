@@ -778,9 +778,15 @@ async function runRepair(
       const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
       const unresolved = failed.length > 0 || incompatible > 0
       const parts = [
-        ...(duplicatesRemoved > 0 ? [tr(`${duplicatesRemoved} doppelt installierte entfernt`, `${duplicatesRemoved} duplicates removed`)] : []),
+        ...(duplicatesRemoved > 0 ? [tr(
+              `${duplicatesRemoved} ${duplicatesRemoved === 1 ? 'doppelt installierte Datei' : 'doppelt installierte Dateien'} entfernt`,
+              `${duplicatesRemoved} ${duplicatesRemoved === 1 ? 'duplicate' : 'duplicates'} removed`
+            )] : []),
         tr(`${restored} neu geladen`, `${restored} downloaded again`),
-        tr(`${removed} verwaiste Einträge entfernt`, `${removed} orphaned entries removed`),
+        tr(
+          `${removed} ${removed === 1 ? 'verwaister Eintrag' : 'verwaiste Einträge'} entfernt`,
+          `${removed} ${removed === 1 ? 'orphaned entry' : 'orphaned entries'} removed`
+        ),
         ...(incompatible > 0
           ? [tr(`${incompatible} inkompatibel (keine passende Version gefunden)`, `${incompatible} incompatible (no matching version found)`)]
           : []),
@@ -880,7 +886,7 @@ async function runRepair(
         : tr('Reparatur erfolgreich', 'Repair successful')
     )
 
-    task.update('Reparatur abgeschlossen', 1)
+    task.update(tr('Reparatur abgeschlossen', 'Repair finished'), 1)
     return report
   })
 }

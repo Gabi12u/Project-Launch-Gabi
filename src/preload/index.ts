@@ -1,11 +1,23 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { EVENTS, IPC } from '@shared/ipc'
 
+/**
+ * Electron prefixes every error thrown in a main-process handler with
+ * "Error invoking remote method '<channel>': Error: ". The launcher's own
+ * messages are meant to be shown as they are, so that prefix is removed here.
+ */
+function cleanIpcError(error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error)
+  return new Error(message.replace(/^Error invoking remote method '[^']*': (?:[A-Za-z]*Error: )?/, ''))
+}
+
 /** Wraps `ipcRenderer.invoke` so call sites read like plain async functions. */
 const call =
   <T>(channel: string) =>
   (...args: unknown[]): Promise<T> =>
-    ipcRenderer.invoke(channel, ...args) as Promise<T>
+    (ipcRenderer.invoke(channel, ...args) as Promise<T>).catch((error: unknown) => {
+      throw cleanIpcError(error)
+    })
 
 /**
  * Subscribes to a push channel and returns the unsubscribe function.

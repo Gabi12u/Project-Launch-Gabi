@@ -6,7 +6,7 @@ import { LOADER_LABELS } from '../lib/format'
 import { InstanceCard } from '../components/InstanceCard'
 import { EmptyState, Segmented } from '../components/ui'
 import { IconCube, IconDownload, IconFolder, IconPlus, IconSearch } from '../components/Icons'
-import { tr } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 type SortKey = 'recent' | 'name' | 'played'
 
@@ -37,7 +37,7 @@ export function InstancesView(): JSX.Element {
 
     switch (sort) {
       case 'name':
-        return [...result].sort((a, b) => a.name.localeCompare(b.name, 'de'))
+        return [...result].sort((a, b) => a.name.localeCompare(b.name, locale()))
       case 'played':
         return [...result].sort((a, b) => b.totalPlayMs - a.totalPlayMs)
       default:
@@ -57,7 +57,7 @@ export function InstancesView(): JSX.Element {
     return [...map.entries()].sort(([a], [b]) => {
       if (a === '') return -1
       if (b === '') return 1
-      return a.localeCompare(b, 'de')
+      return a.localeCompare(b, locale())
     })
   }, [filtered])
 
@@ -85,7 +85,7 @@ export function InstancesView(): JSX.Element {
             title={tr('Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen', 'Take over an existing instance from Prism, MultiMC or a .minecraft folder')}
           >
             <IconFolder size={16} />
-            Ordner
+            {tr('Ordner', 'Folder')}
           </button>
           <button className="btn primary" onClick={() => setState({ createOpen: true })}>
             <IconPlus size={16} />

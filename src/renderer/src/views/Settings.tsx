@@ -179,13 +179,13 @@ function UpdatePanel(): JSX.Element {
           // showing them as-is left stray "#" and "-" characters on screen.
           // The changelog tab already renders the same information properly.
           <p className="hint mt-8">
-            {tr('Was neu ist, steht unter', 'See what\'s new under')}{' '}
+            {tr('Was neu ist, steht unter', 'Details are under')}{' '}
             <button
               className="link"
               style={{ background: 'none', padding: 0 }}
               onClick={() => navigate('/settings?section=changelog')}
             >
-              {tr('Änderungen', 'What\'s new')}
+              {tr('Neuerungen', 'What\'s new')}
             </button>
             .
           </p>
@@ -738,7 +738,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   'Launch Gabi meldet sich über den Geräte-Code-Ablauf an, dein Passwort wird nie im Launcher eingegeben. Voreingestellt ist die Anwendungs-ID des offiziellen Minecraft-Launchers, die über',
                   'Launch Gabi signs in with the device code flow, your password is never entered in the launcher. The default is the application ID of the official Minecraft Launcher, which runs through'
                 )}{' '}
-                <span className="mono">login.live.com</span>.{' '}
+                <span className="mono">login.live.com</span>
+                {tr(' läuft.', '.')}{' '}
                 {tr(
                   'Trägst du hier stattdessen eine eigene Azure-Anwendungs-ID im GUID-Format ein, wechselt Launch Gabi automatisch auf den Azure-AD-Ablauf.',
                   'If you enter your own Azure application ID in GUID format here instead, Launch Gabi switches to the Azure AD flow automatically.'

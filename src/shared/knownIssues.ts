@@ -2525,8 +2525,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Viele Fehlermeldungen des Launchers fingen mit „Error invoking remote method …“ an, bevor ' +
       'der eigentliche Text kam. Außerdem erschien beim Abbrechen einer Microsoft-Anmeldung eine ' +
       'Fehlermeldung, obwohl nur abgebrochen wurde.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   }
 ]
 

@@ -57,7 +57,7 @@ const deleted = new Set<string>()
 function normalise(raw: Partial<Instance>, id: string): Instance {
   return {
     id,
-    name: raw.name ?? 'Unbenannt',
+    name: raw.name ?? tr('Unbenannt', 'Unnamed'),
     description: raw.description ?? '',
     group: raw.group ?? '',
     mcVersion: raw.mcVersion ?? '1.21.11',
@@ -606,7 +606,7 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   }
 
   const source = getInstance(id)
-  const name = newName?.trim() || `${source.name} (Kopie)`
+  const name = newName?.trim() || tr(`${source.name} (Kopie)`, `${source.name} (Copy)`)
   const newId = uniqueId(name)
 
   ensureInstanceLayout(newId)

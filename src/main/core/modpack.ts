@@ -148,7 +148,7 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
   }
 
   const { loader, loaderVersion, mcVersion } = loaderFromDependencies(index.dependencies ?? {})
-  const name = nameOverride?.trim() || index.name || 'Importiertes Modpack'
+  const name = nameOverride?.trim() || index.name || tr('Importiertes Modpack', 'Imported modpack')
 
   logger.info(`Importiere ${name} (${mcVersion}, ${loader} ${loaderVersion}, ${index.files.length} Dateien)`)
 
@@ -456,7 +456,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     mcVersion: manifest.minecraft.version,
     loader,
     loaderVersion,
-    description: `von ${manifest.author}`,
+    description: tr(`von ${manifest.author}`, `by ${manifest.author}`),
     icon: '📦'
   })
 
@@ -1049,7 +1049,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
         prefix: 'overrides',
         extraFiles: [{ name: 'modrinth.index.json', content: JSON.stringify(index, null, 2) }]
       },
-      (done, total) => task.update(`${done} / ${total} Dateien`, 0.4 + (done / Math.max(total, 1)) * 0.6)
+      (done, total) => task.update(tr(`${done} / ${total} Dateien`, `${done} / ${total} files`), 0.4 + (done / Math.max(total, 1)) * 0.6)
     )
 
     const size = statSync(options.targetFile).size
@@ -1086,7 +1086,7 @@ export async function installModpackFromProvider(
         received += delta
         const total = version.size ?? 0
         task.update(
-          `${(received / 1024 / 1024).toFixed(1)} MB geladen`,
+          tr(`${(received / 1024 / 1024).toFixed(1)} MB geladen`, `${(received / 1024 / 1024).toFixed(1)} MB downloaded`),
           total > 0 ? received / total : null
         )
       },

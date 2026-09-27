@@ -263,7 +263,7 @@ async function createBackupUnlocked(
             onSkipLink: (file) => skippedLinks.push(file)
           },
           (done, total) => {
-            task.update(`${done} / ${total} Dateien`, total > 0 ? done / total : null)
+            task.update(tr(`${done} / ${total} Dateien`, `${done} / ${total} files`), total > 0 ? done / total : null)
           }
         )
 

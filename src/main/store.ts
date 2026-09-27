@@ -254,8 +254,10 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
 }
 
 export function resetSettings(): LauncherSettings {
-  const dataDirectory = getSettings().dataDirectory
-  const next = { ...DEFAULT_LAUNCHER_SETTINGS, dataDirectory }
+  const { dataDirectory, language } = getSettings()
+  // The language is kept like the data folder: switching it needs a restart,
+  // and a reset offers none, so it would silently flip on the next start.
+  const next = { ...DEFAULT_LAUNCHER_SETTINGS, dataDirectory, language }
   // Same ordering as saveSettings, and for the same reason.
   writeJsonAtomic(settingsFile(), next)
   settings = next

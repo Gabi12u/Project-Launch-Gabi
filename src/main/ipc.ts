@@ -284,7 +284,8 @@ export function registerIpc(): void {
         )
       )
     }
-    app.relaunch()
+    // Inside an AppImage, execPath points into a mount that is gone by then.
+    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE } : undefined)
     app.quit()
   })
 
@@ -396,7 +397,7 @@ export function registerIpc(): void {
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
         title: tr('Instanz-Ordner auswählen', 'Choose instance folder'),
         message: tr('Wähle den Ordner einer Instanz (Prism, MultiMC oder ein .minecraft-Ordner).', 'Choose the folder of an instance (Prism, MultiMC or a .minecraft folder).'),
-        buttonLabel: 'Importieren',
+        buttonLabel: tr('Importieren', 'Import'),
         properties: ['openDirectory']
       })
       if (result.canceled) return null
@@ -442,7 +443,7 @@ export function registerIpc(): void {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
       title: tr('Instanz-Icon auswählen', 'Choose instance icon'),
-      filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'ico'] }],
+      filters: [{ name: tr('Bilder', 'Images'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'ico'] }],
       properties: ['openFile']
     })
     if (result.canceled) return null
@@ -454,7 +455,7 @@ export function registerIpc(): void {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
       title: tr('Hintergrundbild auswählen', 'Choose background image'),
-      filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+      filters: [{ name: tr('Bilder', 'Images'), extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
       properties: ['openFile']
     })
     if (result.canceled) return null
@@ -687,7 +688,7 @@ export function registerIpc(): void {
     const win = getMainWindow()
     const result = await dialog.showOpenDialog(win as BrowserWindow, {
       title: tr('Dateien hinzufügen', 'Add files'),
-      filters: [{ name: type === 'mod' ? 'Mods' : 'Archive', extensions: type === 'mod' ? ['jar'] : ['zip'] }],
+      filters: [{ name: type === 'mod' ? 'Mods' : tr('Archive', 'Archives'), extensions: type === 'mod' ? ['jar'] : ['zip'] }],
       properties: ['openFile', 'multiSelections']
     })
     if (result.canceled) return []
@@ -765,7 +766,7 @@ export function registerIpc(): void {
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
         title: tr('Instanz-Ordner auswählen', 'Choose instance folder'),
         message: tr('Wähle den Ordner einer Instanz (Prism, MultiMC, CurseForge, Modrinth oder ein .minecraft-Ordner).', 'Choose the folder of an instance (Prism, MultiMC, CurseForge, Modrinth or a .minecraft folder).'),
-        buttonLabel: 'Analysieren',
+        buttonLabel: tr('Analysieren', 'Analyze'),
         properties: ['openDirectory']
       })
       if (result.canceled) return null
@@ -780,7 +781,7 @@ export function registerIpc(): void {
       const win = getMainWindow()
       const result = await dialog.showOpenDialog(win as BrowserWindow, {
         title: tr('Modpack auswählen', 'Choose modpack'),
-        buttonLabel: 'Analysieren',
+        buttonLabel: tr('Analysieren', 'Analyze'),
         filters: [
           { name: 'Modpacks', extensions: ['mrpack', 'zip'] },
           { name: 'Modrinth Modpack', extensions: ['mrpack'] },

@@ -124,8 +124,8 @@ export function VersionPicker({
             />
             <span style={{ fontSize: 13 }}>
               {tr('Nur passende zu Minecraft', 'Only matching Minecraft')} {mcVersion}
-              {loader !== 'vanilla' ? ` und ${loader}` : ''}
-              {hiddenCount > 0 && onlyCompatible ? ` (${hiddenCount} ausgeblendet)` : ''}
+              {loader !== 'vanilla' ? tr(` und ${loader}`, ` and ${loader}`) : ''}
+              {hiddenCount > 0 && onlyCompatible ? tr(` (${hiddenCount} ausgeblendet)`, ` (${hiddenCount} hidden)`) : ''}
             </span>
           </label>
 

@@ -135,7 +135,7 @@ export class Task {
     this.push()
   }
 
-  done(detail = 'Fertig'): void {
+  done(detail = tr('Fertig', 'Done')): void {
     if (this.task.state !== 'running') return
     this.task.state = 'done'
     this.task.detail = detail

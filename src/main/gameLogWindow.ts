@@ -1,6 +1,6 @@
 import { BrowserWindow, app, shell } from 'electron'
 import { join } from 'node:path'
-import { getLanguage } from '@shared/i18n'
+import { getLanguage, tr } from '@shared/i18n'
 import { log } from './logger'
 
 const logger = log('gameLogWindow')
@@ -46,7 +46,7 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
     height: 480,
     minWidth: 480,
     minHeight: 300,
-    title: `Live-Log: ${instanceName}`,
+    title: tr(`Live-Log: ${instanceName}`, `Live log: ${instanceName}`),
     // Frameless like the main window, with its own small titlebar drawn in
     // the renderer (GameLogWindow.tsx): the native title bar and its default
     // File/Edit/View/Window menu looked like a generic Electron window

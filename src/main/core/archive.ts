@@ -92,9 +92,10 @@ function assertReasonableArchive(
   for (const entry of entries) total += entry.header.size
   if (total > MAX_ARCHIVE_TOTAL_SIZE) {
     throw new Error(
-      `${archivePath} entpackt auf insgesamt mehr als ${Math.round(
-        MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024
-      )} GB, abgelehnt.`
+      tr(
+        `${archivePath} entpackt auf insgesamt mehr als ${Math.round(MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024)} GB, abgelehnt.`,
+        `${archivePath} unpacks to more than ${Math.round(MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024)} GB in total, rejected.`
+      )
     )
   }
 }
@@ -654,9 +655,10 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           totalSize += size
           if (totalSize > MAX_ARCHIVE_TOTAL_SIZE) {
             throw new Error(
-              `${archivePath} entpackt auf insgesamt mehr als ${Math.round(
-                MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024
-              )} GB, abgelehnt.`
+              tr(
+                `${archivePath} entpackt auf insgesamt mehr als ${Math.round(MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024)} GB, abgelehnt.`,
+                `${archivePath} unpacks to more than ${Math.round(MAX_ARCHIVE_TOTAL_SIZE / 1024 / 1024 / 1024)} GB in total, rejected.`
+              )
             )
           }
 

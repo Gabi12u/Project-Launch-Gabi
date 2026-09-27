@@ -536,7 +536,7 @@ function ProjectCard({
             <IconDownload size={11} style={{ display: 'inline', verticalAlign: '-1px' }}/>{' '}
             {formatNumber(item.downloads)}
           </span>
-          {item.author && <span className="truncate">von {item.author}</span>}
+          {item.author && <span className="truncate">{tr('von', 'by')} {item.author}</span>}
           {item.updatedAt && <span>{formatRelative(new Date(item.updatedAt).getTime())}</span>}
         </div>
       </div>
@@ -760,8 +760,8 @@ function ProjectModal({
                   <div className="issue-title">{tr('Keine passende Version', 'No matching version')}</div>
                   <div className="issue-detail">
                     {tr(
-                      `Für Minecraft ${mcVersion} ${loader && loader !== 'vanilla' ? `(${loader})` : ''} gibt es keine Veröffentlichung. Schalte den Filter aus, um alle Versionen zu sehen.`,
-                      `There is no release for Minecraft ${mcVersion} ${loader && loader !== 'vanilla' ? `(${loader})` : ''}. Turn off the filter to see all versions.`
+                      `Für Minecraft ${mcVersion}${loader && loader !== 'vanilla' ? ` (${loader})` : ''} gibt es keine Veröffentlichung. Schalte den Filter aus, um alle Versionen zu sehen.`,
+                      `There is no release for Minecraft ${mcVersion}${loader && loader !== 'vanilla' ? ` (${loader})` : ''}. Turn off the filter to see all versions.`
                     )}
                   </div>
                 </div>
