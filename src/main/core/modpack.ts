@@ -19,6 +19,7 @@ import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
 import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
+import { tr } from '@shared/i18n'
 
 const logger = log('modpack')
 
@@ -54,20 +55,19 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
   const mcVersion = dependencies['minecraft']
   if (typeof mcVersion !== 'string' || !mcVersion.trim()) {
     throw new Error(
-      'Im Modpack fehlt die Angabe, für welche Minecraft-Version es gedacht ist. ' +
-        'Es wurde nicht importiert.'
+      tr('Im Modpack fehlt die Angabe, für welche Minecraft-Version es gedacht ist. Es wurde nicht importiert.', 'The modpack does not say which Minecraft version it is for. It was not imported.')
     )
   }
   // Both ids end up as path segments (paths.version(), paths.natives()), so a
   // crafted manifest cannot be allowed to smuggle a separator or ".." through.
   if (!isValidVersionString(mcVersion)) {
-    throw new Error('Die Minecraft-Version im Modpack ist ungültig.')
+    throw new Error(tr('Die Minecraft-Version im Modpack ist ungültig.', 'The Minecraft version in the modpack is invalid.'))
   }
 
   const loaderVersionOf = (key: string): string => {
     const value = dependencies[key]
     if (!isValidVersionString(value)) {
-      throw new Error('Die Mod-Loader-Version im Modpack ist ungültig.')
+      throw new Error(tr('Die Mod-Loader-Version im Modpack ist ungültig.', 'The mod loader version in the modpack is invalid.'))
     }
     return value
   }
@@ -141,10 +141,10 @@ function contentTypeFromPath(path: string): ContentType {
 export async function importMrpack(archivePath: string, nameOverride?: string): Promise<Instance> {
   const index = await readEntryJson<MrpackIndex>(archivePath, 'modrinth.index.json')
   if (!index) {
-    throw new Error('Das ist kein gültiges .mrpack-Archiv (modrinth.index.json fehlt).')
+    throw new Error(tr('Das ist kein gültiges .mrpack-Archiv (modrinth.index.json fehlt).', 'This is not a valid .mrpack archive (modrinth.index.json is missing).'))
   }
   if (!Array.isArray(index.files)) {
-    throw new Error('Die Dateiliste im .mrpack fehlt oder ist beschädigt.')
+    throw new Error(tr('Die Dateiliste im .mrpack fehlt oder ist beschädigt.', 'The file list in the .mrpack is missing or damaged.'))
   }
 
   const { loader, loaderVersion, mcVersion } = loaderFromDependencies(index.dependencies ?? {})
@@ -170,7 +170,7 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
     }
   })
 
-  void withTask(`${name} wird importiert`, 'Mod-Dateien werden geladen…', instance.id, async (task) => {
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mod-Dateien werden geladen…', 'Downloading mod files…'), instance.id, async (task) => {
     await installMrpackFiles(instance.id, archivePath, index, task)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
@@ -197,8 +197,11 @@ function markImportFailed(instanceId: string, name: string, err: unknown): void 
       logger.warn(`Abgebrochener Import von ${instanceId} konnte nicht gelöscht werden:`, deleteErr)
       notify(
         'warning',
-        'Import abgebrochen',
-        `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere sie erneut.`,
+        tr('Import abgebrochen', 'Import cancelled'),
+        tr(
+          `"${name}" wurde abgebrochen und ist unvollständig. Lösche die Instanz und importiere sie erneut.`,
+          `"${name}" was cancelled and is incomplete. Delete the instance and import it again.`
+        ),
         { route: `/instances/${instanceId}` }
       )
     }
@@ -239,7 +242,7 @@ async function installMrpackFiles(
       if (rawUrls.length > 0) {
         blockedByHost.push(file.path)
       } else {
-        rejected.push(`${file.path} (kein Download-Link)`)
+        rejected.push(tr(`${file.path} (kein Download-Link)`, `${file.path} (no download link)`))
       }
       continue
     }
@@ -265,9 +268,10 @@ async function installMrpackFiles(
     // not a pack with a typo, and a half-installed one hides the problem.
     logger.error(`Modpack enthält unzulässige Einträge: ${rejected.join(', ')}`)
     throw new Error(
-      `Das Modpack enthält ${rejected.length} unzulässige ${
-        rejected.length === 1 ? 'Datei' : 'Dateien'
-      } und wurde nicht installiert: ${rejected.slice(0, 3).join('; ')}`
+      tr(
+        `Das Modpack enthält ${rejected.length} unzulässige ${rejected.length === 1 ? 'Datei' : 'Dateien'} und wurde nicht installiert: ${rejected.slice(0, 3).join('; ')}`,
+        `The modpack contains ${rejected.length} forbidden ${rejected.length === 1 ? 'file' : 'files'} and was not installed: ${rejected.slice(0, 3).join('; ')}`
+      )
     )
   }
 
@@ -277,7 +281,7 @@ async function installMrpackFiles(
   const failed: string[] = []
   await downloadAll(downloads, {
     task,
-    label: 'Modpack-Dateien',
+    label: tr('Modpack-Dateien', 'Modpack files'),
     onError: (item, err) => {
       failed.push(basename(item.path))
       logger.warn(`Datei ${basename(item.path)} konnte nicht geladen werden:`, err)
@@ -289,10 +293,14 @@ async function installMrpackFiles(
   if (failed.length > 0) {
     notify(
       'warning',
-      `${failed.length} ${failed.length === 1 ? 'Datei fehlt' : 'Dateien fehlen'}`,
-      `Das Modpack wurde installiert, aber ${failed.slice(0, 3).join(', ')}${
-        failed.length > 3 ? ' und weitere' : ''
-      } konnten nicht geladen werden.`,
+      tr(
+        `${failed.length} ${failed.length === 1 ? 'Datei fehlt' : 'Dateien fehlen'}`,
+        `${failed.length} ${failed.length === 1 ? 'file is missing' : 'files are missing'}`
+      ),
+      tr(
+        `Das Modpack wurde installiert, aber ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''} konnten nicht geladen werden.`,
+        `The modpack was installed, but ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' and more' : ''} could not be downloaded.`
+      ),
       { route: `/instances/${instanceId}` }
     )
   }
@@ -300,16 +308,20 @@ async function installMrpackFiles(
   if (blockedByHost.length > 0) {
     notify(
       'warning',
-      `${blockedByHost.length} ${blockedByHost.length === 1 ? 'Datei übersprungen' : 'Dateien übersprungen'}`,
-      `Das Modpack wurde installiert, aber ${blockedByHost.slice(0, 3).join(', ')}${
-        blockedByHost.length > 3 ? ' und weitere' : ''
-      } wurden übersprungen, weil ihre Download-Adresse nicht zu den von Modrinth erlaubten Adressen gehört.`,
+      tr(
+        `${blockedByHost.length} ${blockedByHost.length === 1 ? 'Datei übersprungen' : 'Dateien übersprungen'}`,
+        `${blockedByHost.length} ${blockedByHost.length === 1 ? 'file skipped' : 'files skipped'}`
+      ),
+      tr(
+        `Das Modpack wurde installiert, aber ${blockedByHost.slice(0, 3).join(', ')}${blockedByHost.length > 3 ? ' und weitere' : ''} wurden übersprungen, weil ihre Download-Adresse nicht zu den von Modrinth erlaubten Adressen gehört.`,
+        `The modpack was installed, but ${blockedByHost.slice(0, 3).join(', ')}${blockedByHost.length > 3 ? ' and more' : ''} were skipped because their download address is not one Modrinth allows.`
+      ),
       { route: `/instances/${instanceId}` }
     )
   }
 
   // 2. Overrides ------------------------------------------------------
-  task.update('Konfigurationen werden entpackt…', 0.9)
+  task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
   const entries = listEntries(archivePath)
   if (entries.some((e) => e.name.startsWith('overrides/'))) {
     extractSubtree(archivePath, 'overrides', gameDir)
@@ -319,7 +331,7 @@ async function installMrpackFiles(
   }
 
   // 3. Register the files as content ----------------------------------
-  task.update('Mods werden erfasst…', 0.95)
+  task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.95)
   await syncContentWithDisk(instanceId)
 
   // The base setup (libraries, assets, the client jar) that `createInstance`
@@ -354,12 +366,12 @@ async function installMrpackFiles(
   if (!baseSetupOk) {
     persist({ ...instance, content: enriched, installing: false, installed: false })
     throw new Error(
-      'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+      tr('Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.', 'Minecraft itself could not be set up. Use "Repair" to try again.')
     )
   }
 
   persist({ ...instance, content: enriched, installing: false, installed: true })
-  task.update('Import abgeschlossen', 1)
+  task.update(tr('Import abgeschlossen', 'Import finished'), 1)
   logger.info(`Modpack in ${instanceId} importiert`)
 }
 
@@ -399,26 +411,26 @@ function loaderFromCurseId(id: string): { loader: LoaderId; loaderVersion: strin
 export async function importCurseForgeZip(archivePath: string, nameOverride?: string): Promise<Instance> {
   const manifest = await readEntryJson<CurseManifest>(archivePath, 'manifest.json')
   if (!manifest) {
-    throw new Error('Das ist kein gültiges CurseForge-Modpack (manifest.json fehlt).')
+    throw new Error(tr('Das ist kein gültiges CurseForge-Modpack (manifest.json fehlt).', 'This is not a valid CurseForge modpack (manifest.json is missing).'))
   }
 
   if (!curseforge.hasApiKey()) {
     throw new Error(
-      'Für CurseForge-Modpacks wird ein API-Schlüssel benötigt. Trage ihn in den Einstellungen ein.'
+      tr('Für CurseForge-Modpacks wird ein API-Schlüssel benötigt. Trage ihn in den Einstellungen ein.', 'CurseForge modpacks need an API key. Enter it in the settings.')
     )
   }
 
   // The manifest parsed, which says nothing about it having the right shape.
   if (!manifest.minecraft?.version) {
-    throw new Error('Das CurseForge-Modpack nennt keine Minecraft-Version (manifest.json unvollständig).')
+    throw new Error(tr('Das CurseForge-Modpack nennt keine Minecraft-Version (manifest.json unvollständig).', 'The CurseForge modpack names no Minecraft version (manifest.json is incomplete).'))
   }
   // Becomes a path segment (paths.version(), paths.natives()) further down,
   // so a crafted manifest cannot be allowed to smuggle a separator or ".." in.
   if (!isValidVersionString(manifest.minecraft.version)) {
-    throw new Error('Die Minecraft-Version im Modpack ist ungültig.')
+    throw new Error(tr('Die Minecraft-Version im Modpack ist ungültig.', 'The Minecraft version in the modpack is invalid.'))
   }
   if (!Array.isArray(manifest.files)) {
-    throw new Error('Die Dateiliste im CurseForge-Modpack fehlt oder ist beschädigt.')
+    throw new Error(tr('Die Dateiliste im CurseForge-Modpack fehlt oder ist beschädigt.', 'The file list in the CurseForge modpack is missing or damaged.'))
   }
 
   const modLoaders = Array.isArray(manifest.minecraft.modLoaders) ? manifest.minecraft.modLoaders : []
@@ -429,13 +441,13 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   // with nothing pointing at the manifest as the cause.
   if (!primary?.id) {
     throw new Error(
-      'Das CurseForge-Modpack nennt keinen Mod Loader (manifest.json unvollständig) und wurde nicht importiert.'
+      tr('Das CurseForge-Modpack nennt keinen Mod Loader (manifest.json unvollständig) und wurde nicht importiert.', 'The CurseForge modpack names no mod loader (manifest.json is incomplete) and was not imported.')
     )
   }
 
   const { loader, loaderVersion } = loaderFromCurseId(primary.id)
   if (loaderVersion && !isValidVersionString(loaderVersion)) {
-    throw new Error('Die Mod-Loader-Version im Modpack ist ungültig.')
+    throw new Error(tr('Die Mod-Loader-Version im Modpack ist ungültig.', 'The mod loader version in the modpack is invalid.'))
   }
   const name = nameOverride?.trim() || manifest.name || 'CurseForge Modpack'
 
@@ -453,7 +465,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     source: { type: 'curseforge', packName: manifest.name, packVersion: manifest.version }
   })
 
-  void withTask(`${name} wird importiert`, 'Mods werden aufgelöst…', instance.id, async (task) => {
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mods werden aufgelöst…', 'Resolving mods…'), instance.id, async (task) => {
     const gameDir = paths.gameDir(instance.id)
 
     // Resolve every file id to a download url in batches. Entries without a
@@ -465,7 +477,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
 
     const resolved: ProjectVersion[] = []
     for (let i = 0; i < fileIds.length; i += 100) {
-      task.update(`Mods werden aufgelöst (${i}/${fileIds.length})…`, i / Math.max(fileIds.length, 1))
+      task.update(tr(`Mods werden aufgelöst (${i}/${fileIds.length})…`, `Resolving mods (${i}/${fileIds.length})…`), i / Math.max(fileIds.length, 1))
       try {
         resolved.push(...(await curseforge.getFiles(fileIds.slice(i, i + 100))))
       } catch (err) {
@@ -482,7 +494,10 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
         `CurseForge lieferte nur ${resolved.length} von ${fileIds.length} Dateien für ${name}`
       )
       task.update(
-        `Achtung: ${fileIds.length - resolved.length} Mods konnten nicht aufgelöst werden`,
+        tr(
+          `Achtung: ${fileIds.length - resolved.length} Mods konnten nicht aufgelöst werden`,
+          `Warning: ${fileIds.length - resolved.length} mods could not be resolved`
+        ),
         null
       )
 
@@ -496,9 +511,16 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       const ids = missing.slice(0, 5).map((f) => f.projectID)
       notify(
         'warning',
-        `${missing.length} ${missing.length === 1 ? 'Mod fehlt' : 'Mods fehlen'} im Modpack`,
-        `${name}: CurseForge konnte ${missing.length} ${missing.length === 1 ? 'Mod' : 'Mods'} nicht laden ` +
-          `(${ids.length === 1 ? 'Projekt-ID' : 'Projekt-IDs'} ${ids.join(', ')}${missing.length > 5 ? ` und ${missing.length - 5} weitere` : ''}).`,
+        tr(
+          `${missing.length} ${missing.length === 1 ? 'Mod fehlt' : 'Mods fehlen'} im Modpack`,
+          `${missing.length} ${missing.length === 1 ? 'mod is' : 'mods are'} missing from the modpack`
+        ),
+        tr(
+          `${name}: CurseForge konnte ${missing.length} ${missing.length === 1 ? 'Mod' : 'Mods'} nicht laden ` +
+            `(${ids.length === 1 ? 'Projekt-ID' : 'Projekt-IDs'} ${ids.join(', ')}${missing.length > 5 ? ` und ${missing.length - 5} weitere` : ''}).`,
+          `${name}: CurseForge could not deliver ${missing.length} ${missing.length === 1 ? 'mod' : 'mods'} ` +
+            `(${ids.length === 1 ? 'project ID' : 'project IDs'} ${ids.join(', ')}${missing.length > 5 ? ` and ${missing.length - 5} more` : ''}).`
+        ),
         { route: `/instances/${instance.id}` }
       )
     }
@@ -521,7 +543,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     const failed: string[] = []
     await downloadAll(downloads, {
       task,
-      label: 'Modpack-Mods',
+      label: tr('Modpack-Mods', 'Modpack mods'),
       onError: (item, err) => {
         failed.push(basename(item.path))
         logger.warn(`Mod ${basename(item.path)} konnte nicht geladen werden:`, err)
@@ -533,15 +555,19 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     if (failed.length > 0) {
       notify(
         'warning',
-        `${failed.length} ${failed.length === 1 ? 'Mod fehlt' : 'Mods fehlen'}`,
-        `${name} wurde installiert, aber ${failed.slice(0, 3).join(', ')}${
-          failed.length > 3 ? ' und weitere' : ''
-        } konnten nicht geladen werden. Lade sie bei Bedarf von Hand nach.`,
+        tr(
+          `${failed.length} ${failed.length === 1 ? 'Mod fehlt' : 'Mods fehlen'}`,
+          `${failed.length} ${failed.length === 1 ? 'mod is missing' : 'mods are missing'}`
+        ),
+        tr(
+          `${name} wurde installiert, aber ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' und weitere' : ''} konnten nicht geladen werden. Lade sie bei Bedarf von Hand nach.`,
+          `${name} was installed, but ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ' and more' : ''} could not be downloaded. Add them by hand if needed.`
+        ),
         { route: `/instances/${instance.id}` }
       )
     }
 
-    task.update('Konfigurationen werden entpackt…', 0.9)
+    task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
     extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)
 
     await syncContentWithDisk(instance.id)
@@ -550,12 +576,12 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     if (!baseSetupOk) {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
       throw new Error(
-        'Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.'
+        tr('Minecraft selbst konnte nicht eingerichtet werden. Nutze "Reparieren", um es erneut zu versuchen.', 'Minecraft itself could not be set up. Use "Repair" to try again.')
       )
     }
 
     persist({ ...getInstance(instance.id), installing: false, installed: true })
-    task.update('Import abgeschlossen', 1)
+    task.update(tr('Import abgeschlossen', 'Import finished'), 1)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
     markImportFailed(instance.id, name, err)
@@ -643,7 +669,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
   const base: ImportAnalysis = {
     path: archivePath,
     kind: 'unknown',
-    sourceLabel: 'Unbekannt',
+    sourceLabel: tr('Unbekannt', 'Unknown'),
     name: basename(archivePath).replace(/\.(mrpack|zip)$/i, ''),
     mcVersion: null,
     loader: null,
@@ -656,7 +682,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
   }
 
   if (!existsSync(archivePath)) {
-    return { ...base, findings: [{ level: 'blocker', title: 'Die Datei existiert nicht.' }] }
+    return { ...base, findings: [{ level: 'blocker', title: tr('Die Datei existiert nicht.', 'The file does not exist.') }] }
   }
 
   try {
@@ -674,7 +700,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       findings: [
         {
           level: 'blocker',
-          title: 'Das Archiv konnte nicht gelesen werden',
+          title: tr('Das Archiv konnte nicht gelesen werden', 'The archive could not be read'),
           detail: err instanceof Error ? err.message : String(err)
         }
       ]
@@ -690,12 +716,12 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       return {
         ...base,
         kind: 'mrpack',
-        sourceLabel: 'Modrinth-Modpack',
+        sourceLabel: tr('Modrinth-Modpack', 'Modrinth modpack'),
         findings: [
           {
             level: 'blocker',
-            title: 'Die Beschreibung im Modpack ist beschädigt',
-            detail: 'Die Datei modrinth.index.json fehlt oder lässt sich nicht lesen.'
+            title: tr('Die Beschreibung im Modpack ist beschädigt', 'The modpack description is damaged'),
+            detail: tr('Die Datei modrinth.index.json fehlt oder lässt sich nicht lesen.', 'The file modrinth.index.json is missing or cannot be read.')
           }
         ]
       }
@@ -713,13 +739,13 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       loaderVersion = resolved.loaderVersion
       findings.push({
         level: 'ok',
-        title: 'Als Modrinth-Modpack erkannt',
+        title: tr('Als Modrinth-Modpack erkannt', 'Recognized as a Modrinth modpack'),
         detail: `Minecraft ${mcVersion}${loader !== 'vanilla' ? `, ${loader} ${loaderVersion}`.trimEnd() : ''}`
       })
     } catch (err) {
       findings.push({
         level: 'blocker',
-        title: 'Das Modpack nennt keine Minecraft-Version',
+        title: tr('Das Modpack nennt keine Minecraft-Version', 'The modpack names no Minecraft version'),
         detail: err instanceof Error ? err.message : undefined
       })
     }
@@ -730,15 +756,15 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     if (clientOnly > 0) {
       findings.push({
         level: 'warn',
-        title: `${clientOnly} Dateien sind nur für Server gedacht`,
-        detail: 'Sie werden beim Import übersprungen, so wie es das Modpack vorsieht.'
+        title: tr(`${clientOnly} Dateien sind nur für Server gedacht`, `${clientOnly} files are meant for servers only`),
+        detail: tr('Sie werden beim Import übersprungen, so wie es das Modpack vorsieht.', 'They are skipped during import, as the modpack intends.')
       })
     }
 
     return {
       ...base,
       kind: 'mrpack',
-      sourceLabel: 'Modrinth-Modpack',
+      sourceLabel: tr('Modrinth-Modpack', 'Modrinth modpack'),
       name: index.name?.trim() || base.name,
       mcVersion,
       loader,
@@ -756,12 +782,12 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       return {
         ...base,
         kind: 'curseforge-zip',
-        sourceLabel: 'CurseForge-Modpack',
+        sourceLabel: tr('CurseForge-Modpack', 'CurseForge modpack'),
         findings: [
           {
             level: 'blocker',
-            title: 'Die Beschreibung im Modpack ist beschädigt',
-            detail: 'Die Datei manifest.json fehlt oder lässt sich nicht lesen.'
+            title: tr('Die Beschreibung im Modpack ist beschädigt', 'The modpack description is damaged'),
+            detail: tr('Die Datei manifest.json fehlt oder lässt sich nicht lesen.', 'The file manifest.json is missing or cannot be read.')
           }
         ]
       }
@@ -772,8 +798,8 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     if (!mcVersion) {
       findings.push({
         level: 'blocker',
-        title: 'Das Modpack nennt keine Minecraft-Version',
-        detail: 'Die manifest.json ist unvollständig.'
+        title: tr('Das Modpack nennt keine Minecraft-Version', 'The modpack names no Minecraft version'),
+        detail: tr('Die manifest.json ist unvollständig.', 'The manifest.json is incomplete.')
       })
     }
 
@@ -792,22 +818,22 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       if (!loader) {
         findings.push({
           level: 'warn',
-          title: `Unbekannter Mod-Loader "${rawName}"`,
-          detail: 'Der Loader muss nach dem Import von Hand gesetzt werden.'
+          title: tr(`Unbekannter Mod-Loader "${rawName}"`, `Unknown mod loader "${rawName}"`),
+          detail: tr('Der Loader muss nach dem Import von Hand gesetzt werden.', 'The loader has to be set by hand after the import.')
         })
       }
     } else {
       findings.push({
         level: 'blocker',
-        title: 'Das Modpack nennt keinen Mod-Loader',
-        detail: 'Die manifest.json ist unvollständig.'
+        title: tr('Das Modpack nennt keinen Mod-Loader', 'The modpack names no mod loader'),
+        detail: tr('Die manifest.json ist unvollständig.', 'The manifest.json is incomplete.')
       })
     }
 
     if (mcVersion && loader) {
       findings.push({
         level: 'ok',
-        title: 'Als CurseForge-Modpack erkannt',
+        title: tr('Als CurseForge-Modpack erkannt', 'Recognized as a CurseForge modpack'),
         detail: `Minecraft ${mcVersion}, ${loader} ${loaderVersion}`.trimEnd()
       })
     }
@@ -819,17 +845,18 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     if (listed > 0) {
       findings.push({
         level: 'warn',
-        title: `${listed} Mods werden beim Import einzeln von CurseForge geladen`,
-        detail:
-          'CurseForge-Modpacks enthalten die Mods nicht selbst, sondern nur eine Liste. Für den Import ' +
-          'wird ein CurseForge-Schlüssel in den Einstellungen und eine Internetverbindung gebraucht.'
+        title: tr(`${listed} Mods werden beim Import einzeln von CurseForge geladen`, `${listed} mods are downloaded one by one from CurseForge during import`),
+        detail: tr(
+          'CurseForge-Modpacks enthalten die Mods nicht selbst, sondern nur eine Liste. Für den Import wird ein CurseForge-Schlüssel in den Einstellungen und eine Internetverbindung gebraucht.',
+          'CurseForge modpacks do not contain the mods themselves, only a list. Importing needs a CurseForge key in the settings and an internet connection.'
+        )
       })
     }
 
     return {
       ...base,
       kind: 'curseforge-zip',
-      sourceLabel: 'CurseForge-Modpack',
+      sourceLabel: tr('CurseForge-Modpack', 'CurseForge modpack'),
       name: manifest.name?.trim() || base.name,
       mcVersion,
       loader,
@@ -854,19 +881,21 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     findings: [
       {
         level: 'blocker',
-        title: 'Kein bekanntes Modpack-Format',
-        detail:
-          'Weder eine modrinth.index.json noch eine manifest.json gefunden. Unterstützt werden ' +
-          '.mrpack-Dateien und CurseForge-Zips.'
+        title: tr('Kein bekanntes Modpack-Format', 'Not a known modpack format'),
+        detail: tr(
+          'Weder eine modrinth.index.json noch eine manifest.json gefunden. Unterstützt werden .mrpack-Dateien und CurseForge-Zips.',
+          'Found neither a modrinth.index.json nor a manifest.json. Supported are .mrpack files and CurseForge zips.'
+        )
       },
       ...(anyContent
         ? [
             {
               level: 'warn' as const,
-              title: 'Es wurden trotzdem Inhalte gefunden',
-              detail:
-                'Ein Kompatibilitäts-Import kann versucht werden. Minecraft-Version und Loader müssen ' +
-                'dabei von Hand gewählt werden.'
+              title: tr('Es wurden trotzdem Inhalte gefunden', 'Content was found anyway'),
+              detail: tr(
+                'Ein Kompatibilitäts-Import kann versucht werden. Minecraft-Version und Loader müssen dabei von Hand gewählt werden.',
+                'A compatibility import can be tried. Minecraft version and loader have to be chosen by hand.'
+              )
             }
           ]
         : [])
@@ -877,7 +906,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
 
 /** Dispatches by file extension / archive content. */
 export async function importModpack(archivePath: string, nameOverride?: string): Promise<Instance> {
-  if (!existsSync(archivePath)) throw new Error('Die Datei existiert nicht.')
+  if (!existsSync(archivePath)) throw new Error(tr('Die Datei existiert nicht.', 'The file does not exist.'))
 
   const ext = extname(archivePath).toLowerCase()
   if (ext === '.mrpack') return importMrpack(archivePath, nameOverride)
@@ -890,7 +919,7 @@ export async function importModpack(archivePath: string, nameOverride?: string):
     return importCurseForgeZip(archivePath, nameOverride)
   }
 
-  throw new Error('Unbekanntes Modpack-Format. Unterstützt werden .mrpack und CurseForge-Zips.')
+  throw new Error(tr('Unbekanntes Modpack-Format. Unterstützt werden .mrpack und CurseForge-Zips.', 'Unknown modpack format. Supported are .mrpack and CurseForge zips.'))
 }
 
 /* ------------------------------------------------------------------ *
@@ -923,7 +952,7 @@ function sha512File(file: string): Promise<string> {
 export async function exportMrpack(instanceId: string, options: ExportOptions): Promise<string> {
   const instance = getInstance(instanceId)
 
-  return withTask(`${instance.name} wird exportiert`, 'Inhalte werden gesammelt…', instanceId, async (task) => {
+  return withTask(tr(`${instance.name} wird exportiert`, `Exporting ${instance.name}`), tr('Inhalte werden gesammelt…', 'Collecting content…'), instanceId, async (task) => {
     await syncContentWithDisk(instanceId)
     const current = getInstance(instanceId)
 
@@ -983,7 +1012,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
       bundled.push(relative)
     }
 
-    task.update('Archiv wird geschrieben…', 0.4)
+    task.update(tr('Archiv wird geschrieben…', 'Writing archive…'), 0.4)
 
     const index: MrpackIndex = {
       formatVersion: 1,
@@ -1043,13 +1072,13 @@ export async function installModpackFromProvider(
   const versions = await getVersions(provider, projectId)
 
   const version = versionId ? versions.find((v) => v.versionId === versionId) : versions[0]
-  if (!version) throw new Error(`Für ${project.name} wurde keine Version gefunden.`)
+  if (!version) throw new Error(tr(`Für ${project.name} wurde keine Version gefunden.`, `No version was found for ${project.name}.`))
 
   // `fileName` comes from the provider, so it is reduced to a bare name before
   // it becomes part of a path.
   const archive = join(paths.cache(), `${randomUUID()}-${basename(version.fileName)}`)
 
-  await withTask(`${project.name} wird geladen`, version.versionNumber, undefined, async (task) => {
+  await withTask(tr(`${project.name} wird geladen`, `Downloading ${project.name}`), version.versionNumber, undefined, async (task) => {
     let received = 0
     await downloadFile(
       { url: version.downloadUrl, path: archive, sha1: version.sha1 },

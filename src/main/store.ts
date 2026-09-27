@@ -190,7 +190,7 @@ export function getSettings(): LauncherSettings {
     // A brand-new install follows the system language; anyone who already has
     // settings keeps German unless they chose otherwise.
     const firstRun = Object.keys(stored).length === 0
-    const systemLocale = (app.isReady() ? app.getLocale() : '') || Intl.DateTimeFormat().resolvedOptions().locale
+    const systemLocale = Intl.DateTimeFormat().resolvedOptions().locale
     const language = firstRun && !/^de\b/i.test(systemLocale) ? 'en' : DEFAULT_LAUNCHER_SETTINGS.language
     settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...stored })
   }

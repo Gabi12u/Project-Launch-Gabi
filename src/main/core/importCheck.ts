@@ -19,6 +19,7 @@ import { log } from '../logger'
 import { getInstance, resolveVersionId, syncContentWithDisk } from './instances'
 import { checkCompatibility } from './compat'
 import { clientJarPath, loadVersionJson } from './mojang'
+import { tr } from '@shared/i18n'
 
 const logger = log('import-check')
 
@@ -51,7 +52,7 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
   } catch (err) {
     add(
       'blocker',
-      'Die Minecraft-Version konnte nicht aufgelöst werden',
+      tr('Die Minecraft-Version konnte nicht aufgelöst werden', 'The Minecraft version could not be resolved'),
       err instanceof Error ? err.message : String(err)
     )
   }
@@ -62,16 +63,16 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
       if (!json) {
         add(
           'blocker',
-          `Die Beschreibung der Version ${versionId} fehlt`,
-          'Sie wird beim ersten Start automatisch nachgeladen.'
+          tr(`Die Beschreibung der Version ${versionId} fehlt`, `The description of version ${versionId} is missing`),
+          tr('Sie wird beim ersten Start automatisch nachgeladen.', 'It is downloaded automatically on the first start.')
         )
       } else {
-        add('ok', `Version ${instance.mcVersion} ist eingerichtet`)
+        add('ok', tr(`Version ${instance.mcVersion} ist eingerichtet`, `Version ${instance.mcVersion} is set up`))
       }
     } catch (err) {
       add(
         'warn',
-        `Die Beschreibung der Version ${versionId} ist nicht lesbar`,
+        tr(`Die Beschreibung der Version ${versionId} ist nicht lesbar`, `The description of version ${versionId} cannot be read`),
         err instanceof Error ? err.message : String(err)
       )
     }
@@ -79,8 +80,8 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
     if (!jarLooksReal(clientJarPath(versionId))) {
       add(
         'warn',
-        'Die Spieldatei fehlt noch',
-        'Sie wird beim ersten Start heruntergeladen, das dauert dann etwas länger.'
+        tr('Die Spieldatei fehlt noch', 'The game file is still missing'),
+        tr('Sie wird beim ersten Start heruntergeladen, das dauert dann etwas länger.', 'It is downloaded on the first start, which then takes a little longer.')
       )
     }
   }
@@ -92,14 +93,18 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
     if (!instance.loaderVersion) {
       add(
         'warn',
-        `Für ${instance.loader} ist keine Version hinterlegt`,
-        'Der Launcher wählt beim ersten Start die neueste passende aus.'
+        tr(`Für ${instance.loader} ist keine Version hinterlegt`, `No version is set for ${instance.loader}`),
+        tr('Der Launcher wählt beim ersten Start die neueste passende aus.', 'The launcher picks the newest matching one on the first start.')
       )
     } else {
-      add('ok', `Mod-Loader ${instance.loader} ${instance.loaderVersion} ist eingetragen`)
+      add('ok', tr(`Mod-Loader ${instance.loader} ${instance.loaderVersion} ist eingetragen`, `Mod loader ${instance.loader} ${instance.loaderVersion} is set`))
     }
     if (!hasMods) {
-      add('warn', 'Es gibt keinen mods-Ordner', 'Der Loader ist eingerichtet, aber es wurden keine Mods übernommen.')
+      add(
+        'warn',
+        tr('Es gibt keinen mods-Ordner', 'There is no mods folder'),
+        tr('Der Loader ist eingerichtet, aber es wurden keine Mods übernommen.', 'The loader is set up, but no mods were taken over.')
+      )
     }
   }
 
@@ -109,12 +114,12 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
     const fresh = getInstance(instanceId)
     const mods = fresh.content.filter((item) => item.type === 'mod')
     if (mods.length > 0) {
-      add('ok', `${mods.length} Mods erfasst`)
+      add('ok', tr(`${mods.length} Mods erfasst`, `${mods.length} mods registered`))
       const missing = mods.filter((item) => !existsSync(join(paths.mods(instanceId), item.fileName)))
       if (missing.length > 0) {
         add(
           'warn',
-          `${missing.length} eingetragene Mods liegen nicht im Ordner`,
+          tr(`${missing.length} eingetragene Mods liegen nicht im Ordner`, `${missing.length} registered mods are not in the folder`),
           missing
             .slice(0, 5)
             .map((item) => item.name)
@@ -123,7 +128,7 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
       }
     }
   } catch (err) {
-    add('warn', 'Die Mods konnten nicht erfasst werden', err instanceof Error ? err.message : String(err))
+    add('warn', tr('Die Mods konnten nicht erfasst werden', 'The mods could not be registered'), err instanceof Error ? err.message : String(err))
   }
 
   /* 4. Anything that would stop the launch? --------------------------- */
@@ -134,22 +139,26 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
 
     for (const issue of errors.slice(0, 5)) add('blocker', issue.title, issue.detail)
     if (errors.length > 5) {
-      add('blocker', `${errors.length - 5} weitere Probleme`, 'Vollständig unter "Kompatibilität" bei der Instanz.')
+      add(
+        'blocker',
+        tr(`${errors.length - 5} weitere Probleme`, `${errors.length - 5} more problems`),
+        tr('Vollständig unter "Kompatibilität" bei der Instanz.', 'Listed in full under "Compatibility" in the instance.')
+      )
     }
     if (warnings.length > 0) {
       add(
         'warn',
-        `${warnings.length} Hinweise zur Kompatibilität`,
-        'Kein Hindernis für den Start, nachzulesen bei der Instanz.'
+        tr(`${warnings.length} Hinweise zur Kompatibilität`, `${warnings.length} compatibility notes`),
+        tr('Kein Hindernis für den Start, nachzulesen bei der Instanz.', 'Nothing that blocks the start, see the instance for details.')
       )
     }
     if (errors.length === 0 && warnings.length === 0) {
-      add('ok', 'Keine Kompatibilitätsprobleme gefunden')
+      add('ok', tr('Keine Kompatibilitätsprobleme gefunden', 'No compatibility problems found'))
     }
   } catch (err) {
     // A failing compatibility check says nothing about the import itself.
     logger.warn(`Kompatibilitätsprüfung nach dem Import von ${instanceId} fehlgeschlagen:`, err)
-    add('warn', 'Die Kompatibilität konnte nicht geprüft werden')
+    add('warn', tr('Die Kompatibilität konnte nicht geprüft werden', 'Compatibility could not be checked'))
   }
 
   return {
