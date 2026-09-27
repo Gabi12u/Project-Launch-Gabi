@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { IconCheck, IconX } from './Icons'
+import { tr } from '@shared/i18n'
 
 /* ------------------------------------------------------------------ *
  * Overlay stack
@@ -100,7 +101,7 @@ export function Modal({
             <div className="card-title">{title}</div>
             {subtitle && <div className="hint">{subtitle}</div>}
           </div>
-          <button className="btn ghost icon sm" onClick={onClose} disabled={busy} aria-label="Schließen">
+          <button className="btn ghost icon sm" onClick={onClose} disabled={busy} aria-label={tr('Schließen', 'Close')}>
             <IconX size={16} />
           </button>
         </div>
@@ -131,8 +132,8 @@ export function Confirm({
   open,
   title,
   message,
-  confirmLabel = 'Bestätigen',
-  cancelLabel = 'Abbrechen',
+  confirmLabel = tr('Bestätigen', 'Confirm'),
+  cancelLabel = tr('Abbrechen', 'Cancel'),
   danger = false,
   onConfirm,
   onCancel
@@ -364,7 +365,7 @@ export function CopyButton({ value, label }: { value: string; label?: string }):
       }}
     >
       {copied ? <IconCheck size={14} /> : null}
-      {copied ? 'Kopiert' : (label ?? 'Kopieren')}
+      {copied ? tr('Kopiert', 'Copied') : (label ?? tr('Kopieren', 'Copy'))}
     </button>
   )
 }

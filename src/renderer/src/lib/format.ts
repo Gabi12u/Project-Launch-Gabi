@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { LoaderId } from '@shared/types'
-import { locale } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 /**
  * Formats a number the way a German reader expects: a comma for the decimal
@@ -38,14 +38,16 @@ export function formatNumber(value: number): string {
 
 /** Play time, tuned for the ranges a launcher actually shows. */
 export function formatPlayTime(ms: number): string {
-  if (!ms || ms < 60_000) return '< 1 Min'
+  const min = tr('Min', 'min')
+  const hr = tr('Std', 'h')
+  if (!ms || ms < 60_000) return `< 1 ${min}`
   const minutes = Math.floor(ms / 60_000)
-  if (minutes < 60) return `${minutes} Min`
+  if (minutes < 60) return `${minutes} ${min}`
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
-  if (hours < 24) return rest > 0 ? `${hours} Std ${rest} Min` : `${hours} Std`
+  if (hours < 24) return rest > 0 ? `${hours} ${hr} ${rest} ${min}` : `${hours} ${hr}`
   const days = Math.floor(hours / 24)
-  return `${days} T ${hours % 24} Std`
+  return `${days} ${tr('T', 'd')} ${hours % 24} ${hr}`
 }
 
 export function formatDuration(ms: number): string {
@@ -54,26 +56,26 @@ export function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.floor((Number.isFinite(ms) ? ms : 0) / 1000))
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
-  if (hours > 0) return `${hours}:${String(minutes % 60).padStart(2, '0')} Std`
-  return `${minutes}:${String(seconds % 60).padStart(2, '0')} Min`
+  if (hours > 0) return `${hours}:${String(minutes % 60).padStart(2, '0')} ${tr('Std', 'h')}`
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')} ${tr('Min', 'min')}`
 }
 
 export function formatRelative(timestamp: number | null | undefined): string {
-  if (!timestamp) return 'nie'
+  if (!timestamp) return tr('nie', 'never')
 
   const diff = Date.now() - timestamp
-  if (diff < 60_000) return 'gerade eben'
+  if (diff < 60_000) return tr('gerade eben', 'just now')
   if (diff < 3_600_000) {
     const minutes = Math.floor(diff / 60_000)
-    return `vor ${minutes} Min`
+    return tr(`vor ${minutes} Min`, `${minutes} min ago`)
   }
   if (diff < 86_400_000) {
     const hours = Math.floor(diff / 3_600_000)
-    return `vor ${hours} Std`
+    return tr(`vor ${hours} Std`, `${hours} h ago`)
   }
   if (diff < 7 * 86_400_000) {
     const days = Math.floor(diff / 86_400_000)
-    return days === 1 ? 'gestern' : `vor ${days} Tagen`
+    return days === 1 ? tr('gestern', 'yesterday') : tr(`vor ${days} Tagen`, `${days} days ago`)
   }
 
   return new Date(timestamp).toLocaleDateString(locale(), {
@@ -130,10 +132,10 @@ export function loaderColor(loader: LoaderId): string {
 /** "Guten Morgen" / "Guten Tag" / "Guten Abend" depending on the clock. */
 export function greeting(): string {
   const hour = new Date().getHours()
-  if (hour < 5) return 'Gute Nacht'
-  if (hour < 11) return 'Guten Morgen'
-  if (hour < 18) return 'Guten Tag'
-  return 'Guten Abend'
+  if (hour < 5) return tr('Gute Nacht', 'Good night')
+  if (hour < 11) return tr('Guten Morgen', 'Good morning')
+  if (hour < 18) return tr('Guten Tag', 'Good afternoon')
+  return tr('Guten Abend', 'Good evening')
 }
 
 export function pluralise(count: number, one: string, many: string): string {
@@ -198,8 +200,8 @@ export function contentBlockedReason(instance: {
   starting?: boolean
   contentBusy?: boolean
 }): string | null {
-  if (instance.running) return 'Nicht möglich, solange Minecraft läuft.'
-  if (instance.starting) return 'Nicht möglich, die Instanz wird gerade gestartet.'
-  if (instance.contentBusy) return 'An den Mods wird gerade gearbeitet. Warte, bis das fertig ist.'
+  if (instance.running) return tr('Nicht möglich, solange Minecraft läuft.', 'Not possible while Minecraft is running.')
+  if (instance.starting) return tr('Nicht möglich, die Instanz wird gerade gestartet.', 'Not possible, the instance is starting right now.')
+  if (instance.contentBusy) return tr('An den Mods wird gerade gearbeitet. Warte, bis das fertig ist.', 'The mods are being worked on right now. Wait until that is done.')
   return null
 }

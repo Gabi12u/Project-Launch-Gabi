@@ -12,6 +12,7 @@ import {
   IconSearch,
   IconSettings
 } from './Icons'
+import { tr } from '@shared/i18n'
 
 interface NavEntry {
   id: string
@@ -32,9 +33,9 @@ export function Sidebar(): JSX.Element {
 
   const entries: NavEntry[] = [
     { id: 'home', label: 'Home', icon: <IconHome />, route: '/home' },
-    { id: 'instances', label: 'Instanzen', icon: <IconGrid />, route: '/instances' },
+    { id: 'instances', label: tr('Instanzen', 'Instances'), icon: <IconGrid />, route: '/instances' },
     { id: 'mods', label: 'Mods', icon: <IconPackage />, route: '/mods', badge: updateCount },
-    { id: 'discover', label: 'Entdecken', icon: <IconCompass />, route: '/discover' },
+    { id: 'discover', label: tr('Entdecken', 'Discover'), icon: <IconCompass />, route: '/discover' },
     { id: 'backups', label: 'Backups', icon: <IconSave />, route: '/backups' }
   ]
 
@@ -67,14 +68,14 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="brand-text">
             <span className="brand-name">Launch Gabi</span>
-            <span className="brand-sub">{running > 0 ? `${running} aktiv` : 'Launcher'}</span>
+            <span className="brand-sub">{running > 0 ? tr(`${running} aktiv`, `${running} active`) : 'Launcher'}</span>
           </div>
         </div>
 
         <button className="nav-search no-drag" onClick={() => setState({ paletteOpen: true })}>
           <IconSearch size={15} />
-          <span>Suchen…</span>
-          <span className="kbd">Strg K</span>
+          <span>{tr('Suchen…', 'Search…')}</span>
+          <span className="kbd">{tr('Strg K', 'Ctrl K')}</span>
         </button>
 
         <div className="nav-list" ref={navRef}>
@@ -102,14 +103,14 @@ export function Sidebar(): JSX.Element {
             data-active={section === 'settings'}
             className={`nav-item ${section === 'settings' ? 'active' : ''}`}
             onClick={() => navigate(updateReady ? '/settings?section=updates' : '/settings')}
-            title={updateReady ? `Update auf ${updateReady} wartet auf einen Neustart` : undefined}
+            title={updateReady ? tr(`Update auf ${updateReady} wartet auf einen Neustart`, `Update to ${updateReady} is waiting for a restart`) : undefined}
           >
             <IconSettings />
-            <span>Einstellungen</span>
+            <span>{tr('Einstellungen', 'Settings')}</span>
             {/* A waiting update announced itself once, in a toast that faded
                 after a few seconds, and nowhere else. This is the standing
                 reminder for everyone who was not looking at that moment. */}
-            {updateReady ? <span className="nav-dot" aria-label="Update bereit" /> : null}
+            {updateReady ? <span className="nav-dot" aria-label={tr('Update bereit', 'Update ready')} /> : null}
           </button>
         </div>
 
@@ -127,14 +128,14 @@ export function Sidebar(): JSX.Element {
           </div>
           <div className="col grow" style={{ overflow: 'hidden' }}>
             <span className="truncate" style={{ fontSize: 13, fontWeight: 620 }}>
-              {active?.username ?? 'Kein Account'}
+              {active?.username ?? tr('Kein Account', 'No account')}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-4)' }}>
               {active
                 ? active.type === 'microsoft'
                   ? 'Microsoft'
-                  : 'Offline-Profil'
-                : 'Zum Anmelden klicken'}
+                  : tr('Offline-Profil', 'Offline profile')
+                : tr('Zum Anmelden klicken', 'Click to sign in')}
             </span>
           </div>
         </button>

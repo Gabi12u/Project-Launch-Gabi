@@ -28,7 +28,7 @@ import {
   IconSave,
   IconStop
 } from '../components/Icons'
-import { locale } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 export function HomeView(): JSX.Element {
   const { instances, accounts, starting } = useStore()
@@ -81,25 +81,30 @@ export function HomeView(): JSX.Element {
       <header className="row-between wrap">
         <div>
           <h1 className="greeting">
-            {greeting()}, <span>{activeAccount?.username ?? 'Spieler'}</span> 👋
+            {greeting()}, <span>{activeAccount?.username ?? tr('Spieler', 'player')}</span> 👋
           </h1>
           <p className="page-sub">
             {instances.length === 0
-              ? 'Lege deine erste Instanz an und leg los.'
-              : `${instances.length} ${pluralise(instances.length, 'Instanz', 'Instanzen')} bereit${
-                  stats && stats.totalPlayMs > 0 ? ` · ${formatPlayTime(stats.totalPlayMs)} gespielt` : ''
-                }`}
+              ? tr('Lege deine erste Instanz an und leg los.', 'Create your first instance and get going.')
+              : tr(
+                  `${instances.length} ${pluralise(instances.length, 'Instanz', 'Instanzen')} bereit${
+                    stats && stats.totalPlayMs > 0 ? ` · ${formatPlayTime(stats.totalPlayMs)} gespielt` : ''
+                  }`,
+                  `${instances.length} ${pluralise(instances.length, 'instance', 'instances')} ready${
+                    stats && stats.totalPlayMs > 0 ? ` · ${formatPlayTime(stats.totalPlayMs)} played` : ''
+                  }`
+                )}
           </p>
         </div>
 
         <div className="row gap-8">
           <button className="btn" onClick={() => void importModpack()}>
             <IconDownload size={16} />
-            Modpack importieren
+            {tr('Modpack importieren', 'Import modpack')}
           </button>
           <button className="btn primary" onClick={() => setState({ createOpen: true })}>
             <IconPlus size={16} />
-            Neue Instanz
+            {tr('Neue Instanz', 'New instance')}
           </button>
         </div>
       </header>
@@ -114,17 +119,20 @@ export function HomeView(): JSX.Element {
         <div className="card pad-lg">
           <EmptyState
             icon={<IconCube size={28} />}
-            title="Noch keine Instanz"
-            message="Eine Instanz ist eine eigenständige Minecraft-Installation mit eigener Version, eigenen Mods und eigenen Welten. Erstelle deine erste, oder importiere ein fertiges Modpack."
+            title={tr('Noch keine Instanz', 'No instance yet')}
+            message={tr(
+              'Eine Instanz ist eine eigenständige Minecraft-Installation mit eigener Version, eigenen Mods und eigenen Welten. Erstelle deine erste, oder importiere ein fertiges Modpack.',
+              'An instance is a separate Minecraft installation with its own version, its own mods and its own worlds. Create your first one, or import a ready-made modpack.'
+            )}
             action={
               <div className="row gap-8">
                 <button className="btn primary" onClick={() => setState({ createOpen: true })}>
                   <IconPlus size={16} />
-                  Instanz erstellen
+                  {tr('Instanz erstellen', 'Create instance')}
                 </button>
                 <button className="btn" onClick={() => void importModpack()}>
                   <IconDownload size={16} />
-                  Modpack importieren
+                  {tr('Modpack importieren', 'Import modpack')}
                 </button>
               </div>
             }
@@ -135,9 +143,9 @@ export function HomeView(): JSX.Element {
       {recent.length > 1 && (
         <section className="col gap-16">
           <div className="row-between">
-            <h2 className="section-title">Zuletzt gespielt</h2>
+            <h2 className="section-title">{tr('Zuletzt gespielt', 'Recently played')}</h2>
             <button className="btn ghost sm" onClick={() => navigate('/instances')}>
-              Alle Instanzen
+              {tr('Alle Instanzen', 'All instances')}
               <IconChevronRight size={14} />
             </button>
           </div>
@@ -152,19 +160,19 @@ export function HomeView(): JSX.Element {
 
       {stats && stats.totalInstances > 0 && (
         <section className="col gap-16">
-          <h2 className="section-title">Überblick</h2>
+          <h2 className="section-title">{tr('Überblick', 'Overview')}</h2>
           <div className="stat-grid stagger">
-            <Stat icon={<IconGrid size={13} />} label="Instanzen" value={stats.totalInstances} />
+            <Stat icon={<IconGrid size={13} />} label={tr('Instanzen', 'Instances')} value={stats.totalInstances} />
             <Stat
               icon={<IconClock size={13} />}
-              label="Spielzeit"
+              label={tr('Spielzeit', 'Play time')}
               value={stats.totalPlayMs}
               format={formatPlayTime}
             />
-            <Stat icon={<IconPackage size={13} />} label="Mods insgesamt" value={stats.totalMods} />
+            <Stat icon={<IconPackage size={13} />} label={tr('Mods insgesamt', 'Mods in total')} value={stats.totalMods} />
             <Stat
               icon={<IconSave size={13} />}
-              label="Speicherplatz"
+              label={tr('Speicherplatz', 'Disk space')}
               value={stats.diskUsageBytes / 1024 / 1024 / 1024}
               format={(v) => formatDecimal(v, 1)}
               suffix="GB"
@@ -228,7 +236,7 @@ function FeaturedInstance({
             </div>
             <div className="col gap-4">
               <span className="badge accent" style={{ alignSelf: 'flex-start' }}>
-                {instance.favorite ? 'Favorit' : 'Zuletzt gespielt'}
+                {instance.favorite ? tr('Favorit', 'Favorite') : tr('Zuletzt gespielt', 'Last played')}
               </span>
               <h2 className="hero-title">{instance.name}</h2>
             </div>
@@ -257,13 +265,18 @@ function FeaturedInstance({
             )}
             <span className="badge">RAM: {formatMemory(instance.memoryMb)}</span>
             {instance.updateCount > 0 && (
-              <span className="badge warn">{instance.updateCount} {pluralise(instance.updateCount, 'Update', 'Updates')} verfügbar</span>
+              <span className="badge warn">
+                {tr(
+                  `${instance.updateCount} ${pluralise(instance.updateCount, 'Update', 'Updates')} verfügbar`,
+                  `${instance.updateCount} ${pluralise(instance.updateCount, 'update', 'updates')} available`
+                )}
+              </span>
             )}
           </div>
 
           <div className="hint">
-            Zuletzt gespielt: {formatRelative(instance.lastPlayed)}
-            {instance.totalPlayMs > 0 && ` · ${formatPlayTime(instance.totalPlayMs)} insgesamt`}
+            {tr('Zuletzt gespielt', 'Last played')}: {formatRelative(instance.lastPlayed)}
+            {instance.totalPlayMs > 0 && tr(` · ${formatPlayTime(instance.totalPlayMs)} insgesamt`, ` · ${formatPlayTime(instance.totalPlayMs)} in total`)}
           </div>
         </div>
 
@@ -275,7 +288,7 @@ function FeaturedInstance({
             {instance.running ? (
               <PlayButton stop onClick={() => void stopInstance(instance.id)}>
                 <IconStop size={18} />
-                BEENDEN
+                {tr('BEENDEN', 'STOP')}
               </PlayButton>
             ) : (
               <PlayButton
@@ -283,7 +296,7 @@ function FeaturedInstance({
                 onClick={() => void startInstance(instance.id, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? 'STARTET…' : 'SPIELEN'}
+                {busy ? tr('STARTET…', 'STARTING…') : tr('SPIELEN', 'PLAY')}
               </PlayButton>
             )}
           </div>
@@ -295,7 +308,7 @@ function FeaturedInstance({
           )}
 
           <button className="btn ghost sm" onClick={() => navigate(`/instances/${instance.id}`)}>
-            Instanz verwalten
+            {tr('Instanz verwalten', 'Manage instance')}
             <IconChevronRight size={14} />
           </button>
         </div>
@@ -340,7 +353,11 @@ function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolea
       <button
         type="button"
         className="quick-play-btn"
-        aria-label={instance.running ? `${instance.name} stoppen` : `${instance.name} starten`}
+        aria-label={
+          instance.running
+            ? tr(`${instance.name} stoppen`, `Stop ${instance.name}`)
+            : tr(`${instance.name} starten`, `Start ${instance.name}`)
+        }
         onClick={(event) => {
           event.stopPropagation()
           if (instance.running) void stopInstance(instance.id)

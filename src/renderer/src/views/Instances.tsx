@@ -6,6 +6,7 @@ import { LOADER_LABELS } from '../lib/format'
 import { InstanceCard } from '../components/InstanceCard'
 import { EmptyState, Segmented } from '../components/ui'
 import { IconCube, IconDownload, IconFolder, IconPlus, IconSearch } from '../components/Icons'
+import { tr } from '@shared/i18n'
 
 type SortKey = 'recent' | 'name' | 'played'
 
@@ -64,16 +65,16 @@ export function InstancesView(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">Instanzen</h1>
+          <h1 className="page-title">{tr('Instanzen', 'Instances')}</h1>
           <p className="page-sub">
-            Jede Instanz ist vollständig getrennt: eigene Version, Mods, Welten und Einstellungen.
+            {tr('Jede Instanz ist vollständig getrennt: eigene Version, Mods, Welten und Einstellungen.', 'Every instance is fully separate: its own version, mods, worlds and settings.')}
           </p>
         </div>
         <div className="row gap-8">
           <button
             className="btn"
             onClick={() => void importModpack()}
-            title="Ein .mrpack oder ein CurseForge-Zip einlesen"
+            title={tr('Ein .mrpack oder ein CurseForge-Zip einlesen', 'Read a .mrpack or a CurseForge zip')}
           >
             <IconDownload size={16} />
             Modpack
@@ -81,14 +82,14 @@ export function InstancesView(): JSX.Element {
           <button
             className="btn"
             onClick={() => void importInstanceFolder()}
-            title="Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen"
+            title={tr('Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen', 'Take over an existing instance from Prism, MultiMC or a .minecraft folder')}
           >
             <IconFolder size={16} />
             Ordner
           </button>
           <button className="btn primary" onClick={() => setState({ createOpen: true })}>
             <IconPlus size={16} />
-            Neue Instanz
+            {tr('Neue Instanz', 'New instance')}
           </button>
         </div>
       </header>
@@ -99,8 +100,8 @@ export function InstancesView(): JSX.Element {
             <IconSearch size={16} />
             <input
               className="input"
-              placeholder="Instanzen durchsuchen…"
-              aria-label="Instanzen durchsuchen"
+              placeholder={tr('Instanzen durchsuchen…', 'Search instances…')}
+              aria-label={tr('Instanzen durchsuchen', 'Search instances')}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -109,7 +110,7 @@ export function InstancesView(): JSX.Element {
           {loaders.length > 1 && (
             <div className="segmented">
               <button className={loader === 'all' ? 'active' : ''} onClick={() => setLoader('all')}>
-                Alle
+                {tr('Alle', 'All')}
               </button>
               {loaders.map((id) => (
                 <button key={id} className={loader === id ? 'active' : ''} onClick={() => setLoader(id)}>
@@ -124,9 +125,9 @@ export function InstancesView(): JSX.Element {
               value={sort}
               onChange={setSort}
               options={[
-                { value: 'recent', label: 'Zuletzt' },
+                { value: 'recent', label: tr('Zuletzt', 'Recent') },
                 { value: 'name', label: 'Name' },
-                { value: 'played', label: 'Spielzeit' }
+                { value: 'played', label: tr('Spielzeit', 'Play time') }
               ]}
             />
           </div>
@@ -137,12 +138,15 @@ export function InstancesView(): JSX.Element {
         <div className="card pad-lg">
           <EmptyState
             icon={<IconCube size={28} />}
-            title="Noch keine Instanzen"
-            message="Erstelle eine Instanz mit der Minecraft-Version und dem Mod Loader deiner Wahl. Launch Gabi richtet alles Weitere automatisch ein."
+            title={tr('Noch keine Instanzen', 'No instances yet')}
+            message={tr(
+              'Erstelle eine Instanz mit der Minecraft-Version und dem Mod Loader deiner Wahl. Launch Gabi richtet alles Weitere automatisch ein.',
+              'Create an instance with the Minecraft version and mod loader of your choice. Launch Gabi sets up everything else automatically.'
+            )}
             action={
               <button className="btn primary" onClick={() => setState({ createOpen: true })}>
                 <IconPlus size={16} />
-                Erste Instanz erstellen
+                {tr('Erste Instanz erstellen', 'Create first instance')}
               </button>
             }
           />
@@ -150,11 +154,11 @@ export function InstancesView(): JSX.Element {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<IconSearch size={26} />}
-          title="Nichts gefunden"
-          message={`Für „${search}“ gibt es keine passende Instanz.`}
+          title={tr('Nichts gefunden', 'Nothing found')}
+          message={tr(`Für „${search}“ gibt es keine passende Instanz.`, `There is no matching instance for "${search}".`)}
           action={
             <button className="btn" onClick={() => { setSearch(''); setLoader('all') }}>
-              Filter zurücksetzen
+              {tr('Filter zurücksetzen', 'Reset filter')}
             </button>
           }
         />

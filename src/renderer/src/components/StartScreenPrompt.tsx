@@ -1,5 +1,6 @@
 import { useEffect, useRef, type JSX } from 'react'
 import { promptToast, saveSettings, useStore } from '../lib/store'
+import { tr } from '@shared/i18n'
 
 /**
  * Introduces the "eigene Startseite" beta exactly once, the same way
@@ -34,12 +35,15 @@ export function StartScreenPrompt(): JSX.Element | null {
 
       promptToast(
         'info',
-        'Neu: eigene Startseite (Beta)',
-        'Tauscht Hintergrund und Knöpfe im Minecraft-Hauptmenü gegen einen eigenen Stil von Launch Gabi. Noch in Arbeit, aber schon zum Testen freigegeben. Änderbar jederzeit unter Einstellungen, Darstellung.',
+        tr('Neu: eigene Startseite (Beta)', 'New: custom title screen (beta)'),
+        tr(
+          'Tauscht Hintergrund und Knöpfe im Minecraft-Hauptmenü gegen einen eigenen Stil von Launch Gabi. Noch in Arbeit, aber schon zum Testen freigegeben. Änderbar jederzeit unter Einstellungen, Darstellung.',
+          'Replaces the background and buttons in the Minecraft main menu with a Launch Gabi style. Still in progress, but already open for testing. Can be changed any time under Settings, Appearance.'
+        ),
         [
-          { label: 'Nein', onClick: () => {} },
+          { label: tr('Nein', 'No'), onClick: () => {} },
           {
-            label: 'Ja, testen',
+            label: tr('Ja, testen', 'Yes, try it'),
             primary: true,
             onClick: () => void saveSettings({ customStartScreen: 'on' })
           }

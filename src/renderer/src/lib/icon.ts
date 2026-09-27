@@ -1,3 +1,4 @@
+import { tr } from '@shared/i18n'
 /**
  * Renders an instance icon into PNGs for the Windows shortcut.
  *
@@ -40,7 +41,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('Bild konnte nicht geladen werden'))
+    image.onerror = () => reject(new Error(tr('Bild konnte nicht geladen werden', 'Image could not be loaded')))
     image.src = src
   })
 }

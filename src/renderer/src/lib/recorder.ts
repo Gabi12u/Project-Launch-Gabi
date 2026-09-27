@@ -1,4 +1,5 @@
 import type { RecordingRequest } from '@shared/api'
+import { tr } from '@shared/i18n'
 
 /**
  * The capture half of the recording feature.
@@ -192,7 +193,7 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
 
   const mimeType = pickMimeType()
   if (!mimeType) {
-    await window.gabi.recording.failed(request.sessionId, 'Dieses System kann kein WebM aufnehmen.')
+    await window.gabi.recording.failed(request.sessionId, tr('Dieses System kann kein WebM aufnehmen.', 'This system cannot record WebM.'))
     return
   }
 
@@ -207,7 +208,7 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     const message = err instanceof Error ? err.message : String(err)
     await window.gabi.recording.failed(
       request.sessionId,
-      `Der Bildschirm konnte nicht erfasst werden: ${message}`
+      tr(`Der Bildschirm konnte nicht erfasst werden: ${message}`, `The screen could not be captured: ${message}`)
     )
     return
   }
@@ -252,7 +253,10 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     })
   } catch (err) {
     await abandon(
-      `Die Aufnahme konnte nicht vorbereitet werden: ${err instanceof Error ? err.message : String(err)}`
+      tr(
+          `Die Aufnahme konnte nicht vorbereitet werden: ${err instanceof Error ? err.message : String(err)}`,
+          `The recording could not be prepared: ${err instanceof Error ? err.message : String(err)}`
+        )
     )
     return
   }
@@ -284,7 +288,7 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     // the main process announce "Aufnahme gespeichert" for a file the encoder
     // had just given up on, which is very likely truncated or unplayable.
     void stopCapture(true).then(() =>
-      window.gabi.recording.failed(current.sessionId, 'Die Aufnahme ist beim Kodieren gescheitert.')
+      window.gabi.recording.failed(current.sessionId, tr('Die Aufnahme ist beim Kodieren gescheitert.', 'The recording failed while encoding.'))
     )
   }
 
@@ -310,7 +314,10 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
     recorder.start(SLICE_MS)
   } catch (err) {
     await abandon(
-      `Die Aufnahme konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`
+      tr(
+          `Die Aufnahme konnte nicht gestartet werden: ${err instanceof Error ? err.message : String(err)}`,
+          `The recording could not be started: ${err instanceof Error ? err.message : String(err)}`
+        )
     )
     return
   }
@@ -328,7 +335,7 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
         void stopCapture(true).then(() =>
           window.gabi.recording.failed(
             current.sessionId,
-            'Das Spielfenster liefert kein Bild. Spiele im Fenstermodus oder randlosen Vollbild, dann klappt die Aufnahme.'
+            tr('Das Spielfenster liefert kein Bild. Spiele im Fenstermodus oder randlosen Vollbild, dann klappt die Aufnahme.', 'The game window delivers no picture. Play in windowed or borderless fullscreen mode, then recording works.')
           )
         )
         return

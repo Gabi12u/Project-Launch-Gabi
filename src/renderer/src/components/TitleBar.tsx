@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react'
 import { setState, useStore } from '../lib/store'
 import { IconClose, IconMaximize, IconMinimize, IconRestore, IconSearch } from './Icons'
+import { tr } from '@shared/i18n'
 
 /** mm:ss since the recording began, or 0:00 before the first tick. */
 function elapsed(startedAt: number | null): string {
@@ -40,17 +41,22 @@ export function TitleBar(): JSX.Element {
 
         {running > 0 && (
           <span className="badge ok dot live no-drag">
-            {running === 1 ? 'Minecraft läuft' : `${running} Instanzen laufen`}
+            {running === 1
+              ? tr('Minecraft läuft', 'Minecraft is running')
+              : tr(`${running} Instanzen laufen`, `${running} instances running`)}
           </span>
         )}
         {recording.active && (
           <button
             className="rec-pill"
-            title="Aufnahme beenden"
+            title={tr('Aufnahme beenden', 'Stop recording')}
             // The visible text is only the elapsed time, and that is what a
             // screen reader would otherwise announce: a bare timestamp with no
             // hint that pressing it stops the recording.
-            aria-label={`Aufnahme beenden, läuft seit ${elapsed(recording.startedAt)}`}
+            aria-label={tr(
+              `Aufnahme beenden, läuft seit ${elapsed(recording.startedAt)}`,
+              `Stop recording, running for ${elapsed(recording.startedAt)}`
+            )}
             onClick={() => void window.gabi.recording.toggle()}
           >
             <span className="rec-dot" />
@@ -60,7 +66,7 @@ export function TitleBar(): JSX.Element {
         {activeTasks > 0 && (
           <span className="badge accent no-drag">
             <span className="spinner" style={{ width: 11, height: 11, borderWidth: 1.5 }} />
-            {activeTasks} {activeTasks === 1 ? 'Vorgang' : 'Vorgänge'}
+            {activeTasks} {activeTasks === 1 ? tr('Vorgang', 'task') : tr('Vorgänge', 'tasks')}
           </span>
         )}
       </div>
@@ -71,22 +77,22 @@ export function TitleBar(): JSX.Element {
           <button
             className="win-btn wide no-drag tip tip-below"
             onClick={() => setState({ paletteOpen: true })}
-            aria-label="Befehle suchen"
-            data-tip="Strg K"
+            aria-label={tr('Befehle suchen', 'Search commands')}
+            data-tip={tr('Strg K', 'Ctrl K')}
           >
             <IconSearch size={15} />
           </button>
-          <button className="win-btn" onClick={() => window.gabi.window.minimize()} aria-label="Minimieren">
+          <button className="win-btn" onClick={() => window.gabi.window.minimize()} aria-label={tr('Minimieren', 'Minimize')}>
             <IconMinimize />
           </button>
           <button
             className="win-btn"
             onClick={() => window.gabi.window.maximize()}
-            aria-label={maximized ? 'Wiederherstellen' : 'Maximieren'}
+            aria-label={maximized ? tr('Wiederherstellen', 'Restore') : tr('Maximieren', 'Maximize')}
           >
             {maximized ? <IconRestore /> : <IconMaximize />}
           </button>
-          <button className="win-btn close" onClick={() => window.gabi.window.close()} aria-label="Schließen">
+          <button className="win-btn close" onClick={() => window.gabi.window.close()} aria-label={tr('Schließen', 'Close')}>
             <IconClose />
           </button>
         </div>

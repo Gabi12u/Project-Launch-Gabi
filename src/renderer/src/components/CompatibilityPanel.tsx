@@ -5,6 +5,7 @@ import { pluralise } from '../lib/format'
 import { startInstanceForced } from '../lib/actions'
 import { Modal } from './ui'
 import { IconCheckCircle, IconInfo, IconPlay, IconSparkle, IconWarning } from './Icons'
+import { tr } from '@shared/i18n'
 
 const ISSUE_ICON = {
   error: IconWarning,
@@ -70,9 +71,9 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
     try {
       const next = await window.gabi.content.applyFix(instanceId, issue.fix)
       onChanged(next)
-      toast('success', 'Problem behoben', issue.title)
+      toast('success', tr('Problem behoben', 'Problem fixed'), issue.title)
     } catch (err) {
-      toastError(err, 'Das Problem konnte nicht behoben werden')
+      toastError(err, tr('Das Problem konnte nicht behoben werden', 'The problem could not be fixed'))
     } finally {
       // Clear only this row's own run. If a fix-all took over `fixing` in the
       // meantime this would otherwise reset it to null while the loop is
@@ -100,16 +101,21 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
       }
       toast(
         'success',
-        'Fertig',
-        done === 1 ? '1 Problem wurde automatisch behoben.' : `${done} Probleme wurden automatisch behoben.`
+        tr('Fertig', 'Done'),
+        done === 1
+          ? tr('1 Problem wurde automatisch behoben.', '1 problem was fixed automatically.')
+          : tr(`${done} Probleme wurden automatisch behoben.`, `${done} problems were fixed automatically.`)
       )
     } catch (err) {
       onChanged(latest)
       toastError(
         err,
         done > 0
-          ? `${done} von ${fixable.length} Problemen behoben, dann trat ein Fehler auf`
-          : 'Nicht alle Probleme konnten behoben werden'
+          ? tr(
+              `${done} von ${fixable.length} Problemen behoben, dann trat ein Fehler auf`,
+              `${done} of ${fixable.length} problems fixed, then an error occurred`
+            )
+          : tr('Nicht alle Probleme konnten behoben werden', 'Not all problems could be fixed')
       )
     } finally {
       setFixing((current) => (current === 'all' ? null : current))
@@ -121,7 +127,7 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
       <div className="card">
         <div className="row gap-12">
           <span className="spinner" />
-          <span className="muted">Mods werden geprüft…</span>
+          <span className="muted">{tr('Mods werden geprüft…', 'Checking mods…')}</span>
         </div>
       </div>
     )
@@ -137,8 +143,8 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
             <IconCheckCircle size={17} />
           </div>
           <div className="col">
-            <div style={{ fontSize: 13.5, fontWeight: 650 }}>Alles in Ordnung</div>
-            <div className="hint">Keine Konflikte, keine fehlenden Abhängigkeiten.</div>
+            <div style={{ fontSize: 13.5, fontWeight: 650 }}>{tr('Alles in Ordnung', 'All good')}</div>
+            <div className="hint">{tr('Keine Konflikte, keine fehlenden Abhängigkeiten.', 'No conflicts, no missing dependencies.')}</div>
           </div>
         </div>
       </div>
@@ -154,15 +160,18 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
         <div className="row gap-8">
           <span className={`badge ${errors > 0 ? 'danger' : 'warn'} dot`}>
             {errors > 0
-              ? `${errors} ${errors === 1 ? 'Problem' : 'Probleme'}`
-              : `${report.issues.length} ${pluralise(report.issues.length, 'Hinweis', 'Hinweise')}`}
+              ? tr(`${errors} ${errors === 1 ? 'Problem' : 'Probleme'}`, `${errors} ${errors === 1 ? 'problem' : 'problems'}`)
+              : tr(
+                  `${report.issues.length} ${pluralise(report.issues.length, 'Hinweis', 'Hinweise')}`,
+                  `${report.issues.length} ${pluralise(report.issues.length, 'note', 'notes')}`
+                )}
           </span>
-          {report.launchable && <span className="badge ok">Start möglich</span>}
+          {report.launchable && <span className="badge ok">{tr('Start möglich', 'Can start')}</span>}
         </div>
         {fixable > 1 && (
           <button className="btn sm primary" onClick={fixAll} disabled={fixing !== null}>
             {fixing === 'all' ? <span className="spinner" /> : <IconSparkle size={14} />}
-            Alle automatisch beheben
+            {tr('Alle automatisch beheben', 'Fix all automatically')}
           </button>
         )}
       </div>
@@ -219,13 +228,13 @@ export function CompatibilityGate(): JSX.Element | null {
       }
 
       if (latest.launchable) {
-        toast('success', 'Probleme behoben', 'Die Instanz kann jetzt gestartet werden.')
+        toast('success', tr('Probleme behoben', 'Problems fixed'), tr('Die Instanz kann jetzt gestartet werden.', 'The instance can start now.'))
         close()
         void startInstanceForced(compatGate.instanceId, compatGate.instanceName)
       }
     } catch (err) {
       setReport(latest)
-      toastError(err, 'Automatische Reparatur fehlgeschlagen')
+      toastError(err, tr('Automatische Reparatur fehlgeschlagen', 'Automatic fix failed'))
     } finally {
       setFixing(false)
     }
@@ -240,17 +249,20 @@ export function CompatibilityGate(): JSX.Element | null {
       title={
         <span className="row gap-8" style={{ alignItems: 'center' }}>
           <IconWarning size={16} />
-          Problem gefunden
+          {tr('Problem gefunden', 'Problem found')}
         </span>
       }
-      subtitle={`${compatGate.instanceName} kann so nicht gestartet werden.`}
+      subtitle={tr(
+        `${compatGate.instanceName} kann so nicht gestartet werden.`,
+        `${compatGate.instanceName} cannot start like this.`
+      )}
       onClose={close}
       busy={fixing}
       width="wide"
       footer={
         <>
           <button className="btn ghost" onClick={close} disabled={fixing}>
-            Abbrechen
+            {tr('Abbrechen', 'Cancel')}
           </button>
           <button
             className="btn"
@@ -261,12 +273,12 @@ export function CompatibilityGate(): JSX.Element | null {
             disabled={fixing}
           >
             <IconPlay size={14} />
-            Trotzdem starten
+            {tr('Trotzdem starten', 'Start anyway')}
           </button>
           {fixable > 0 && (
             <button className="btn primary" onClick={fixAll} disabled={fixing}>
               {fixing ? <span className="spinner" /> : <IconSparkle size={15} />}
-              Automatisch beheben
+              {tr('Automatisch beheben', 'Fix automatically')}
             </button>
           )}
         </>

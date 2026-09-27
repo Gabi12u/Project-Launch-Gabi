@@ -26,6 +26,7 @@ import {
   IconSettings,
   IconStop
 } from './Icons'
+import { tr } from '@shared/i18n'
 
 interface Command {
   id: string
@@ -67,13 +68,15 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `play-${instance.id}`,
-        label: instance.running ? `${instance.name} beenden` : `${instance.name} spielen`,
+        label: instance.running
+          ? tr(`${instance.name} beenden`, `Stop ${instance.name}`)
+          : tr(`${instance.name} spielen`, `Play ${instance.name}`),
         hint: `${instance.mcVersion} · ${LOADER_LABELS[instance.loader]}${
           instance.modCount > 0
             ? ` · ${instance.modCount} ${pluralise(instance.modCount, 'Mod', 'Mods')}`
             : ''
         }`,
-        group: 'Spielen',
+        group: tr('Spielen', 'Play'),
         icon: instance.running ? <IconStop size={16} /> : <IconPlay size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} start launch`,
         run: () => {
@@ -84,9 +87,9 @@ export function CommandPalette(): JSX.Element | null {
 
       items.push({
         id: `open-${instance.id}`,
-        label: `${instance.name} öffnen`,
-        hint: 'Mods, Welten, Einstellungen',
-        group: 'Instanzen',
+        label: tr(`${instance.name} öffnen`, `Open ${instance.name}`),
+        hint: tr('Mods, Welten, Einstellungen', 'Mods, worlds, settings'),
+        group: tr('Instanzen', 'Instances'),
         icon: <IconCube size={16} />,
         keywords: `${instance.mcVersion} ${instance.loader} verwalten`,
         run: () => navigate(`/instances/${instance.id}`)
@@ -96,18 +99,18 @@ export function CommandPalette(): JSX.Element | null {
     items.push(
       {
         id: 'new-instance',
-        label: 'Neue Instanz erstellen',
-        hint: 'Strg N',
-        group: 'Aktionen',
+        label: tr('Neue Instanz erstellen', 'Create new instance'),
+        hint: tr('Strg N', 'Ctrl N'),
+        group: tr('Aktionen', 'Actions'),
         icon: <IconPlus size={16} />,
         keywords: 'anlegen erstellen create version loader',
         run: () => setState({ createOpen: true })
       },
       {
         id: 'import-modpack',
-        label: 'Modpack importieren',
-        hint: '.mrpack oder .zip',
-        group: 'Aktionen',
+        label: tr('Modpack importieren', 'Import modpack'),
+        hint: tr('.mrpack oder .zip', '.mrpack or .zip'),
+        group: tr('Aktionen', 'Actions'),
         icon: <IconDownload size={16} />,
         keywords: 'mrpack curseforge zip einlesen',
         run: () => void importModpack()
@@ -115,7 +118,7 @@ export function CommandPalette(): JSX.Element | null {
       { id: 'go-home', label: 'Home', group: 'Navigation', icon: <IconHome size={16} />, run: () => navigate('/home') },
       {
         id: 'go-instances',
-        label: 'Instanzen',
+        label: tr('Instanzen', 'Instances'),
         group: 'Navigation',
         icon: <IconGrid size={16} />,
         run: () => navigate('/instances')
@@ -130,7 +133,7 @@ export function CommandPalette(): JSX.Element | null {
       },
       {
         id: 'go-discover',
-        label: 'Entdecken',
+        label: tr('Entdecken', 'Discover'),
         group: 'Navigation',
         icon: <IconCompass size={16} />,
         keywords: 'modrinth curseforge suchen shader resourcepack',
@@ -146,7 +149,7 @@ export function CommandPalette(): JSX.Element | null {
       },
       {
         id: 'go-settings',
-        label: 'Einstellungen',
+        label: tr('Einstellungen', 'Settings'),
         group: 'Navigation',
         icon: <IconSettings size={16} />,
         keywords: 'java ram theme sprache account',
@@ -233,13 +236,13 @@ export function CommandPalette(): JSX.Element | null {
         if (event.target === event.currentTarget) close()
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Befehle">
+      <div className="palette" role="dialog" aria-modal="true" aria-label={tr('Befehle', 'Commands')}>
         <div className="palette-input">
           <IconSearch size={17} />
           <input
             ref={inputRef}
             className="input"
-            placeholder="Instanz starten, Seite öffnen, Aktion ausführen…"
+            placeholder={tr('Instanz starten, Seite öffnen, Aktion ausführen…', 'Start an instance, open a page, run an action…')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
@@ -249,7 +252,7 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-list" ref={listRef}>
           {results.length === 0 ? (
-            <div className="palette-empty">Nichts gefunden für „{query}“</div>
+            <div className="palette-empty">{tr(`Nichts gefunden für „${query}“`, `Nothing found for "${query}"`)}</div>
           ) : (
             results.map((command, index) => {
               const header = command.group !== lastGroup ? command.group : null
@@ -278,13 +281,13 @@ export function CommandPalette(): JSX.Element | null {
 
         <div className="palette-foot">
           <span>
-            <span className="kbd">↑</span> <span className="kbd">↓</span> navigieren
+            <span className="kbd">↑</span> <span className="kbd">↓</span> {tr('navigieren', 'navigate')}
           </span>
           <span>
-            <span className="kbd">↵</span> ausführen
+            <span className="kbd">↵</span> {tr('ausführen', 'run')}
           </span>
           <span>
-            <span className="kbd">Esc</span> schließen
+            <span className="kbd">Esc</span> {tr('schließen', 'close')}
           </span>
         </div>
       </div>

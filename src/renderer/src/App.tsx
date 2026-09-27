@@ -32,6 +32,7 @@ import { DiscoverView } from './views/Discover'
 import { BackupsView } from './views/Backups'
 import { SettingsView } from './views/Settings'
 import { startCapture, stopCapture } from './lib/recorder'
+import { tr } from '@shared/i18n'
 
 export function App(): JSX.Element {
   const { route, ready, settings, createOpen } = useStore()
@@ -274,7 +275,7 @@ export function App(): JSX.Element {
             <div className="boot-bar">
               <span />
             </div>
-            <span className="boot-word">Launch Gabi startet</span>
+            <span className="boot-word">{tr('Launch Gabi startet', 'Launch Gabi is starting')}</span>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX } from 'react'
 import { setState, useStore } from '../lib/store'
 import { ProgressBar } from './ui'
 import { IconChevronDown, IconX } from './Icons'
+import { tr } from '@shared/i18n'
 
 /** Floating panel that mirrors every long running job from the main process. */
 export function TaskDock(): JSX.Element | null {
@@ -59,7 +60,8 @@ export function TaskDock(): JSX.Element | null {
       if (!Number.isFinite(remainingMs)) continue
 
       const minutes = Math.round(remainingMs / 60000)
-      next[task.id] = minutes < 1 ? 'noch unter 1 Min.' : `noch ca. ${minutes} Min.`
+      next[task.id] =
+        minutes < 1 ? tr('noch unter 1 Min.', 'less than 1 min left') : tr(`noch ca. ${minutes} Min.`, `about ${minutes} min left`)
     }
     setRemaining(next)
   }, [tasks])
@@ -110,12 +112,18 @@ export function TaskDock(): JSX.Element | null {
   // "Fehlgeschlagen" while its own detail line reads "Fertig" is simply wrong.
   const headline =
     running.length > 0
-      ? `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`
+      ? tr(
+          `${running.length} ${running.length === 1 ? 'Vorgang läuft' : 'Vorgänge laufen'}`,
+          `${running.length} ${running.length === 1 ? 'task running' : 'tasks running'}`
+        )
       : failed.length > 0
-        ? `${failed.length} ${failed.length === 1 ? 'Vorgang fehlgeschlagen' : 'Vorgänge fehlgeschlagen'}`
+        ? tr(
+            `${failed.length} ${failed.length === 1 ? 'Vorgang fehlgeschlagen' : 'Vorgänge fehlgeschlagen'}`,
+            `${failed.length} ${failed.length === 1 ? 'task failed' : 'tasks failed'}`
+          )
         : visible.every((t) => t.state === 'cancelled')
-          ? 'Abgebrochen'
-          : 'Fertig'
+          ? tr('Abgebrochen', 'Cancelled')
+          : tr('Fertig', 'Done')
 
   return (
     <div className="task-dock">
@@ -128,7 +136,7 @@ export function TaskDock(): JSX.Element | null {
           className="btn ghost icon sm"
           style={{ width: 24, height: 24 }}
           onClick={() => setCollapsed((value) => !value)}
-          aria-label={collapsed ? 'Ausklappen' : 'Einklappen'}
+          aria-label={collapsed ? tr('Ausklappen', 'Expand') : tr('Einklappen', 'Collapse')}
         >
           <IconChevronDown
             size={14}
@@ -158,7 +166,7 @@ export function TaskDock(): JSX.Element | null {
                     className="btn ghost icon sm"
                     style={{ width: 22, height: 22 }}
                     onClick={() => void window.gabi.tasks.cancel(task.id)}
-                    aria-label="Abbrechen"
+                    aria-label={tr('Abbrechen', 'Cancel')}
                   >
                     <IconX size={12} />
                   </button>
@@ -168,7 +176,7 @@ export function TaskDock(): JSX.Element | null {
                     className="btn ghost icon sm"
                     style={{ width: 22, height: 22 }}
                     onClick={() => dismiss(task.id)}
-                    aria-label="Schließen"
+                    aria-label={tr('Schließen', 'Close')}
                   >
                     <IconX size={12} />
                   </button>
@@ -179,11 +187,11 @@ export function TaskDock(): JSX.Element | null {
             {task.state === 'running' ? (
               <ProgressBar value={task.progress} />
             ) : task.state === 'failed' ? (
-              <div className="badge danger">Fehlgeschlagen</div>
+              <div className="badge danger">{tr('Fehlgeschlagen', 'Failed')}</div>
             ) : task.state === 'cancelled' ? (
-              <div className="badge warn">Abgebrochen</div>
+              <div className="badge warn">{tr('Abgebrochen', 'Cancelled')}</div>
             ) : (
-              <div className="badge ok">Fertig</div>
+              <div className="badge ok">{tr('Fertig', 'Done')}</div>
             )}
 
             <div className="task-detail truncate">{task.detail}</div>

@@ -4,6 +4,7 @@ import { pluralise } from '../lib/format'
 import { startInstanceForced } from '../lib/actions'
 import { Modal } from './ui'
 import { IconDownload } from './Icons'
+import { tr } from '@shared/i18n'
 
 /**
  * Modal shown when Play is pressed and outdated mods are already known
@@ -30,7 +31,7 @@ export function UpdateGate(): JSX.Element | null {
     setUpdating(true)
     try {
       const updated = await window.gabi.content.updateAll(instanceId)
-      toast('success', `${updated} ${pluralise(updated, 'Mod', 'Mods')} aktualisiert`)
+      toast('success', tr(`${updated} ${pluralise(updated, 'Mod', 'Mods')} aktualisiert`, `${updated} ${pluralise(updated, 'mod', 'mods')} updated`))
       await refreshInstances()
       close()
       // Not routed back through startInstance: it would read the update count
@@ -45,7 +46,7 @@ export function UpdateGate(): JSX.Element | null {
         setState({ compatGate: { instanceId, instanceName, report } })
       }
     } catch (err) {
-      toastError(err, 'Update fehlgeschlagen')
+      toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
     } finally {
       setUpdating(false)
     }
@@ -54,26 +55,31 @@ export function UpdateGate(): JSX.Element | null {
   return (
     <Modal
       open
-      title="Mods sind veraltet"
-      subtitle={`${instanceName} hat ${count} ${pluralise(count, 'veraltete Mod', 'veraltete Mods')}.`}
+      title={tr('Mods sind veraltet', 'Mods are outdated')}
+      subtitle={tr(
+        `${instanceName} hat ${count} ${pluralise(count, 'veraltete Mod', 'veraltete Mods')}.`,
+        `${instanceName} has ${count} ${pluralise(count, 'outdated mod', 'outdated mods')}.`
+      )}
       onClose={close}
       busy={updating}
       footer={
         <>
           <button className="btn ghost" onClick={playWithoutUpdating} disabled={updating}>
-            Nicht jetzt
+            {tr('Nicht jetzt', 'Not now')}
           </button>
           <button className="btn primary" onClick={updateThenPlay} disabled={updating}>
             {updating ? <span className="spinner" /> : <IconDownload size={14} />}
-            Jetzt updaten
+            {tr('Jetzt updaten', 'Update now')}
           </button>
         </>
       }
     >
       <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-2)' }}>
         <p style={{ margin: 0 }}>
-          Es gibt neuere Versionen für {count} {pluralise(count, 'Mod', 'Mods')} dieser Instanz. Du kannst
-          jetzt aktualisieren, oder mit den bisherigen Versionen weiterspielen und später updaten.
+          {tr(
+            `Es gibt neuere Versionen für ${count} ${pluralise(count, 'Mod', 'Mods')} dieser Instanz. Du kannst jetzt aktualisieren, oder mit den bisherigen Versionen weiterspielen und später updaten.`,
+            `There are newer versions for ${count} ${pluralise(count, 'mod', 'mods')} of this instance. You can update now, or keep playing with the current versions and update later.`
+          )}
         </p>
       </div>
     </Modal>
