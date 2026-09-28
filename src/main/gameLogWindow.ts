@@ -1,6 +1,7 @@
 import { BrowserWindow, app, shell } from 'electron'
 import { join } from 'node:path'
 import { getLanguage, tr } from '@shared/i18n'
+import { getMainWindow } from './events'
 import { log } from './logger'
 
 const logger = log('gameLogWindow')
@@ -30,6 +31,38 @@ const logWindows = new Map<string, BrowserWindow>()
  */
 const logWindowWebContentsIds = new Set<number>()
 
+/** Log windows being closed by the launcher itself rather than by the user. */
+const closingByLauncher = new Set<BrowserWindow>()
+
+/**
+ * With the launch behaviour "hide" this window is the only one left on
+ * screen while the game runs. Closing it by hand must not leave the launcher
+ * running with no window at all, so the main window comes back instead.
+ */
+let quitting = false
+let quitHookInstalled = false
+
+function revealMainWindow(): void {
+  // Quitting closes every window, this one included, and the main window
+  // must not flash back up on the way out.
+  if (quitting) return
+  showLauncherWindow()
+}
+
+/** Shows, restores and focuses the main window, e.g. from the log window's button. */
+export function showLauncherWindow(): void {
+  const main = getMainWindow()
+  if (!main || main.isDestroyed()) return
+  if (main.isMinimized()) main.restore()
+  if (!main.isVisible()) main.show()
+  main.focus()
+}
+
+export function hasGameLogWindow(instanceId: string): boolean {
+  const win = logWindows.get(instanceId)
+  return win !== undefined && !win.isDestroyed()
+}
+
 export function isGameLogWebContents(webContentsId: number): boolean {
   return logWindowWebContentsIds.has(webContentsId)
 }
@@ -39,6 +72,13 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
   if (existing && !existing.isDestroyed()) {
     existing.focus()
     return
+  }
+
+  if (!quitHookInstalled) {
+    quitHookInstalled = true
+    app.once('before-quit', () => {
+      quitting = true
+    })
   }
 
   const win = new BrowserWindow({
@@ -66,8 +106,12 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
   const webContentsId = win.webContents.id
   logWindowWebContentsIds.add(webContentsId)
   win.on('closed', () => {
-    logWindows.delete(instanceId)
+    // Only drop the entry if it is still this window: a quick close and reopen
+    // could otherwise remove the newer one.
+    if (logWindows.get(instanceId) === win) logWindows.delete(instanceId)
     logWindowWebContentsIds.delete(webContentsId)
+    const byLauncher = closingByLauncher.delete(win)
+    if (!byLauncher) revealMainWindow()
   })
 
   // This window only ever shows its own bundled page. Unlike the main
@@ -99,5 +143,8 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
 
 export function closeGameLogWindow(instanceId: string): void {
   const win = logWindows.get(instanceId)
-  if (win && !win.isDestroyed()) win.close()
+  if (win && !win.isDestroyed()) {
+    closingByLauncher.add(win)
+    win.close()
+  }
 }

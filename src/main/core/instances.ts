@@ -113,6 +113,26 @@ export function loadInstances(force = false): Instance[] {
  * of the *old* directory, metadata and all. Called from the settings handler
  * alongside the other cache invalidations.
  */
+/**
+ * One-time companion to the settings migration in `store.ts`: every instance
+ * copied the global launch behaviour when it was created, so the old "keep"
+ * default sits in each instance.json too and would override the new global
+ * value. Moved along the same way, once.
+ */
+export function migrateInstanceLaunchBehaviour(): void {
+  let moved = 0
+  for (const instance of loadInstances()) {
+    if (instance.settings.launchBehaviour !== 'keep') continue
+    try {
+      persist({ ...instance, settings: { ...instance.settings, launchBehaviour: 'hide' } })
+      moved++
+    } catch (err) {
+      logger.warn(`Startverhalten von ${instance.id} konnte nicht umgestellt werden:`, err)
+    }
+  }
+  if (moved > 0) logger.info(`Startverhalten bei ${moved} Instanz(en) auf Ausblenden umgestellt`)
+}
+
 export function invalidateInstanceCache(): void {
   cache.clear()
   loaded = false

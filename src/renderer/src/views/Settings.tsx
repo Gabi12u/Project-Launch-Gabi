@@ -385,11 +385,11 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     }
                   >
                     <option value="keep">{tr('Launcher offen lassen', 'Keep the launcher open')}</option>
-                    <option value="hide">{tr('Launcher ausblenden', 'Hide the launcher')}</option>
+                    <option value="hide">{tr('Launcher ausblenden, nur das Log zeigen', 'Hide the launcher, show only the log')}</option>
                     <option value="close">{tr('Launcher minimieren', 'Minimize the launcher')}</option>
                   </select>
                   <span className="hint">
-                    {tr('Gilt als Voreinstellung; jede Instanz kann davon abweichen.', 'This is the default; each instance can override it.')}
+                    {tr('Gilt als Voreinstellung; jede Instanz kann davon abweichen. Wird das Log-Fenster geschlossen, kommt der Launcher wieder hervor.', 'This is the default; each instance can override it. Closing the log window brings the launcher back.')}
                   </span>
                 </div>
               </section>

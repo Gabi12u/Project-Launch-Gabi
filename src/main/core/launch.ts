@@ -9,7 +9,7 @@ import type { Account, Instance, LaunchPhase, LaunchPreflight, LaunchStatus, Log
 import { paths } from '../paths'
 import { getSettings } from '../store'
 import { emit, getMainWindow, navigate, notify } from '../events'
-import { closeGameLogWindow, openGameLogWindow } from '../gameLogWindow'
+import { closeGameLogWindow, hasGameLogWindow, openGameLogWindow } from '../gameLogWindow'
 import { log } from '../logger'
 import { Task, TaskCancelledError } from '../tasks'
 import {
@@ -1144,7 +1144,12 @@ function handleWindowBehaviour(instance: Instance): void {
   const win = getMainWindow()
   if (!win) return
 
-  if (behaviour === 'hide') win.hide()
+  // Hidden only while the live-log window is there to take its place. Closed
+  // by hand before the game got this far, hiding would leave the launcher
+  // with no window at all until the game ends.
+  if (behaviour === 'hide') {
+    if (hasGameLogWindow(instance.id)) win.hide()
+  }
   else if (behaviour === 'close') win.minimize()
 }
 

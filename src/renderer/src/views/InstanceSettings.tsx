@@ -467,7 +467,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
             onChange={(e) => setBehaviour(e.target.value as LaunchBehaviour)}
           >
             <option value="keep">{tr('Launcher offen lassen', 'Keep the launcher open')}</option>
-            <option value="hide">{tr('Launcher ausblenden', 'Hide the launcher')}</option>
+            <option value="hide">{tr('Launcher ausblenden, nur das Log zeigen', 'Hide the launcher, show only the log')}</option>
             <option value="close">{tr('Launcher minimieren', 'Minimize the launcher')}</option>
           </select>
         </div>

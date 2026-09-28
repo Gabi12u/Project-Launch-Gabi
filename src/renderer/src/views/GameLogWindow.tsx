@@ -145,6 +145,9 @@ export function GameLogWindow({
             <span />
           )}
           <div className="row gap-8">
+            <button className="btn sm" onClick={() => window.gabi.window.showLauncher()}>
+              {tr('Launcher öffnen', 'Open launcher')}
+            </button>
             <button
               className="btn sm"
               onClick={() => void navigator.clipboard.writeText(lines.map((line) => line.text).join('\n'))}

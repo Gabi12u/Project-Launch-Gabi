@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout } from './paths'
-import { getSettings } from './store'
+import { getSettings, takeInstanceBehaviourMigration } from './store'
 import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
@@ -11,7 +11,7 @@ import { launchInstance, stopAll } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
-import { loadInstances, tryGetInstance } from './core/instances'
+import { loadInstances, migrateInstanceLaunchBehaviour, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
@@ -351,6 +351,7 @@ function bootstrap(): void {
     adoptRunningFromDisk()
     try {
       loadInstances()
+      if (takeInstanceBehaviourMigration()) migrateInstanceLaunchBehaviour()
       // Only meaningful once the instances are known, hence not up with the
       // adoption itself.
       pruneAdopted((id) => tryGetInstance(id) !== null)

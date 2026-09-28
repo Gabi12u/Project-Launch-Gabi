@@ -175,6 +175,10 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   }
   next.reduceMotion = typeof next.reduceMotion === 'boolean' ? next.reduceMotion : fallback.reduceMotion
   next.javaAutoManage = typeof next.javaAutoManage === 'boolean' ? next.javaAutoManage : fallback.javaAutoManage
+  next.launchBehaviourDefaultApplied =
+    typeof next.launchBehaviourDefaultApplied === 'boolean'
+      ? next.launchBehaviourDefaultApplied
+      : fallback.launchBehaviourDefaultApplied
   next.lastRunVersion = textOr(next.lastRunVersion, fallback.lastRunVersion)
   next.lastSeenVersion = textOr(next.lastSeenVersion, fallback.lastSeenVersion)
 
@@ -182,6 +186,19 @@ function sanitize(input: LauncherSettings): LauncherSettings {
     next.dataDirectory = join(app.getPath('userData'), 'data')
   }
   return next
+}
+
+let instanceBehaviourMigrationPending = false
+
+/**
+ * True exactly once after `getSettings` moved an existing install onto the
+ * new launch behaviour default, so the caller can move the instances along
+ * too. Cleared on reading.
+ */
+export function takeInstanceBehaviourMigration(): boolean {
+  const pending = instanceBehaviourMigrationPending
+  instanceBehaviourMigrationPending = false
+  return pending
 }
 
 export function getSettings(): LauncherSettings {
@@ -197,6 +214,22 @@ export function getSettings(): LauncherSettings {
     const systemLocale = Intl.DateTimeFormat().resolvedOptions().locale
     const language = firstRun && !/^de\b/i.test(systemLocale) ? 'en' : DEFAULT_LAUNCHER_SETTINGS.language
     settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...stored })
+    // The launch behaviour default moved from "keep" to "hide" (the main
+    // window steps aside for the game and its live-log window). "keep" was
+    // the old default nearly everyone still has without ever choosing it, so
+    // it moves along once. Anything picked afterwards is left alone.
+    if (!firstRun && stored.launchBehaviourDefaultApplied !== true) {
+      if (settings.launchBehaviour === 'keep') settings.launchBehaviour = 'hide'
+      settings.launchBehaviourDefaultApplied = true
+      instanceBehaviourMigrationPending = true
+      try {
+        writeJsonAtomic(settingsFile(), settings)
+      } catch (err) {
+        // Harmless: the change still applies to this session and is simply
+        // tried again on the next start.
+        logger.warn('Umstellung des Startverhaltens konnte nicht gespeichert werden:', err)
+      }
+    }
   }
   return settings
 }

@@ -697,6 +697,13 @@ export interface LauncherSettings {
   showSnapshots: boolean
   discordRichPresence: boolean
   onboarded: boolean
+  /**
+   * Set once the switch of the launch behaviour default from "keep" to
+   * "hide" has been applied to this installation. Missing in every settings
+   * file written before that change, which is how `getSettings` tells an
+   * existing install that still needs it apart from one that already had it.
+   */
+  launchBehaviourDefaultApplied: boolean
 }
 
 /* ------------------------------------------------------------------ *

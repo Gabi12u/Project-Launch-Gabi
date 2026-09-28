@@ -6,6 +6,7 @@ export const IPC = {
   windowMaximize: 'window:maximize',
   windowClose: 'window:close',
   windowIsMaximized: 'window:is-maximized',
+  windowShowLauncher: 'window:show-launcher',
 
   // app
   appInfo: 'app:info',

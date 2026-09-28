@@ -108,7 +108,7 @@ import {
 } from './auth/microsoft'
 import { getNews, getStats } from './core/news'
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate } from './core/updater'
-import { isGameLogWebContents } from './gameLogWindow'
+import { isGameLogWebContents, showLauncherWindow } from './gameLogWindow'
 
 const logger = log('ipc')
 
@@ -210,6 +210,7 @@ export function registerIpc(): void {
 
   ipcMain.on(IPC.windowMinimize, (event) => senderWindow(event)?.minimize())
   ipcMain.on(IPC.windowClose, (event) => senderWindow(event)?.close())
+  ipcMain.on(IPC.windowShowLauncher, () => showLauncherWindow())
   ipcMain.on(IPC.windowMaximize, (event) => {
     const win = senderWindow(event)
     if (!win) return

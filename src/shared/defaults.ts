@@ -41,7 +41,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   accentColor: '#7c5cff',
   reduceMotion: false,
   navPosition: 'side',
-  launchBehaviour: 'keep',
+  launchBehaviour: 'hide',
   startMinimized: false,
   launchOnStartup: false,
   concurrentDownloads: 8,
@@ -64,6 +64,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   customStartScreen: 'unset',
   crashReports: 'unset',
   lastRunVersion: '',
+  launchBehaviourDefaultApplied: true,
   lastSeenVersion: '',
   curseForgeApiKey: '',
   // Launch Gabi's own Azure application id, registered 2026-09-08 and
@@ -88,7 +89,7 @@ export const DEFAULT_INSTANCE_SETTINGS: InstanceSettings = {
   fullscreen: false,
   windowWidth: 1280,
   windowHeight: 720,
-  launchBehaviour: 'keep',
+  launchBehaviour: 'hide',
   backupBeforeUpdates: true,
   autoUpdateContent: false
 }

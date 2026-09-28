@@ -39,6 +39,7 @@ const api = {
     minimize: () => ipcRenderer.send(IPC.windowMinimize),
     maximize: () => ipcRenderer.send(IPC.windowMaximize),
     close: () => ipcRenderer.send(IPC.windowClose),
+    showLauncher: () => ipcRenderer.send(IPC.windowShowLauncher),
     isMaximized: call(IPC.windowIsMaximized)
   },
 

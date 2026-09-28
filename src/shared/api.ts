@@ -155,6 +155,8 @@ export interface GabiApi {
   language: LanguageId
   window: {
     minimize(): void
+    /** Brings the main launcher window back, from the live-log window. */
+    showLauncher(): void
     maximize(): void
     close(): void
     isMaximized(): Promise<boolean>
