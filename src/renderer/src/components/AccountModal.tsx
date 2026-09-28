@@ -109,8 +109,12 @@ export function AccountModal({
   }
 
   const setActive = async (id: string): Promise<void> => {
-    await window.gabi.accounts.setActive(id)
-    await refreshAccounts()
+    try {
+      await window.gabi.accounts.setActive(id)
+      await refreshAccounts()
+    } catch (err) {
+      toastError(err, tr('Account konnte nicht ausgewählt werden', 'Could not select the account'))
+    }
   }
 
   const remove = async (): Promise<void> => {

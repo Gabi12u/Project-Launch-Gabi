@@ -135,17 +135,8 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   next.defaultJvmArgs = textOr(next.defaultJvmArgs, fallback.defaultJvmArgs)
   next.accentColor = textOr(next.accentColor, fallback.accentColor)
   next.curseForgeApiKey = textOr(next.curseForgeApiKey, fallback.curseForgeApiKey)
-  // A plain default merge never overwrites a value already on disk, and every
-  // settings file ever written carried the old official client id explicitly,
-  // not as a gap the defaults could fill. Anyone who still has exactly that
-  // value, meaning they never chose one of their own, is moved onto our own
-  // registration here. Already signed in accounts are unaffected: each keeps
-  // refreshing under the client id it actually logged in with (`microsoft.ts`,
-  // `issuerClientId`), so this only changes which id the next new sign in uses.
-  next.microsoftClientId =
-    next.microsoftClientId === LEGACY_MICROSOFT_CLIENT_ID
-      ? fallback.microsoftClientId
-      : textOr(next.microsoftClientId, fallback.microsoftClientId)
+  // The move off the old official client id happens in getSettings.
+  next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId)
   // Not merely cosmetic: registering the hotkey calls `.trim()` on this, so a
   // number in the file threw before a game could ever start.
   next.recordingHotkey = textOr(next.recordingHotkey, fallback.recordingHotkey).trim() || fallback.recordingHotkey
@@ -213,14 +204,28 @@ export function getSettings(): LauncherSettings {
     const firstRun = Object.keys(stored).length === 0
     const systemLocale = Intl.DateTimeFormat().resolvedOptions().locale
     const language = firstRun && !/^de\b/i.test(systemLocale) ? 'en' : DEFAULT_LAUNCHER_SETTINGS.language
-    settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...stored })
+    // A plain default merge never overwrites a value already on disk, and
+    // every settings file ever written carried the old official client id
+    // explicitly, not as a gap the defaults could fill. Anyone who still has
+    // exactly that value, meaning they never chose one of their own, is moved
+    // onto our own registration here. Already signed in accounts keep
+    // refreshing under the client id they logged in with (`microsoft.ts`,
+    // `issuerClientId`). Only when reading from disk, not on every save:
+    // someone typing the old id into the field on purpose keeps it.
+    const migrated =
+      stored.microsoftClientId === LEGACY_MICROSOFT_CLIENT_ID
+        ? { ...stored, microsoftClientId: DEFAULT_LAUNCHER_SETTINGS.microsoftClientId }
+        : stored
+    settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...migrated })
     // The launch behaviour default moved from "keep" to "hide" (the main
     // window steps aside for the game and its live-log window). "keep" was
     // the old default nearly everyone still has without ever choosing it, so
-    // it moves along once. Anything picked afterwards is left alone.
+    // it moves along once. Anything picked afterwards is left alone. The
+    // marker only turns true once the instances were moved along as well
+    // (index.ts), so a start that fails halfway simply tries again.
     if (!firstRun && stored.launchBehaviourDefaultApplied !== true) {
       if (settings.launchBehaviour === 'keep') settings.launchBehaviour = 'hide'
-      settings.launchBehaviourDefaultApplied = true
+      settings.launchBehaviourDefaultApplied = false
       instanceBehaviourMigrationPending = true
       try {
         writeJsonAtomic(settingsFile(), settings)

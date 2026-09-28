@@ -69,12 +69,14 @@ function normalise(raw: Partial<Instance>, id: string): Instance {
       background: raw.appearance?.background ?? null
     },
     settings: { ...DEFAULT_INSTANCE_SETTINGS, ...raw.settings },
-    content: raw.content ?? [],
+    // `??` lets a non-array through (a hand edit, a damaged file), and every
+    // content and session consumer iterates these without a further check.
+    content: Array.isArray(raw.content) ? raw.content : [],
     source: raw.source ?? { type: 'manual' },
     createdAt: raw.createdAt ?? Date.now(),
     lastPlayed: raw.lastPlayed ?? null,
     totalPlayMs: raw.totalPlayMs ?? 0,
-    sessions: raw.sessions ?? [],
+    sessions: Array.isArray(raw.sessions) ? raw.sessions : [],
     favorite: raw.favorite ?? false,
     installing: false, // never restore a stale "installing" flag
     installed: raw.installed ?? false
@@ -91,7 +93,9 @@ export function loadInstances(force = false): Instance[] {
       const file = paths.instanceFile(entry)
       if (!existsSync(file)) continue
       try {
-        const raw = readJson<Partial<Instance>>(file, {})
+        // Quarantined like launcher.json: an unreadable file is set aside with
+        // a notice instead of being silently overwritten by the next save.
+        const raw = readJson<Partial<Instance>>(file, {}, true)
         cache.set(entry, normalise(raw, entry))
       } catch (err) {
         logger.error(`Instanz ${entry} konnte nicht geladen werden:`, err)
@@ -114,23 +118,28 @@ export function loadInstances(force = false): Instance[] {
  * alongside the other cache invalidations.
  */
 /**
- * One-time companion to the settings migration in `store.ts`: every instance
- * copied the global launch behaviour when it was created, so the old "keep"
- * default sits in each instance.json too and would override the new global
- * value. Moved along the same way, once.
+ * One-time companion to the settings migration in `store.ts`. Every instance
+ * used to copy the global launch behaviour when it was created, so the old
+ * "keep" default sits in each instance.json as if chosen there, and the
+ * global setting could never reach it again. Those go back to following the
+ * global setting. Returns false if any instance could not be written, so the
+ * caller tries again on the next start.
  */
-export function migrateInstanceLaunchBehaviour(): void {
+export function migrateInstanceLaunchBehaviour(): boolean {
   let moved = 0
+  let complete = true
   for (const instance of loadInstances()) {
     if (instance.settings.launchBehaviour !== 'keep') continue
     try {
-      persist({ ...instance, settings: { ...instance.settings, launchBehaviour: 'hide' } })
+      persist({ ...instance, settings: { ...instance.settings, launchBehaviour: 'default' } })
       moved++
     } catch (err) {
+      complete = false
       logger.warn(`Startverhalten von ${instance.id} konnte nicht umgestellt werden:`, err)
     }
   }
-  if (moved > 0) logger.info(`Startverhalten bei ${moved} Instanz(en) auf Ausblenden umgestellt`)
+  if (moved > 0) logger.info(`Startverhalten bei ${moved} Instanz(en) auf die globale Einstellung umgestellt`)
+  return complete
 }
 
 export function invalidateInstanceCache(): void {
@@ -285,8 +294,7 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
       settings: {
         ...DEFAULT_INSTANCE_SETTINGS,
         memoryMb: options.memoryMb ?? settings.defaultMemoryMb,
-        jvmArgs: settings.defaultJvmArgs,
-        launchBehaviour: settings.launchBehaviour
+        jvmArgs: settings.defaultJvmArgs
       },
       createdAt: Date.now(),
       installing: true,
@@ -699,6 +707,16 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     if (existsSync(iconsDir)) {
       await cp(iconsDir, paths.icons(newId), { recursive: true })
     }
+  } catch (err) {
+    // Nothing has an instance.json for the new id yet, so a half copied
+    // folder left here would be invisible in the launcher and never cleaned
+    // up, quietly taking disk space for good.
+    try {
+      rmSync(paths.instance(newId), { recursive: true, force: true })
+    } catch (cleanupErr) {
+      logger.warn(`Halbe Kopie ${newId} konnte nicht entfernt werden:`, cleanupErr)
+    }
+    throw err
   } finally {
     unmarkCopying(id)
   }

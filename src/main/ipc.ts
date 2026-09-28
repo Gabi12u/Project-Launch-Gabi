@@ -121,6 +121,10 @@ const logger = log('ipc')
  * window can: remove accounts, delete instances, change settings, all of it.
  * Kept to exactly what `GameLogWindow.tsx` actually calls (`launch.logs`,
  * `launch.stop`, `settings.get` for the theme); everything else throws.
+ *
+ * Covers the `handle()` channels only. The few `ipcMain.on` window channels
+ * below are not gated: minimize, maximize and close act on the sending window
+ * itself, and `window:show-launcher` exists for the log window's own button.
  */
 const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([IPC.launchLogs, IPC.launchStop, IPC.settingsGet])
 

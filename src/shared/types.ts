@@ -15,6 +15,8 @@ export type ProviderId = 'modrinth' | 'curseforge' | 'local'
 
 /** How the launcher window behaves once the game starts. */
 export type LaunchBehaviour = 'keep' | 'hide' | 'close'
+/** An instance either follows the global launch behaviour or overrides it. */
+export type InstanceLaunchBehaviour = LaunchBehaviour | 'default'
 
 export type RecordingQuality = 'low' | 'medium' | 'high'
 
@@ -51,7 +53,7 @@ export interface InstanceSettings {
   fullscreen: boolean
   windowWidth: number
   windowHeight: number
-  launchBehaviour: LaunchBehaviour
+  launchBehaviour: InstanceLaunchBehaviour
   /** Create a snapshot of the world folder before mods are updated. */
   backupBeforeUpdates: boolean
   /** Check for content updates whenever the instance is opened. */

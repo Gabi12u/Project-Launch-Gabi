@@ -1030,6 +1030,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     const bundled: string[] = []
 
     for (const item of current.content) {
+      task.throwIfCancelled()
       const folder = overrideFolderFor(item.type)
       const relative = `${folder}/${item.fileName}`
 
@@ -1092,7 +1093,10 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
         include: overrideFolders,
         exclude: excluded,
         prefix: 'overrides',
-        extraFiles: [{ name: 'modrinth.index.json', content: JSON.stringify(index, null, 2) }]
+        extraFiles: [{ name: 'modrinth.index.json', content: JSON.stringify(index, null, 2) }],
+        // Without it the Cancel button in the task dock reached nothing: the
+        // archive was written to the end regardless.
+        signal: task.signal
       },
       (done, total) => task.update(tr(`${done} / ${total} Dateien`, `${done} / ${total} files`), 0.4 + (done / Math.max(total, 1)) * 0.6)
     )

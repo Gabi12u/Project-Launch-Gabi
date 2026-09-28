@@ -12,7 +12,7 @@ const nameCache = new Map<string, string>()
 const NAME_CACHE_MAX = 500
 
 /** Strips punctuation and case so "Fabric API" and "fabric-api" compare equal. */
-function flattenName(value: string): string {
+export function flattenName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 

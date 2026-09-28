@@ -79,7 +79,9 @@ try {
     check(takeInstanceBehaviourMigration() === true, 'Alt keep: Instanzen wurden nicht zur Umstellung vorgemerkt')
     check(takeInstanceBehaviourMigration() === false, 'Alt keep: Vormerkung wurde nicht zurueckgesetzt')
     const saved = JSON.parse(readFileSync(file, 'utf8'))
-    check(saved.launchBehaviourDefaultApplied === true && saved.launchBehaviour === 'hide', 'Alt keep: Umstellung wurde nicht gespeichert')
+    check(saved.launchBehaviour === 'hide', 'Alt keep: Umstellung wurde nicht gespeichert')
+    // Erst wenn auch die Instanzen umgestellt sind, setzt index.ts die Markierung.
+    check(saved.launchBehaviourDefaultApplied !== true, 'Alt keep: Markierung vor der Instanz-Umstellung gesetzt')
     notes.push(`Bestand mit keep: umgestellt auf ${settings.launchBehaviour}`)
   }
 

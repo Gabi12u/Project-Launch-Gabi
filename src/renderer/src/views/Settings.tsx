@@ -329,7 +329,13 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
   /** Runs after the confirm dialog, once the user actually wants to switch. */
   const changeDataDirectory = async (): Promise<void> => {
     setConfirmDataDir(false)
-    const dir = await window.gabi.app.pickDirectory(tr('Datenverzeichnis wählen', 'Choose data folder'))
+    let dir: string | null
+    try {
+      dir = await window.gabi.app.pickDirectory(tr('Datenverzeichnis wählen', 'Choose data folder'))
+    } catch (err) {
+      toastError(err, tr('Ordnerauswahl fehlgeschlagen', 'Choosing a folder failed'))
+      return
+    }
     if (!dir) return
     // Only report a move once the save actually took. A rejected path
     // (unwritable, invalid) left the directory untouched, yet this still told
@@ -884,10 +890,15 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           'All launcher settings return to their defaults. Your instances, worlds and accounts stay untouched.'
         )}
         onConfirm={async () => {
-          await window.gabi.settings.reset()
-          await refreshSettings()
-          setConfirmReset(false)
-          toast('success', tr('Zurückgesetzt', 'Reset done'))
+          try {
+            await window.gabi.settings.reset()
+            await refreshSettings()
+            setConfirmReset(false)
+            toast('success', tr('Zurückgesetzt', 'Reset done'))
+          } catch (err) {
+            setConfirmReset(false)
+            toastError(err, tr('Zurücksetzen fehlgeschlagen', 'Reset failed'))
+          }
         }}
         onCancel={() => setConfirmReset(false)}
       />

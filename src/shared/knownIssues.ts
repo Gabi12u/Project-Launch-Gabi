@@ -2669,6 +2669,131 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-28',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'alte-versionen-leerzeichen-pfad',
+    title: 'Minecraft bis 1.12.2 startete nicht, wenn der Datenordner ein Leerzeichen enthielt',
+    detail:
+      'Bei alten Versionen, auch Forge-Modpacks für 1.7.10 oder 1.12.2, wurde ein Ordnerpfad mit ' +
+      'Leerzeichen in mehrere Startargumente zerlegt. Das trifft schon den Standardordner, wenn der ' +
+      'Windows-Benutzername ein Leerzeichen hat.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'startverhalten-global-wirkungslos',
+    title: 'Das globale Verhalten beim Spielstart wirkte nicht auf bestehende Instanzen',
+    detail:
+      'Jede Instanz übernahm die Einstellung beim Anlegen fest. Eine spätere Änderung unter ' +
+      'Einstellungen erreichte deshalb nur neu angelegte Instanzen. Instanzen folgen jetzt der ' +
+      'globalen Einstellung, bis man bei ihnen selbst etwas anderes wählt.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'duplizieren-halbe-kopie',
+    title: 'Ein fehlgeschlagenes Duplizieren ließ eine unsichtbare halbe Kopie zurück',
+    detail:
+      'Brach das Duplizieren einer Instanz ab, etwa weil der Speicher voll war, blieb der angefangene ' +
+      'Ordner liegen. Im Launcher war er nicht zu sehen und belegte trotzdem Speicherplatz.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'export-abbrechen-wirkungslos',
+    title: '„Abbrechen“ beim Export als Modpack hatte keine Wirkung',
+    detail:
+      'Ein laufender Export ließ sich nicht abbrechen. Er lief bis zum Ende weiter.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'sicherung-fehlertext-pfad',
+    title: 'Einige Fehlermeldungen bei Sicherungen zeigten den vollständigen Dateipfad',
+    detail:
+      'Scheiterte das Eintragen einer Sicherung oder eine Wiederherstellung an einer gesperrten Datei, ' +
+      'stand in der Meldung eine englische Systemmeldung samt vollständigem Pfad und ' +
+      'Windows-Benutzername.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'instanzdatei-beschaedigt',
+    title: 'Eine beschädigte Instanzdatei machte die Instanz unbrauchbar oder wurde still überschrieben',
+    detail:
+      'War die Datei instance.json einer Instanz beschädigt, ließ sich deren Seite je nach Schaden ' +
+      'nicht mehr öffnen, das Spielende wurde nicht erkannt, oder die Datei wurde ohne Hinweis durch ' +
+      'eine leere ersetzt. Eine unlesbare Datei wird jetzt mit Hinweis beiseitegelegt.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'knoepfe-ohne-fehlermeldung-2',
+    title: 'Einige Knöpfe zeigten bei einem Fehler keine Meldung',
+    detail:
+      'Eigenes Icon, Hintergrundbild, Hintergrund entfernen, Einstellungen zurücksetzen, Datenordner ' +
+      'ändern und das Auswählen eines Accounts taten bei einem Fehler sichtbar einfach nichts.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'dialog-tab-taste',
+    title: 'Mit der Tab-Taste kam man aus offenen Dialogen heraus',
+    detail:
+      'In jedem Dialog sprang die Tab-Taste nach dem letzten Element auf die Seite dahinter, wo sich ' +
+      'Knöpfe dann bedienen ließen, obwohl der Dialog sie verdeckte.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'mod-entfernen-waehrend-versionswechsel',
+    title: 'Ein während eines Versionswechsels entfernter Mod konnte zurückkommen',
+    detail:
+      'Wurde ein Mod entfernt oder umgeschaltet, während für ihn gerade „Version wählen“ lief und die ' +
+      'alte Datei kurz gesperrt war, war er danach wieder da oder hinterließ eine nicht erfasste ' +
+      'Datei.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'abhaengigkeit-doppelt-anderer-anbieter',
+    title: 'Eine Abhängigkeit wurde doppelt installiert, wenn sie vom anderen Anbieter stammte',
+    detail:
+      'War eine benötigte Bibliothek wie die Fabric API schon von Modrinth installiert, holte ein ' +
+      'CurseForge-Mod sie noch einmal von CurseForge. Mit zwei Kopien startet das Spiel in der Regel ' +
+      'nicht.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'update-ohne-neue-abhaengigkeit',
+    title: 'Ein Mod-Update installierte neu benötigte Abhängigkeiten nicht',
+    detail:
+      'Brauchte die neue Version eines Mods eine zusätzliche Bibliothek, wurde nur die Mod-Datei ' +
+      'ersetzt. Das Spiel startete danach unter Umständen nicht, ohne erkennbaren Grund.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
+  },
+  {
+    id: 'client-id-alte-ersetzt',
+    title: 'Eine von Hand eingetragene alte Microsoft-Client-ID wurde still ersetzt',
+    detail:
+      'Trug man unter Einstellungen, Accounts die Client-ID des offiziellen Minecraft Launchers ein, ' +
+      'speicherte der Launcher stattdessen seine eigene, ohne Hinweis.',
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   }
 ]
 

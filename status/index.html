@@ -2998,6 +2998,102 @@ footer a:hover { color: var(--ink); }
       "state": "fixed",
       "since": "2026-09-28",
       "fixedIn": "1.0.20"
+    },
+    {
+      "id": "alte-versionen-leerzeichen-pfad",
+      "title": "Minecraft bis 1.12.2 startete nicht, wenn der Datenordner ein Leerzeichen enthielt",
+      "detail": "Bei alten Versionen, auch Forge-Modpacks für 1.7.10 oder 1.12.2, wurde ein Ordnerpfad mit Leerzeichen in mehrere Startargumente zerlegt. Das trifft schon den Standardordner, wenn der Windows-Benutzername ein Leerzeichen hat.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "startverhalten-global-wirkungslos",
+      "title": "Das globale Verhalten beim Spielstart wirkte nicht auf bestehende Instanzen",
+      "detail": "Jede Instanz übernahm die Einstellung beim Anlegen fest. Eine spätere Änderung unter Einstellungen erreichte deshalb nur neu angelegte Instanzen. Instanzen folgen jetzt der globalen Einstellung, bis man bei ihnen selbst etwas anderes wählt.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "duplizieren-halbe-kopie",
+      "title": "Ein fehlgeschlagenes Duplizieren ließ eine unsichtbare halbe Kopie zurück",
+      "detail": "Brach das Duplizieren einer Instanz ab, etwa weil der Speicher voll war, blieb der angefangene Ordner liegen. Im Launcher war er nicht zu sehen und belegte trotzdem Speicherplatz.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "export-abbrechen-wirkungslos",
+      "title": "„Abbrechen“ beim Export als Modpack hatte keine Wirkung",
+      "detail": "Ein laufender Export ließ sich nicht abbrechen. Er lief bis zum Ende weiter.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "sicherung-fehlertext-pfad",
+      "title": "Einige Fehlermeldungen bei Sicherungen zeigten den vollständigen Dateipfad",
+      "detail": "Scheiterte das Eintragen einer Sicherung oder eine Wiederherstellung an einer gesperrten Datei, stand in der Meldung eine englische Systemmeldung samt vollständigem Pfad und Windows-Benutzername.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "instanzdatei-beschaedigt",
+      "title": "Eine beschädigte Instanzdatei machte die Instanz unbrauchbar oder wurde still überschrieben",
+      "detail": "War die Datei instance.json einer Instanz beschädigt, ließ sich deren Seite je nach Schaden nicht mehr öffnen, das Spielende wurde nicht erkannt, oder die Datei wurde ohne Hinweis durch eine leere ersetzt. Eine unlesbare Datei wird jetzt mit Hinweis beiseitegelegt.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "knoepfe-ohne-fehlermeldung-2",
+      "title": "Einige Knöpfe zeigten bei einem Fehler keine Meldung",
+      "detail": "Eigenes Icon, Hintergrundbild, Hintergrund entfernen, Einstellungen zurücksetzen, Datenordner ändern und das Auswählen eines Accounts taten bei einem Fehler sichtbar einfach nichts.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "dialog-tab-taste",
+      "title": "Mit der Tab-Taste kam man aus offenen Dialogen heraus",
+      "detail": "In jedem Dialog sprang die Tab-Taste nach dem letzten Element auf die Seite dahinter, wo sich Knöpfe dann bedienen ließen, obwohl der Dialog sie verdeckte.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "mod-entfernen-waehrend-versionswechsel",
+      "title": "Ein während eines Versionswechsels entfernter Mod konnte zurückkommen",
+      "detail": "Wurde ein Mod entfernt oder umgeschaltet, während für ihn gerade „Version wählen“ lief und die alte Datei kurz gesperrt war, war er danach wieder da oder hinterließ eine nicht erfasste Datei.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "abhaengigkeit-doppelt-anderer-anbieter",
+      "title": "Eine Abhängigkeit wurde doppelt installiert, wenn sie vom anderen Anbieter stammte",
+      "detail": "War eine benötigte Bibliothek wie die Fabric API schon von Modrinth installiert, holte ein CurseForge-Mod sie noch einmal von CurseForge. Mit zwei Kopien startet das Spiel in der Regel nicht.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "update-ohne-neue-abhaengigkeit",
+      "title": "Ein Mod-Update installierte neu benötigte Abhängigkeiten nicht",
+      "detail": "Brauchte die neue Version eines Mods eine zusätzliche Bibliothek, wurde nur die Mod-Datei ersetzt. Das Spiel startete danach unter Umständen nicht, ohne erkennbaren Grund.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "client-id-alte-ersetzt",
+      "title": "Eine von Hand eingetragene alte Microsoft-Client-ID wurde still ersetzt",
+      "detail": "Trug man unter Einstellungen, Accounts die Client-ID des offiziellen Minecraft Launchers ein, speicherte der Launcher stattdessen seine eigene, ohne Hinweis.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
     }
   ];
   var ISSUE_LABEL = {
@@ -4709,6 +4805,102 @@ footer a:hover { color: var(--ink); }
       "id": "gruppen-gross-klein",
       "title": "Groups differing only in upper and lower case were shown separately",
       "detail": "If two instances were grouped as \"Modded\" and \"modded\", they appeared in two separate groups instead of one.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "alte-versionen-leerzeichen-pfad",
+      "title": "Minecraft up to 1.12.2 did not start when the data folder contained a space",
+      "detail": "For old versions, including Forge modpacks for 1.7.10 or 1.12.2, a folder path with a space was split into several launch arguments. This already affects the default folder when the Windows user name contains a space.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "startverhalten-global-wirkungslos",
+      "title": "The global launch behavior had no effect on existing instances",
+      "detail": "Every instance copied the setting when it was created. A later change in the settings therefore only reached newly created instances. Instances now follow the global setting until something else is chosen for them.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "duplizieren-halbe-kopie",
+      "title": "A failed duplicate left an invisible half copy behind",
+      "detail": "If duplicating an instance failed, for example because the disk was full, the started folder stayed behind. It was not visible in the launcher but still took up disk space.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "export-abbrechen-wirkungslos",
+      "title": "\"Cancel\" had no effect when exporting as a modpack",
+      "detail": "A running export could not be cancelled. It ran to the end.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "sicherung-fehlertext-pfad",
+      "title": "Some backup error messages showed the full file path",
+      "detail": "If recording a backup or a restore failed because of a locked file, the message contained an English system message including the full path and Windows user name.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "instanzdatei-beschaedigt",
+      "title": "A damaged instance file made the instance unusable or was silently overwritten",
+      "detail": "If an instance's instance.json was damaged, depending on the damage its page could no longer be opened, the end of the game was not detected, or the file was replaced by an empty one without notice. An unreadable file is now set aside with a notice.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "knoepfe-ohne-fehlermeldung-2",
+      "title": "Some buttons showed no message on an error",
+      "detail": "Custom icon, background image, remove background, reset settings, change data folder and selecting an account visibly did nothing when they failed.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "dialog-tab-taste",
+      "title": "The Tab key could leave open dialogs",
+      "detail": "In every dialog, the Tab key moved past the last element onto the page behind it, where buttons could then be used although the dialog covered them.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "mod-entfernen-waehrend-versionswechsel",
+      "title": "A mod removed during a version change could come back",
+      "detail": "If a mod was removed or toggled while \"Choose version\" was running for it and the old file was briefly locked, it came back afterwards or left an untracked file behind.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "abhaengigkeit-doppelt-anderer-anbieter",
+      "title": "A dependency was installed twice when it came from the other provider",
+      "detail": "If a required library such as Fabric API was already installed from Modrinth, a CurseForge mod fetched it again from CurseForge. With two copies the game usually does not start.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "update-ohne-neue-abhaengigkeit",
+      "title": "A mod update did not install newly required dependencies",
+      "detail": "If the new version of a mod needed an additional library, only the mod file was replaced. The game might then not start, without any visible reason.",
+      "state": "fixed",
+      "since": "2026-09-28",
+      "fixedIn": "1.0.20"
+    },
+    {
+      "id": "client-id-alte-ersetzt",
+      "title": "A manually entered old Microsoft client ID was silently replaced",
+      "detail": "Entering the official Minecraft Launcher's client ID under Settings, Accounts made the launcher save its own instead, without notice.",
       "state": "fixed",
       "since": "2026-09-28",
       "fixedIn": "1.0.20"

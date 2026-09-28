@@ -999,6 +999,11 @@
   animation: pop-in var(--t) var(--ease);
 }
 
+/* Focused only as the fallback target of the Tab trap in ui.tsx. */
+.modal:focus {
+  outline: none;
+}
+
 .modal.wide { max-width: 780px; }
 .modal.xwide { max-width: 1000px; }
 

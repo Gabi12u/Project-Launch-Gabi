@@ -89,7 +89,7 @@ export const DEFAULT_INSTANCE_SETTINGS: InstanceSettings = {
   fullscreen: false,
   windowWidth: 1280,
   windowHeight: 720,
-  launchBehaviour: 'hide',
+  launchBehaviour: 'default',
   backupBeforeUpdates: true,
   autoUpdateContent: false
 }

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout } from './paths'
-import { getSettings, takeInstanceBehaviourMigration } from './store'
+import { getSettings, saveSettings, takeInstanceBehaviourMigration } from './store'
 import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
@@ -23,6 +23,7 @@ import {
   isFinalisingRecording
 } from './core/recording'
 import { reportError } from './core/reports'
+import { showLauncherWindow } from './gameLogWindow'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
 const isDev = !app.isPackaged
@@ -351,7 +352,13 @@ function bootstrap(): void {
     adoptRunningFromDisk()
     try {
       loadInstances()
-      if (takeInstanceBehaviourMigration()) migrateInstanceLaunchBehaviour()
+      if (takeInstanceBehaviourMigration() && migrateInstanceLaunchBehaviour()) {
+        try {
+          saveSettings({ launchBehaviourDefaultApplied: true })
+        } catch (err) {
+          logger.warn('Umstellung des Startverhaltens konnte nicht abgeschlossen werden:', err)
+        }
+      }
       // Only meaningful once the instances are known, hence not up with the
       // adoption itself.
       pruneAdopted((id) => tryGetInstance(id) !== null)
@@ -367,6 +374,9 @@ function bootstrap(): void {
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
+      // The Dock icon is the usual way back on macOS, also for a main window
+      // hidden while a game runs.
+      else showLauncherWindow()
     })
 
     // Give the renderer a moment to subscribe before anything is pushed.

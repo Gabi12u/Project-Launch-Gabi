@@ -32,7 +32,8 @@ import {
   persist,
   recordSession,
   resolveVersionId,
-  syncContentWithDisk
+  syncContentWithDisk,
+  tryGetInstance
 } from './instances'
 import { checkCompatibility } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
@@ -660,7 +661,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     const gameArgs = versionJson.arguments?.game
       ? flattenArguments(versionJson.arguments.game, placeholders, features)
-      : splitUserArgs(substitute(versionJson.minecraftArguments ?? '', placeholders))
+      : // Split the template first, then fill each token: a path with a space
+        // (a Windows user name like "Jane Doe" puts one in the default data
+        // folder) used to be torn into several arguments by the split.
+        splitUserArgs(versionJson.minecraftArguments ?? '').map((token) => substitute(token, placeholders))
 
     if (instance.settings.fullscreen && !gameArgs.includes('--fullscreen')) {
       gameArgs.push('--fullscreen')
@@ -1140,7 +1144,10 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
  * ------------------------------------------------------------------ */
 
 function handleWindowBehaviour(instance: Instance): void {
-  const behaviour = instance.settings.launchBehaviour || getSettings().launchBehaviour
+  // Read fresh: the instance object was captured before the downloads, and a
+  // change made in its settings meanwhile should count for this start.
+  const own = tryGetInstance(instance.id)?.settings.launchBehaviour ?? instance.settings.launchBehaviour
+  const behaviour = !own || own === 'default' ? getSettings().launchBehaviour : own
   const win = getMainWindow()
   if (!win) return
 

@@ -22,6 +22,18 @@ import { tr } from '@shared/i18n'
 const logger = log('backups')
 
 /**
+ * The part of an error that may be shown to the user. A raw fs error carries
+ * the absolute path and with it the Windows user name, so only its code
+ * (EBUSY, EPERM, ENOSPC) goes through; the full error is in the log. Our own
+ * errors carry no code and are already written for the user.
+ */
+function userFacingReason(err: unknown): string {
+  const code = err && typeof err === 'object' && 'code' in err ? (err as { code: unknown }).code : undefined
+  if (typeof code === 'string') return code
+  return err instanceof Error ? err.message : String(err)
+}
+
+/**
  * Turns an index entry's file name into a path inside the backup folder.
  *
  * The name comes out of `backups.json`, a file on the user's disk that
@@ -323,6 +335,7 @@ async function createBackupUnlocked(
         try {
           writeIndex(instanceId, entries)
         } catch (retryErr) {
+          logger.error(`Sicherungsliste von ${instanceId} konnte nicht geschrieben werden:`, retryErr)
           // The zip exists but is not recorded anywhere, so it would be
           // invisible and unreachable through the UI forever. Removed rather
           // than left behind as an orphaned file nobody can get to.
@@ -333,8 +346,8 @@ async function createBackupUnlocked(
           }
           throw new Error(
             tr(
-              `Die Sicherung konnte nicht eingetragen werden und wurde deshalb verworfen. (${retryErr instanceof Error ? retryErr.message : String(retryErr)})`,
-              `The backup could not be recorded and was therefore discarded. (${retryErr instanceof Error ? retryErr.message : String(retryErr)})`
+              `Die Sicherung konnte nicht eingetragen werden und wurde deshalb verworfen. (${userFacingReason(retryErr)})`,
+              `The backup could not be recorded and was therefore discarded. (${userFacingReason(retryErr)})`
             )
           )
         }
@@ -886,7 +899,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             }
           }
 
-          const reason = `(${err instanceof Error ? err.message : String(err)})`
+          const reason = `(${userFacingReason(err)})`
 
           // Only this case may say the previous state is truly back: every
           // parked folder was renamed back and nothing new was left behind.

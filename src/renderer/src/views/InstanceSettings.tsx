@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
-import type { JavaRuntime, LaunchBehaviour } from '@shared/types'
+import type { InstanceLaunchBehaviour, JavaRuntime } from '@shared/types'
 import type { InstanceDetail } from '@shared/api'
 import { ACCENT_CHOICES, ICON_CHOICES } from '@shared/defaults'
 import { refreshInstances, toast, toastError } from '../lib/store'
@@ -33,7 +33,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
   const [fullscreen, setFullscreen] = useState(instance.settings.fullscreen)
   const [width, setWidth] = useState(instance.settings.windowWidth)
   const [height, setHeight] = useState(instance.settings.windowHeight)
-  const [behaviour, setBehaviour] = useState<LaunchBehaviour>(instance.settings.launchBehaviour)
+  const [behaviour, setBehaviour] = useState<InstanceLaunchBehaviour>(instance.settings.launchBehaviour)
   const [backupBeforeUpdates, setBackupBeforeUpdates] = useState(instance.settings.backupBeforeUpdates)
 
   const [runtimes, setRuntimes] = useState<JavaRuntime[]>([])
@@ -266,25 +266,29 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               <button
                 className="btn sm"
                 onClick={async () => {
-                  const result = await window.gabi.instances.setIconImage(instance.id)
-                  if (result) {
-                    // The IPC call already wrote the new icon to disk and returns
-                    // only a resolved preview path, not the `img:` reference this
-                    // form tracks locally. Without re-reading it, the local
-                    // `icon` state stays on its old value and save() /
-                    // "Hintergrund entfernen" below would overwrite the fresh
-                    // icon with that stale one.
-                    const fresh = await window.gabi.instances.get(instance.id)
-                    // Icon is index 3 in both fieldsSnapshot() and baseline
-                    // above. Folding it into the baseline too means the dirty
-                    // effect below finds no difference from this pick alone,
-                    // since it was already saved to disk.
-                    const fields = JSON.parse(baseline.current)
-                    fields[3] = fresh.appearance.icon
-                    baseline.current = JSON.stringify(fields)
-                    setIcon(fresh.appearance.icon)
-                    await onChanged()
-                    toast('success', tr('Icon gesetzt', 'Icon set'))
+                  try {
+                    const result = await window.gabi.instances.setIconImage(instance.id)
+                    if (result) {
+                      // The IPC call already wrote the new icon to disk and returns
+                      // only a resolved preview path, not the `img:` reference this
+                      // form tracks locally. Without re-reading it, the local
+                      // `icon` state stays on its old value and save() /
+                      // "Hintergrund entfernen" below would overwrite the fresh
+                      // icon with that stale one.
+                      const fresh = await window.gabi.instances.get(instance.id)
+                      // Icon is index 3 in both fieldsSnapshot() and baseline
+                      // above. Folding it into the baseline too means the dirty
+                      // effect below finds no difference from this pick alone,
+                      // since it was already saved to disk.
+                      const fields = JSON.parse(baseline.current)
+                      fields[3] = fresh.appearance.icon
+                      baseline.current = JSON.stringify(fields)
+                      setIcon(fresh.appearance.icon)
+                      await onChanged()
+                      toast('success', tr('Icon gesetzt', 'Icon set'))
+                    }
+                  } catch (err) {
+                    toastError(err, tr('Bild konnte nicht gesetzt werden', 'Could not set the image'))
                   }
                 }}
               >
@@ -293,10 +297,14 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               <button
                 className="btn sm"
                 onClick={async () => {
-                  const result = await window.gabi.instances.setBackground(instance.id)
-                  if (result) {
-                    await onChanged()
-                    toast('success', tr('Hintergrund gesetzt', 'Background set'))
+                  try {
+                    const result = await window.gabi.instances.setBackground(instance.id)
+                    if (result) {
+                      await onChanged()
+                      toast('success', tr('Hintergrund gesetzt', 'Background set'))
+                    }
+                  } catch (err) {
+                    toastError(err, tr('Hintergrund konnte nicht gesetzt werden', 'Could not set the background'))
                   }
                 }}
               >
@@ -310,10 +318,14 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                     // icon and accent as they were when the page loaded, quietly
                     // undoing an unsaved pick in the picker above while that pick
                     // still shows as selected on screen.
-                    await window.gabi.instances.update(instance.id, {
-                      appearance: { ...instance.appearance, icon, accent, background: null }
-                    })
-                    await onChanged()
+                    try {
+                      await window.gabi.instances.update(instance.id, {
+                        appearance: { ...instance.appearance, icon, accent, background: null }
+                      })
+                      await onChanged()
+                    } catch (err) {
+                      toastError(err, tr('Hintergrund konnte nicht entfernt werden', 'Could not remove the background'))
+                    }
                   }}
                 >
                   <IconTrash size={14} /> {tr('Hintergrund entfernen', 'Remove background')}
@@ -464,8 +476,9 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           <select id="is-launcher-verhalten-beim-star"
             className="select"
             value={behaviour}
-            onChange={(e) => setBehaviour(e.target.value as LaunchBehaviour)}
+            onChange={(e) => setBehaviour(e.target.value as InstanceLaunchBehaviour)}
           >
+            <option value="default">{tr('Wie in den Einstellungen', 'As in the settings')}</option>
             <option value="keep">{tr('Launcher offen lassen', 'Keep the launcher open')}</option>
             <option value="hide">{tr('Launcher ausblenden, nur das Log zeigen', 'Hide the launcher, show only the log')}</option>
             <option value="close">{tr('Launcher minimieren', 'Minimize the launcher')}</option>

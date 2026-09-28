@@ -32,6 +32,7 @@ import {
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
+import { flattenName } from './compat'
 import { locale, tr } from '@shared/i18n'
 
 const logger = log('content')
@@ -127,6 +128,8 @@ export interface InstallContentOptions {
   skipDependencies?: boolean
   /** Worlds (folder names under saves/) a datapack should be copied into. Ignored for every other content type. */
   worlds?: string[]
+  /** Internal: installed as another project's required dependency. */
+  asDependency?: boolean
 }
 
 /**
@@ -178,6 +181,22 @@ async function installContentOnce(
     provider === 'modrinth' ? await modrinth.getProject(projectId) : await curseforge.getProject(projectId)
 
   const type = options.type ?? typeFromProjectType(project.type)
+
+  // A dependency id only means something within its own provider, so the
+  // same library installed from the other platform (Fabric API from Modrinth,
+  // required by a CurseForge mod) was not recognised and a second copy was
+  // installed, which the loader then refuses to start with. Compared by name
+  // across providers, the way compat.ts already does for its warning.
+  if (options.asDependency) {
+    const wantedName = flattenName(project.name)
+    const twin = instance.content.find(
+      (c) => c.type === type && c.provider !== provider && wantedName !== '' && flattenName(c.name) === wantedName
+    )
+    if (twin) {
+      logger.info(`Abhängigkeit ${project.name} ist schon von ${twin.provider} installiert, übersprungen`)
+      return []
+    }
+  }
 
   // Datapacks: validated up front, before any network request, so a bad world
   // name fails fast instead of after a download that then has nowhere to go.
@@ -286,52 +305,62 @@ async function installContentOnce(
   }
 
   if (previous) {
-    const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
-    // Only when it is genuinely another file. A release that changed nothing
-    // but the capitalisation of its file name would otherwise have this
-    // delete the download that just completed.
-    if (!samePath(oldPath, finalDestination)) {
-      // Retried once before giving up, same reasoning as `removeContentOnce`:
-      // a scanner or indexer briefly holding the old file open. Unlike that
-      // path, giving up here must not go on to record the new file anyway.
-      // That would leave the fresh download on disk untracked while the old
-      // record stayed put. The freshly downloaded file is removed instead, so
-      // the only lasting change from a failed replace is "try again".
-      try {
-        rmSync(oldPath, { force: true })
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, 200))
+    const previousId = previous.id
+    // Under the same per-item lock remove, toggle and update take. The retry
+    // below waits, and a remove or toggle of the old entry finishing in that
+    // gap was undone or left an untracked file behind.
+    await withItemLock(previousId, async () => {
+      // Read again under the lock: removed meanwhile means nothing to replace,
+      // toggled meanwhile means its file now has the other name.
+      const previous = getInstance(instanceId).content.find((c) => c.id === previousId)
+      if (!previous) return
+      const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
+      // Only when it is genuinely another file. A release that changed nothing
+      // but the capitalisation of its file name would otherwise have this
+      // delete the download that just completed.
+      if (!samePath(oldPath, finalDestination)) {
+        // Retried once before giving up, same reasoning as `removeContentOnce`:
+        // a scanner or indexer briefly holding the old file open. Unlike that
+        // path, giving up here must not go on to record the new file anyway.
+        // That would leave the fresh download on disk untracked while the old
+        // record stayed put. The freshly downloaded file is removed instead, so
+        // the only lasting change from a failed replace is "try again".
         try {
           rmSync(oldPath, { force: true })
-        } catch (err) {
-          rmSync(finalDestination, { force: true })
-          throw new Error(
-            tr(
-              `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
-              `${previous.name} could not be replaced, the old file is still in use by another program. Try again.`
-            ),
-            { cause: err }
-          )
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 200))
+          try {
+            rmSync(oldPath, { force: true })
+          } catch (err) {
+            rmSync(finalDestination, { force: true })
+            throw new Error(
+              tr(
+                `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
+                `${previous.name} could not be replaced, the old file is still in use by another program. Try again.`
+              ),
+              { cause: err }
+            )
+          }
         }
       }
-    }
-    // A datapack swapped for another version through "Version wählen" keeps
-    // its worlds; the old file's world copies go, the new one takes their
-    // place. Only while the previous entry was enabled: a disabled datapack
-    // has no world copies to remove in the first place, matching
-    // `applyUpdateOnce`.
-    if (previous.type === 'datapack' && previous.worlds && previous.worlds.length > 0) {
-      if (previous.enabled) {
-        const oldName = previous.fileName.endsWith('.disabled')
-          ? previous.fileName.slice(0, -'.disabled'.length)
-          : previous.fileName
-        for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
+      // A datapack swapped for another version through "Version wählen" keeps
+      // its worlds; the old file's world copies go, the new one takes their
+      // place. Only while the previous entry was enabled: a disabled datapack
+      // has no world copies to remove in the first place, matching
+      // `applyUpdateOnce`.
+      if (previous.type === 'datapack' && previous.worlds && previous.worlds.length > 0) {
+        if (previous.enabled) {
+          const oldName = previous.fileName.endsWith('.disabled')
+            ? previous.fileName.slice(0, -'.disabled'.length)
+            : previous.fileName
+          for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
+        }
+        // Only when the caller named no worlds at all; an explicit empty choice
+        // in the picker means "in no world" and is kept.
+        if (options.worlds === undefined) worlds = previous.worlds
       }
-      // Only when the caller named no worlds at all; an explicit empty choice
-      // in the picker means "in no world" and is kept.
-      if (options.worlds === undefined) worlds = previous.worlds
-    }
-    removeContentRecord(instanceId, previous.id)
+      removeContentRecord(instanceId, previous.id)
+    })
   }
 
   const item = toContentItem(
@@ -410,7 +439,8 @@ async function installContentOnce(
           // A datapack's own required datapacks belong in the same worlds.
           worlds: type === 'datapack' ? item.worlds : undefined,
           visited,
-          task: options.task
+          task: options.task,
+          asDependency: true
         })
         installed.push(...sub)
       } catch (err) {
@@ -670,7 +700,50 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
 }
 
 export async function applyUpdate(instanceId: string, contentId: string): Promise<ContentItem | null> {
-  return withContentLock(instanceId, () => withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId)))
+  const updated = await withContentLock(instanceId, () =>
+    withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId))
+  )
+  // After the item lock is released: the dependency installs take their own.
+  if (updated) await installNewDependencies(instanceId, updated)
+  return updated
+}
+
+/**
+ * A new version can require something the old one did not. An update only
+ * swapped the file, so the game then failed to start with nothing pointing
+ * at why. Pulled in the same way a fresh install pulls its dependencies.
+ */
+async function installNewDependencies(instanceId: string, item: ContentItem): Promise<void> {
+  if (!getSettings().autoInstallDependencies) return
+  if (item.provider !== 'modrinth' && item.provider !== 'curseforge') return
+  const provider = item.provider
+  for (const dependency of item.dependencies ?? []) {
+    if (dependency.type !== 'required' || !dependency.projectId) continue
+    const already = getInstance(instanceId).content.some(
+      (c) => c.projectId === dependency.projectId && c.provider === provider
+    )
+    if (already) continue
+    try {
+      await installContent({
+        instanceId,
+        provider,
+        projectId: dependency.projectId,
+        versionId: dependency.versionId,
+        type: item.type,
+        asDependency: true
+      })
+    } catch (err) {
+      logger.warn(`Abhängigkeit ${dependency.projectId} nach Update nicht installiert:`, err)
+      notify(
+        'warning',
+        tr(`${item.name}: Abhängigkeit fehlt`, `${item.name}: dependency missing`),
+        tr(
+          'Eine benötigte Erweiterung konnte nicht geladen werden. Ohne sie startet das Spiel unter Umständen nicht.',
+          'A required add-on could not be downloaded. The game may not start without it.'
+        )
+      )
+    }
+  }
 }
 
 async function applyUpdateOnce(instanceId: string, contentId: string): Promise<ContentItem | null> {

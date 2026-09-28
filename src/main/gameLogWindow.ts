@@ -46,6 +46,11 @@ function revealMainWindow(): void {
   // Quitting closes every window, this one included, and the main window
   // must not flash back up on the way out.
   if (quitting) return
+  // Another game's log window is still open and stands in for the hidden
+  // launcher, so that game keeps the screen to itself.
+  for (const other of logWindows.values()) {
+    if (!other.isDestroyed() && !closingByLauncher.has(other)) return
+  }
   showLauncherWindow()
 }
 
@@ -60,7 +65,7 @@ export function showLauncherWindow(): void {
 
 export function hasGameLogWindow(instanceId: string): boolean {
   const win = logWindows.get(instanceId)
-  return win !== undefined && !win.isDestroyed()
+  return win !== undefined && !win.isDestroyed() && !closingByLauncher.has(win)
 }
 
 export function isGameLogWebContents(webContentsId: number): boolean {
@@ -69,7 +74,10 @@ export function isGameLogWebContents(webContentsId: number): boolean {
 
 export function openGameLogWindow(instanceId: string, instanceName: string): void {
   const existing = logWindows.get(instanceId)
-  if (existing && !existing.isDestroyed()) {
+  // A window still closing from the previous run of this instance (stop, then
+  // straight back to play) is not reused: it goes away a moment later and
+  // would leave the new run without a log.
+  if (existing && !existing.isDestroyed() && !closingByLauncher.has(existing)) {
     existing.focus()
     return
   }

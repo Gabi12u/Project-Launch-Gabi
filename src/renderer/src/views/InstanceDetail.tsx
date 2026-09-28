@@ -1499,7 +1499,10 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
       <div className="row gap-8">
         <IconTerminal size={14} style={{ color: 'var(--text-4)' }} />
         <span className="hint">
-          {lines.length} Zeilen im Puffer. Das vollständige Log liegt im Instanzordner unter logs/latest.log.
+          {tr(
+            `${lines.length} Zeilen im Puffer. Das vollständige Log liegt im Instanzordner unter logs/latest.log.`,
+            `${lines.length} lines in the buffer. The full log is in the instance folder under logs/latest.log.`
+          )}
         </span>
       </div>
     </div>

@@ -1707,6 +1707,80 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'If two instances were grouped as "Modded" and "modded", they appeared in two separate groups ' +
       'instead of one.'
+  },
+  'alte-versionen-leerzeichen-pfad': {
+    title: 'Minecraft up to 1.12.2 did not start when the data folder contained a space',
+    detail:
+      'For old versions, including Forge modpacks for 1.7.10 or 1.12.2, a folder path with a space was ' +
+      'split into several launch arguments. This already affects the default folder when the Windows ' +
+      'user name contains a space.'
+  },
+  'startverhalten-global-wirkungslos': {
+    title: 'The global launch behavior had no effect on existing instances',
+    detail:
+      'Every instance copied the setting when it was created. A later change in the settings therefore ' +
+      'only reached newly created instances. Instances now follow the global setting until something ' +
+      'else is chosen for them.'
+  },
+  'duplizieren-halbe-kopie': {
+    title: 'A failed duplicate left an invisible half copy behind',
+    detail:
+      'If duplicating an instance failed, for example because the disk was full, the started folder ' +
+      'stayed behind. It was not visible in the launcher but still took up disk space.'
+  },
+  'export-abbrechen-wirkungslos': {
+    title: '"Cancel" had no effect when exporting as a modpack',
+    detail:
+      'A running export could not be cancelled. It ran to the end.'
+  },
+  'sicherung-fehlertext-pfad': {
+    title: 'Some backup error messages showed the full file path',
+    detail:
+      'If recording a backup or a restore failed because of a locked file, the message contained an ' +
+      'English system message including the full path and Windows user name.'
+  },
+  'instanzdatei-beschaedigt': {
+    title: 'A damaged instance file made the instance unusable or was silently overwritten',
+    detail:
+      'If an instance\'s instance.json was damaged, depending on the damage its page could no longer be ' +
+      'opened, the end of the game was not detected, or the file was replaced by an empty one without ' +
+      'notice. An unreadable file is now set aside with a notice.'
+  },
+  'knoepfe-ohne-fehlermeldung-2': {
+    title: 'Some buttons showed no message on an error',
+    detail:
+      'Custom icon, background image, remove background, reset settings, change data folder and ' +
+      'selecting an account visibly did nothing when they failed.'
+  },
+  'dialog-tab-taste': {
+    title: 'The Tab key could leave open dialogs',
+    detail:
+      'In every dialog, the Tab key moved past the last element onto the page behind it, where buttons ' +
+      'could then be used although the dialog covered them.'
+  },
+  'mod-entfernen-waehrend-versionswechsel': {
+    title: 'A mod removed during a version change could come back',
+    detail:
+      'If a mod was removed or toggled while "Choose version" was running for it and the old file was ' +
+      'briefly locked, it came back afterwards or left an untracked file behind.'
+  },
+  'abhaengigkeit-doppelt-anderer-anbieter': {
+    title: 'A dependency was installed twice when it came from the other provider',
+    detail:
+      'If a required library such as Fabric API was already installed from Modrinth, a CurseForge mod ' +
+      'fetched it again from CurseForge. With two copies the game usually does not start.'
+  },
+  'update-ohne-neue-abhaengigkeit': {
+    title: 'A mod update did not install newly required dependencies',
+    detail:
+      'If the new version of a mod needed an additional library, only the mod file was replaced. The ' +
+      'game might then not start, without any visible reason.'
+  },
+  'client-id-alte-ersetzt': {
+    title: 'A manually entered old Microsoft client ID was silently replaced',
+    detail:
+      'Entering the official Minecraft Launcher\'s client ID under Settings, Accounts made the launcher ' +
+      'save its own instead, without notice.'
   }
 }
 

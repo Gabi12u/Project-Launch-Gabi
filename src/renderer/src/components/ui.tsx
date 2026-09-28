@@ -53,6 +53,38 @@ export function useOverlayId(open: boolean): () => boolean {
  * Modal
  * ------------------------------------------------------------------ */
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Keeps Tab and Shift+Tab inside an open dialog. Without it, tabbing past the
+ * last control landed on the sidebar and page behind the overlay, where Enter
+ * or Space still worked while the dialog covered them.
+ */
+function trapTab(event: KeyboardEvent, container: HTMLElement): void {
+  const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => el.offsetParent !== null
+  )
+  const active = document.activeElement
+  if (items.length === 0) {
+    event.preventDefault()
+    container.focus()
+    return
+  }
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (!container.contains(active)) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  } else if (event.shiftKey && (active === first || active === container)) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 interface ModalProps {
   open: boolean
   title: ReactNode
@@ -76,11 +108,13 @@ export function Modal({
   busy = false
 }: ModalProps): JSX.Element | null {
   const isTop = useOverlayId(open)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && !busy && isTop()) onClose()
+      else if (event.key === 'Tab' && isTop() && dialogRef.current) trapTab(event, dialogRef.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -95,7 +129,13 @@ export function Modal({
         if (event.target === event.currentTarget && !busy) onClose()
       }}
     >
-      <div className={`modal ${width === 'normal' ? '' : width}`} role="dialog" aria-modal="true">
+      <div
+        ref={dialogRef}
+        className={`modal ${width === 'normal' ? '' : width}`}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+      >
         <div className="modal-head">
           <div className="col gap-4">
             <div className="card-title">{title}</div>
