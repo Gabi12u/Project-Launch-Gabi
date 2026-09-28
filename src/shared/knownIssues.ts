@@ -2528,6 +2528,133 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-28',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'versionswahl-schaltet-mod-ein',
+    title: 'Eine andere Version zu wählen schaltete einen ausgeschalteten Mod wieder ein',
+    detail:
+      'Wählte man über „Version wählen…“ eine andere Version eines ausgeschalteten Mods, war er danach ' +
+      'wieder eingeschaltet und wurde beim nächsten Start geladen, ohne Hinweis.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'sicherung-abbrechen-wirkungslos',
+    title: '„Abbrechen“ beim Erstellen einer Sicherung hatte keine Wirkung',
+    detail:
+      'Eine laufende Sicherung ließ sich nicht abbrechen. Sie lief bis zum Ende weiter und meldete ' +
+      'sich danach als fertig.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'import-abbrechen-spaet-wirkungslos',
+    title: 'Ein Import ließ sich nach dem Herunterladen nicht mehr abbrechen',
+    detail:
+      'Beim Import eines Modpacks oder Ordners wirkte „Abbrechen“ nur, solange noch heruntergeladen ' +
+      'oder kopiert wurde. Danach lief der Import weiter und endete als abgeschlossen.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'sicherung-gesperrte-datei',
+    title: 'Eine während der Sicherung gesperrte Weltdatei brach die Sicherung mit einer Systemmeldung ab',
+    detail:
+      'Speicherte Minecraft eine Welt genau während einer Sicherung, konnte die Sicherung mit einer ' +
+      'englischen Systemmeldung abbrechen, in der der vollständige Dateipfad samt Windows-Benutzername ' +
+      'stand.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'instanz-einstellungen-verlust-navigation',
+    title: 'Ungespeicherte Instanz-Einstellungen gingen beim Verlassen der Seite ohne Rückfrage verloren',
+    detail:
+      'Wer Einstellungen einer Instanz änderte und dann über „Alle Instanzen“ oder die Seitenleiste ' +
+      'woandershin ging, verlor die Änderungen ohne Warnung.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'fenster-bleibt-minimiert',
+    title: 'Nach dem Spielende blieb der Launcher minimiert',
+    detail:
+      'Stand das Verhalten beim Spielstart auf „Launcher minimieren“, kam das Fenster nach dem Ende ' +
+      'des Spiels nicht wieder hervor, sondern blieb in der Taskleiste.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'assistent-loader-version-zurueckgesetzt',
+    title: 'Im Erstellungs-Assistenten wurde eine selbst gewählte Loader-Version zurückgesetzt',
+    detail:
+      'Nach „Erneut versuchen“ bei den Loadern sprang die Auswahl der Loader-Version still auf die ' +
+      'empfohlene zurück. Die Instanz wurde dann mit einer anderen Version angelegt als gewählt.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'export-ohne-datapacks',
+    title: 'Der .mrpack-Export ließ Data Packs still weg',
+    detail:
+      'Beim Export einer Instanz als Modpack wurden installierte Data Packs nicht mitgenommen und es ' +
+      'gab keinen Hinweis darauf.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'schalter-ohne-fehlermeldung',
+    title: 'Der An/Aus-Schalter eines Mods und „Java neu suchen“ zeigten keine Fehler',
+    detail:
+      'Schlug das Ein- oder Ausschalten eines Mods über den Schalter in der Liste fehl, oder die ' +
+      'Java-Suche in den Instanz-Einstellungen, passierte sichtbar einfach nichts.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'account-teilweise-beschaedigt',
+    title: 'Ein teilweise beschädigter Account verschwand ohne Hinweis',
+    detail:
+      'Fehlten in der Kontendatei bei einem Eintrag einzelne Angaben, wurde dieser Account beim Start ' +
+      'still aussortiert.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'abbrechen-in-wartezeit',
+    title: 'Abbrechen reagierte zwischen zwei Download-Versuchen bis zu 30 Sekunden nicht',
+    detail:
+      'Wartete der Launcher nach einem fehlgeschlagenen Download auf den nächsten Versuch, wirkte ' +
+      '„Abbrechen“ erst nach Ende dieser Wartezeit.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'reparatur-waehrend-start',
+    title: 'Eine Reparatur konnte Dateien austauschen, während eine andere Instanz mit derselben Version startete',
+    detail:
+      'Startete eine zweite Instanz mit derselben Minecraft-Version, während die Reparatur schon lief, ' +
+      'konnte die Reparatur gemeinsam genutzte Spieldateien ersetzen und den Start stören.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'snapshots-2021-java',
+    title: 'Snapshots aus dem Herbst 2021 bekamen Java 16 statt 17',
+    detail:
+      'Für Snapshots auf dem Weg zu Minecraft 1.18 wählte der Launcher Java 16, wenn Mojang keine ' +
+      'Java-Version angab. Diese Versionen brauchen Java 17.',
+    state: 'fixing',
+    since: '2026-09-28'
+  },
+  {
+    id: 'gruppen-gross-klein',
+    title: 'Gruppen mit unterschiedlicher Groß- und Kleinschreibung wurden getrennt angezeigt',
+    detail:
+      'Hießen zwei Instanzen „Modded“ und „modded“, erschienen sie in zwei getrennten Gruppen statt in ' +
+      'einer.',
+    state: 'fixing',
+    since: '2026-09-28'
   }
 ]
 

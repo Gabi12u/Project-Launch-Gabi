@@ -1623,6 +1623,90 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Many error messages of the launcher began with "Error invoking remote method ..." before the ' +
       'actual text. Also, cancelling a Microsoft sign-in showed an error message although it was ' +
       'only cancelled.'
+  },
+  'versionswahl-schaltet-mod-ein': {
+    title: 'Choosing another version turned a disabled mod back on',
+    detail:
+      'Choosing a different version of a disabled mod via "Choose version..." turned it back on, and ' +
+      'it was loaded on the next start without any notice.'
+  },
+  'sicherung-abbrechen-wirkungslos': {
+    title: '"Cancel" had no effect while creating a backup',
+    detail:
+      'A running backup could not be cancelled. It ran to the end and then reported itself as ' +
+      'finished.'
+  },
+  'import-abbrechen-spaet-wirkungslos': {
+    title: 'An import could no longer be cancelled after downloading',
+    detail:
+      'When importing a modpack or folder, "Cancel" only worked while files were still being ' +
+      'downloaded or copied. After that the import kept going and ended as finished.'
+  },
+  'sicherung-gesperrte-datei': {
+    title: 'A world file locked during a backup aborted it with a system message',
+    detail:
+      'If Minecraft saved a world right during a backup, the backup could abort with an English system ' +
+      'message containing the full file path including the Windows user name.'
+  },
+  'instanz-einstellungen-verlust-navigation': {
+    title: 'Unsaved instance settings were lost without asking when leaving the page',
+    detail:
+      'Changing an instance\'s settings and then going elsewhere via "All instances" or the sidebar ' +
+      'lost the changes without warning.'
+  },
+  'fenster-bleibt-minimiert': {
+    title: 'The launcher stayed minimized after the game ended',
+    detail:
+      'With the launch behavior set to "Minimize the launcher", the window did not come back after the ' +
+      'game ended but stayed in the taskbar.'
+  },
+  'assistent-loader-version-zurueckgesetzt': {
+    title: 'The create wizard reset a hand-picked loader version',
+    detail:
+      'After "Try again" for the loaders, the loader version selection silently jumped back to the ' +
+      'recommended one. The instance was then created with a different version than chosen.'
+  },
+  'export-ohne-datapacks': {
+    title: 'The .mrpack export silently left out data packs',
+    detail:
+      'Exporting an instance as a modpack did not include installed data packs, and there was no ' +
+      'notice about it.'
+  },
+  'schalter-ohne-fehlermeldung': {
+    title: 'A mod\'s on/off switch and "Search Java again" showed no errors',
+    detail:
+      'If turning a mod on or off with the switch in the list failed, or the Java search in the ' +
+      'instance settings, visibly nothing happened.'
+  },
+  'account-teilweise-beschaedigt': {
+    title: 'A partly damaged account disappeared without notice',
+    detail:
+      'If single fields of an entry were missing from the accounts file, that account was silently ' +
+      'dropped on start.'
+  },
+  'abbrechen-in-wartezeit': {
+    title: 'Cancelling did not react for up to 30 seconds between two download attempts',
+    detail:
+      'While the launcher waited for the next attempt after a failed download, "Cancel" only took ' +
+      'effect after that wait was over.'
+  },
+  'reparatur-waehrend-start': {
+    title: 'A repair could replace files while another instance with the same version was starting',
+    detail:
+      'If a second instance with the same Minecraft version started while a repair was already ' +
+      'running, the repair could replace shared game files and disturb that start.'
+  },
+  'snapshots-2021-java': {
+    title: 'Snapshots from autumn 2021 got Java 16 instead of 17',
+    detail:
+      'For snapshots leading up to Minecraft 1.18, the launcher chose Java 16 when Mojang gave no Java ' +
+      'version. These versions need Java 17.'
+  },
+  'gruppen-gross-klein': {
+    title: 'Groups differing only in upper and lower case were shown separately',
+    detail:
+      'If two instances were grouped as "Modded" and "modded", they appeared in two separate groups ' +
+      'instead of one.'
   }
 }
 
