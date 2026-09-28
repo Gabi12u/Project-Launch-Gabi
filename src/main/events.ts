@@ -16,7 +16,11 @@ let mainWindow: BrowserWindow | null = null
  */
 let pendingNotifications: AppNotification[] = []
 
+/** Set once the renderer has had time to register its listeners. */
+let rendererListening = false
+
 function flushPendingNotifications(): void {
+  rendererListening = true
   if (pendingNotifications.length === 0) return
   const queued = pendingNotifications
   pendingNotifications = []
@@ -25,7 +29,7 @@ function flushPendingNotifications(): void {
 
 /** True once the main window exists and has actually finished loading its page. */
 function rendererReady(): boolean {
-  return mainWindow !== null && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()
+  return rendererListening && mainWindow !== null && !mainWindow.isDestroyed()
 }
 
 export function setMainWindow(win: BrowserWindow | null): void {
@@ -39,6 +43,9 @@ export function setMainWindow(win: BrowserWindow | null): void {
   // as they go out, so nothing is ever delivered twice.
   // The page has loaded here, but React registers its listeners a moment
   // later; the same grace period the boot notices in index.ts wait for.
+  win.webContents.on('did-start-loading', () => {
+    rendererListening = false
+  })
   win.webContents.on('did-finish-load', () => setTimeout(flushPendingNotifications, 1500))
 }
 

@@ -151,13 +151,20 @@ export function InstanceDetailView({
     }
   }, [])
 
+  const loadedOnce = useRef(false)
   const load = useCallback(async (): Promise<void> => {
     try {
       const detail = await window.gabi.instances.get(instanceId)
-      if (mounted.current) setInstance(detail)
+      if (mounted.current) {
+        loadedOnce.current = true
+        setInstance(detail)
+      }
     } catch (err) {
       if (!mounted.current) return
       toastError(err, tr('Instanz konnte nicht geladen werden', 'Instance could not be loaded'))
+      // A failed refresh of a page already showing the instance keeps it, and
+      // any unsaved settings with it; only a first load that fails leaves.
+      if (loadedOnce.current) return
       setNavigationGuard(null)
       navigate('/instances')
     }

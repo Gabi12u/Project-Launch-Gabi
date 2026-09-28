@@ -57,7 +57,7 @@ export function InstancesView(): JSX.Element {
       if (entry) {
         entry.items.push(instance)
       } else {
-        map.set(key, { label: raw, items: [instance] })
+        map.set(key, { label: raw.trim(), items: [instance] })
       }
     }
     return [...map.entries()]

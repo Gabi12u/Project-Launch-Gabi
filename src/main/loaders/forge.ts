@@ -378,7 +378,9 @@ export function installForgeLike(
 ): Promise<string> {
   const key = `${loader}:${mcVersion}:${loaderVersion}`
   const running = inFlightInstalls.get(key)
-  if (running) {
+  // An install whose last waiter already cancelled is on its way out; joining
+  // it would hand this caller a cancellation it never asked for.
+  if (running && !running.controller.signal.aborted) {
     if (task) running.listeners.add(task)
     return waitForSharedInstall(running, task)
   }
@@ -405,10 +407,11 @@ export function installForgeLike(
     }
   } as unknown as Task
 
-  const promise = installForgeLikeInner(loader, mcVersion, loaderVersion, shared).finally(() => {
-    inFlightInstalls.delete(key)
+  const entry = { listeners, controller } as ForgeInstall
+  entry.promise = installForgeLikeInner(loader, mcVersion, loaderVersion, shared).finally(() => {
+    // A newer install may already own this key after a cancelled one.
+    if (inFlightInstalls.get(key) === entry) inFlightInstalls.delete(key)
   })
-  const entry: ForgeInstall = { promise, listeners, controller }
   inFlightInstalls.set(key, entry)
   return waitForSharedInstall(entry, task)
 }

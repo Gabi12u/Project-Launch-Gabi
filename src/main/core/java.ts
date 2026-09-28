@@ -477,7 +477,9 @@ function waitForSharedInstall(entry: JavaInstall, task?: Task): Promise<JavaRunt
 
 export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   const running = installing.get(major)
-  if (running) {
+  // An install whose last waiter already cancelled is on its way out; joining
+  // it would hand this caller a cancellation it never asked for.
+  if (running && !running.controller.signal.aborted) {
     if (task) running.listeners.add(task)
     return waitForSharedInstall(running, task)
   }
@@ -501,10 +503,11 @@ export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
     }
   } as unknown as Task
 
-  const promise = installJavaOnce(major, shared).finally(() => {
-    installing.delete(major)
+  const entry = { listeners, controller } as JavaInstall
+  entry.promise = installJavaOnce(major, shared).finally(() => {
+    // A newer install may already own this slot after a cancelled one.
+    if (installing.get(major) === entry) installing.delete(major)
   })
-  const entry: JavaInstall = { promise, listeners, controller }
   installing.set(major, entry)
   return waitForSharedInstall(entry, task)
 }

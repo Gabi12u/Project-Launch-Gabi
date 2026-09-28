@@ -442,7 +442,8 @@ export async function zipFolder(
         return
       }
       const stream = createReadStream(file)
-      stream.on('error', () => {
+      stream.on('error', (err) => {
+        logger.warn(`Datei beim Packen gesperrt: ${file}:`, err)
         // The open probe above passed, but a file can still fail once yazl
         // actually starts reading it (Minecraft autosaving a region file, an
         // antivirus scan taking its own lock). Yazl cannot drop a single entry

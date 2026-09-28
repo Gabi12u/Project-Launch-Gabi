@@ -169,6 +169,9 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const previousLoader = useRef(loader)
   useEffect(() => {
     const versions = loaderVersions[loader]
+    // While a lookup is still running the map is blank for a moment; that
+    // is not an answer yet and must not clear a build picked by hand.
+    if (versions === undefined && loader !== 'vanilla') return
     const list = Array.isArray(versions) ? versions : []
     const loaderChanged = previousLoader.current !== loader
     previousLoader.current = loader

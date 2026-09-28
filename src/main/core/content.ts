@@ -60,7 +60,7 @@ function samePath(a: string, b: string): boolean {
  * that entry failed afterwards. Sharing the in-flight promise makes the second
  * caller wait for the first instead.
  */
-const inFlight = new Map<string, Promise<ContentItem[]>>()
+const inFlight = new Map<string, { versionKey: string; promise: Promise<ContentItem[]> }>()
 
 /* ------------------------------------------------------------------ *
  * Helpers
@@ -145,20 +145,23 @@ export async function installContent(options: InstallContentOptions): Promise<Co
   // one call, so two separate installs that need the same dependency both got
   // this far and both installed it, and the second record replaced the first.
   //
-  // The version id is part of the key too. Without it, a pinned-version
-  // install and a "latest" install of the same project shared one promise,
-  // and whichever call started second silently received the first call's
-  // version back instead of its own.
+  // One install per project and instance at a time. A caller asking for the
+  // same version joins the running one; a caller asking for a different
+  // version waits for it and then installs its own, instead of running side
+  // by side and leaving two records for one project.
   const versionKey = options.versionId ?? 'latest'
-  const lockKey = `${instanceId}|${key}|${versionKey}`
+  const lockKey = `${instanceId}|${key}`
   const running = inFlight.get(lockKey)
-  if (running) return running
+  if (running && running.versionKey === versionKey) return running.promise
 
-  const run = withContentLock(instanceId, () => installContentOnce(options, visited)).finally(() => {
-    inFlight.delete(lockKey)
-  })
-  inFlight.set(lockKey, run)
-  return run
+  const previous = running ? running.promise.catch(() => undefined) : Promise.resolve()
+  const promise = previous
+    .then(() => withContentLock(instanceId, () => installContentOnce(options, visited)))
+    .finally(() => {
+      if (inFlight.get(lockKey)?.promise === promise) inFlight.delete(lockKey)
+    })
+  inFlight.set(lockKey, { versionKey, promise })
+  return promise
 }
 
 async function installContentOnce(
