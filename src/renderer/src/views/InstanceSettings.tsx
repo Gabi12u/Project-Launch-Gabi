@@ -39,6 +39,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
   const [runtimes, setRuntimes] = useState<JavaRuntime[]>([])
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [detectingJava, setDetectingJava] = useState(false)
 
   useEffect(() => {
     void window.gabi.java.list().then(setRuntimes).catch(() => undefined)
@@ -384,13 +385,21 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               </select>
               <button
                 className="btn icon"
+                disabled={detectingJava}
                 onClick={async () => {
-                  setRuntimes(await window.gabi.java.detect())
-                  toast('info', tr('Java-Suche abgeschlossen', 'Java search finished'))
+                  setDetectingJava(true)
+                  try {
+                    setRuntimes(await window.gabi.java.detect())
+                    toast('info', tr('Java-Suche abgeschlossen', 'Java search finished'))
+                  } catch (err) {
+                    toastError(err, tr('Java-Suche fehlgeschlagen', 'Java search failed'))
+                  } finally {
+                    setDetectingJava(false)
+                  }
                 }}
                 aria-label={tr('Neu suchen', 'Search again')}
               >
-                <IconRefresh size={15} />
+                {detectingJava ? <span className="spinner" /> : <IconRefresh size={15} />}
               </button>
             </div>
             <span className="hint">

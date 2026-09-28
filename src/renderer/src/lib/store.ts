@@ -106,8 +106,50 @@ export function useStore(): AppState {
  * Routing
  * ------------------------------------------------------------------ */
 
+/**
+ * Lets a view intercept navigate() while it holds unsaved edits. Only one
+ * guard can be active at a time, since only one view can be the reason
+ * navigation is blocked right now. The guard receives the target route and
+ * returns true to let the navigation through, or false to block it, in
+ * which case the target is remembered so the blocking view can send the
+ * user there once it has resolved things, via `proceedPendingNavigation()`.
+ *
+ * This is what makes navigate() the single choke point every route change
+ * goes through, including a route pushed from the main process, the sidebar,
+ * the command palette or any plain link, so a view no longer has to guard
+ * one button by hand while every other way out quietly discards its edits.
+ */
+type NavigationGuard = (target: string) => boolean
+
+let navigationGuard: NavigationGuard | null = null
+let pendingRoute: string | null = null
+
+export function setNavigationGuard(guard: NavigationGuard | null): void {
+  navigationGuard = guard
+  if (!guard) pendingRoute = null
+}
+
+/**
+ * Sends the user to the route a guard most recently blocked, if any,
+ * bypassing the guard itself. Used once the blocking view has resolved
+ * whatever caused it to block (e.g. the user chose to discard unsaved
+ * changes), since calling `navigate()` again at that point would still find
+ * the same guard registered and be blocked a second time.
+ */
+export function proceedPendingNavigation(): void {
+  const target = pendingRoute
+  pendingRoute = null
+  if (target === null) return
+  navigationGuard = null
+  navigate(target)
+}
+
 export function navigate(route: string): void {
   if (state.route === route) return
+  if (navigationGuard && !navigationGuard(route)) {
+    pendingRoute = route
+    return
+  }
   setState({ route })
   // Views scroll independently; a fresh route should start at the top.
   requestAnimationFrame(() => {

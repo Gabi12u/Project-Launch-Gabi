@@ -175,7 +175,10 @@ function write(level: Level, scope: string, args: unknown[]): void {
     // used to have nothing capping today's file. Rolling to a new part is
     // cheap and keeps a single file from growing without bound; the part
     // files sit right next to each other and prune on the same weekly sweep.
-    if (stream && streamOffset + stream.bytesWritten > MAX_FILE_BYTES) {
+    // A loop rather than a single check: the next part can itself already be
+    // full from an earlier session (many short-lived restarts, all chatty),
+    // and a single `if` only ever skipped past one such part at a time.
+    while (stream && streamOffset + stream.bytesWritten > MAX_FILE_BYTES) {
       stream.end()
       currentPart += 1
       openStream()

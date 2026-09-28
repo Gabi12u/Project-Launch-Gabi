@@ -1327,7 +1327,7 @@
   border: 0;
   border-radius: calc(var(--r-xs) + 2px);
   background: transparent;
-  color: var(--text-1);
+  color: var(--text);
   font: inherit;
   font-size: 13.5px;
   text-align: left;

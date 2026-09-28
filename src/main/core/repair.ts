@@ -414,36 +414,48 @@ async function runRepair(
         repairLog(instanceId, 'fix', tr('Lade fehlende oder beschädigte Dateien erneut', 'Downloading missing or damaged files again'))
       }
 
-      // Deliberately no rmSync beforehand. downloadAll verifies each file
-      // itself and only fetches the ones that fail, and it writes through a
-      // temp file it renames into place — so a broken file is replaced, never
-      // merely removed. Deleting first meant an interrupted batch left the
-      // client jar gone for good, which is exactly the failure mode the
-      // content step was already fixed for.
-      try {
-        task.span(0.15, 0.55)
-        await downloadAll(items, { task, label: tr('Beschädigte Dateien', 'Damaged files') })
-        report.repairedFiles += broken
+      // Re-checked here rather than trusting the check above alone: hashing
+      // every library's sha1 in the loop just above takes real time on a
+      // large modpack, plenty of time for another instance on the same
+      // version to have started in the meantime.
+      if (versionInUse()) {
         step(
           tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
-          broken > 0 || versionJsonRebuilt ? 'repaired' : 'ok',
-          rebuiltNote +
-            (broken > 0
-              ? tr(`${broken} von ${items.length} Dateien erneuert`, `${broken} of ${items.length} files replaced`)
-              : tr(`${items.length} Dateien in Ordnung`, `${items.length} files OK`))
+          versionJsonRebuilt ? 'repaired' : 'failed',
+          rebuiltNote + tr('Übersprungen: eine andere Instanz mit derselben Version läuft gerade.', 'Skipped: another instance with the same version is running right now.')
         )
-      } catch (err) {
-        // Reported, not thrown: assets, mods and Java can still be checked and
-        // the user gets a report saying which part failed. A cancellation is
-        // the exception, it must end the whole task, not just this step.
-        rethrowIfCancelled(err)
-        step(
-          tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
-          'failed',
-          rebuiltNote + (err instanceof Error ? err.message : String(err))
-        )
-      } finally {
-        task.span(0, 1)
+      } else {
+        // Deliberately no rmSync beforehand. downloadAll verifies each file
+        // itself and only fetches the ones that fail, and it writes through a
+        // temp file it renames into place, so a broken file is replaced, never
+        // merely removed. Deleting first meant an interrupted batch left the
+        // client jar gone for good, which is exactly the failure mode the
+        // content step was already fixed for.
+        try {
+          task.span(0.15, 0.55)
+          await downloadAll(items, { task, label: tr('Beschädigte Dateien', 'Damaged files') })
+          report.repairedFiles += broken
+          step(
+            tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
+            broken > 0 || versionJsonRebuilt ? 'repaired' : 'ok',
+            rebuiltNote +
+              (broken > 0
+                ? tr(`${broken} von ${items.length} Dateien erneuert`, `${broken} of ${items.length} files replaced`)
+                : tr(`${items.length} Dateien in Ordnung`, `${items.length} files OK`))
+          )
+        } catch (err) {
+          // Reported, not thrown: assets, mods and Java can still be checked and
+          // the user gets a report saying which part failed. A cancellation is
+          // the exception, it must end the whole task, not just this step.
+          rethrowIfCancelled(err)
+          step(
+            tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
+            'failed',
+            rebuiltNote + (err instanceof Error ? err.message : String(err))
+          )
+        } finally {
+          task.span(0, 1)
+        }
       }
     }
 

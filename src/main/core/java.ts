@@ -61,14 +61,16 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
   // "1.0" used to fall through every threshold and demand Java 8 — but the
   // two-digit year in front says which era they belong to, so an old snapshot
   // no longer gets handed a JVM that cannot run it.
-  const snapshot = /^(\d{2})w\d{2}[a-z]?$/i.exec(id)
+  const snapshot = /^(\d{2})w(\d{2})[a-z]?$/i.exec(id)
   if (snapshot) {
     const year = Number(snapshot[1])
-    // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) in the 21w3x range;
-    // 1.17 (Java 16) in 21w03a. Anything older than that predates the bump.
+    const week = Number(snapshot[2])
+    // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) landed in 21w37a,
+    // not at the start of 2021 (21w03a was still 1.17, Java 16). Anything
+    // older than that predates the bump.
     if (year >= 24) return 21
     if (year >= 22) return 17
-    if (year === 21) return 16
+    if (year === 21) return week >= 37 ? 17 : 16
     return 8
   }
 

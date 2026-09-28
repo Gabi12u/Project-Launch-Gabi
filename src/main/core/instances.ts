@@ -308,9 +308,11 @@ const settingUp = new Map<string, Promise<void>>()
  * write into a mods/ folder that install had not created yet, or read
  * `installed` as still false and wrongly report the import as failed.
  */
-export async function waitForInstanceSetup(id: string): Promise<boolean> {
+export async function waitForInstanceSetup(id: string, signal?: AbortSignal): Promise<boolean> {
   const running = settingUp.get(id)
-  if (running) {
+  if (!running) return tryGetInstance(id)?.installed ?? false
+
+  if (!signal) {
     try {
       await running
       return true
@@ -318,7 +320,39 @@ export async function waitForInstanceSetup(id: string): Promise<boolean> {
       return false
     }
   }
-  return tryGetInstance(id)?.installed ?? false
+
+  // A base setup can still take minutes (a slow download, installing a whole
+  // loader), and an import that just got cancelled must not sit through all of
+  // it just to learn whether it succeeded. Raced against the caller's own task
+  // signal so the cancel takes effect right away; the setup itself keeps
+  // running in the background either way, nothing here aborts it.
+  return new Promise<boolean>((resolvePromise) => {
+    let settled = false
+    const onAbort = (): void => {
+      if (settled) return
+      settled = true
+      resolvePromise(false)
+    }
+    if (signal.aborted) {
+      onAbort()
+      return
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+    running.then(
+      () => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        resolvePromise(true)
+      },
+      () => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        resolvePromise(false)
+      }
+    )
+  })
 }
 
 export async function installInstance(id: string, force = false): Promise<void> {
@@ -391,6 +425,17 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
       }
     )
   } catch (err) {
+    // A delete racing this setup (the import-cancel path in modpack.ts and
+    // instanceFolder.ts waits for setup first, but a plain user delete during
+    // setup is still allowed, see `assertInstanceIdle`) removes the instance
+    // from the cache, so every `getInstance(id)` call above starts throwing
+    // "existiert nicht" the moment that happens. That is not this setup
+    // failing, it is the setup finding out the instance is simply gone, and
+    // there is nothing left to mark and nothing worth reporting as an error.
+    if (deleted.has(id)) {
+      logger.debug(`Einrichtung von ${id} endet still, die Instanz wurde inzwischen gelöscht`)
+      return
+    }
     persist({ ...getInstance(id), installing: false })
     throw err
   }

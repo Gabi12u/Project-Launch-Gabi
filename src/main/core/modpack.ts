@@ -130,6 +130,28 @@ export function filterAllowedMrpackUrls(urls: string[]): string[] {
   })
 }
 
+/**
+ * The `overrides/` folder a content type's files are staged under, both when
+ * writing an export and when reading one back in.
+ *
+ * Datapacks fall to the default: `contentDir()` in paths.ts stages an
+ * installed datapack directly under the game directory's own `datapacks`
+ * folder, not inside a specific world's save, and exporting them there means
+ * an import unpacks them straight back into that same staging folder.
+ */
+function overrideFolderFor(type: ContentType): string {
+  switch (type) {
+    case 'mod':
+      return 'mods'
+    case 'resourcepack':
+      return 'resourcepacks'
+    case 'shaderpack':
+      return 'shaderpacks'
+    default:
+      return 'datapacks'
+  }
+}
+
 function contentTypeFromPath(path: string): ContentType {
   const lower = path.toLowerCase()
   if (lower.startsWith('mods/')) return 'mod'
@@ -174,7 +196,7 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
     await installMrpackFiles(instance.id, archivePath, index, task)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    markImportFailed(instance.id, name, err)
+    void markImportFailed(instance.id, name, err)
   })
 
   return instance
@@ -186,8 +208,15 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
  * cancel, otherwise the card sits at "wird installiert" forever, or a
  * cancelled import passes for a real, finished install.
  */
-function markImportFailed(instanceId: string, name: string, err: unknown): void {
+async function markImportFailed(instanceId: string, name: string, err: unknown): Promise<void> {
   if (err instanceof TaskCancelledError) {
+    // The background base setup `createInstance` started may still be
+    // downloading libraries or installing a loader. Deleting the instance out
+    // from under it used to make that setup fail moments later with "Instanz
+    // ... existiert nicht"; instances.ts now ends it quietly once the instance
+    // is gone, but waiting for it to actually finish first avoids the race
+    // rather than only papering over its outcome.
+    await waitForInstanceSetup(instanceId)
     // The archive itself was only ever read from, so nothing is lost by
     // starting over.
     try {
@@ -320,6 +349,11 @@ async function installMrpackFiles(
     )
   }
 
+  // Nothing below here checked cancellation before: a cancel that landed once
+  // the downloads had finished was silently ignored, and the import went on to
+  // unpack overrides, register content and report itself as finished anyway.
+  task.throwIfCancelled()
+
   // 2. Overrides ------------------------------------------------------
   task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
   const entries = listEntries(archivePath)
@@ -329,16 +363,21 @@ async function installMrpackFiles(
   if (entries.some((e) => e.name.startsWith('client-overrides/'))) {
     extractSubtree(archivePath, 'client-overrides', gameDir)
   }
+  task.throwIfCancelled()
 
   // 3. Register the files as content ----------------------------------
   task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.95)
   await syncContentWithDisk(instanceId)
+  task.throwIfCancelled()
 
   // The base setup (libraries, assets, the client jar) that `createInstance`
   // started in the background may still be running or may have failed by now;
   // marking the instance installed without checking would hide that. Awaited
   // before the instance is read, so a rename during that wait is not undone.
-  const baseSetupOk = await waitForInstanceSetup(instanceId)
+  // Raced against the task's own signal: this wait alone can take minutes, and
+  // a cancel must not sit through all of it.
+  const baseSetupOk = await waitForInstanceSetup(instanceId, task.signal)
+  task.throwIfCancelled()
 
   const instance = getInstance(instanceId)
   const enriched: ContentItem[] = instance.content.map((item) => {
@@ -370,6 +409,7 @@ async function installMrpackFiles(
     )
   }
 
+  task.throwIfCancelled()
   persist({ ...instance, content: enriched, installing: false, installed: true })
   task.update(tr('Import abgeschlossen', 'Import finished'), 1)
   logger.info(`Modpack in ${instanceId} importiert`)
@@ -567,12 +607,23 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       )
     }
 
+    // Nothing below here checked cancellation before: a cancel that landed
+    // once the downloads had finished was silently ignored, and the import
+    // went on to unpack overrides, register content and report itself as
+    // finished anyway.
+    task.throwIfCancelled()
+
     task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
     extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)
+    task.throwIfCancelled()
 
     await syncContentWithDisk(instance.id)
+    task.throwIfCancelled()
 
-    const baseSetupOk = await waitForInstanceSetup(instance.id)
+    // Raced against the task's own signal: the base setup alone can take
+    // minutes, and a cancel here must not sit through all of it.
+    const baseSetupOk = await waitForInstanceSetup(instance.id, task.signal)
+    task.throwIfCancelled()
     if (!baseSetupOk) {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
       throw new Error(
@@ -580,11 +631,12 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       )
     }
 
+    task.throwIfCancelled()
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update(tr('Import abgeschlossen', 'Import finished'), 1)
   }).catch((err) => {
     logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    markImportFailed(instance.id, name, err)
+    void markImportFailed(instance.id, name, err)
   })
 
   return instance
@@ -978,10 +1030,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     const bundled: string[] = []
 
     for (const item of current.content) {
-      if (item.type === 'datapack') continue
-
-      const folder =
-        item.type === 'mod' ? 'mods' : item.type === 'resourcepack' ? 'resourcepacks' : 'shaderpacks'
+      const folder = overrideFolderFor(item.type)
       const relative = `${folder}/${item.fileName}`
 
       // Only Modrinth links are guaranteed to be downloadable by other
@@ -1034,11 +1083,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     // Bundle only the files that are not resolvable through a download link.
     const excluded = current.content
       .filter((item) => files.some((f) => basename(f.path) === item.fileName))
-      .map((item) => {
-        const folder =
-          item.type === 'mod' ? 'mods' : item.type === 'resourcepack' ? 'resourcepacks' : 'shaderpacks'
-        return `${folder}/${item.fileName}`
-      })
+      .map((item) => `${overrideFolderFor(item.type)}/${item.fileName}`)
 
     await zipFolder(
       gameDir,

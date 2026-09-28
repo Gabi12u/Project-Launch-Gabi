@@ -256,16 +256,18 @@ export function syncRecordingHotkey(): void {
 
 /**
  * A title that looks like a real Minecraft client window: "Minecraft",
- * optionally starred, optionally followed by a version and/or mod loader
- * suffix (`Minecraft 1.20.1`, `Minecraft* 1.21`, `Minecraft 1.20.1 Fabric`).
+ * optionally starred, then either the end of the title or whitespace before
+ * whatever the client appends (version, "Singleplayer"/"Multiplayer", a
+ * server name in parentheses, world names with apostrophes, and so on).
  *
  * The plain `/minecraft/i` test this replaced matched anywhere in the title,
  * which is also true of a browser tab reading "Minecraft Wiki - Google
  * Chrome" or a Discord window showing "Playing Minecraft" as the status.
- * Anchoring at the start and requiring the rest of the title to look like a
- * version or loader name rules those out.
+ * Anchoring at the start rules those out while still accepting real client
+ * titles such as "Minecraft 1.21 - Multiplayer (3rd-party Server)", which a
+ * stricter word-by-word pattern used to reject over the punctuation.
  */
-const STRICT_WINDOW_TITLE_RE = /^minecraft\*?(\s+[\w.-]+)*$/i
+const STRICT_WINDOW_TITLE_RE = /^minecraft\*?(\s|$)/i
 
 /** Windows that merely mention Minecraft rather than being its client. */
 const EXCLUDED_WINDOW_MARKERS = [
@@ -275,8 +277,7 @@ const EXCLUDED_WINDOW_MARKERS = [
   'opera',
   'discord',
   'youtube',
-  'visual studio code',
-  'explorer'
+  'visual studio code'
 ]
 
 function looksLikeGameWindow(title: string): boolean {

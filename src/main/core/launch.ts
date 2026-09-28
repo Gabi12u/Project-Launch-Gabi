@@ -967,7 +967,13 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // Closing the window during preparation only hides it; bring it back so
       // the error is actually seen.
       const win = getMainWindow()
-      if (win && !win.isDestroyed() && !win.isVisible() && runningCount() === 0) win.show()
+      if (win && !win.isDestroyed() && runningCount() === 0) {
+        // Launch behaviour "minimize" leaves the window minimized, which
+        // Windows still reports as visible, so the visibility check alone
+        // never catches it.
+        if (win.isMinimized()) win.restore()
+        if (!win.isVisible()) win.show()
+      }
     }
 
     if (stillUp) {
@@ -1161,6 +1167,9 @@ function handleWindowRestore(instanceId: string): void {
   navigate(`/instances/${instanceId}?tab=logs`)
   const win = getMainWindow()
   if (!win || win.isDestroyed()) return
+  // Same reasoning as the pre-spawn failure path above: a minimized window
+  // still reports as visible on Windows, so restore it explicitly first.
+  if (win.isMinimized()) win.restore()
   if (!win.isVisible()) win.show()
 }
 

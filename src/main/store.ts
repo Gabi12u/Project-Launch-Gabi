@@ -315,6 +315,17 @@ function accountsFile(): string {
   return join(app.getPath('userData'), 'accounts.json')
 }
 
+/**
+ * Set once a dropped-account notification has been shown.
+ *
+ * `readAccounts` runs on nearly every auth call (see `auth/microsoft.ts`),
+ * and the file on disk still holds the same damaged entries on every one of
+ * those calls until something else rewrites it. Without this, a single
+ * corrupted account produced the same toast over and over for the rest of
+ * the session instead of once.
+ */
+let accountDropNotified = false
+
 export function readAccounts(): StoredAccount[] {
   const stored = readJson<StoredAccount[]>(accountsFile(), [], true)
   // A hand-edited or truncated file can parse as valid JSON of the wrong shape;
@@ -341,7 +352,18 @@ export function readAccounts(): StoredAccount[] {
     )
   })
   if (usable.length !== stored.length) {
-    logger.warn(`accounts.json: ${stored.length - usable.length} unvollständige Konten übersprungen`)
+    const dropped = stored.length - usable.length
+    logger.warn(`accounts.json: ${dropped} unvollständige Konten übersprungen`)
+    if (!accountDropNotified) {
+      accountDropNotified = true
+      notify(
+        'warning',
+        tr('Account beschädigt', 'Account damaged'),
+        dropped === 1
+          ? tr('Ein gespeicherter Account war beschädigt und wurde entfernt.', 'A saved account was damaged and has been removed.')
+          : tr(`${dropped} gespeicherte Accounts waren beschädigt und wurden entfernt.`, `${dropped} saved accounts were damaged and have been removed.`)
+      )
+    }
   }
   return usable
 }

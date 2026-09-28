@@ -50,15 +50,21 @@ function compareVersionsNewestFirst(a: string, b: string): number {
 
   const rank = (s: string): [number, number] => {
     const match = /^([a-zA-Z]+)\.?(\d+)?/.exec(s)
+    // Higher number is newer: alpha < beta < pre < rc, rc being closest to
+    // an actual release. A word this does not recognise ranks below alpha
+    // (oldest), rather than above rc, since an unrecognised pre-release tag
+    // is not a signal that it is newer than a properly tagged one.
     const order: Record<string, number> = { alpha: 0, beta: 1, pre: 2, rc: 3 }
     const word = match?.[1]?.toLowerCase()
-    const tier = word && word in order ? order[word] : 4
+    const tier = word && word in order ? order[word] : -1
     const counter = match?.[2] ? Number(match[2]) : 0
     return [tier, counter]
   }
   const [tierA, counterA] = rank(sa)
   const [tierB, counterB] = rank(sb)
-  if (tierA !== tierB) return tierA - tierB
+  // Newest first: a higher tier (or counter) must sort earlier, so the
+  // comparator subtracts a's value from b's, not the other way round.
+  if (tierA !== tierB) return tierB - tierA
   return counterB - counterA
 }
 

@@ -1218,14 +1218,23 @@ export async function importInstanceFolder(
       `${copied} Dateien nach ${instance.id} kopiert` +
         (skippedLinks > 0 ? `, ${skippedLinks} Verknüpfung(en) außerhalb des Ordners übersprungen` : '')
     )
+    // `copyGameFiles` checks cancellation per file, but nothing below here did:
+    // a cancel that landed right after the copy finished was silently ignored,
+    // and the import went on to register content and report itself as finished
+    // anyway.
+    task.throwIfCancelled()
 
     task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.9)
     await syncContentWithDisk(instance.id)
+    task.throwIfCancelled()
 
     // The base setup (Minecraft itself) that `createInstance` started in the
     // background may still be running or may have failed by now; marking the
-    // instance installed without checking would hide that.
-    const baseSetupOk = await waitForInstanceSetup(instance.id)
+    // instance installed without checking would hide that. Raced against the
+    // task's own signal: this wait alone can take minutes, and a cancel must
+    // not sit through all of it.
+    const baseSetupOk = await waitForInstanceSetup(instance.id, task.signal)
+    task.throwIfCancelled()
     if (!baseSetupOk) {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
       throw new Error(
@@ -1233,6 +1242,7 @@ export async function importInstanceFolder(
       )
     }
 
+    task.throwIfCancelled()
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update(
       tr(
@@ -1248,9 +1258,16 @@ export async function importInstanceFolder(
       ),
       1
     )
-  }).catch((err) => {
+  }).catch(async (err) => {
     logger.error(`Ordner-Import von ${name} fehlgeschlagen:`, err)
     if (err instanceof TaskCancelledError) {
+      // The background base setup `createInstance` started may still be
+      // downloading libraries or installing a loader. Deleting the instance
+      // out from under it used to make that setup fail moments later with
+      // "Instanz ... existiert nicht"; instances.ts now ends it quietly once
+      // the instance is gone, but waiting for it to actually finish first
+      // avoids the race rather than only papering over its outcome.
+      await waitForInstanceSetup(instance.id)
       // The source folder was only ever read from, so nothing is lost by
       // starting over. Left in place, the half copied files carry no marker
       // of the cancel and a later "Spielen" would treat them as a real,

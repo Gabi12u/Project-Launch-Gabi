@@ -86,7 +86,9 @@ try {
   const fakeWindow = {
     isDestroyed: () => false,
     webContents: {
-      send: (channel, payload) => sent.push({ channel, payload })
+      send: (channel, payload) => sent.push({ channel, payload }),
+      isLoading: () => false,
+      on: () => {}
     }
   }
   setMainWindow(fakeWindow)

@@ -315,6 +315,15 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
       seen.add(mod.id)
       merged.push(mod)
     }
+    // Both underlying lists paginate independently at the same offset, so a
+    // mod that supports both loaders can sit at different ranks in each one:
+    // deduplicated out of this page because the other list already carried
+    // it, then still reappearing once its own list's offset catches up to it
+    // on a later page. Nothing at this level can align the two offsets
+    // without buffering across calls, so `total` stays a safe upper bound
+    // (the true number of unique mods is at most the sum of both lists) and
+    // the renderer is what actually ends "Mehr laden": it dedupes accumulated
+    // pages by project id and stops once a page adds nothing new.
     return { items: merged.map(mapMod), total: quilt.total + fabric.total }
   }
 

@@ -87,8 +87,32 @@ export class HttpError extends Error {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+/**
+ * Resolves after `ms`, but rejects with the usual cancellation error right
+ * away if `signal` aborts first, instead of only being noticed on the next
+ * loop iteration.
+ *
+ * A 429 can back off up to 30s (see `retryDelayMs`), and every retry loop
+ * below already carries the signal that decides whether the caller still
+ * wants the result at all. Without this, cancelling a task sat through
+ * whatever was left of that wait before the loop noticed.
+ */
+function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new TaskCancelledError())
+      return
+    }
+    const onAbort = (): void => {
+      clearTimeout(timer)
+      reject(new TaskCancelledError())
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
 }
 
 /**
@@ -243,7 +267,7 @@ export async function httpRequest(
       if (!isRetryable(err) || attempt === retries) break
       // Exponential backoff keeps us friendly to the APIs we depend on,
       // unless the server itself already told us exactly how long to wait.
-      await sleep(retryDelayMs(err, attempt))
+      await sleep(retryDelayMs(err, attempt), external)
     }
   }
   throw lastError
@@ -260,6 +284,7 @@ export async function httpRequest(
  * likely.
  */
 export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3): Promise<T> {
+  const external = init?.signal ?? undefined
   let lastError: unknown
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -268,7 +293,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3)
     } catch (err) {
       lastError = err
       if (!isRetryable(err) || attempt === retries) break
-      await sleep(retryDelayMs(err, attempt))
+      await sleep(retryDelayMs(err, attempt), external)
     }
   }
   throw lastError
@@ -406,7 +431,7 @@ async function fetchToFile(
       } catch {
         // some errors have no readable body
       }
-      throw new HttpError(res.status, item.url, body)
+      throw new HttpError(res.status, item.url, body, retryAfterSecondsOf(res))
     }
     if (!res.body) throw new Error(tr(`Leere Antwort für ${item.url}`, `Empty response for ${item.url}`))
 
@@ -517,7 +542,7 @@ export async function downloadFile(
               if (signal?.aborted) throw new TaskCancelledError()
               lastError = err
               if (!isRetryable(err) || attempt === retries) break
-              await sleep(retryDelayMs(err, attempt))
+              await sleep(retryDelayMs(err, attempt), signal)
             }
           }
         }

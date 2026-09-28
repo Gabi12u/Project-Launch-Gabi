@@ -442,7 +442,23 @@ export async function zipFolder(
         return
       }
       const stream = createReadStream(file)
-      stream.on('error', (err) => zip.emit('error', err))
+      stream.on('error', () => {
+        // The open probe above passed, but a file can still fail once yazl
+        // actually starts reading it (Minecraft autosaving a region file, an
+        // antivirus scan taking its own lock). Yazl cannot drop a single entry
+        // mid stream, so this fails the whole archive; the raw fs error is
+        // never forwarded, since it carries the absolute path and the Windows
+        // user name.
+        zip.emit(
+          'error',
+          new Error(
+            tr(
+              `Die Datei ${rel} wurde während der Sicherung von einem anderen Programm gesperrt. Beende Minecraft oder versuche es erneut.`,
+              `The file ${rel} was locked by another program during the backup. Close Minecraft or try again.`
+            )
+          )
+        )
+      })
       done++
       if (done % 25 === 0) onProgress?.(done, filtered.length)
       cb(null, stream)

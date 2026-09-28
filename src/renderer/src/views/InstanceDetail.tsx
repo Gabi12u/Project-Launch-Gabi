@@ -7,7 +7,15 @@ import type {
   LogLine
 } from '@shared/types'
 import type { InstanceDetail, RecordingInfo, ScreenshotInfo, WorldInfo } from '@shared/api'
-import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
+import {
+  navigate,
+  proceedPendingNavigation,
+  refreshInstances,
+  setNavigationGuard,
+  toast,
+  toastError,
+  useStore
+} from '../lib/store'
 import { createShortcut, startInstance, stopInstance } from '../lib/actions'
 import { clickable } from '../lib/a11y'
 import {
@@ -107,6 +115,21 @@ export function InstanceDetailView({
   // unmount it can ask first instead of silently discarding them.
   const [settingsDirty, setSettingsDirty] = useState(false)
   const [pendingTab, setPendingTab] = useState<Tab | null>(null)
+  // Set by the navigation guard below whenever something outside this view,
+  // the "Alle Instanzen" button, the sidebar, the command palette or a route
+  // pushed from the main process, tries to leave while settings are dirty.
+  // It reuses the very same discard confirm that switching tabs internally
+  // already showed, so every way out of the settings tab behaves the same.
+  const [navBlocked, setNavBlocked] = useState(false)
+
+  useEffect(() => {
+    if (!settingsDirty) return
+    setNavigationGuard(() => {
+      setNavBlocked(true)
+      return false
+    })
+    return () => setNavigationGuard(null)
+  }, [settingsDirty])
 
   const status = launchStatus[instanceId]
   const running = summary?.running ?? false
@@ -135,6 +158,7 @@ export function InstanceDetailView({
     } catch (err) {
       if (!mounted.current) return
       toastError(err, tr('Instanz konnte nicht geladen werden', 'Instance could not be loaded'))
+      setNavigationGuard(null)
       navigate('/instances')
     }
   }, [instanceId])
@@ -196,6 +220,8 @@ export function InstanceDetailView({
       await window.gabi.instances.remove(instanceId)
       toast('info', tr('Instanz gelöscht', 'Instance deleted'), instance?.name)
       await refreshInstances()
+      // Unsaved settings of an instance that no longer exists are nothing to ask about.
+      setNavigationGuard(null)
       navigate('/instances')
     } catch (err) {
       toastError(err, tr('Instanz konnte nicht gelöscht werden', 'Instance could not be deleted'))
@@ -483,17 +509,26 @@ export function InstanceDetailView({
       />
 
       <Confirm
-        open={pendingTab !== null}
+        open={pendingTab !== null || navBlocked}
         title={tr('Ungespeicherte Änderungen verwerfen?', 'Discard unsaved changes?')}
         danger
         confirmLabel={tr('Verwerfen', 'Discard')}
         message={tr('Die Einstellungen dieser Instanz wurden noch nicht gespeichert. Beim Wechsel gehen sie verloren.', 'The settings of this instance have not been saved yet. They will be lost if you switch.')}
         onConfirm={() => {
           setSettingsDirty(false)
-          if (pendingTab) setTab(pendingTab)
-          setPendingTab(null)
+          if (pendingTab) {
+            setTab(pendingTab)
+            setPendingTab(null)
+          }
+          if (navBlocked) {
+            setNavBlocked(false)
+            proceedPendingNavigation()
+          }
         }}
-        onCancel={() => setPendingTab(null)}
+        onCancel={() => {
+          setPendingTab(null)
+          setNavBlocked(false)
+        }}
       />
     </div>
   )
@@ -857,8 +892,12 @@ function ContentTab({
               onUpdate={() => setConfirmUpdate(item)}
               onEditWorlds={() => setWorldsFor(item)}
               onToggle={async (enabled) => {
-                await window.gabi.content.toggle(instance.id, item.id, enabled)
-                await onChanged()
+                try {
+                  await window.gabi.content.toggle(instance.id, item.id, enabled)
+                  await onChanged()
+                } catch (err) {
+                  toastError(err, enabled ? tr('Aktivieren fehlgeschlagen', 'Enabling failed') : tr('Deaktivieren fehlgeschlagen', 'Disabling failed'))
+                }
               }}
               onRemove={() => setConfirmRemove(item)}
             />

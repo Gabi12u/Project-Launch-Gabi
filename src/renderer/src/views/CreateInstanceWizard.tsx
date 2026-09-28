@@ -163,11 +163,24 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   }, [open, mcVersion, step, loaderAttempt])
 
   /* --- Default the loader build when the loader changes ------------ */
+  // Tracks the loader a default was last picked for, so a re-fetch of
+  // loaderVersions with a new array identity (e.g. from "Erneut versuchen")
+  // does not by itself overwrite a build the user already picked by hand.
+  const previousLoader = useRef(loader)
   useEffect(() => {
     const versions = loaderVersions[loader]
     const list = Array.isArray(versions) ? versions : []
+    const loaderChanged = previousLoader.current !== loader
+    previousLoader.current = loader
+    // Only reset when the loader itself changed, or the current pick no
+    // longer exists in the freshly fetched list for it.
+    if (!loaderChanged && list.some((v) => v.version === loaderVersion)) return
     const best = list.find((v) => v.recommended) ?? list.find((v) => v.stable) ?? list[0]
     setLoaderVersion(best?.version ?? '')
+    // loaderVersion is only read here, not a trigger: adding it would re-run
+    // this effect every time it sets it, even when loader and loaderVersions
+    // themselves stayed the same.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loader, loaderVersions])
 
   const selectedLoaderVersions = useMemo(() => {

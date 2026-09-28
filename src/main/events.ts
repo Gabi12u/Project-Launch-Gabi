@@ -4,8 +4,42 @@ import { EVENTS, type AppNotification, type NotificationKind } from '@shared/ipc
 
 let mainWindow: BrowserWindow | null = null
 
+/**
+ * Notifications raised before the main window exists or has finished loading
+ * its page, oldest first.
+ *
+ * `getSettings()` can quarantine a corrupted file and call `notify()` at the
+ * very start of `app.whenReady`, long before `createWindow()` has even run.
+ * Sending straight through `emit()` at that point reaches no listener at
+ * all: the renderer script that would receive it has not executed yet
+ * either. Queued here and flushed once the page has actually loaded.
+ */
+let pendingNotifications: AppNotification[] = []
+
+function flushPendingNotifications(): void {
+  if (pendingNotifications.length === 0) return
+  const queued = pendingNotifications
+  pendingNotifications = []
+  for (const payload of queued) emit(EVENTS.notification, payload)
+}
+
+/** True once the main window exists and has actually finished loading its page. */
+function rendererReady(): boolean {
+  return mainWindow !== null && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()
+}
+
 export function setMainWindow(win: BrowserWindow | null): void {
   mainWindow = win
+  if (!win) return
+  // Not `.once()`: a later reload (Ctrl+R in dev, the unresponsive-window
+  // recovery) also flips `isLoading()` back to true for a moment, and any
+  // notification queued during that window needs its own flush too. Safe to
+  // call on every load regardless, since a flush with nothing queued is a
+  // no-op and already-sent notifications are removed from the queue as soon
+  // as they go out, so nothing is ever delivered twice.
+  // The page has loaded here, but React registers its listeners a moment
+  // later; the same grace period the boot notices in index.ts wait for.
+  win.webContents.on('did-finish-load', () => setTimeout(flushPendingNotifications, 1500))
 }
 
 export function getMainWindow(): BrowserWindow | null {
@@ -41,6 +75,10 @@ export function notify(
     title,
     message,
     ...extra
+  }
+  if (!rendererReady()) {
+    pendingNotifications.push(payload)
+    return
   }
   emit(EVENTS.notification, payload)
 }

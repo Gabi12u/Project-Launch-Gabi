@@ -297,13 +297,72 @@ async function mainClassOf(jarPath: string): Promise<string> {
   return match[1].trim()
 }
 
-// Keyed by "loader:mcVersion:loaderVersion". The processors below write into
-// shared library output paths, so two concurrent installs of the same build
-// (two new instances taking the recommended version at once, or a bulk
-// repair) used to run their processor steps in parallel against the same
-// files. A second caller now awaits the first's in-flight promise instead of
-// starting its own run.
-const inFlightInstalls = new Map<string, Promise<string>>()
+/**
+ * Keyed by "loader:mcVersion:loaderVersion". The processors below write into
+ * shared library output paths, so two concurrent installs of the same build
+ * (two new instances taking the recommended version at once, or a bulk
+ * repair) used to run their processor steps in parallel against the same
+ * files. A caller now waits on a single shared install of the same key
+ * instead of starting its own run.
+ *
+ * The shared install itself runs behind its own AbortController, the same
+ * pattern `installJava` in java.ts uses for a shared Java download: a
+ * caller's own cancellation only ends its own wait, and the shared install is
+ * only aborted once every waiting caller has cancelled. That also means a
+ * caller that joins an install already running sees its real progress
+ * instead of a frozen status message, and a caller whose own task gets
+ * cancelled no longer forces everyone else sharing the install to restart it
+ * from scratch.
+ */
+interface ForgeInstall {
+  promise: Promise<string>
+  listeners: Set<Task>
+  controller: AbortController
+}
+
+const inFlightInstalls = new Map<string, ForgeInstall>()
+
+/**
+ * Lets one listener's own cancellation end its wait immediately, without
+ * disturbing a shared install other callers may still need. Only aborts the
+ * shared install itself once the last listener still waiting on it cancels,
+ * so a single caller with no one else sharing the install behaves exactly as
+ * before.
+ */
+function waitForSharedInstall(entry: ForgeInstall, task?: Task): Promise<string> {
+  if (!task?.signal) return entry.promise
+  const signal = task.signal
+  return new Promise<string>((resolve, reject) => {
+    let settled = false
+    const onAbort = (): void => {
+      if (settled) return
+      settled = true
+      signal.removeEventListener('abort', onAbort)
+      entry.listeners.delete(task)
+      if (entry.listeners.size === 0) entry.controller.abort()
+      reject(new TaskCancelledError())
+    }
+    if (signal.aborted) {
+      onAbort()
+      return
+    }
+    signal.addEventListener('abort', onAbort)
+    entry.promise.then(
+      (value) => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (err: unknown) => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        reject(err)
+      }
+    )
+  })
+}
 
 /**
  * Installs Forge or NeoForge. Both use the same installer format: a jar that
@@ -311,37 +370,47 @@ const inFlightInstalls = new Map<string, Promise<string>>()
  * client jar. We run those processors ourselves instead of shelling out to the
  * graphical installer.
  */
-export async function installForgeLike(
+export function installForgeLike(
   loader: ForgeLikeLoader,
   mcVersion: string,
   loaderVersion: string,
   task?: Task
 ): Promise<string> {
   const key = `${loader}:${mcVersion}:${loaderVersion}`
-  const existing = inFlightInstalls.get(key)
-  if (existing) {
-    try {
-      return await existing
-    } catch (err) {
-      // The first caller's own task was cancelled: that says nothing about
-      // whether this caller still wants the install, so it runs its own
-      // instead of silently inheriting a cancellation it never asked for.
-      if (err instanceof TaskCancelledError) {
-        return installForgeLike(loader, mcVersion, loaderVersion, task)
-      }
-      throw err
-    }
+  const running = inFlightInstalls.get(key)
+  if (running) {
+    if (task) running.listeners.add(task)
+    return waitForSharedInstall(running, task)
   }
 
-  const promise = installForgeLikeInner(loader, mcVersion, loaderVersion, task)
-  inFlightInstalls.set(key, promise)
-  try {
-    return await promise
-  } finally {
-    if (inFlightInstalls.get(key) === promise) {
-      inFlightInstalls.delete(key)
+  const listeners = new Set<Task>()
+  if (task) listeners.add(task)
+  const controller = new AbortController()
+
+  // Handed down instead of the caller's own task, so every waiting caller
+  // sees the same progress, and the install is only ever tied to this shared
+  // controller, not to any single listener's own signal.
+  const shared = {
+    update: (detail: string, progress: number | null): void => {
+      for (const listener of listeners) listener.update(detail, progress)
+    },
+    throwIfCancelled: (): void => {
+      if (controller.signal.aborted) throw new TaskCancelledError()
+    },
+    get cancelled(): boolean {
+      return controller.signal.aborted
+    },
+    get signal(): AbortSignal {
+      return controller.signal
     }
-  }
+  } as unknown as Task
+
+  const promise = installForgeLikeInner(loader, mcVersion, loaderVersion, shared).finally(() => {
+    inFlightInstalls.delete(key)
+  })
+  const entry: ForgeInstall = { promise, listeners, controller }
+  inFlightInstalls.set(key, entry)
+  return waitForSharedInstall(entry, task)
 }
 
 async function installForgeLikeInner(

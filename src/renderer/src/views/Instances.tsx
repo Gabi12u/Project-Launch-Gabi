@@ -45,20 +45,28 @@ export function InstancesView(): JSX.Element {
     }
   }, [instances, search, loader, sort])
 
-  // Grouping keeps large libraries navigable.
+  // Grouping keeps large libraries navigable. Grouped by a normalized key so
+  // "Modded" and "modded" land in one group instead of two; the label shown
+  // is whichever spelling was seen first.
   const groups = useMemo(() => {
-    const map = new Map<string, typeof filtered>()
+    const map = new Map<string, { label: string; items: typeof filtered }>()
     for (const instance of filtered) {
-      const key = instance.group || ''
-      const list = map.get(key) ?? []
-      list.push(instance)
-      map.set(key, list)
+      const raw = instance.group || ''
+      const key = raw.trim().toLocaleLowerCase(locale())
+      const entry = map.get(key)
+      if (entry) {
+        entry.items.push(instance)
+      } else {
+        map.set(key, { label: raw, items: [instance] })
+      }
     }
-    return [...map.entries()].sort(([a], [b]) => {
-      if (a === '') return -1
-      if (b === '') return 1
-      return a.localeCompare(b, locale())
-    })
+    return [...map.entries()]
+      .map(([key, { label, items }]) => [key, label, items] as const)
+      .sort(([keyA], [keyB]) => {
+        if (keyA === '') return -1
+        if (keyB === '') return 1
+        return keyA.localeCompare(keyB, locale())
+      })
   }, [filtered])
 
   return (
@@ -164,11 +172,11 @@ export function InstancesView(): JSX.Element {
         />
       ) : (
         <div className="col gap-32">
-          {groups.map(([group, items]) => (
-            <section key={group || 'ungrouped'} className="col gap-16">
-              {group && (
+          {groups.map(([key, label, items]) => (
+            <section key={key || 'ungrouped'} className="col gap-16">
+              {label && (
                 <h2 className="section-title">
-                  {group} <span style={{ opacity: 0.5 }}>· {items.length}</span>
+                  {label} <span style={{ opacity: 0.5 }}>· {items.length}</span>
                 </h2>
               )}
               <div className="instance-grid stagger">

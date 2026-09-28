@@ -98,6 +98,26 @@ function launchTarget(): { target: string; baseArgs: string[] } {
 }
 
 /**
+ * Quotes a single command-line argument if it needs it, leaving one that is
+ * already quoted alone.
+ *
+ * In an unpackaged dev build `baseArgs` carries `app.getAppPath()`, the
+ * project folder, which breaks the shortcut and start scripts the moment it
+ * contains a space, since everything downstream (.lnk args, .desktop Exec,
+ * start.bat, start.sh) treats the joined string as a plain space-separated
+ * command line.
+ */
+function quoteArg(arg: string): string {
+  if (arg.startsWith('"') && arg.endsWith('"')) return arg
+  return /\s/.test(arg) ? `"${arg}"` : arg
+}
+
+/** Joins command-line arguments into one string, quoting where needed. */
+function joinArgs(args: string[]): string {
+  return args.map(quoteArg).join(' ')
+}
+
+/**
  * Falls back to the Launch Gabi application icon.
  *
  * The first candidate is the packaged one — `extraResources` in
@@ -175,7 +195,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
   const { target, baseArgs } = launchTarget()
 
   const fileName = safeFileName(instance.name)
-  const args = [...baseArgs, `--launch=${instanceId}`].join(' ')
+  const args = joinArgs([...baseArgs, `--launch=${instanceId}`])
 
   if (process.platform === 'win32') {
     const linkPath = resolveLinkPath(desktop, fileName, '.lnk', instanceId)
@@ -320,7 +340,7 @@ export function writeLaunchScript(instanceId: string): string {
     const file = join(dir, 'start.bat')
     writeFileSync(
       file,
-      `@echo off\r\nrem Startet ${singleLine(instance.name)} direkt\r\nstart "" "${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\r\n`,
+      `@echo off\r\nrem Startet ${singleLine(instance.name)} direkt\r\nstart "" "${target}" ${joinArgs([...baseArgs, `--launch=${instanceId}`])}\r\n`,
       'utf8'
     )
     return file
@@ -329,7 +349,7 @@ export function writeLaunchScript(instanceId: string): string {
   const file = join(dir, 'start.sh')
   writeFileSync(
     file,
-    `#!/bin/sh\n# Startet ${singleLine(instance.name)} direkt\n"${target}" ${[...baseArgs, `--launch=${instanceId}`].join(' ')}\n`,
+    `#!/bin/sh\n# Startet ${singleLine(instance.name)} direkt\n"${target}" ${joinArgs([...baseArgs, `--launch=${instanceId}`])}\n`,
     { mode: 0o755 }
   )
   return file

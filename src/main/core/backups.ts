@@ -260,7 +260,11 @@ async function createBackupUnlocked(
           {
             include: existing,
             onSkip: (file) => skipped.push(file),
-            onSkipLink: (file) => skippedLinks.push(file)
+            onSkipLink: (file) => skippedLinks.push(file),
+            // Without this, "Abbrechen" never reached the zip itself: the task
+            // was marked cancelled, but `zipFolder` never looked, and the
+            // backup ran to completion regardless.
+            signal: task.signal
           },
           (done, total) => {
             task.update(tr(`${done} / ${total} Dateien`, `${done} / ${total} files`), total > 0 ? done / total : null)

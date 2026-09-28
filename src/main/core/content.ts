@@ -80,13 +80,15 @@ function targetDir(instanceId: string, type: ContentType): string {
 function toContentItem(
   version: ProjectVersion,
   type: ContentType,
-  meta: { name: string; author?: string; iconUrl?: string; summary?: string; pageUrl?: string }
+  meta: { name: string; author?: string; iconUrl?: string; summary?: string; pageUrl?: string },
+  fileName: string,
+  enabled: boolean
 ): ContentItem {
   return {
     id: randomUUID(),
     type,
     provider: version.provider,
-    fileName: contentFileName(version.fileName),
+    fileName,
     name: meta.name,
     version: version.versionNumber,
     versionId: version.versionId,
@@ -97,7 +99,7 @@ function toContentItem(
     pageUrl: meta.pageUrl,
     sha1: version.sha1,
     size: version.size,
-    enabled: true,
+    enabled,
     gameVersions: version.gameVersions,
     loaders: version.loaders,
     dependencies: version.dependencies,
@@ -142,7 +144,13 @@ export async function installContent(options: InstallContentOptions): Promise<Co
   // Shared across concurrent callers. `visited` only guards recursion within
   // one call, so two separate installs that need the same dependency both got
   // this far and both installed it, and the second record replaced the first.
-  const lockKey = `${instanceId}|${key}`
+  //
+  // The version id is part of the key too. Without it, a pinned-version
+  // install and a "latest" install of the same project shared one promise,
+  // and whichever call started second silently received the first call's
+  // version back instead of its own.
+  const versionKey = options.versionId ?? 'latest'
+  const lockKey = `${instanceId}|${key}|${versionKey}`
   const running = inFlight.get(lockKey)
   if (running) return running
 
@@ -255,12 +263,31 @@ async function installContentOnce(
       ((c.projectId === projectId && c.provider === provider) ||
         (!c.projectId && bare(c.fileName) === wanted))
   )
+
+  // A reinstall of a project that is already present (e.g. through "Version
+  // wählen") keeps its enabled state; a fresh install with nothing to replace
+  // is enabled by default. Without this, the new record was always marked
+  // enabled, which silently turned a disabled mod back on the moment its file
+  // was replaced.
+  const enabled = previous ? previous.enabled : true
+
+  // The file downloaded above always lands under its bare name (`destination`
+  // above). If the project stays disabled, it is renamed onto the
+  // ".disabled" name here, before anything else reads or writes it, so the
+  // item's recorded fileName and the file actually on disk can never
+  // disagree. Mirrors what `applyUpdateOnce` does for the same reason.
+  const finalFileName = enabled ? contentFileName(version.fileName) : `${contentFileName(version.fileName)}.disabled`
+  const finalDestination = contentPath(dir, finalFileName)
+  if (!samePath(destination, finalDestination)) {
+    renameSync(destination, finalDestination)
+  }
+
   if (previous) {
     const oldPath = contentPath(contentDir(instanceId, previous.type), previous.fileName)
     // Only when it is genuinely another file. A release that changed nothing
     // but the capitalisation of its file name would otherwise have this
     // delete the download that just completed.
-    if (!samePath(oldPath, destination)) {
+    if (!samePath(oldPath, finalDestination)) {
       // Retried once before giving up, same reasoning as `removeContentOnce`:
       // a scanner or indexer briefly holding the old file open. Unlike that
       // path, giving up here must not go on to record the new file anyway.
@@ -274,7 +301,7 @@ async function installContentOnce(
         try {
           rmSync(oldPath, { force: true })
         } catch (err) {
-          rmSync(destination, { force: true })
+          rmSync(finalDestination, { force: true })
           throw new Error(
             tr(
               `${previous.name} konnte nicht ersetzt werden, die alte Datei wird noch von einem anderen Programm verwendet. Versuche es erneut.`,
@@ -286,12 +313,17 @@ async function installContentOnce(
       }
     }
     // A datapack swapped for another version through "Version wählen" keeps
-    // its worlds; the old file's world copies go, the new one takes their place.
+    // its worlds; the old file's world copies go, the new one takes their
+    // place. Only while the previous entry was enabled: a disabled datapack
+    // has no world copies to remove in the first place, matching
+    // `applyUpdateOnce`.
     if (previous.type === 'datapack' && previous.worlds && previous.worlds.length > 0) {
-      const oldName = previous.fileName.endsWith('.disabled')
-        ? previous.fileName.slice(0, -'.disabled'.length)
-        : previous.fileName
-      for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
+      if (previous.enabled) {
+        const oldName = previous.fileName.endsWith('.disabled')
+          ? previous.fileName.slice(0, -'.disabled'.length)
+          : previous.fileName
+        for (const world of previous.worlds) removeDatapackFromWorld(instanceId, world, oldName)
+      }
       // Only when the caller named no worlds at all; an explicit empty choice
       // in the picker means "in no world" and is kept.
       if (options.worlds === undefined) worlds = previous.worlds
@@ -299,17 +331,33 @@ async function installContentOnce(
     removeContentRecord(instanceId, previous.id)
   }
 
-  const item = toContentItem(version, type, {
-    name: project.name,
-    author: project.author,
-    iconUrl: project.iconUrl,
-    summary: project.summary,
-    pageUrl: project.pageUrl
-  })
+  const item = toContentItem(
+    version,
+    type,
+    {
+      name: project.name,
+      author: project.author,
+      iconUrl: project.iconUrl,
+      summary: project.summary,
+      pageUrl: project.pageUrl
+    },
+    finalFileName,
+    enabled
+  )
+  // World copies happen only while the item is enabled, the same rule
+  // `applyUpdateOnce` and `toggleContent` apply: a disabled datapack has no
+  // copies at all and only gets them once switched back on. The intended
+  // assignment is still recorded either way.
   if (worlds && worlds.length > 0) {
-    const failed = worlds.filter((world) => !copyDatapackIntoWorld(instanceId, world, destination, item.fileName))
-    item.worlds = worlds.filter((world) => !failed.includes(world))
-    warnWorldCopyFailed(project.name, failed)
+    if (enabled) {
+      const failed = worlds.filter(
+        (world) => !copyDatapackIntoWorld(instanceId, world, finalDestination, item.fileName)
+      )
+      item.worlds = worlds.filter((world) => !failed.includes(world))
+      warnWorldCopyFailed(project.name, failed)
+    } else {
+      item.worlds = worlds
+    }
   } else if (worlds) {
     item.worlds = worlds
   }
@@ -489,14 +537,19 @@ async function importContentFileOnce(
   let item: ContentItem
   if (identified) {
     const project = await modrinth.getProject(identified.projectId)
-    item = toContentItem(identified, type, {
-      name: project.name,
-      author: project.author,
-      iconUrl: project.iconUrl,
-      summary: project.summary,
-      pageUrl: project.pageUrl
-    })
-    item.fileName = fileName
+    item = toContentItem(
+      identified,
+      type,
+      {
+        name: project.name,
+        author: project.author,
+        iconUrl: project.iconUrl,
+        summary: project.summary,
+        pageUrl: project.pageUrl
+      },
+      fileName,
+      true
+    )
   } else {
     item = {
       id: randomUUID(),

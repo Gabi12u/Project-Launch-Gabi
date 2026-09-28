@@ -2535,8 +2535,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wählte man über „Version wählen…“ eine andere Version eines ausgeschalteten Mods, war er danach ' +
       'wieder eingeschaltet und wurde beim nächsten Start geladen, ohne Hinweis.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-abbrechen-wirkungslos',
@@ -2544,8 +2545,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Eine laufende Sicherung ließ sich nicht abbrechen. Sie lief bis zum Ende weiter und meldete ' +
       'sich danach als fertig.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'import-abbrechen-spaet-wirkungslos',
@@ -2553,8 +2555,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Beim Import eines Modpacks oder Ordners wirkte „Abbrechen“ nur, solange noch heruntergeladen ' +
       'oder kopiert wurde. Danach lief der Import weiter und endete als abgeschlossen.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'sicherung-gesperrte-datei',
@@ -2563,8 +2566,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Speicherte Minecraft eine Welt genau während einer Sicherung, konnte die Sicherung mit einer ' +
       'englischen Systemmeldung abbrechen, in der der vollständige Dateipfad samt Windows-Benutzername ' +
       'stand.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'instanz-einstellungen-verlust-navigation',
@@ -2572,8 +2576,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer Einstellungen einer Instanz änderte und dann über „Alle Instanzen“ oder die Seitenleiste ' +
       'woandershin ging, verlor die Änderungen ohne Warnung.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'fenster-bleibt-minimiert',
@@ -2581,8 +2586,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Stand das Verhalten beim Spielstart auf „Launcher minimieren“, kam das Fenster nach dem Ende ' +
       'des Spiels nicht wieder hervor, sondern blieb in der Taskleiste.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'assistent-loader-version-zurueckgesetzt',
@@ -2590,8 +2596,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach „Erneut versuchen“ bei den Loadern sprang die Auswahl der Loader-Version still auf die ' +
       'empfohlene zurück. Die Instanz wurde dann mit einer anderen Version angelegt als gewählt.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'export-ohne-datapacks',
@@ -2599,8 +2606,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Beim Export einer Instanz als Modpack wurden installierte Data Packs nicht mitgenommen und es ' +
       'gab keinen Hinweis darauf.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'schalter-ohne-fehlermeldung',
@@ -2608,8 +2616,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Schlug das Ein- oder Ausschalten eines Mods über den Schalter in der Liste fehl, oder die ' +
       'Java-Suche in den Instanz-Einstellungen, passierte sichtbar einfach nichts.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'account-teilweise-beschaedigt',
@@ -2617,8 +2626,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Fehlten in der Kontendatei bei einem Eintrag einzelne Angaben, wurde dieser Account beim Start ' +
       'still aussortiert.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'abbrechen-in-wartezeit',
@@ -2626,8 +2636,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wartete der Launcher nach einem fehlgeschlagenen Download auf den nächsten Versuch, wirkte ' +
       '„Abbrechen“ erst nach Ende dieser Wartezeit.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'reparatur-waehrend-start',
@@ -2635,8 +2646,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Startete eine zweite Instanz mit derselben Minecraft-Version, während die Reparatur schon lief, ' +
       'konnte die Reparatur gemeinsam genutzte Spieldateien ersetzen und den Start stören.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'snapshots-2021-java',
@@ -2644,8 +2656,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Für Snapshots auf dem Weg zu Minecraft 1.18 wählte der Launcher Java 16, wenn Mojang keine ' +
       'Java-Version angab. Diese Versionen brauchen Java 17.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   },
   {
     id: 'gruppen-gross-klein',
@@ -2653,8 +2666,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Hießen zwei Instanzen „Modded“ und „modded“, erschienen sie in zwei getrennten Gruppen statt in ' +
       'einer.',
-    state: 'fixing',
-    since: '2026-09-28'
+    state: 'fixed',
+    since: '2026-09-28',
+    fixedIn: '1.0.20'
   }
 ]
 

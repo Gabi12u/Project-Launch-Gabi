@@ -123,6 +123,12 @@ export function ContentBrowser({
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [offset, setOffset] = useState(0)
+  // CurseForge's Quilt search merges two independently paginated lists (see
+  // curseforge.ts), so `total` there is only an upper bound: a page can come
+  // back with results already shown on an earlier page instead of new ones,
+  // and would otherwise leave "Mehr laden" visible forever. Set once an
+  // appended page adds nothing new, cleared whenever a fresh search starts.
+  const [exhausted, setExhausted] = useState(false)
   // A Set, not a single id. With one shared value, starting a second install
   // overwrote the first: the first card's spinner vanished and its button went
   // live again while its request was still running, so a second click fired a
@@ -197,7 +203,17 @@ export function ContentBrowser({
 
         setResponse((current) => {
           if (!append || !current) return result
-          const combined = [...current.items, ...result.items]
+          // Keyed the same way the rendered cards are keyed. CurseForge's
+          // Quilt search can hand back a project already shown on an earlier
+          // page (see curseforge.ts), so without this a mod could appear
+          // twice in the grid.
+          const seen = new Set(current.items.map((item) => `${item.provider}-${item.projectId}`))
+          const additions = result.items.filter((item) => !seen.has(`${item.provider}-${item.projectId}`))
+          // Nothing new came back. `total` can overcount in the same Quilt
+          // case, so it alone never reliably signals the end; an empty page
+          // of new results does.
+          if (additions.length === 0) setExhausted(true)
+          const combined = [...current.items, ...additions]
           // Each page arrives pre-sorted across providers on its own; once a
           // second page is appended, the whole accumulated list needs the
           // same sort re-applied, or the pages just stack platform by platform.
@@ -222,6 +238,7 @@ export function ContentBrowser({
 
   useEffect(() => {
     setOffset(0)
+    setExhausted(false)
     void search(0, false)
   }, [search])
 
@@ -442,7 +459,7 @@ export function ContentBrowser({
             ))}
           </div>
 
-          {response && response.items.length < response.total && (
+          {response && response.items.length < response.total && !exhausted && (
             <button
               className="btn block"
               disabled={loading}
