@@ -2806,6 +2806,15 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-29',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'seitensprache-englisch-deutsch',
+    title: 'Auf Englisch meldete der Launcher dem System weiter Deutsch als Sprache',
+    detail:
+      'Nach dem Wechsel auf Englisch blieb die Sprachangabe der Oberfläche auf Deutsch. ' +
+      'Bildschirmleser lasen den englischen Text deshalb mit deutscher Aussprache vor.',
+    state: 'fixing',
+    since: '2026-09-29'
   }
 ]
 
