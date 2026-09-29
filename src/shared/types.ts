@@ -640,6 +640,8 @@ export interface LauncherSettings {
   navPosition: NavPosition
   launchBehaviour: LaunchBehaviour
   startMinimized: boolean
+  /** Plays the logo intro once loading is done, before the launcher opens. */
+  bootIntro: boolean
   launchOnStartup: boolean
   concurrentDownloads: number
   downloadThrottleKbps: number

@@ -43,6 +43,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   navPosition: 'side',
   launchBehaviour: 'hide',
   startMinimized: false,
+  bootIntro: true,
   launchOnStartup: false,
   concurrentDownloads: 8,
   downloadThrottleKbps: 0,

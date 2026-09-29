@@ -165,6 +165,7 @@ function sanitize(input: LauncherSettings): LauncherSettings {
     next.navPosition = fallback.navPosition
   }
   next.reduceMotion = typeof next.reduceMotion === 'boolean' ? next.reduceMotion : fallback.reduceMotion
+  next.bootIntro = typeof next.bootIntro === 'boolean' ? next.bootIntro : fallback.bootIntro
   next.javaAutoManage = typeof next.javaAutoManage === 'boolean' ? next.javaAutoManage : fallback.javaAutoManage
   next.launchBehaviourDefaultApplied =
     typeof next.launchBehaviourDefaultApplied === 'boolean'

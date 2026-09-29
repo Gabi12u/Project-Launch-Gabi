@@ -6,6 +6,7 @@ import './styles/base.css'
 import './styles/components.css'
 import './styles/views.css'
 import './styles/effects.css'
+import './styles/logo-intro.css'
 import { App } from './App'
 import { GameLogWindow } from './views/GameLogWindow'
 

@@ -389,6 +389,12 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   checked={settings.startMinimized}
                   onChange={(value) => void saveSettings({ startMinimized: value })}
                 />
+                <SettingToggle
+                  label={tr('Logo-Animation beim Start', 'Logo animation on start')}
+                  hint={tr('Spielt nach dem Laden kurz das Logo ab, bevor sich der Launcher öffnet.', 'Briefly plays the logo after loading, before the launcher opens.')}
+                  checked={settings.bootIntro}
+                  onChange={(value) => void saveSettings({ bootIntro: value })}
+                />
                 <div className="field mt-16">
                   <label className="label" htmlFor="st-verhalten-beim-spielstart">{tr('Verhalten beim Spielstart', 'When a game starts')}</label>
                   <select id="st-verhalten-beim-spielstart"

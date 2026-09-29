@@ -1,4 +1,4 @@
-import { useEffect, type JSX } from 'react'
+import { useCallback, useEffect, useState, type JSX } from 'react'
 import {
   applyTheme,
   navigate,
@@ -17,7 +17,7 @@ import { Toasts } from './components/Toasts'
 import { TaskDock } from './components/TaskDock'
 import { Ambient } from './components/Ambient'
 import { CommandPalette } from './components/CommandPalette'
-import { Logo } from './components/Logo'
+import { BootSplash } from './components/BootSplash'
 import { CompatibilityGate } from './components/CompatibilityPanel'
 import { UpdateGate } from './components/UpdateGate'
 import { ReportConsent } from './components/ReportConsent'
@@ -32,10 +32,12 @@ import { DiscoverView } from './views/Discover'
 import { BackupsView } from './views/Backups'
 import { SettingsView } from './views/Settings'
 import { startCapture, stopCapture } from './lib/recorder'
-import { tr } from '@shared/i18n'
 
 export function App(): JSX.Element {
   const { route, ready, settings, createOpen } = useStore()
+  // The start screen stays until the logo intro that follows loading is done.
+  const [introDone, setIntroDone] = useState(false)
+  const finishIntro = useCallback(() => setIntroDone(true), [])
 
   /* --- Bootstrap ------------------------------------------------- */
   useEffect(() => {
@@ -263,23 +265,8 @@ export function App(): JSX.Element {
 
   const parsed = parseRoute(route)
 
-  if (!ready) {
-    return (
-      <div className="app">
-        <Ambient />
-        <div className="app-body boot">
-          <div className="boot-inner">
-            <div className="boot-logo">
-              <Logo size={76} glow />
-            </div>
-            <div className="boot-bar">
-              <span />
-            </div>
-            <span className="boot-word">{tr('Launch Gabi startet', 'Launch Gabi is starting')}</span>
-          </div>
-        </div>
-      </div>
-    )
+  if (!ready || !introDone) {
+    return <BootSplash ready={ready} onDone={finishIntro} />
   }
 
   if (!settings.onboarded) {

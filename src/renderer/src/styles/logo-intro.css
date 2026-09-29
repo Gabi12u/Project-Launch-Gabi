@@ -1,0 +1,122 @@
+/* --- Logo intro (components/LogoIntro.tsx) ------------------------------ */
+
+/* Durations and delays are multiplied by --s, so the same timeline can run
+   at full length or faster. The boot splash runs it at 0.6. */
+.lg-anim { --s: 0.6; overflow: visible; }
+.lg-anim .lg-plate,
+.lg-anim .lg-block,
+.lg-anim .lg-vox { transform-box: fill-box; transform-origin: center; }
+.lg-anim .lg-stroke { stroke-dasharray: 100 110; }
+
+/* Until the intro starts, everything that animates in stays hidden. */
+.lg-anim.is-ready .lg-plate,
+.lg-anim.is-ready .lg-block,
+.lg-anim.is-ready .lg-vox { opacity: 0; }
+.lg-anim.is-ready .lg-stroke { stroke-dashoffset: 101; }
+.lg-anim.is-ready .lg-plate-line { stroke-dasharray: 0 101; }
+
+.lg-anim.play .lg-plate      { animation: lg-plate calc(1.1s * var(--s)) cubic-bezier(0.16, 0.8, 0.24, 1) calc(0.2s * var(--s)) both; }
+.lg-anim.play .lg-plate-line { animation: lg-outline calc(1.05s * var(--s)) cubic-bezier(0.65, 0, 0.35, 1) calc(0.3s * var(--s)) both; }
+.lg-anim.play .lg-block      { animation: lg-block calc(0.8s * var(--s)) linear calc(1.05s * var(--s)) both; }
+.lg-anim.play .lg-l          { animation: lg-draw calc(0.6s * var(--s)) cubic-bezier(0.55, 0, 0.25, 1) calc(0.95s * var(--s)) both; }
+.lg-anim.play .lg-g          { animation: lg-draw calc(0.78s * var(--s)) cubic-bezier(0.55, 0, 0.25, 1) calc(1.22s * var(--s)) both; }
+.lg-anim.play .lg-gbar       { animation: lg-draw calc(0.26s * var(--s)) cubic-bezier(0.3, 0, 0.2, 1) calc(1.86s * var(--s)) both; }
+.lg-anim.play .lg-vox-1      { animation: lg-vox calc(0.5s * var(--s)) cubic-bezier(0.3, 1.35, 0.5, 1) calc(1.98s * var(--s)) both; }
+.lg-anim.play .lg-vox-2      { animation: lg-vox calc(0.5s * var(--s)) cubic-bezier(0.3, 1.35, 0.5, 1) calc(2.14s * var(--s)) both; }
+.lg-anim.play .lg-vox-3      { animation: lg-vox calc(0.5s * var(--s)) cubic-bezier(0.3, 1.35, 0.5, 1) calc(2.28s * var(--s)) both; }
+.lg-anim.play .lg-sweep      { animation: lg-sweep calc(0.95s * var(--s)) cubic-bezier(0.45, 0, 0.2, 1) calc(2.2s * var(--s)) both; }
+
+@keyframes lg-plate { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes lg-draw { from { stroke-dashoffset: 101; } to { stroke-dashoffset: 0; } }
+/* The outline is closed: it ends as one unbroken line, no seam where it started. */
+@keyframes lg-outline { from { stroke-dasharray: 0 101; } 99.9% { stroke-dasharray: 101 0; } to { stroke-dasharray: none; } }
+/* The signature: the block is set down from above and seats itself with a
+   short, firm settle, like placing a block rather than dropping it. */
+@keyframes lg-block {
+  0%   { opacity: 0; transform: translateY(-9px); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  25%  { opacity: 1; }
+  62%  { transform: translateY(0.7px); animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+  80%  { transform: translateY(-0.25px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes lg-vox { from { opacity: 0; transform: scale(0.35); } to { opacity: 1; transform: none; } }
+@keyframes lg-sweep {
+  0%   { transform: translateX(0); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateX(96px); opacity: 0; }
+}
+
+/* --- Boot splash phases (components/BootSplash.tsx) --------------------- */
+
+.boot-bar,
+.boot-word { transition: opacity 260ms var(--ease); }
+.boot.is-intro .boot-bar,
+.boot.is-intro .boot-word,
+.boot.is-leaving .boot-bar,
+.boot.is-leaving .boot-word { opacity: 0; }
+
+.boot .boot-inner { transition: opacity 320ms var(--ease), transform 320ms var(--ease); }
+.boot.is-leaving .boot-inner { opacity: 0; transform: scale(1.04); }
+.boot.is-intro,
+.boot.is-leaving { cursor: pointer; }
+
+/* --- Wordmark in the boot splash ---------------------------------------- */
+
+.boot-status {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.boot-wordmark {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.boot-wordmark-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--text);
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+}
+.boot-wordmark-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.boot-wordmark-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-4);
+  opacity: 0;
+}
+/* Uncovered from the left once L and G stand, the line underneath follows. */
+.boot.is-intro .boot-wordmark-title,
+.boot.is-leaving .boot-wordmark-title {
+  animation: boot-wordmark-in 560ms cubic-bezier(0.65, 0, 0.35, 1) 1.05s both;
+}
+.boot.is-intro .boot-wordmark-sub,
+.boot.is-leaving .boot-wordmark-sub {
+  animation: boot-wordmark-sub-in 520ms cubic-bezier(0.22, 1, 0.36, 1) 1.4s both;
+}
+@keyframes boot-wordmark-in {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(4px); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }
+}
+@keyframes boot-wordmark-sub-in {
+  from { opacity: 0; letter-spacing: 0.34em; }
+  to { opacity: 1; letter-spacing: 0.22em; }
+}
