@@ -1890,6 +1890,32 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'When downloading game files, Java and modpacks, and in the notice after a recording, German ' +
       'showed sizes as 150.3 MB instead of 150,3 MB.'
+  },
+  'vorab-pruefung-haengt': {
+    title: 'The pre-launch check stayed on "Loading" for good after an error',
+    detail:
+      'If the check on the instance page failed once, for example through a brief network drop, the ' +
+      '"Before launch" section then showed "Loading" forever, and the mod compatibility section ' +
+      'disappeared entirely. Nothing showed that a new check was needed.'
+  },
+  'zuletzt-gespielt-neue-instanz': {
+    title: 'An instance never played was labelled "Last played" on the home page',
+    detail:
+      'After creating the first instance, the home page showed "Last played" above it and "Last ' +
+      'played: never" right below.'
+  },
+  'log-leeren-kommt-zurueck': {
+    title: '"Clear" in an instance log did not stick',
+    detail:
+      'After "Clear" in the Log tab, all old lines came back as soon as another tab was opened and the ' +
+      'log was switched back to.'
+  },
+  'loeschen-reparieren-erst-nach-bestaetigung-abgelehnt': {
+    title: 'Deleting and repairing a busy instance only failed after the confirmation',
+    detail:
+      'While an instance was starting, being set up or getting mods, "Delete" and "Repair" could still ' +
+      'be clicked and confirmed. Only then came the message that it was not possible right now. ' +
+      '"Duplicate" was already greyed out in the same situation.'
   }
 }
 

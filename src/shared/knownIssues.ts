@@ -2962,6 +2962,44 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'standen Größen auf Deutsch als 150.3 MB statt 150,3 MB.',
     state: 'fixing',
     since: '2026-09-29'
+  },
+  {
+    id: 'vorab-pruefung-haengt',
+    title: 'Die Prüfung vor dem Start blieb nach einem Fehler dauerhaft auf „Wird geladen“',
+    detail:
+      'Schlug die Prüfung auf der Instanzseite einmal fehl, etwa durch einen kurzen Netzwerkaussetzer, ' +
+      'zeigte der Bereich „Vor dem Start“ danach für immer „Wird geladen“, und die Mod-Kompatibilität ' +
+      'verschwand ganz. Dass man neu prüfen muss, war nirgends zu sehen.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'zuletzt-gespielt-neue-instanz',
+    title: 'Eine noch nie gespielte Instanz hieß auf der Startseite „Zuletzt gespielt“',
+    detail:
+      'Nach dem Anlegen der ersten Instanz stand auf der Startseite „Zuletzt gespielt“ darüber und ' +
+      'direkt darunter „Zuletzt gespielt: nie“.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'log-leeren-kommt-zurueck',
+    title: '„Leeren“ im Log einer Instanz hielt nicht',
+    detail:
+      'Nach „Leeren“ im Log-Tab kamen alle alten Zeilen zurück, sobald man einen anderen Tab öffnete ' +
+      'und wieder zum Log wechselte.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'loeschen-reparieren-erst-nach-bestaetigung-abgelehnt',
+    title: 'Löschen und Reparieren einer beschäftigten Instanz scheiterten erst nach der Rückfrage',
+    detail:
+      'Während eine Instanz startete, eingerichtet wurde oder Mods bekam, ließen sich „Löschen“ und ' +
+      '„Reparieren“ trotzdem anklicken und bestätigen. Erst danach kam die Meldung, dass es gerade ' +
+      'nicht geht. „Duplizieren“ war in derselben Lage schon ausgegraut.',
+    state: 'fixing',
+    since: '2026-09-29'
   }
 ]
 
