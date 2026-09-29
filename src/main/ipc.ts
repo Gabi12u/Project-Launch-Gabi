@@ -289,8 +289,14 @@ export function registerIpc(): void {
         )
       )
     }
+    // The old process's own arguments are passed on by default, and a start
+    // through an instance shortcut (--launch=) or a launchgabi:// link would
+    // then run that instance again after a mere language switch.
+    const args = process.argv
+      .slice(1)
+      .filter((arg) => arg !== '--' && !arg.startsWith('--launch=') && !arg.startsWith('launchgabi://') && arg !== '--updated')
     // Inside an AppImage, execPath points into a mount that is gone by then.
-    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE } : undefined)
+    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE, args } : { args })
     app.quit()
   })
 

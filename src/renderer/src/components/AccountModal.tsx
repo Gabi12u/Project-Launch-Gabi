@@ -237,8 +237,6 @@ function AccountRow({
   onActivate: () => void
   onRemove: () => void
 }): JSX.Element {
-  const expired = account.expiresAt !== undefined && account.expiresAt < Date.now()
-
   return (
     <div className="content-row">
       <div
@@ -252,7 +250,6 @@ function AccountRow({
         <div className="content-name">{account.username}</div>
         <div className="content-meta">
           <span>{account.type === 'microsoft' ? tr('Microsoft-Account', 'Microsoft account') : tr('Offline-Profil', 'Offline profile')}</span>
-          {expired && <span className="badge warn">{tr('Sitzung abgelaufen', 'Session expired')}</span>}
           {account.active && (
             <span className="badge ok dot">
               <IconCheck size={11} /> {tr('Aktiv', 'Active')}

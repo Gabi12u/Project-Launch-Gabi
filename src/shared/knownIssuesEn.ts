@@ -1794,6 +1794,96 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'After switching to English, the interface kept German as its language setting. Screen readers ' +
       'therefore read the English text with German pronunciation.'
+  },
+  'neustart-startet-instanz-erneut': {
+    title: 'A restart from the settings started an instance again',
+    detail:
+      'If the launcher had been opened through an instance\'s desktop shortcut, the restart after a ' +
+      'language switch took over that call and started the instance again, without asking.'
+  },
+  'datapack-geloeschte-welt': {
+    title: 'A deleted world came back as an empty world through a data pack',
+    detail:
+      'If a data pack was assigned to a world and the world was deleted in Explorer, the launcher ' +
+      'recreated its folder when the data pack was switched on or off, updated or changed version. The ' +
+      'empty world then appeared in the list and could not be removed in the launcher.'
+  },
+  'sicherung-zeitstempel': {
+    title: 'After restoring a backup, "Last played" and the screenshot order were wrong',
+    detail:
+      'Backups stored the time of the backup for every file instead of its real modification date, and ' +
+      'restoring gave every file the current time. Worlds then all looked just played, and screenshots ' +
+      'were in random order.'
+  },
+  'anmeldung-abgelaufen-rohtext': {
+    title: 'An expired Microsoft sign-in showed an English error text from Microsoft',
+    detail:
+      'When an account\'s sign-in expired, for example after 90 days without use or after a password ' +
+      'change, starting a game showed a long English text from Microsoft instead of the notice to sign ' +
+      'in again.'
+  },
+  'anmeldung-netzwerk-abbruch': {
+    title: 'A brief network drop aborted the Microsoft sign-in',
+    detail:
+      'If the connection dropped for a moment during sign-in, for example when switching Wi-Fi, the ' +
+      'whole process aborted with a technical message although the sign-in code was still valid.'
+  },
+  'account-sitzung-abgelaufen-falsch': {
+    title: '"Session expired" was shown on accounts that worked fine',
+    detail:
+      'The account list showed this notice on every Microsoft account that had not started a game for ' +
+      'about a day. The sign-in renews itself on the next start in that case, though.'
+  },
+  'screenshots-tab-leer': {
+    title: 'The screenshots section sometimes stayed empty',
+    detail:
+      'If a screenshot was being written or briefly locked by a virus scanner while the section was ' +
+      'opened, it showed no screenshots at all although they were there.'
+  },
+  'java-32bit-gewaehlt': {
+    title: 'An existing 32-bit Java was used instead of installing a suitable one',
+    detail:
+      'If the only matching Java installation was a 32-bit version, the launcher used it even with ' +
+      'automatic Java management. With more than about 1.5 GB of memory the game then did not start.'
+  },
+  'java-pfad-fehlt-ohne-hinweis': {
+    title: 'A pinned Java path that no longer existed was replaced without notice',
+    detail:
+      'If the Java pinned in an instance was uninstalled or moved, the launcher silently started with ' +
+      'a different Java. A resulting error could hardly be traced back to the cause.'
+  },
+  'update-waehrend-aufgabe': {
+    title: 'A launcher update could cancel running downloads and tasks',
+    detail:
+      'Installing an update only waited for running games, not for downloads, imports or backups. ' +
+      'Those then aborted without notice and had to be started again.'
+  },
+  'update-fehler-rohtext': {
+    title: 'A failed update check showed a technical message',
+    detail:
+      'Under Settings, Updates, a failed check showed the raw, mostly English error text, for example ' +
+      'about a missing internet connection.'
+  },
+  'neoforge-neue-versionen': {
+    title: 'NeoForge could not be chosen for Minecraft 26.1 and newer',
+    detail:
+      'Since Minecraft names its versions by year, the launcher found no NeoForge versions for 26.1, ' +
+      '26.2 and 26.3 and showed NeoForge as unavailable, although they exist. NeoForge pre-releases ' +
+      'also counted as stable.'
+  },
+  'curseforge-shader-nach-loader': {
+    title: 'Shaders, resource packs and data packs from CurseForge were filtered by mod loader',
+    detail:
+      'When searching with the version filter on, the launcher also restricted CurseForge shaders, ' +
+      'resource packs and data packs to the instance\'s loader. These have no loader, so the CurseForge ' +
+      'results were largely missing.'
+  },
+  'update-1020-instanz-startverhalten': {
+    title: 'The update to 1.0.20 reset a deliberately chosen "Keep the launcher open" on instances',
+    detail:
+      'On the first start of 1.0.20, every instance set to "Keep the launcher open" was switched to ' +
+      '"As in the settings", even where that was set on purpose. Anyone affected sets it again in the ' +
+      'instance settings. From the next version on, such deliberate settings are kept when upgrading.'
   }
 }
 

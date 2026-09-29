@@ -88,6 +88,10 @@ interface ForgePromotions {
  */
 function neoforgePrefix(mcVersion: string): string {
   const parts = mcVersion.split('.')
+  // Year-based versions (26.1, 26.1.2, 26.2) keep their first part: NeoForge
+  // publishes them as 26.1.0.x, 26.1.2.x and 26.2.0.x. Dropping it as for
+  // 1.x turned 26.2 into "2.0.", which matches nothing.
+  if (parts[0] !== '1') return `${parts[0]}.${parts[1] ?? '0'}.${parts[2] ?? '0'}.`
   const minor = parts[1] ?? '0'
   const patch = parts[2] ?? '0'
   return `${minor}.${patch}.`
@@ -175,12 +179,14 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
 
   const prefix = neoforgePrefix(mcVersion)
   return data.versions
-    .filter((v) => v.startsWith(prefix))
+    // Builds for a snapshot of this version ("+snapshot-3") do not run on
+    // the release itself.
+    .filter((v) => v.startsWith(prefix) && !v.includes('+snapshot'))
     .reverse()
     .map((version, index) => ({
       version,
       gameVersion: mcVersion,
-      stable: !version.includes('beta'),
+      stable: !version.includes('beta') && !version.includes('alpha'),
       recommended: index === 0
     }))
 }

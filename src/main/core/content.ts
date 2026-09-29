@@ -14,6 +14,7 @@ import {
   contentFileName,
   contentPath,
   copyDatapackIntoWorld,
+  worldExists,
   removeDatapackFromWorld
 } from '../paths'
 import { getSettings } from '../store'
@@ -380,6 +381,8 @@ async function installContentOnce(
   // `applyUpdateOnce` and `toggleContent` apply: a disabled datapack has no
   // copies at all and only gets them once switched back on. The intended
   // assignment is still recorded either way.
+  // Worlds carried over from a previous version may have been deleted since.
+  if (worlds) worlds = worlds.filter((world) => worldExists(instanceId, world))
   if (worlds && worlds.length > 0) {
     if (enabled) {
       const failed = worlds.filter(
@@ -825,7 +828,9 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     const bare = (name: string): string =>
       name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
     const failed: string[] = []
-    for (const world of current.worlds) {
+    // A world deleted since it was assigned is dropped, not recreated.
+    next.worlds = current.worlds.filter((world) => worldExists(instanceId, world))
+    for (const world of next.worlds) {
       removeDatapackFromWorld(instanceId, world, bare(current.fileName))
       if (!copyDatapackIntoWorld(instanceId, world, destination, bare(next.fileName))) failed.push(world)
     }

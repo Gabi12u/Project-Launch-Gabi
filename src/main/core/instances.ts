@@ -10,12 +10,14 @@ import type {
   Instance,
   InstancePatch,
   InstanceSummary,
+  LaunchBehaviour,
   LoaderId
 } from '@shared/types'
 import {
   contentPath,
   copyDatapackIntoWorld,
   ensureInstanceLayout,
+  worldExists,
   paths,
   removeDatapackFromWorld,
   RESERVED_WINDOWS_NAMES,
@@ -119,17 +121,18 @@ export function loadInstances(force = false): Instance[] {
  */
 /**
  * One-time companion to the settings migration in `store.ts`. Every instance
- * used to copy the global launch behaviour when it was created, so the old
- * "keep" default sits in each instance.json as if chosen there, and the
- * global setting could never reach it again. Those go back to following the
- * global setting. Returns false if any instance could not be written, so the
- * caller tries again on the next start.
+ * used to copy the global launch behaviour when it was created, so that value
+ * sits in each instance.json as if chosen there, and the global setting could
+ * never reach it again. Instances holding exactly the old global value go back
+ * to following the global setting; any other value was picked for that
+ * instance on purpose and stays. Returns false if any instance could not be
+ * written, so the caller tries again on the next start.
  */
-export function migrateInstanceLaunchBehaviour(): boolean {
+export function migrateInstanceLaunchBehaviour(previousGlobal: LaunchBehaviour): boolean {
   let moved = 0
   let complete = true
   for (const instance of loadInstances()) {
-    if (instance.settings.launchBehaviour !== 'keep') continue
+    if (instance.settings.launchBehaviour !== previousGlobal) continue
     try {
       persist({ ...instance, settings: { ...instance.settings, launchBehaviour: 'default' } })
       moved++
@@ -865,9 +868,15 @@ export function listScreenshots(id: string, limit = 40): { file: string; takenAt
 
   return readdirSync(dir)
     .filter((f) => /\.(png|jpg|jpeg)$/i.test(f))
-    .map((f) => {
+    // Skipped per file like listWorlds and listRecordings: one screenshot
+    // still being written or locked by a scanner used to empty the whole tab.
+    .flatMap((f) => {
       const full = join(dir, f)
-      return { file: full, takenAt: statSync(full).mtimeMs }
+      try {
+        return [{ file: full, takenAt: statSync(full).mtimeMs }]
+      } catch {
+        return []
+      }
     })
     .sort((a, b) => b.takenAt - a.takenAt)
     .slice(0, limit)
@@ -1100,10 +1109,13 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       // a world, only for the staging copy renamed just above. Disabling one
       // removes its world copies outright; enabling restores them from the
       // staged file that now sits at `bare`.
-      if (item.type === 'datapack' && item.worlds && item.worlds.length > 0) {
+      // A world deleted since it was assigned is dropped from the list rather
+      // than recreated as an empty folder by the copy below.
+      const liveWorlds = item.worlds?.filter((world) => worldExists(id, world))
+      if (item.type === 'datapack' && liveWorlds && liveWorlds.length > 0) {
         if (enabled) {
           const source = contentPath(dir, bare)
-          const failed = item.worlds.filter((world) => !copyDatapackIntoWorld(id, world, source, bare))
+          const failed = liveWorlds.filter((world) => !copyDatapackIntoWorld(id, world, source, bare))
           if (failed.length > 0) {
             notify(
               'warning',
@@ -1115,12 +1127,12 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
             )
           }
         } else {
-          for (const world of item.worlds) removeDatapackFromWorld(id, world, bare)
+          for (const world of liveWorlds) removeDatapackFromWorld(id, world, bare)
         }
       }
 
       const content = instance.content.map((c) =>
-        c.id === contentId ? { ...c, fileName: nextName, enabled } : c
+        c.id === contentId ? { ...c, fileName: nextName, enabled, ...(liveWorlds ? { worlds: liveWorlds } : {}) } : c
       )
       return persist({ ...instance, content })
     })

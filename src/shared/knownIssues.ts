@@ -2815,6 +2815,144 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Bildschirmleser lasen den englischen Text deshalb mit deutscher Aussprache vor.',
     state: 'fixing',
     since: '2026-09-29'
+  },
+  {
+    id: 'neustart-startet-instanz-erneut',
+    title: 'Ein Neustart aus den Einstellungen startete eine Instanz erneut',
+    detail:
+      'Wurde der Launcher über die Desktop-Verknüpfung einer Instanz geöffnet, übernahm der Neustart ' +
+      'nach einem Sprachwechsel diesen Aufruf und startete die Instanz noch einmal, ohne Rückfrage.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'datapack-geloeschte-welt',
+    title: 'Eine gelöschte Welt tauchte durch ein Datapack als leere Welt wieder auf',
+    detail:
+      'War einer Welt ein Datapack zugeordnet und wurde die Welt im Explorer gelöscht, legte der ' +
+      'Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Datapacks ihren ' +
+      'Ordner neu an. Die leere Welt erschien danach in der Liste und ließ sich im Launcher nicht ' +
+      'entfernen.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'sicherung-zeitstempel',
+    title: 'Nach dem Wiederherstellen einer Sicherung stimmten „Zuletzt gespielt“ und die Reihenfolge der Screenshots nicht mehr',
+    detail:
+      'Sicherungen speicherten für jede Datei den Zeitpunkt der Sicherung statt ihres echten ' +
+      'Änderungsdatums, und beim Wiederherstellen bekam jede Datei den aktuellen Zeitpunkt. Welten ' +
+      'wirkten danach alle gerade gespielt, und Screenshots standen in zufälliger Reihenfolge.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'anmeldung-abgelaufen-rohtext',
+    title: 'Eine abgelaufene Microsoft-Anmeldung zeigte eine englische Fehlermeldung von Microsoft',
+    detail:
+      'Lief die Anmeldung eines Accounts ab, etwa nach 90 Tagen ohne Nutzung oder nach einer ' +
+      'Passwortänderung, erschien beim Spielstart ein langer englischer Text von Microsoft statt des ' +
+      'Hinweises, sich neu anzumelden.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'anmeldung-netzwerk-abbruch',
+    title: 'Ein kurzer Netzwerkaussetzer brach die Microsoft-Anmeldung ab',
+    detail:
+      'Fiel die Verbindung während der Anmeldung für einen Moment aus, zum Beispiel beim WLAN-Wechsel, ' +
+      'brach der ganze Vorgang mit einer technischen Meldung ab, obwohl der Anmeldecode noch gültig ' +
+      'war.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'account-sitzung-abgelaufen-falsch',
+    title: '„Sitzung abgelaufen“ stand auch an Accounts, die einwandfrei funktionierten',
+    detail:
+      'Die Account-Liste zeigte diesen Hinweis an jedem Microsoft-Account, mit dem seit etwa einem Tag ' +
+      'kein Spiel gestartet wurde. Die Anmeldung erneuert sich in diesem Fall aber beim nächsten Start ' +
+      'von selbst.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'screenshots-tab-leer',
+    title: 'Der Screenshot-Bereich blieb manchmal leer',
+    detail:
+      'Wurde ein Screenshot gerade geschrieben oder von einem Virenscanner kurz gesperrt, während man ' +
+      'den Bereich öffnete, zeigte er gar keine Screenshots an, obwohl sie vorhanden waren.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'java-32bit-gewaehlt',
+    title: 'Ein vorhandenes 32-Bit-Java wurde genommen statt ein passendes zu installieren',
+    detail:
+      'War die einzige passende Java-Installation eine 32-Bit-Version, verwendete der Launcher sie ' +
+      'auch bei automatischer Java-Verwaltung. Mit mehr als etwa 1,5 GB Arbeitsspeicher startete das ' +
+      'Spiel dann nicht.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'java-pfad-fehlt-ohne-hinweis',
+    title: 'Ein fest eingestellter Java-Pfad, den es nicht mehr gab, wurde ohne Hinweis ersetzt',
+    detail:
+      'Wurde das in einer Instanz fest eingestellte Java deinstalliert oder verschoben, startete der ' +
+      'Launcher still mit einem anderen Java. Ein daraus folgender Fehler ließ sich so kaum auf die ' +
+      'Ursache zurückführen.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'update-waehrend-aufgabe',
+    title: 'Ein Launcher-Update konnte laufende Downloads und Aufgaben abbrechen',
+    detail:
+      'Das Einspielen eines Updates wartete nur auf laufende Spiele, nicht auf Downloads, Importe oder ' +
+      'Sicherungen. Diese brachen dann ohne Hinweis ab und mussten neu gestartet werden.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'update-fehler-rohtext',
+    title: 'Eine fehlgeschlagene Update-Prüfung zeigte eine technische Meldung',
+    detail:
+      'Unter Einstellungen, Updates stand bei einer fehlgeschlagenen Prüfung der rohe, meist englische ' +
+      'Fehlertext, etwa zu einer fehlenden Internetverbindung.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'neoforge-neue-versionen',
+    title: 'NeoForge war für Minecraft 26.1 und neuer nicht wählbar',
+    detail:
+      'Seit Minecraft seine Versionen nach Jahreszahlen benennt, fand der Launcher für 26.1, 26.2 und ' +
+      '26.3 keine NeoForge-Versionen und zeigte NeoForge als nicht verfügbar an, obwohl es sie gibt. ' +
+      'Vorabversionen von NeoForge galten außerdem als stabil.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'curseforge-shader-nach-loader',
+    title: 'Shader, Ressourcenpakete und Datapacks von CurseForge wurden nach dem Mod-Loader gefiltert',
+    detail:
+      'Bei der Suche mit eingeschaltetem Versionsfilter schränkte der Launcher auch Shader, ' +
+      'Ressourcenpakete und Datapacks von CurseForge auf den Loader der Instanz ein. Diese Inhalte ' +
+      'haben keinen Loader, deshalb fehlten die CurseForge-Treffer weitgehend.',
+    state: 'fixing',
+    since: '2026-09-29'
+  },
+  {
+    id: 'update-1020-instanz-startverhalten',
+    title: 'Das Update auf 1.0.20 setzte ein bewusst gewähltes „Launcher offen lassen“ bei Instanzen zurück',
+    detail:
+      'Beim ersten Start von 1.0.20 wurde jede Instanz mit „Launcher offen lassen“ auf „Wie in den ' +
+      'Einstellungen“ umgestellt, auch wenn das bei ihr absichtlich so eingestellt war. Wer das ' +
+      'betrifft, stellt es in den Einstellungen der Instanz neu ein. Ab der nächsten Version bleiben ' +
+      'solche bewussten Einstellungen beim Umstieg erhalten.',
+    state: 'fixing',
+    since: '2026-09-29'
   }
 ]
 

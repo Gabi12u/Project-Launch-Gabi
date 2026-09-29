@@ -63,7 +63,7 @@ try {
     const { getSettings, takeInstanceBehaviourMigration } = buildFor(userData)
     const settings = getSettings()
     check(settings.launchBehaviour === 'hide', `Frisch: launchBehaviour ist "${settings.launchBehaviour}", erwartet hide`)
-    check(takeInstanceBehaviourMigration() === false, 'Frisch: Instanzen sollten nicht umgestellt werden')
+    check(takeInstanceBehaviourMigration() === null, 'Frisch: Instanzen sollten nicht umgestellt werden')
     notes.push(`Frische Installation: launchBehaviour = ${settings.launchBehaviour}`)
   }
 
@@ -72,16 +72,20 @@ try {
     const userData = freshUserData()
     const file = join(userData, 'launcher.json')
     writeFileSync(file, JSON.stringify({ launchBehaviour: 'keep', onboarded: true }))
-    const { getSettings, takeInstanceBehaviourMigration } = buildFor(userData)
+    const { getSettings, saveSettings, takeInstanceBehaviourMigration } = buildFor(userData)
     const settings = getSettings()
     check(settings.launchBehaviour === 'hide', `Alt keep: steht auf "${settings.launchBehaviour}", erwartet hide`)
     check(settings.onboarded === true, 'Alt keep: andere Einstellungen sind verloren gegangen')
-    check(takeInstanceBehaviourMigration() === true, 'Alt keep: Instanzen wurden nicht zur Umstellung vorgemerkt')
-    check(takeInstanceBehaviourMigration() === false, 'Alt keep: Vormerkung wurde nicht zurueckgesetzt')
+    check(takeInstanceBehaviourMigration() === 'keep', 'Alt keep: alter Wert wurde nicht fuer die Instanzen weitergegeben')
+    check(takeInstanceBehaviourMigration() === null, 'Alt keep: Vormerkung wurde nicht zurueckgesetzt')
+    // Vor der Instanz-Umstellung bleibt die Datei unveraendert, damit ein
+    // abgebrochener Start es mit dem alten Wert erneut versucht.
+    const before = JSON.parse(readFileSync(file, 'utf8'))
+    check(before.launchBehaviour === 'keep' && before.launchBehaviourDefaultApplied !== true, 'Alt keep: Datei vor der Instanz-Umstellung schon geaendert')
+    // So schliesst index.ts die Umstellung ab.
+    saveSettings({ launchBehaviourDefaultApplied: true })
     const saved = JSON.parse(readFileSync(file, 'utf8'))
-    check(saved.launchBehaviour === 'hide', 'Alt keep: Umstellung wurde nicht gespeichert')
-    // Erst wenn auch die Instanzen umgestellt sind, setzt index.ts die Markierung.
-    check(saved.launchBehaviourDefaultApplied !== true, 'Alt keep: Markierung vor der Instanz-Umstellung gesetzt')
+    check(saved.launchBehaviour === 'hide' && saved.launchBehaviourDefaultApplied === true, 'Alt keep: Umstellung wurde nicht gespeichert')
     notes.push(`Bestand mit keep: umgestellt auf ${settings.launchBehaviour}`)
   }
 
@@ -95,7 +99,7 @@ try {
     const { getSettings, takeInstanceBehaviourMigration } = buildFor(userData)
     const settings = getSettings()
     check(settings.launchBehaviour === 'keep', `Bewusst keep: wurde ueberschrieben zu "${settings.launchBehaviour}"`)
-    check(takeInstanceBehaviourMigration() === false, 'Bewusst keep: Instanzen sollten nicht umgestellt werden')
+    check(takeInstanceBehaviourMigration() === null, 'Bewusst keep: Instanzen sollten nicht umgestellt werden')
     notes.push(`Bewusst gewaehltes keep: unangetastet (${settings.launchBehaviour})`)
   }
 
@@ -103,9 +107,12 @@ try {
   {
     const userData = freshUserData()
     writeFileSync(join(userData, 'launcher.json'), JSON.stringify({ launchBehaviour: 'close' }))
-    const { getSettings } = buildFor(userData)
+    const { getSettings, takeInstanceBehaviourMigration } = buildFor(userData)
     const settings = getSettings()
     check(settings.launchBehaviour === 'close', `Alt close: wurde geaendert zu "${settings.launchBehaviour}"`)
+    // Instanzen mit "close" folgen danach der globalen Einstellung, ein
+    // bewusstes "keep" an einer Instanz bleibt stehen.
+    check(takeInstanceBehaviourMigration() === 'close', 'Alt close: alter Wert wurde nicht fuer die Instanzen weitergegeben')
     notes.push(`Bestand mit close: unangetastet (${settings.launchBehaviour})`)
   }
 } catch (err) {

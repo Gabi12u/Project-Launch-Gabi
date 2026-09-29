@@ -300,7 +300,11 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
   // does. Restricting this to `mod` meant a search filtered to Fabric returned
   // every CurseForge modpack regardless of loader, while the Modrinth half of
   // the same result list was filtered correctly.
-  if (query.loader === 'quilt') {
+  // Shaders, resource packs and data packs have no loader on CurseForge, so
+  // filtering them by one returned next to nothing, the same reason the
+  // Modrinth provider leaves the loader facet out for them.
+  const loaderApplies = query.type === 'mod' || query.type === 'modpack'
+  if (loaderApplies && query.loader === 'quilt') {
     // Quilt runs Fabric mods, so a Quilt search must also surface Fabric-only
     // projects. The search endpoint has no OR filter for loaders, so this
     // runs two requests and merges them, deduplicating by mod id.
@@ -327,7 +331,8 @@ export async function search(query: SearchQuery): Promise<{ items: SearchResultI
     return { items: merged.map(mapMod), total: quilt.total + fabric.total }
   }
 
-  const modLoaderType = query.loader && query.loader !== 'vanilla' ? LOADER_TYPE[query.loader] : undefined
+  const modLoaderType =
+    loaderApplies && query.loader && query.loader !== 'vanilla' ? LOADER_TYPE[query.loader] : undefined
   const { mods, total } = await runSearch(query, modLoaderType)
   return { items: mods.map(mapMod), total }
 }

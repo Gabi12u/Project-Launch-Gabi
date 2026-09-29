@@ -251,6 +251,16 @@ export function assertWorldExists(instanceId: string, world: string): void {
   }
 }
 
+/** Whether a world folder of that name still exists, without throwing. */
+export function worldExists(instanceId: string, world: string): boolean {
+  try {
+    assertWorldExists(instanceId, world)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Datapacks folder inside one specific world. */
 export function worldDatapacksDir(instanceId: string, world: string): string {
   return safeJoin(paths.saves(instanceId), join(world, 'datapacks'))
@@ -269,6 +279,10 @@ export function copyDatapackIntoWorld(
   fileName: string
 ): boolean {
   try {
+    // The recursive mkdir below would otherwise recreate a world deleted in
+    // Explorer as an empty folder holding nothing but this datapack, which
+    // then showed up in the world list for good.
+    if (!worldExists(instanceId, world)) return false
     const dir = worldDatapacksDir(instanceId, world)
     const target = contentPath(dir, fileName)
     if (existsSync(target)) return readFileSync(target).equals(readFileSync(sourceFile))

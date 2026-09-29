@@ -16,6 +16,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync
 } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
@@ -25,6 +26,16 @@ import { TaskCancelledError } from '../tasks'
 import { tr } from '@shared/i18n'
 
 const logger = log('archive')
+
+/** Gives an extracted file the modification time stored in the archive. */
+function keepEntryTime(target: string, entry: AdmZip.IZipEntry): void {
+  try {
+    const time = entry.header.time
+    if (time instanceof Date && !Number.isNaN(time.getTime())) utimesSync(target, time, time)
+  } catch {
+    // Only the date is lost; the file itself is written.
+  }
+}
 
 /**
  * Upper bound for a single entry's decompressed size.
@@ -217,6 +228,7 @@ export async function extractAllSlowly(
       assertReasonableSize(entry)
       mkdirSync(join(target, '..'), { recursive: true })
       writeFileSync(target, entry.getData())
+      keepEntryTime(target, entry)
     }
 
     done++
@@ -427,16 +439,21 @@ export async function zipFolder(
     // reaches `onSkip` here, while only one handle is ever open at a time:
     // the real read happens lazily once yazl gets to this entry.
     let size: number
+    let mtime: Date
     try {
       closeSync(openSync(file, 'r'))
-      size = statSync(file).size
+      const stat = statSync(file)
+      size = stat.size
+      mtime = stat.mtime
     } catch (err) {
       logger.warn(`Überspringe ${file}:`, err)
       options.onSkip?.(rel, err)
       continue
     }
 
-    zip.addReadStreamLazy(entryName, { size }, (cb) => {
+    // Without mtime yazl stamps every entry with the backup's own time, and a
+    // restore then made every world look just played and shuffled screenshots.
+    zip.addReadStreamLazy(entryName, { size, mtime }, (cb) => {
       if (options.signal?.aborted) {
         zip.emit('error', new TaskCancelledError())
         return

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
-import type { Account, LauncherSettings } from '@shared/types'
+import type { Account, LauncherSettings, LaunchBehaviour } from '@shared/types'
 import { log } from './logger'
 import { notify } from './events'
 import { tr } from '@shared/i18n'
@@ -179,17 +179,17 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   return next
 }
 
-let instanceBehaviourMigrationPending = false
+let instanceBehaviourMigrationFrom: LaunchBehaviour | null = null
 
 /**
- * True exactly once after `getSettings` moved an existing install onto the
- * new launch behaviour default, so the caller can move the instances along
- * too. Cleared on reading.
+ * The global launch behaviour as it was before `getSettings` moved an
+ * existing install onto the new default, handed out exactly once so the
+ * caller can move the instances along too. Null when nothing is pending.
  */
-export function takeInstanceBehaviourMigration(): boolean {
-  const pending = instanceBehaviourMigrationPending
-  instanceBehaviourMigrationPending = false
-  return pending
+export function takeInstanceBehaviourMigration(): LaunchBehaviour | null {
+  const from = instanceBehaviourMigrationFrom
+  instanceBehaviourMigrationFrom = null
+  return from
 }
 
 export function getSettings(): LauncherSettings {
@@ -220,20 +220,14 @@ export function getSettings(): LauncherSettings {
     // The launch behaviour default moved from "keep" to "hide" (the main
     // window steps aside for the game and its live-log window). "keep" was
     // the old default nearly everyone still has without ever choosing it, so
-    // it moves along once. Anything picked afterwards is left alone. The
-    // marker only turns true once the instances were moved along as well
-    // (index.ts), so a start that fails halfway simply tries again.
+    // it moves along once. Anything picked afterwards is left alone. Only
+    // held in memory here: index.ts writes it together with the marker once
+    // the instances were moved along as well, so a start that fails halfway
+    // tries again with the original value still on disk.
     if (!firstRun && stored.launchBehaviourDefaultApplied !== true) {
+      instanceBehaviourMigrationFrom = settings.launchBehaviour
       if (settings.launchBehaviour === 'keep') settings.launchBehaviour = 'hide'
       settings.launchBehaviourDefaultApplied = false
-      instanceBehaviourMigrationPending = true
-      try {
-        writeJsonAtomic(settingsFile(), settings)
-      } catch (err) {
-        // Harmless: the change still applies to this session and is simply
-        // tried again on the next start.
-        logger.warn('Umstellung des Startverhaltens konnte nicht gespeichert werden:', err)
-      }
     }
   }
   return settings

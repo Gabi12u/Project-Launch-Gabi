@@ -840,8 +840,10 @@ export async function resolveJava(options: {
   task?: Task
   /** Only for the mismatch warning below, to link back to where it was set. */
   instanceId?: string
+  /** False for the silent pre-launch check, which runs on every page visit. */
+  announce?: boolean
 }): Promise<JavaRuntime> {
-  const { explicitPath, major, autoManage, task, instanceId } = options
+  const { explicitPath, major, autoManage, task, instanceId, announce = true } = options
 
   if (explicitPath) {
     const runtime = await probeJava(explicitPath)
@@ -871,6 +873,19 @@ export async function resolveJava(options: {
       return runtime
     }
     logger.warn(`Angegebener Java-Pfad unbrauchbar: ${explicitPath}`)
+    // Falling through silently to another Java left whatever broke next with
+    // no pointer back to the real cause: the pinned Java is gone.
+    if (announce) {
+      notify(
+        'warning',
+        tr('Eingestelltes Java nicht gefunden', 'Chosen Java not found'),
+        tr(
+          'Die fest eingestellte Java-Installation dieser Instanz gibt es nicht mehr. Der Launcher nimmt stattdessen ein passendes anderes Java. Prüfe den Java-Pfad in den Einstellungen der Instanz.',
+          'The Java installation pinned for this instance no longer exists. The launcher uses another suitable Java instead. Check the Java path in the instance settings.'
+        ),
+        instanceId ? { route: `/instances/${instanceId}?tab=settings` } : undefined
+      )
+    }
   }
 
   const detected = await detectJavaRuntimes()
@@ -886,12 +901,20 @@ export async function resolveJava(options: {
   const preferred = native.length > 0 ? native : [...detected]
 
   // Exact major match first; Minecraft is picky about newer JVMs on old versions.
-  const exact = preferred.filter((r) => r.major === major)
+  // Native arch only here: when the only exact match is a leftover 32-bit
+  // JVM, automatic management installs a proper one below instead.
+  const exact = native.filter((r) => r.major === major)
   if (exact.length > 0) {
     return exact.find((r) => r.managed) ?? exact[0]
   }
 
   if (!autoManage) {
+    // Without automatic management a foreign-arch exact match still beats
+    // refusing to start, as before.
+    const foreignExact = preferred.filter((r) => r.major === major)
+    if (foreignExact.length > 0) {
+      return foreignExact.find((r) => r.managed) ?? foreignExact[0]
+    }
     // Fall back to the closest newer runtime rather than refusing to start —
     // but only within a range that actually still runs the game. Java 9 removed
     // the reflective access pre-1.13 Forge depends on, so handing a Java 8

@@ -172,7 +172,15 @@ function UpdatePanel(): JSX.Element {
           </div>
         )}
 
-        {status?.error && <p className="hint mt-8">{status.error}</p>}
+        {/* The raw error (often English network text) stays in the log. */}
+        {status?.error && (
+          <p className="hint mt-8">
+            {tr(
+              'Der Update-Server war nicht erreichbar. Prüfe deine Internetverbindung und versuche es später erneut.',
+              'The update server could not be reached. Check your internet connection and try again later.'
+            )}
+          </p>
+        )}
 
         {status?.notes && state !== 'up-to-date' && (
           // The raw release notes are markdown from GitHub, not plain text, so

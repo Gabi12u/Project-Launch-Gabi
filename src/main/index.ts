@@ -353,8 +353,10 @@ function bootstrap(): void {
     adoptRunningFromDisk()
     try {
       loadInstances()
-      if (takeInstanceBehaviourMigration() && migrateInstanceLaunchBehaviour()) {
+      const previousBehaviour = takeInstanceBehaviourMigration()
+      if (previousBehaviour && migrateInstanceLaunchBehaviour(previousBehaviour)) {
         try {
+          // Also writes the new global value getSettings holds in memory.
           saveSettings({ launchBehaviourDefaultApplied: true })
         } catch (err) {
           logger.warn('Umstellung des Startverhaltens konnte nicht abgeschlossen werden:', err)

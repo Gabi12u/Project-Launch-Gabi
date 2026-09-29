@@ -362,6 +362,7 @@ async function pollForToken(
   const deadline = startedAt + device.expires_in * 1000
   let interval = Math.max(device.interval, 1) * 1000
   let unreadableErrors = 0
+  let networkErrors = 0
   let polls = 0
 
   /**
@@ -401,7 +402,23 @@ async function pollForToken(
       if (session.cancelled) throw new Error(cancelledMessage())
       return token
     } catch (err) {
-      if (!(err instanceof HttpError)) throw err
+      if (session.cancelled) throw new Error(cancelledMessage())
+      if (!(err instanceof HttpError)) {
+        // A connection drop for a moment (Wi-Fi switch, sleep, VPN) is no
+        // reason to give up while the code is still valid for minutes; only
+        // a lasting outage ends the attempt.
+        networkErrors++
+        logger.warn(`Anmeldeabfrage ohne Verbindung (${networkErrors}. Mal, nach ${since()}):`, err)
+        if (networkErrors < 6) continue
+        throw new Error(
+          tr(
+            'Keine Verbindung zu Microsoft. Prüfe deine Internetverbindung und versuche es erneut.',
+            'No connection to Microsoft. Check your internet connection and try again.'
+          ),
+          { cause: err }
+        )
+      }
+      networkErrors = 0
 
       // Until the user finishes in the browser, both systems answer with an
       // error code rather than a token.
@@ -842,15 +859,49 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // default) would otherwise send a perfectly valid token to the wrong place
   // and fail every time with nothing but an unexplained HTTP 400.
   const clientId = account.issuerClientId ?? getSettings().microsoftClientId
-  const token = await fetchJson<TokenResponse>(
-    endpointsFor(clientId).token,
-    form({
-      client_id: clientId,
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      scope: SCOPE
-    })
-  )
+  let token: TokenResponse
+  try {
+    token = await fetchJson<TokenResponse>(
+      endpointsFor(clientId).token,
+      form({
+        client_id: clientId,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        scope: SCOPE
+      })
+    )
+  } catch (err) {
+    // Microsoft's raw answer (long, English, full of trace ids) used to reach
+    // the launch status as it was.
+    logger.warn(`Token-Erneuerung für ${account.username} fehlgeschlagen:`, err)
+    if (err instanceof HttpError && err.status >= 400 && err.status < 500 && err.status !== 429) {
+      // Expired after long inactivity, revoked by a password change or by
+      // removing the app's access: only a fresh sign in helps.
+      throw new Error(
+        tr(
+          `Die Anmeldung von ${account.username} ist abgelaufen. Bitte melde dich unter Accounts neu an.`,
+          `The sign-in of ${account.username} has expired. Please sign in again under Accounts.`
+        ),
+        { cause: err }
+      )
+    }
+    if (err instanceof HttpError) {
+      throw new Error(
+        tr(
+          'Der Anmeldedienst von Microsoft antwortet gerade nicht. Versuche es gleich noch einmal.',
+          'Microsoft\'s sign-in service is not responding right now. Try again in a moment.'
+        ),
+        { cause: err }
+      )
+    }
+    throw new Error(
+      tr(
+        'Die Anmeldung konnte nicht erneuert werden, weil keine Verbindung zu Microsoft besteht. Prüfe deine Internetverbindung.',
+        'The sign-in could not be renewed because there is no connection to Microsoft. Check your internet connection.'
+      ),
+      { cause: err }
+    )
+  }
 
   // Microsoft can rotate the refresh token on every single use, and the chain
   // below (Xbox Live, XSTS, Minecraft) makes three more network calls that can

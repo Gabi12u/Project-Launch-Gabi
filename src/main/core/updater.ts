@@ -8,6 +8,7 @@ import { log } from '../logger'
 import { getSettings, saveSettings } from '../store'
 import { runningCount } from './running'
 import { startingCount } from './launch'
+import { listTasks } from '../tasks'
 import { getLanguage, tr } from '@shared/i18n'
 
 const logger = log('updater')
@@ -192,7 +193,9 @@ export function initUpdater(): void {
     // `startingCount` matters as much as `runningCount` here: a launch that is
     // still downloading files has no process yet, so the running registry says
     // "nothing is up" while the user is very much waiting for their game.
-    const busy = runningCount() > 0 || startingCount() > 0
+    // A download, import or backup in progress would be cut off by the
+    // restart just the same, and the app's own relaunch already waits for it.
+    const busy = runningCount() > 0 || startingCount() > 0 || tasksRunning()
 
     if (fromCache && wanted && !busy) {
       logger.info(`Update ${info.version} wird direkt beim Start eingespielt`)
@@ -210,8 +213,8 @@ export function initUpdater(): void {
         // Re-checked at the moment it matters. `busy` was read 900 ms ago, and
         // that is easily enough time for someone to hit Play — quitting then
         // would kill the game they just started.
-        if (runningCount() > 0 || startingCount() > 0) {
-          logger.info('Installation verschoben, es wurde inzwischen ein Spiel gestartet')
+        if (runningCount() > 0 || startingCount() > 0 || tasksRunning()) {
+          logger.info('Installation verschoben, es wurde inzwischen ein Spiel oder eine Aufgabe gestartet')
           setStatus({ state: 'ready', version: info.version, detail: tr('Update wartet auf Neustart.', 'Update is waiting for a restart.') })
           return
         }
@@ -396,6 +399,15 @@ export function installUpdate(): void {
     return
   }
 
+  if (tasksRunning()) {
+    notify(
+      'warning',
+      tr('Update später', 'Update later'),
+      tr('Warte, bis alle Downloads und Aufgaben fertig sind, dann klappt das Update.', 'Wait until all downloads and tasks are finished, then the update works.')
+    )
+    return
+  }
+
   logger.info('Installiere Update und starte neu')
   // Silent for the same reason as the start-up path above: this installer is
   // an assisted one, so showing its UI walks the user through the full setup
@@ -420,6 +432,19 @@ export function installUpdate(): void {
       )
       return
     }
+    if (tasksRunning()) {
+      notify(
+        'warning',
+        tr('Update später', 'Update later'),
+        tr('Warte, bis alle Downloads und Aufgaben fertig sind, dann klappt das Update.', 'Wait until all downloads and tasks are finished, then the update works.')
+      )
+      return
+    }
     autoUpdater.quitAndInstall(true, true)
   })
+}
+
+/** Whether a download, import, backup or similar task is still running. */
+function tasksRunning(): boolean {
+  return listTasks().some((task) => task.state === 'running')
 }

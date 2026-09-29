@@ -271,7 +271,8 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
         major: instance.settings.javaMajorOverride ?? javaMajor,
         // Never trigger a download from the preflight panel.
         autoManage: false,
-        instanceId: instance.id
+        instanceId: instance.id,
+        announce: false
       })
       java = { major: runtime.major, version: runtime.version, path: runtime.path, managed: runtime.managed }
     } catch {
