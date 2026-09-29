@@ -33,6 +33,11 @@ export function locale(): string {
   return current === 'en' ? 'en-US' : 'de-DE'
 }
 
+/** A number with a fixed count of decimals, in the current language's style. */
+export function formatNumber(value: number, digits: number): string {
+  return value.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}
+
 export const SUPPORTED_LANGUAGES: { id: LanguageId; label: string }[] = [
   { id: 'de', label: 'Deutsch' },
   { id: 'en', label: 'English' }

@@ -184,7 +184,7 @@ export function HomeView(): JSX.Element {
       {news.length > 0 && (
         <section className="col gap-16">
           <div className="row-between">
-            <h2 className="section-title">Minecraft News</h2>
+            <h2 className="section-title">{tr('Minecraft News', 'Minecraft news')}</h2>
           </div>
           <div className="discover-grid stagger">
             {news.slice(0, 6).map((item) => (

@@ -8,7 +8,7 @@ import { paths } from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { TaskCancelledError, type Task } from '../tasks'
-import { tr } from '@shared/i18n'
+import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('net')
 
@@ -576,9 +576,10 @@ export async function downloadFile(
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+  // Shown in task progress, so in the user's number style (150,3 MB in German).
+  if (bytes < 1024 * 1024) return `${formatNumber(bytes / 1024, 0)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${formatNumber(bytes / 1024 / 1024, 1)} MB`
+  return `${formatNumber(bytes / 1024 / 1024 / 1024, 2)} GB`
 }
 
 export interface DownloadAllOptions {

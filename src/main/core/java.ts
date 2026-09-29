@@ -11,7 +11,7 @@ import { downloadFile, fetchJson } from './net'
 import { extractAll, extractTarGz } from './archive'
 import { TaskCancelledError, type Task } from '../tasks'
 import { osArch, osName, type VersionJson } from './mojang'
-import { tr } from '@shared/i18n'
+import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('java')
 const execFileAsync = promisify(execFile)
@@ -679,8 +679,8 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
         received += delta
         task?.update(
           tr(
-            `Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB geladen`,
-            `Java ${major} · ${(received / 1024 / 1024).toFixed(1)} MB downloaded`
+            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} MB geladen`,
+            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} MB downloaded`
           ),
           null
         )

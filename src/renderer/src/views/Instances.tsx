@@ -85,7 +85,7 @@ export function InstancesView(): JSX.Element {
             title={tr('Ein .mrpack oder ein CurseForge-Zip einlesen', 'Read a .mrpack or a CurseForge zip')}
           >
             <IconDownload size={16} />
-            Modpack
+            {tr('Modpack', 'Modpack')}
           </button>
           <button
             className="btn"

@@ -18,7 +18,7 @@ import { emit, getMainWindow, notify } from '../events'
 import { log } from '../logger'
 import { tryGetInstance } from './instances'
 import { listAdopted, listRunning, onRunningChanged } from './running'
-import { tr } from '@shared/i18n'
+import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('recording')
 
@@ -630,7 +630,7 @@ async function finishRecordingInner(
     logger.warn('Begleitdaten der Aufnahme konnten nicht geschrieben werden:', err)
   }
 
-  const mb = (current.bytes / 1024 / 1024).toFixed(1)
+  const mb = formatNumber(current.bytes / 1024 / 1024, 1)
   const seconds = Math.round(length / 1000)
   logger.info(`Aufnahme fertig: ${current.file} (${mb} MB, ${seconds}s)`)
   notify(

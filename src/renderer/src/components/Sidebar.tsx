@@ -32,11 +32,11 @@ export function Sidebar(): JSX.Element {
   const running = instances.filter((i) => i.running).length
 
   const entries: NavEntry[] = [
-    { id: 'home', label: 'Home', icon: <IconHome />, route: '/home' },
+    { id: 'home', label: tr('Home', 'Home'), icon: <IconHome />, route: '/home' },
     { id: 'instances', label: tr('Instanzen', 'Instances'), icon: <IconGrid />, route: '/instances' },
-    { id: 'mods', label: 'Mods', icon: <IconPackage />, route: '/mods', badge: updateCount },
+    { id: 'mods', label: tr('Mods', 'Mods'), icon: <IconPackage />, route: '/mods', badge: updateCount },
     { id: 'discover', label: tr('Entdecken', 'Discover'), icon: <IconCompass />, route: '/discover' },
-    { id: 'backups', label: 'Backups', icon: <IconSave />, route: '/backups' }
+    { id: 'backups', label: tr('Backups', 'Backups'), icon: <IconSave />, route: '/backups' }
   ]
 
   /* --- Sliding active pill ----------------------------------------- */

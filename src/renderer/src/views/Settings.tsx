@@ -650,7 +650,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               </section>
 
               <section className="setting-group">
-                <h3>Downloads</h3>
+                <h3>{tr('Downloads', 'Downloads')}</h3>
                 <div className="field">
                   <label className="label" htmlFor="st-gleichzeitige-downloads">
                     {tr('Gleichzeitige Downloads', 'Parallel downloads')}: {concurrentDownloads}

@@ -223,7 +223,7 @@ export function ModsView(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">Mods</h1>
+          <h1 className="page-title">{tr('Mods', 'Mods')}</h1>
           <p className="page-sub">
             {tr(
               `Alle Inhalte über sämtliche Instanzen hinweg, ${rows.length} ${pluralise(rows.length, 'Eintrag', 'Einträge')}` +

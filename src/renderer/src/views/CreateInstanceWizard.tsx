@@ -307,7 +307,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               onClick={() => setShowSnapshots((value) => !value)}
               title={tr('Testversionen von Mojang anzeigen', 'Show test versions from Mojang')}
             >
-              Snapshots
+              {tr('Snapshots', 'Snapshots')}
             </button>
           </div>
 
@@ -482,7 +482,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
       {step === 2 && (
         <div className="col gap-20">
           <div className="field">
-            <label className="label" htmlFor="ci-name">Name</label>
+            <label className="label" htmlFor="ci-name">{tr('Name', 'Name')}</label>
             <input id="ci-name"
               className="input"
               placeholder={suggestedName}
@@ -522,7 +522,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           </div>
 
           <div className="field">
-            <label className="label" id="ci-icon">Icon</label>
+            <label className="label" id="ci-icon">{tr('Icon', 'Icon')}</label>
             <div role="group" aria-labelledby="ci-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button

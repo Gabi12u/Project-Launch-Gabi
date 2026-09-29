@@ -25,11 +25,11 @@ import {
 import { tr } from '@shared/i18n'
 
 const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
-  mod: 'Mods',
+  mod: tr('Mods', 'Mods'),
   resourcepack: tr('Resourcepacks', 'Resource packs'),
   shaderpack: tr('Shader', 'Shaders'),
-  datapack: 'Data Packs',
-  modpack: 'Modpacks'
+  datapack: tr('Data Packs', 'Data packs'),
+  modpack: tr('Modpacks', 'Modpacks')
 }
 
 /** Undated entries sort last rather than jumping to the top as NaN would. */
@@ -328,7 +328,7 @@ export function ContentBrowser({
           onChange={setSort}
           options={[
             { value: 'relevance', label: tr('Relevanz', 'Relevance') },
-            { value: 'downloads', label: 'Downloads' },
+            { value: 'downloads', label: tr('Downloads', 'Downloads') },
             { value: 'updated', label: tr('Aktualisiert', 'Updated') }
           ]}
         />

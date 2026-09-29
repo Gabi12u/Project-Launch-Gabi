@@ -1884,6 +1884,12 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'On the first start of 1.0.20, every instance set to "Keep the launcher open" was switched to ' +
       '"As in the settings", even where that was set on purpose. Anyone affected sets it again in the ' +
       'instance settings. From the next version on, such deliberate settings are kept when upgrading.'
+  },
+  'zahlen-punkt-statt-komma': {
+    title: 'Download progress showed numbers with a point instead of a comma in German',
+    detail:
+      'When downloading game files, Java and modpacks, and in the notice after a recording, German ' +
+      'showed sizes as 150.3 MB instead of 150,3 MB.'
   }
 }
 

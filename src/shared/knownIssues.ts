@@ -2953,6 +2953,15 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'solche bewussten Einstellungen beim Umstieg erhalten.',
     state: 'fixing',
     since: '2026-09-29'
+  },
+  {
+    id: 'zahlen-punkt-statt-komma',
+    title: 'Download-Fortschritte zeigten Zahlen mit Punkt statt Komma',
+    detail:
+      'Beim Herunterladen von Spieldateien, Java und Modpacks sowie in der Meldung nach einer Aufnahme ' +
+      'standen Größen auf Deutsch als 150.3 MB statt 150,3 MB.',
+    state: 'fixing',
+    since: '2026-09-29'
   }
 ]
 

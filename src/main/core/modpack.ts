@@ -19,7 +19,7 @@ import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
 import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
-import { tr } from '@shared/i18n'
+import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('modpack')
 
@@ -1135,7 +1135,7 @@ export async function installModpackFromProvider(
         received += delta
         const total = version.size ?? 0
         task.update(
-          tr(`${(received / 1024 / 1024).toFixed(1)} MB geladen`, `${(received / 1024 / 1024).toFixed(1)} MB downloaded`),
+          tr(`${formatNumber(received / 1024 / 1024, 1)} MB geladen`, `${formatNumber(received / 1024 / 1024, 1)} MB downloaded`),
           total > 0 ? received / total : null
         )
       },

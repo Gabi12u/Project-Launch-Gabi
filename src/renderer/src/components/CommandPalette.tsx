@@ -115,18 +115,18 @@ export function CommandPalette(): JSX.Element | null {
         keywords: 'mrpack curseforge zip einlesen',
         run: () => void importModpack()
       },
-      { id: 'go-home', label: 'Home', group: 'Navigation', icon: <IconHome size={16} />, run: () => navigate('/home') },
+      { id: 'go-home', label: tr('Home', 'Home'), group: tr('Navigation', 'Navigation'), icon: <IconHome size={16} />, run: () => navigate('/home') },
       {
         id: 'go-instances',
         label: tr('Instanzen', 'Instances'),
-        group: 'Navigation',
+        group: tr('Navigation', 'Navigation'),
         icon: <IconGrid size={16} />,
         run: () => navigate('/instances')
       },
       {
         id: 'go-mods',
-        label: 'Mods',
-        group: 'Navigation',
+        label: tr('Mods', 'Mods'),
+        group: tr('Navigation', 'Navigation'),
         icon: <IconPackage size={16} />,
         keywords: 'updates inhalte',
         run: () => navigate('/mods')
@@ -134,15 +134,15 @@ export function CommandPalette(): JSX.Element | null {
       {
         id: 'go-discover',
         label: tr('Entdecken', 'Discover'),
-        group: 'Navigation',
+        group: tr('Navigation', 'Navigation'),
         icon: <IconCompass size={16} />,
         keywords: 'modrinth curseforge suchen shader resourcepack',
         run: () => navigate('/discover')
       },
       {
         id: 'go-backups',
-        label: 'Backups',
-        group: 'Navigation',
+        label: tr('Backups', 'Backups'),
+        group: tr('Navigation', 'Navigation'),
         icon: <IconSave size={16} />,
         keywords: 'sicherung wiederherstellen',
         run: () => navigate('/backups')
@@ -150,7 +150,7 @@ export function CommandPalette(): JSX.Element | null {
       {
         id: 'go-settings',
         label: tr('Einstellungen', 'Settings'),
-        group: 'Navigation',
+        group: tr('Navigation', 'Navigation'),
         icon: <IconSettings size={16} />,
         keywords: 'java ram theme sprache account',
         run: () => navigate('/settings')

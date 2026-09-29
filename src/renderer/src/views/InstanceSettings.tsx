@@ -225,7 +225,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         <div className="col gap-16">
           <div className="row gap-16 wrap">
             <div className="field grow">
-              <label className="label" htmlFor="is-name">Name</label>
+              <label className="label" htmlFor="is-name">{tr('Name', 'Name')}</label>
               <input id="is-name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="field grow">
@@ -250,7 +250,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           </div>
 
           <div className="field">
-            <label className="label" id="is-icon">Icon</label>
+            <label className="label" id="is-icon">{tr('Icon', 'Icon')}</label>
             <div role="group" aria-labelledby="is-icon" className="icon-picker">
               {ICON_CHOICES.map((choice) => (
                 <button

@@ -69,7 +69,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'browse', label: tr('Inhalte finden', 'Find content') },
   { id: 'worlds', label: tr('Welten', 'Worlds') },
   { id: 'recordings', label: tr('Aufnahmen', 'Recordings') },
-  { id: 'logs', label: 'Log' },
+  { id: 'logs', label: tr('Log', 'Log') },
   { id: 'settings', label: tr('Einstellungen', 'Settings') }
 ]
 
@@ -673,10 +673,10 @@ function Cell({ label, value, hint }: { label: string; value: string; hint?: str
  * ------------------------------------------------------------------ */
 
 const CONTENT_TABS: { id: ContentType; label: string }[] = [
-  { id: 'mod', label: 'Mods' },
+  { id: 'mod', label: tr('Mods', 'Mods') },
   { id: 'resourcepack', label: tr('Resourcepacks', 'Resource packs') },
   { id: 'shaderpack', label: tr('Shader', 'Shaders') },
-  { id: 'datapack', label: 'Data Packs' }
+  { id: 'datapack', label: tr('Data Packs', 'Data packs') }
 ]
 
 type ContentSortKey = 'name' | 'added' | 'provider'
