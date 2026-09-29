@@ -257,9 +257,15 @@ function candidateRoots(): string[] {
     }
   }
 
-  // Runtimes Launch Gabi manages itself.
+  // Runtimes Launch Gabi manages itself. Staging and parked folders are not
+  // runtimes: probing them spawned a failing `java -version` on every search,
+  // and a nearly complete one could pass and be offered, only to be swept
+  // away later from under an instance that picked it.
   if (existsSync(paths.java())) {
-    for (const entry of readdirSync(paths.java())) roots.push(join(paths.java(), entry))
+    for (const entry of readdirSync(paths.java())) {
+      if (isStagingDir(entry)) continue
+      roots.push(join(paths.java(), entry))
+    }
   }
 
   return roots
@@ -530,12 +536,20 @@ const liveStaging = new Set<string>()
  * previous install under while the new one takes its place (see the rename
  * dance in installJavaOnce).
  */
-function sweepStagingDirs(): void {
+function isStagingDir(entry: string): boolean {
+  return entry.includes('.new-') || entry.includes('.old-')
+}
+
+/**
+ * Also run once at startup (index.ts): otherwise a leftover sat there until
+ * the next Java install, which can be months away.
+ */
+export function sweepStagingDirs(): void {
   const root = paths.java()
   if (!existsSync(root)) return
   try {
     for (const entry of readdirSync(root)) {
-      if (!entry.includes('.new-') && !entry.includes('.old-')) continue
+      if (!isStagingDir(entry)) continue
       // Owned by an install that is still running; not ours to delete.
       if (liveStaging.has(entry)) continue
       try {
@@ -920,5 +934,7 @@ export async function resolveJava(options: {
 
 export function listManagedJava(): string[] {
   if (!existsSync(paths.java())) return []
-  return readdirSync(paths.java()).map((entry) => join(paths.java(), entry))
+  return readdirSync(paths.java())
+    .filter((entry) => !isStagingDir(entry))
+    .map((entry) => join(paths.java(), entry))
 }

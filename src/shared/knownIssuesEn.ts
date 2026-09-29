@@ -1781,6 +1781,13 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'Entering the official Minecraft Launcher\'s client ID under Settings, Accounts made the launcher ' +
       'save its own instead, without notice.'
+  },
+  'java-rest-abgebrochene-installation': {
+    title: 'Leftovers of a cancelled Java install stayed behind and could be offered as Java',
+    detail:
+      'If a Java download was interrupted, a half extracted folder stayed behind until Java was ' +
+      'installed again at some point. Until then the Java search tried it every time, and a nearly ' +
+      'complete leftover could show up in the selection and later disappear from under an instance.'
   }
 }
 

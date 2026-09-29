@@ -11,6 +11,7 @@ import { launchInstance, stopAll } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
+import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
@@ -443,6 +444,10 @@ function bootstrap(): void {
       // else ever sweeps the shared library/asset trees where most of them land.
       // Not awaited: this sweeps the shared library and asset trees, and the
       // launcher has no reason to hold anything up for it.
+      // Every staging folder not owned by a running install is a leftover of
+      // an earlier session. Skipped while a game adopted from that session may
+      // still run out of a parked folder.
+      if (runningCount() === 0) sweepStagingDirs()
       void cleanTempFiles()
         .then((removed) => {
           if (removed > 0) logger.info(`${removed} unterbrochene Downloads aufgeräumt`)

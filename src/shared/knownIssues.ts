@@ -2794,6 +2794,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-09-28',
     fixedIn: '1.0.20'
+  },
+  {
+    id: 'java-rest-abgebrochene-installation',
+    title: 'Reste einer abgebrochenen Java-Installation blieben liegen und konnten als Java angeboten werden',
+    detail:
+      'Brach das Herunterladen von Java ab, blieb ein halb entpackter Ordner zurück, bis irgendwann ' +
+      'wieder Java installiert wurde. Bis dahin probierte die Java-Suche ihn jedes Mal aus, und ein ' +
+      'fast fertiger Rest konnte in der Auswahl auftauchen und später unter einer Instanz ' +
+      'verschwinden.',
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.20'
   }
 ]
 
