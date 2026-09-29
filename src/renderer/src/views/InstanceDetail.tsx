@@ -107,6 +107,7 @@ export function InstanceDetailView({
   const [preflight, setPreflight] = useState<LaunchPreflight | null>(null)
   const [report, setReport] = useState<CompatibilityReport | null>(null)
   const [checking, setChecking] = useState(true)
+  const [checkFailed, setCheckFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmRepair, setConfirmRepair] = useState(false)
   const [repairing, setRepairing] = useState(false)
@@ -139,6 +140,9 @@ export function InstanceDetailView({
   // buttons have to know about them too.
   const contentBlocked = summary ? contentBlockedReason(summary) : null
   const busy = starting.includes(instanceId)
+  // Everything the main process refuses delete and repair for, so the buttons
+  // are greyed out up front instead of failing after the confirmation.
+  const instanceBusy = running || busy || Boolean(instance?.installing) || Boolean(summary?.contentBusy)
 
   // Set on unmount, so a request still in flight cannot act on a view the
   // user has already left. Without it a rejected lookup navigated to
@@ -172,15 +176,22 @@ export function InstanceDetailView({
 
   const runChecks = useCallback(async (): Promise<void> => {
     setChecking(true)
+    setCheckFailed(false)
     try {
-      const [flight, compat] = await Promise.all([
+      // Settled one by one: with Promise.all a single failure threw away the
+      // other result too, and the panel then sat on "Loading" for good once
+      // the toast was gone.
+      const [flight, compat] = await Promise.allSettled([
         window.gabi.launch.preflight(instanceId),
         window.gabi.content.compatibility(instanceId)
       ])
-      setPreflight(flight)
-      setReport(compat)
-    } catch (err) {
-      toastError(err, tr('Prüfung fehlgeschlagen', 'Check failed'))
+      if (flight.status === 'fulfilled') setPreflight(flight.value)
+      if (compat.status === 'fulfilled') setReport(compat.value)
+      const failure = [flight, compat].find((result) => result.status === 'rejected')
+      if (failure && failure.status === 'rejected') {
+        setCheckFailed(true)
+        toastError(failure.reason, tr('Prüfung fehlgeschlagen', 'Check failed'))
+      }
     } finally {
       setChecking(false)
     }
@@ -367,8 +378,12 @@ export function InstanceDetailView({
         <button
           className="btn sm"
           onClick={() => setConfirmRepair(true)}
-          disabled={repairing || running}
-          title={tr('Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods.', 'Checks all game files, downloads damaged ones again and removes mods installed twice.')}
+          disabled={repairing || instanceBusy}
+          title={
+            instanceBusy
+              ? tr('Die Instanz läuft, startet oder wird gerade bearbeitet.', 'The instance is running, starting or being worked on right now.')
+              : tr('Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods.', 'Checks all game files, downloads damaged ones again and removes mods installed twice.')
+          }
         >
           {repairing ? <span className="spinner" /> : <IconWrench size={14} />}
           {tr('Reparieren', 'Repair')}
@@ -407,7 +422,12 @@ export function InstanceDetailView({
           <IconSave size={14} /> {tr('Sichern', 'Back up')}
         </button>
         <div className="grow" />
-        <button className="btn sm danger" onClick={() => setConfirmDelete(true)} disabled={running}>
+        <button
+          className="btn sm danger"
+          onClick={() => setConfirmDelete(true)}
+          disabled={instanceBusy || repairing}
+          title={instanceBusy ? tr('Die Instanz läuft, startet oder wird gerade bearbeitet.', 'The instance is running, starting or being worked on right now.') : undefined}
+        >
           <IconTrash size={14} /> {tr('Löschen', 'Delete')}
         </button>
       </div>
@@ -442,6 +462,7 @@ export function InstanceDetailView({
           preflight={preflight}
           report={report}
           checking={checking}
+          checkFailed={checkFailed}
           onReport={setReport}
           onRefresh={runChecks}
         />
@@ -550,6 +571,7 @@ function OverviewTab({
   preflight,
   report,
   checking,
+  checkFailed,
   onReport,
   onRefresh
 }: {
@@ -557,6 +579,7 @@ function OverviewTab({
   preflight: LaunchPreflight | null
   report: CompatibilityReport | null
   checking: boolean
+  checkFailed: boolean
   onReport: (report: CompatibilityReport) => void
   onRefresh: () => void
 }): JSX.Element {
@@ -581,8 +604,22 @@ function OverviewTab({
           />
           <Cell
             label="Java"
-            value={preflight?.java ? `Java ${preflight.java.major}` : tr('Wird geladen', 'Loading')}
-            hint={preflight?.java ? (preflight.java.managed ? tr('verwaltet', 'managed') : tr('System', 'system')) : tr('bei Bedarf', 'when needed')}
+            value={
+              preflight?.java
+                ? `Java ${preflight.java.major}`
+                : checkFailed && !preflight
+                  ? tr('Nicht geprüft', 'Not checked')
+                  : tr('Wird geladen', 'Loading')
+            }
+            hint={
+              preflight?.java
+                ? preflight.java.managed
+                  ? tr('verwaltet', 'managed')
+                  : tr('System', 'system')
+                : checkFailed && !preflight
+                  ? tr('Neu prüfen oben rechts', 'Use Check again above')
+                  : tr('bei Bedarf', 'when needed')
+            }
           />
           <Cell
             label="RAM"
@@ -604,6 +641,8 @@ function OverviewTab({
           report={report}
           instanceId={instance.id}
           loading={checking}
+          failed={checkFailed}
+          onRetry={onRefresh}
           onChanged={onReport}
         />
       </section>
@@ -1395,6 +1434,13 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
  * Logs
  * ------------------------------------------------------------------ */
 
+/**
+ * When each instance's log was last cleared, for this session. The tab
+ * unmounts on every switch and reloads the full history, so without this
+ * "Clear" only lasted until the next tab change.
+ */
+const logClearedAt = new Map<string, number>()
+
 function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const [lines, setLines] = useState<LogLine[]>([])
   const [autoScroll, setAutoScroll] = useState(true)
@@ -1415,6 +1461,8 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         // is still in flight. Replacing the array outright would discard them,
         // worst exactly when watching a crash happen — so the history goes in
         // front of what already streamed in, minus what it repeats.
+        const cutoff = logClearedAt.get(instanceId) ?? 0
+        history = history.filter((line) => line.time > cutoff)
         setLines((streamed) => {
           const seen = new Set(history.map((line) => `${line.time}|${line.text}`))
           const fresh = streamed.filter((line) => !seen.has(`${line.time}|${line.text}`))
@@ -1476,7 +1524,13 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         >
           {tr('Log kopieren', 'Copy log')}
         </button>
-        <button className="btn sm" onClick={() => setLines([])}>
+        <button
+          className="btn sm"
+          onClick={() => {
+            logClearedAt.set(instanceId, Date.now())
+            setLines([])
+          }}
+        >
           {tr('Leeren', 'Clear')}
         </button>
       </div>

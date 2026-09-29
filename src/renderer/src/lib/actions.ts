@@ -129,6 +129,8 @@ export async function createShortcut(instanceId: string): Promise<void> {
     }
 
     await window.gabi.instances.createShortcut(instanceId, iconImages)
+    // The file lands on the desktop with nothing else to show for it.
+    toast('success', tr('Verknüpfung erstellt', 'Shortcut created'), tr('Du findest sie auf deinem Desktop.', 'You will find it on your desktop.'))
   } catch (err) {
     toastError(err, tr('Verknüpfung konnte nicht erstellt werden', 'Shortcut could not be created'))
   }

@@ -258,6 +258,7 @@ export function BackupsView(): JSX.Element {
           if (!deleting) return
           try {
             await window.gabi.backups.remove(deleting.instanceId, deleting.id)
+            toast('success', tr('Sicherung gelöscht', 'Backup deleted'), deleting.name)
             setDeleting(null)
             await load()
           } catch (err) {

@@ -472,7 +472,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         )}
 
         <div className="field mt-16">
-          <label className="label" htmlFor="is-launcher-verhalten-beim-star">{tr('Launcher-Verhalten beim Start', 'Launcher behavior on launch')}</label>
+          <label className="label" htmlFor="is-launcher-verhalten-beim-star">{tr('Verhalten beim Spielstart', 'When a game starts')}</label>
           <select id="is-launcher-verhalten-beim-star"
             className="select"
             value={behaviour}

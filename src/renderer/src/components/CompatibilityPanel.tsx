@@ -57,10 +57,13 @@ interface PanelProps {
   instanceId: string
   onChanged: (report: CompatibilityReport) => void
   loading?: boolean
+  /** The last check failed, so there is no report to show. */
+  failed?: boolean
+  onRetry?: () => void
 }
 
 /** Inline version used on the instance page. */
-export function CompatibilityPanel({ report, instanceId, onChanged, loading }: PanelProps): JSX.Element {
+export function CompatibilityPanel({ report, instanceId, onChanged, loading, failed, onRetry }: PanelProps): JSX.Element {
   const [fixing, setFixing] = useState<string | null>(null)
 
   const applyFix = async (issue: CompatibilityIssue): Promise<void> => {
@@ -133,7 +136,20 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading }: P
     )
   }
 
-  if (!report) return <></>
+  if (!report) {
+    // Without this the section simply vanished after a failed check.
+    if (!failed) return <></>
+    return (
+      <div className="card row-between">
+        <span className="muted">{tr('Die Mods konnten nicht geprüft werden.', 'The mods could not be checked.')}</span>
+        {onRetry && (
+          <button className="btn sm" onClick={onRetry}>
+            {tr('Erneut versuchen', 'Try again')}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   if (report.issues.length === 0) {
     return (

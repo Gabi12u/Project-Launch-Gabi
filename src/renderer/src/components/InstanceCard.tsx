@@ -82,8 +82,11 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
       label: tr('Löschen', 'Delete'),
       icon: <IconTrash size={14} />,
       danger: true,
-      disabled: instance.running,
-      disabledReason: tr('Beende die Instanz zuerst.', 'Stop the instance first.'),
+      // The main process refuses the same states it refuses duplicating in.
+      disabled: duplicateBlocked,
+      disabledReason: instance.running
+        ? tr('Beende die Instanz zuerst.', 'Stop the instance first.')
+        : tr('Die Instanz startet oder wird gerade bearbeitet.', 'The instance is starting or being worked on right now.'),
       onSelect: () => setConfirmDelete(true)
     }
   ]

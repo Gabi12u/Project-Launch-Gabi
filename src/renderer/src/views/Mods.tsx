@@ -9,7 +9,7 @@ import {
   loaderColor,
   pluralise
 } from '../lib/format'
-import { EmptyState } from '../components/ui'
+import { Confirm, EmptyState } from '../components/ui'
 import {
   IconChevronRight,
   IconDownload,
@@ -40,6 +40,29 @@ export function ModsView(): JSX.Element {
   // update overwrote the first: the first row's spinner vanished and its
   // button went live again while its request was still running.
   const [updating, setUpdating] = useState<ReadonlySet<string>>(() => new Set())
+  // Same question the instance page asks: a stray click here quietly replaced
+  // a version someone may have picked on purpose.
+  const [confirmRow, setConfirmRow] = useState<Row | null>(null)
+
+  const runRowUpdate = async (row: Row): Promise<void> => {
+    // Guards against a double click landing twice before the first render.
+    if (updating.has(row.item.id)) return
+    setUpdating((current) => new Set(current).add(row.item.id))
+    try {
+      await window.gabi.content.update(row.instance.id, row.item.id)
+      toast('success', tr(`${row.item.name} aktualisiert`, `${row.item.name} updated`))
+      await refreshInstances()
+      await load()
+    } catch (err) {
+      toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
+    } finally {
+      setUpdating((current) => {
+        const next = new Set(current)
+        next.delete(row.item.id)
+        return next
+      })
+    }
+  }
   const [search, setSearch] = useState('')
   const [onlyUpdates, setOnlyUpdates] = useState(false)
   const [instanceFilter, setInstanceFilter] = useState('all')
@@ -394,28 +417,10 @@ export function ModsView(): JSX.Element {
                         className="btn sm primary"
                         disabled={updating.has(row.item.id) || blockedReason(row.instance) !== null}
                         title={blockedReason(row.instance) ?? undefined}
-                        onClick={async () => {
-                          // Guards against a double click landing twice before the first render.
-                          if (updating.has(row.item.id)) return
-                          setUpdating((current) => new Set(current).add(row.item.id))
-                          try {
-                            await window.gabi.content.update(row.instance.id, row.item.id)
-                            toast('success', tr(`${row.item.name} aktualisiert`, `${row.item.name} updated`))
-                            await refreshInstances()
-                            await load()
-                          } catch (err) {
-                            toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
-                          } finally {
-                            setUpdating((current) => {
-                              const next = new Set(current)
-                              next.delete(row.item.id)
-                              return next
-                            })
-                          }
-                        }}
+                        onClick={() => setConfirmRow(row)}
                       >
                         {updating.has(row.item.id) ? <span className="spinner" /> : <IconDownload size={13} />}
-                        Update
+                        {tr('Update', 'Update')}
                       </button>
                     )}
                     {row.item.pageUrl && (
@@ -441,6 +446,26 @@ export function ModsView(): JSX.Element {
           )}
         </>
       )}
+
+      <Confirm
+        open={confirmRow !== null}
+        title={tr('Mod aktualisieren', 'Update mod')}
+        message={
+          confirmRow &&
+          tr(
+            `Nur „${confirmRow.item.name}“ in ${confirmRow.instance.name} auf ${confirmRow.item.update?.versionNumber} aktualisieren? Die bisherige Datei wird dabei entfernt.`,
+            `Update only "${confirmRow.item.name}" in ${confirmRow.instance.name} to ${confirmRow.item.update?.versionNumber}? The previous file will be removed.`
+          )
+        }
+        confirmLabel={tr('Ja, aktualisieren', 'Yes, update')}
+        cancelLabel={tr('Nein', 'No')}
+        onConfirm={async () => {
+          const row = confirmRow
+          setConfirmRow(null)
+          if (row) await runRowUpdate(row)
+        }}
+        onCancel={() => setConfirmRow(null)}
+      />
     </div>
   )
 }

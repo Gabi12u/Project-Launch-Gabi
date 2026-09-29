@@ -4,6 +4,7 @@ import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
 import { formatDate, formatMemory, pluralise } from '../lib/format'
+import { accentName } from '../lib/accents'
 import { Modal } from '../components/ui'
 import { IconCheck, IconSearch, IconSparkle,
   IconRefresh} from '../components/Icons'
@@ -545,7 +546,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   className={`swatch ${accent === choice ? 'selected' : ''}`}
                   style={{ background: choice, color: choice }}
                   onClick={() => setAccent(choice)}
-                  aria-label={choice}
+                  aria-label={accentName(choice)}
                 />
               ))}
             </div>

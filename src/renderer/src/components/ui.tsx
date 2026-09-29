@@ -61,7 +61,7 @@ const FOCUSABLE =
  * last control landed on the sidebar and page behind the overlay, where Enter
  * or Space still worked while the dialog covered them.
  */
-function trapTab(event: KeyboardEvent, container: HTMLElement): void {
+export function trapTab(event: KeyboardEvent, container: HTMLElement): void {
   const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
     (el) => el.offsetParent !== null
   )
@@ -109,6 +109,22 @@ export function Modal({
 }: ModalProps): JSX.Element | null {
   const isTop = useOverlayId(open)
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Moves focus into the dialog when it opens and back to whatever had it
+  // before once it closes. Keyboard and screen reader users otherwise stayed
+  // on the button behind the overlay, with no sign a dialog had opened.
+  useEffect(() => {
+    if (!open) return
+    const previous = document.activeElement as HTMLElement | null
+    const id = requestAnimationFrame(() => {
+      const dialog = dialogRef.current
+      if (dialog && !dialog.contains(document.activeElement)) dialog.focus()
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      if (previous && previous.isConnected) previous.focus()
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return

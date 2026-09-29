@@ -236,7 +236,11 @@ function FeaturedInstance({
             </div>
             <div className="col gap-4">
               <span className="badge accent" style={{ alignSelf: 'flex-start' }}>
-                {instance.favorite ? tr('Favorit', 'Favorite') : tr('Zuletzt gespielt', 'Last played')}
+                {instance.favorite
+                  ? tr('Favorit', 'Favorite')
+                  : instance.lastPlayed
+                    ? tr('Zuletzt gespielt', 'Last played')
+                    : tr('Neu', 'New')}
               </span>
               <h2 className="hero-title">{instance.name}</h2>
             </div>

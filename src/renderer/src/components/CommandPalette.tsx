@@ -11,7 +11,7 @@ import { createPortal } from 'react-dom'
 import { navigate, setState, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
-import { useOverlayId } from './ui'
+import { trapTab, useOverlayId } from './ui'
 import {
   IconCompass,
   IconCube,
@@ -52,6 +52,7 @@ export function CommandPalette(): JSX.Element | null {
   const [cursor, setCursor] = useState(0)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const paletteRef = useRef<HTMLDivElement | null>(null)
 
   // Registers the palette on the same overlay stack as Modal, so a modal
   // open underneath (e.g. the account window mid sign in) no longer counts
@@ -197,6 +198,17 @@ export function CommandPalette(): JSX.Element | null {
     setCursor(0)
   }, [query])
 
+  // Tab from the input or a result row used to walk out into the page behind
+  // the overlay, the same leak Modal closes with the same helper.
+  useEffect(() => {
+    if (!paletteOpen) return
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Tab' && isTop() && paletteRef.current) trapTab(event, paletteRef.current)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [paletteOpen, isTop])
+
   // Keeps the highlighted row inside the scroll area while arrowing through.
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>('[data-cursor="true"]')?.scrollIntoView({ block: 'nearest' })
@@ -236,7 +248,7 @@ export function CommandPalette(): JSX.Element | null {
         if (event.target === event.currentTarget) close()
       }}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label={tr('Befehle', 'Commands')}>
+      <div className="palette" ref={paletteRef} role="dialog" aria-modal="true" aria-label={tr('Befehle', 'Commands')}>
         <div className="palette-input">
           <IconSearch size={17} />
           <input

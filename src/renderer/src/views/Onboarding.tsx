@@ -3,24 +3,12 @@ import { ACCENT_CHOICES } from '@shared/defaults'
 import { refreshAccounts, saveSettings, setState, toast, toastError, useStore } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
+import { accentName } from '../lib/accents'
 import { LogoLockup } from '../components/Logo'
 import { AccountModal } from '../components/AccountModal'
 import { IconCheck, IconChevronRight, IconSparkle, IconUser } from '../components/Icons'
 import { tr } from '@shared/i18n'
 
-/** German names for the accent swatches, read out by screen readers instead of the raw hex value. */
-const ACCENT_NAMES: Record<string, string> = {
-  '#7c5cff': tr('Lila', 'Purple'),
-  '#4f7bff': tr('Blau', 'Blue'),
-  '#22c6f2': tr('Türkis', 'Turquoise'),
-  '#25d0a1': tr('Smaragd', 'Emerald'),
-  '#5ec26a': tr('Grün', 'Green'),
-  '#f2c33d': tr('Gelb', 'Yellow'),
-  '#ff8a3d': tr('Orange', 'Orange'),
-  '#ff5c7a': tr('Rot', 'Red'),
-  '#e254d8': tr('Pink', 'Pink'),
-  '#9aa4c4': tr('Graublau', 'Slate blue')
-}
 
 const TOTAL_STEPS = 3
 
@@ -140,7 +128,7 @@ export function Onboarding(): JSX.Element {
                       // Apply immediately so the choice is visible right away.
                       void saveSettings({ accentColor: color })
                     }}
-                    aria-label={ACCENT_NAMES[color] ?? color}
+                    aria-label={accentName(color)}
                   />
                 ))}
               </div>

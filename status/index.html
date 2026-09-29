@@ -1218,8 +1218,8 @@ footer .grow { flex: 1; }
     },
     {
       "id": "inhalt-typ-uebergreifende-kollision",
-      "title": "Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten sich gegenseitig löschen",
-      "detail": "Der Abgleich, ob eine neu installierte Datei eine bereits vorhandene ersetzt, verglich nur den bloßen Dateinamen, nicht die Art des Inhalts. Ressourcenpakete, Shaderpakete, Datenpakete und Mods liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie \"pack.zip\". Traf ein solcher Name zufällig auf einen bereits vorhandenen Inhalt eines völlig anderen Typs, wurde dessen Datei gelöscht und sein Eintrag aus der Liste entfernt, obwohl er mit dem gerade installierten Inhalt nichts zu tun hatte. Der Vergleich berücksichtigt jetzt an allen drei betroffenen Stellen auch den Inhaltstyp.",
+      "title": "Resourcepack, Shader und Data Pack mit gleichem Namen konnten sich gegenseitig löschen",
+      "detail": "Der Abgleich, ob eine neu installierte Datei eine bereits vorhandene ersetzt, verglich nur den bloßen Dateinamen, nicht die Art des Inhalts. Resourcepacks, Shader, Data Packs und Mods liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie \"pack.zip\". Traf ein solcher Name zufällig auf einen bereits vorhandenen Inhalt eines völlig anderen Typs, wurde dessen Datei gelöscht und sein Eintrag aus der Liste entfernt, obwohl er mit dem gerade installierten Inhalt nichts zu tun hatte. Der Vergleich berücksichtigt jetzt an allen drei betroffenen Stellen auch den Inhaltstyp.",
       "state": "fixed",
       "since": "2026-09-11",
       "fixedIn": "1.0.18"
@@ -1366,8 +1366,8 @@ footer .grow { flex: 1; }
     },
     {
       "id": "ordner-abgleich-typ-uebergreifend",
-      "title": "Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten beim Ordner-Abgleich vertauscht werden",
-      "detail": "Der laufende Abgleich zwischen der Mod-/Paket-Liste und dem tatsächlichen Ordnerinhalt (unter anderem vor jedem Start, bei jeder Reparatur und jeder Kompatibilitätsprüfung) verglich Dateien nur nach ihrem bloßen Namen, nicht nach ihrem Typ. Ressourcenpaket, Shaderpaket und Datenpaket liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie \"pack.zip\". Trugen zwei davon zufällig denselben Namen, wurden ihre Datensätze vertauscht: der eine Ordner zeigte auf die Metadaten des jeweils anderen, mit falschem Typ und geteilter Kennung. Drei verwandte Stellen mit genau diesem Muster wurden bereits behoben, diese vierte, für den laufenden Abgleich zuständige Stelle war noch offen.",
+      "title": "Resourcepack, Shader und Data Pack mit gleichem Namen konnten beim Ordner-Abgleich vertauscht werden",
+      "detail": "Der laufende Abgleich zwischen der Mod-/Paket-Liste und dem tatsächlichen Ordnerinhalt (unter anderem vor jedem Start, bei jeder Reparatur und jeder Kompatibilitätsprüfung) verglich Dateien nur nach ihrem bloßen Namen, nicht nach ihrem Typ. Resourcepack, Shader und Data Pack liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie \"pack.zip\". Trugen zwei davon zufällig denselben Namen, wurden ihre Datensätze vertauscht: der eine Ordner zeigte auf die Metadaten des jeweils anderen, mit falschem Typ und geteilter Kennung. Drei verwandte Stellen mit genau diesem Muster wurden bereits behoben, diese vierte, für den laufenden Abgleich zuständige Stelle war noch offen.",
       "state": "fixed",
       "since": "2026-09-12",
       "fixedIn": "1.0.18"
@@ -1565,7 +1565,7 @@ footer .grow { flex: 1; }
     {
       "id": "inhalt-umbenennen-ohne-pruefung",
       "title": "Einen Mod oder ein Paket ein- und auszuschalten prüfte den Dateinamen nicht ab",
-      "detail": "Jede andere Stelle, die eine Mod-, Ressourcenpaket-, Shader- oder Datenpaket-Datei anfasst, reduziert deren Namen zuerst auf einen reinen Dateinamen ohne Ordneranteile. Das Ein- und Ausschalten (das Anhängen bzw. Entfernen der Endung, mit der Minecraft eine deaktivierte Datei erkennt) tat das nicht und baute den Pfad direkt aus dem gespeicherten Namen zusammen. Über die normale Bedienung des Launchers war das nicht auslösbar, da ein Dateiname dort immer schon bereinigt zustande kommt. Diese Stelle nutzt jetzt dieselbe Prüfung wie der Rest des Programms.",
+      "detail": "Jede andere Stelle, die eine Mod-, Resourcepack-, Shader- oder Data-Pack-Datei anfasst, reduziert deren Namen zuerst auf einen reinen Dateinamen ohne Ordneranteile. Das Ein- und Ausschalten (das Anhängen bzw. Entfernen der Endung, mit der Minecraft eine deaktivierte Datei erkennt) tat das nicht und baute den Pfad direkt aus dem gespeicherten Namen zusammen. Über die normale Bedienung des Launchers war das nicht auslösbar, da ein Dateiname dort immer schon bereinigt zustande kommt. Diese Stelle nutzt jetzt dieselbe Prüfung wie der Rest des Programms.",
       "state": "fixed",
       "since": "2026-09-21",
       "fixedIn": "1.0.20"
@@ -1886,8 +1886,8 @@ footer .grow { flex: 1; }
     },
     {
       "id": "datapacks-ohne-wirkung",
-      "title": "Installierte Datapacks hatten in keiner Welt eine Wirkung",
-      "detail": "Datapacks landeten in einem Sammelordner der Instanz und wurden als installiert angezeigt. Minecraft liest Datapacks aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 fragt der Launcher beim Installieren, in welche Welt ein Datapack soll, und bereits installierte Datapacks lassen sich nachträglich einer Welt zuordnen.",
+      "title": "Installierte Data Packs hatten in keiner Welt eine Wirkung",
+      "detail": "Data Packs landeten in einem Sammelordner der Instanz und wurden als installiert angezeigt. Minecraft liest Data Packs aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 fragt der Launcher beim Installieren, in welche Welt ein Data Pack soll, und bereits installierte Data Packs lassen sich nachträglich einer Welt zuordnen.",
       "state": "fixed",
       "since": "2026-09-24",
       "fixedIn": "1.0.20"
@@ -2609,8 +2609,8 @@ footer .grow { flex: 1; }
     },
     {
       "id": "datapack-geloeschte-welt",
-      "title": "Eine gelöschte Welt tauchte durch ein Datapack als leere Welt wieder auf",
-      "detail": "War einer Welt ein Datapack zugeordnet und wurde die Welt im Explorer gelöscht, legte der Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Datapacks ihren Ordner neu an. Die leere Welt erschien danach in der Liste und ließ sich im Launcher nicht entfernen.",
+      "title": "Eine gelöschte Welt tauchte durch ein Data Pack als leere Welt wieder auf",
+      "detail": "War einer Welt ein Data Pack zugeordnet und wurde die Welt im Explorer gelöscht, legte der Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Data Packs ihren Ordner neu an. Die leere Welt erschien danach in der Liste und ließ sich im Launcher nicht entfernen.",
       "state": "fixing",
       "since": "2026-09-29"
     },
@@ -2686,8 +2686,8 @@ footer .grow { flex: 1; }
     },
     {
       "id": "curseforge-shader-nach-loader",
-      "title": "Shader, Ressourcenpakete und Datapacks von CurseForge wurden nach dem Mod-Loader gefiltert",
-      "detail": "Bei der Suche mit eingeschaltetem Versionsfilter schränkte der Launcher auch Shader, Ressourcenpakete und Datapacks von CurseForge auf den Loader der Instanz ein. Diese Inhalte haben keinen Loader, deshalb fehlten die CurseForge-Treffer weitgehend.",
+      "title": "Shader, Resourcepacks und Data Packs von CurseForge wurden nach dem Mod-Loader gefiltert",
+      "detail": "Bei der Suche mit eingeschaltetem Versionsfilter schränkte der Launcher auch Shader, Resourcepacks und Data Packs von CurseForge auf den Loader der Instanz ein. Diese Inhalte haben keinen Loader, deshalb fehlten die CurseForge-Treffer weitgehend.",
       "state": "fixing",
       "since": "2026-09-29"
     },

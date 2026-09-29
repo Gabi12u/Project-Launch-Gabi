@@ -805,10 +805,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'inhalt-typ-uebergreifende-kollision',
-    title: 'Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten sich gegenseitig löschen',
+    title: 'Resourcepack, Shader und Data Pack mit gleichem Namen konnten sich gegenseitig löschen',
     detail:
       'Der Abgleich, ob eine neu installierte Datei eine bereits vorhandene ersetzt, verglich nur den ' +
-      'bloßen Dateinamen, nicht die Art des Inhalts. Ressourcenpakete, Shaderpakete, Datenpakete und ' +
+      'bloßen Dateinamen, nicht die Art des Inhalts. Resourcepacks, Shader, Data Packs und ' +
       'Mods liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie "pack.zip". Traf ' +
       'ein solcher Name zufällig auf einen bereits vorhandenen Inhalt eines völlig anderen Typs, wurde ' +
       'dessen Datei gelöscht und sein Eintrag aus der Liste entfernt, obwohl er mit dem gerade ' +
@@ -1079,11 +1079,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'ordner-abgleich-typ-uebergreifend',
-    title: 'Ressourcenpaket, Shaderpaket und Datenpaket mit gleichem Namen konnten beim Ordner-Abgleich vertauscht werden',
+    title: 'Resourcepack, Shader und Data Pack mit gleichem Namen konnten beim Ordner-Abgleich vertauscht werden',
     detail:
       'Der laufende Abgleich zwischen der Mod-/Paket-Liste und dem tatsächlichen Ordnerinhalt (unter ' +
       'anderem vor jedem Start, bei jeder Reparatur und jeder Kompatibilitätsprüfung) verglich Dateien ' +
-      'nur nach ihrem bloßen Namen, nicht nach ihrem Typ. Ressourcenpaket, Shaderpaket und Datenpaket ' +
+      'nur nach ihrem bloßen Namen, nicht nach ihrem Typ. Resourcepack, Shader und Data Pack ' +
       'liegen zwar in getrennten Ordnern, tragen aber oft generische Namen wie "pack.zip". Trugen zwei ' +
       'davon zufällig denselben Namen, wurden ihre Datensätze vertauscht: der eine Ordner zeigte auf die ' +
       'Metadaten des jeweils anderen, mit falschem Typ und geteilter Kennung. Drei verwandte Stellen mit ' +
@@ -1447,7 +1447,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'inhalt-umbenennen-ohne-pruefung',
     title: 'Einen Mod oder ein Paket ein- und auszuschalten prüfte den Dateinamen nicht ab',
     detail:
-      'Jede andere Stelle, die eine Mod-, Ressourcenpaket-, Shader- oder Datenpaket-Datei anfasst, ' +
+      'Jede andere Stelle, die eine Mod-, Resourcepack-, Shader- oder Data-Pack-Datei anfasst, ' +
       'reduziert deren Namen zuerst auf einen reinen Dateinamen ohne Ordneranteile. Das Ein- und ' +
       'Ausschalten (das Anhängen bzw. Entfernen der Endung, mit der Minecraft eine deaktivierte Datei ' +
       'erkennt) tat das nicht und baute den Pfad direkt aus dem gespeicherten Namen zusammen. Über die ' +
@@ -1878,12 +1878,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'datapacks-ohne-wirkung',
-    title: 'Installierte Datapacks hatten in keiner Welt eine Wirkung',
+    title: 'Installierte Data Packs hatten in keiner Welt eine Wirkung',
     detail:
-      'Datapacks landeten in einem Sammelordner der Instanz und wurden als installiert angezeigt. Minecraft ' +
-      'liest Datapacks aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 ' +
-      'fragt der Launcher beim Installieren, in welche Welt ein Datapack soll, und bereits installierte ' +
-      'Datapacks lassen sich nachträglich einer Welt zuordnen.',
+      'Data Packs landeten in einem Sammelordner der Instanz und wurden als installiert angezeigt. Minecraft ' +
+      'liest Data Packs aber nur aus dem Ordner einer Welt, und von dort kopiert wurden sie nie. Ab 1.0.20 ' +
+      'fragt der Launcher beim Installieren, in welche Welt ein Data Pack soll, und bereits installierte ' +
+      'Data Packs lassen sich nachträglich einer Welt zuordnen.',
     state: 'fixed',
     since: '2026-09-24',
     fixedIn: '1.0.20'
@@ -2827,10 +2827,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'datapack-geloeschte-welt',
-    title: 'Eine gelöschte Welt tauchte durch ein Datapack als leere Welt wieder auf',
+    title: 'Eine gelöschte Welt tauchte durch ein Data Pack als leere Welt wieder auf',
     detail:
-      'War einer Welt ein Datapack zugeordnet und wurde die Welt im Explorer gelöscht, legte der ' +
-      'Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Datapacks ihren ' +
+      'War einer Welt ein Data Pack zugeordnet und wurde die Welt im Explorer gelöscht, legte der ' +
+      'Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Data Packs ihren ' +
       'Ordner neu an. Die leere Welt erschien danach in der Liste und ließ sich im Launcher nicht ' +
       'entfernen.',
     state: 'fixing',
@@ -2935,10 +2935,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'curseforge-shader-nach-loader',
-    title: 'Shader, Ressourcenpakete und Datapacks von CurseForge wurden nach dem Mod-Loader gefiltert',
+    title: 'Shader, Resourcepacks und Data Packs von CurseForge wurden nach dem Mod-Loader gefiltert',
     detail:
       'Bei der Suche mit eingeschaltetem Versionsfilter schränkte der Launcher auch Shader, ' +
-      'Ressourcenpakete und Datapacks von CurseForge auf den Loader der Instanz ein. Diese Inhalte ' +
+      'Resourcepacks und Data Packs von CurseForge auf den Loader der Instanz ein. Diese Inhalte ' +
       'haben keinen Loader, deshalb fehlten die CurseForge-Treffer weitgehend.',
     state: 'fixing',
     since: '2026-09-29'

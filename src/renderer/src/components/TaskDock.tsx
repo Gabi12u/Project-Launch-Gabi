@@ -197,6 +197,13 @@ export function TaskDock(): JSX.Element | null {
             <div className="task-detail truncate">{task.detail}</div>
           </div>
         ))}
+      {/* The header counts every task, the list shows four; without this the
+          rest could be neither seen nor cancelled with no hint they exist. */}
+      {!collapsed && visible.length > 4 && (
+        <div className="task-detail" style={{ padding: '4px 2px 0' }}>
+          {tr(`+ ${visible.length - 4} weitere`, `+ ${visible.length - 4} more`)}
+        </div>
+      )}
     </div>
   )
 }
