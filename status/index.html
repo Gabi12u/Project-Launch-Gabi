@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Status: Launch Gabi</title>
-<meta name="description" content="Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen von Launch Gabi.">
+<meta name="description" content="Live-Zustand aller Dienste, die Launch Gabi braucht, bekannte Probleme und die neueste Version.">
 <meta name="theme-color" content="#0a0512">
 <link rel="canonical" href="https://status.launchgabi.com/">
 <meta name="robots" content="index, follow">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Launch Gabi">
 <meta property="og:title" content="Status: Launch Gabi">
-<meta property="og:description" content="Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen.">
+<meta property="og:description" content="Live-Zustand aller Dienste, bekannte Probleme und die neueste Version.">
 <meta property="og:url" content="https://status.launchgabi.com/">
 <meta property="og:image" content="https://launchgabi.com/assets/og.jpg">
 
@@ -21,34 +21,27 @@
 <style>
 :root {
   --void:       #0a0512;
+  --panel:      rgba(255, 255, 255, 0.045);
+  --panel-hi:   rgba(255, 255, 255, 0.07);
+  --line:       rgba(255, 255, 255, 0.10);
+  --line-hi:    rgba(255, 255, 255, 0.18);
   --ink:        #f4ecff;
   --muted:      #bcaddb;
   --muted-dim:  #8f80ab;
   --accent:     #c74dff;
   --accent-warm:#ff5cc8;
   --accent-deep:#7c2ae8;
-  --glass:      rgba(255, 255, 255, 0.06);
-  --glass-hi:   rgba(255, 255, 255, 0.10);
-  --glass-line: rgba(255, 255, 255, 0.14);
-  --glass-lit:  rgba(255, 255, 255, 0.26);
-  --r:    18px;
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --nav-h: 66px;
+  --r:          14px;
+  --ease:       cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Categorical series, in fixed order: Windows, macOS, Linux.
-     Checked rather than chosen by eye — worst pair across all three, under
-     every simulated colour-vision deficiency, keeps a separation of 11.3,
-     and every step sits inside the lightness band for a dark surface. */
-  --s-win:   #2a6fb0;
-  --s-mac:   #c05cf5;
-  --s-linux: #cf7c2e;
+  /* Service states. Every state also carries an icon and a word, so the
+     colour is never the only thing that says what is going on. */
+  --ok:       #3ddc97;
+  --slow:     #ffb547;
+  --down:     #ff5c6c;
+  --pending:  #a99cc4;
 
-  --ok:   #3ddc97;
-  --warn: #ffb547;
-
-  /* Status colours are reserved: they say what state something is in and are
-     never reused as a fourth series. Each one ships with an icon and a word,
-     so the state is never carried by the colour alone. */
+  /* Known issue states, same meaning as in the launcher itself. */
   --st-investigating: #ffb547;
   --st-fixing:        #6aa9ff;
   --st-fixed:         #3ddc97;
@@ -56,14 +49,13 @@
 }
 
 * { box-sizing: border-box; }
-
 html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
   background: var(--void);
   color: var(--ink);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -75,587 +67,582 @@ body::before {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(60rem 40rem at 15% -10%, rgba(124, 42, 232, 0.30), transparent 60%),
-    radial-gradient(50rem 35rem at 90% 5%, rgba(255, 92, 200, 0.18), transparent 62%),
-    radial-gradient(40rem 30rem at 50% 110%, rgba(199, 77, 255, 0.14), transparent 60%);
+    radial-gradient(60rem 40rem at 15% -10%, rgba(124, 42, 232, 0.26), transparent 60%),
+    radial-gradient(50rem 35rem at 90% 5%, rgba(255, 92, 200, 0.14), transparent 62%);
   pointer-events: none;
 }
 
-.inner { width: min(1120px, 100% - 40px); margin-inline: auto; }
-
 a { color: inherit; }
+button { font: inherit; color: inherit; }
+
+.wrap { width: min(880px, 100% - 32px); margin-inline: auto; }
 
 /* ---------------------------------------------------------------- Nav */
 
 .nav {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  height: var(--nav-h);
   display: flex;
   align-items: center;
-  gap: 18px;
-  width: min(1120px, 100% - 40px);
-  margin-inline: auto;
-  backdrop-filter: blur(14px);
+  gap: 16px;
+  height: 68px;
 }
-
 .brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
   text-decoration: none;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.01em;
 }
-
 .brand small {
   display: block;
-  font-size: 10px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted-dim);
-  font-weight: 600;
+  line-height: 1.1;
 }
-
-.nav-links { margin-left: auto; display: flex; gap: 22px; font-size: 14.5px; }
-.nav-links a { color: var(--muted); text-decoration: none; transition: color 0.2s var(--ease); }
+.nav-links { display: flex; gap: 18px; margin-left: auto; font-size: 14px; }
+.nav-links a { color: var(--muted); text-decoration: none; }
 .nav-links a:hover { color: var(--ink); }
-
+.lang-switch {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.lang-switch button {
+  border: 0;
+  background: transparent;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.lang-switch button.active { background: var(--panel-hi); color: var(--ink); }
 .nav-cta {
-  padding: 9px 16px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent-deep), var(--accent-warm));
   color: #fff;
-  font-size: 14px;
-  font-weight: 600;
   text-decoration: none;
+  font-size: 13px;
+  font-weight: 650;
   white-space: nowrap;
 }
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .lang-switch { margin-left: auto; }
+  .nav-cta { display: none; }
+}
 
-/* Two text buttons rather than a dropdown: there are only ever two
-   languages, and a dropdown would hide the current choice behind a click. */
-.lang-switch {
+/* ------------------------------------------------------------- Banner */
+
+.banner {
+  margin: 18px 0 8px;
+  border-radius: var(--r);
+  padding: 20px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.banner .b-icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+.banner h1 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -0.01em; }
+.banner p { margin: 2px 0 0; color: var(--muted); font-size: 13.5px; }
+.banner .b-text { flex: 1; min-width: 0; }
+.banner.ok      { background: rgba(61, 220, 151, 0.10); border-color: rgba(61, 220, 151, 0.35); }
+.banner.ok .b-icon      { background: var(--ok); color: #06281a; }
+.banner.slow    { background: rgba(255, 181, 71, 0.10); border-color: rgba(255, 181, 71, 0.35); }
+.banner.slow .b-icon    { background: var(--slow); color: #3a2400; }
+.banner.down    { background: rgba(255, 92, 108, 0.10); border-color: rgba(255, 92, 108, 0.40); }
+.banner.down .b-icon    { background: var(--down); color: #3a0008; }
+.banner.pending .b-icon { color: var(--pending); }
+
+.btn {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
+  gap: 7px;
+  border: 1px solid var(--line-hi);
+  background: var(--panel-hi);
   border-radius: 999px;
-  border: 1px solid var(--glass-line);
-  background: var(--glass);
-  flex: none;
-}
-
-.lang-switch button {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 5px 10px;
-  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+  white-space: nowrap;
+}
+.btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-link:hover { text-decoration: underline; }
+@media (max-width: 560px) {
+  .banner { flex-wrap: wrap; padding: 16px; gap: 12px 14px; }
+  .banner h1 { font-size: 19px; }
+  .banner .b-text { flex: 1 1 calc(100% - 60px); }
+  .banner .btn { margin-left: 56px; }
 }
 
-.lang-switch button:hover { color: var(--ink); }
-
-.lang-switch button.active { background: var(--glass-hi); color: var(--ink); }
-
-/* -------------------------------------------------------------- Layout */
-
-.head { padding: 46px 0 10px; }
-
-.head h1 {
-  margin: 0 0 8px;
-  font-size: clamp(30px, 5vw, 46px);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+.banner-note {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--muted-dim);
 }
+.banner-note a { color: var(--muted); }
 
-.head p { margin: 0; color: var(--muted); max-width: 62ch; }
+/* ----------------------------------------------------------- Sections */
 
-section { padding: 26px 0; }
-
+section { margin-top: 38px; }
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
 h2 {
-  font-size: 15px;
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.sec-sub { color: var(--muted-dim); font-size: 13px; }
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------- Components */
+
+.group-title {
+  padding: 11px 18px;
+  font-size: 11.5px;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted-dim);
-  margin: 0 0 16px;
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.025);
+  border-top: 1px solid var(--line);
+}
+.group-title:first-child { border-top: 0; }
+
+.svc {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 18px;
+  border-top: 1px solid var(--line);
+}
+.group-title + .svc { border-top: 0; }
+.svc-main { flex: 1; min-width: 0; }
+.svc-name { font-weight: 620; }
+.svc-desc { color: var(--muted-dim); font-size: 13px; }
+.svc-ms {
+  color: var(--muted-dim);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  min-width: 58px;
+  text-align: right;
+}
+.svc-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 620;
+  min-width: 150px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.svc-state.ok      { color: var(--ok); }
+.svc-state.slow    { color: var(--slow); }
+.svc-state.down    { color: var(--down); }
+.svc-state.pending { color: var(--pending); }
+.svc-state .spin {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .svc-state .spin { animation: none; } }
+@media (max-width: 560px) {
+  .svc { flex-wrap: wrap; gap: 4px 12px; }
+  .svc-main { flex-basis: 100%; }
+  .svc-state { min-width: 0; justify-content: flex-start; }
+  .svc-ms { min-width: 0; text-align: left; }
 }
 
-.card {
-  background: var(--glass);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--r);
-  padding: 22px;
+.legend-note {
+  margin: 10px 2px 0;
+  color: var(--muted-dim);
+  font-size: 12.5px;
 }
 
-.grid { display: grid; gap: 16px; }
-.grid.tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-.grid.charts { grid-template-columns: minmax(280px, 0.85fr) minmax(320px, 1.15fr); }
+/* ---------------------------------------------------------- Incidents */
 
-@media (max-width: 860px) {
-  .grid.charts { grid-template-columns: 1fr; }
+.incident {
+  padding: 16px 18px 16px 20px;
+  border-top: 1px solid var(--line);
+  position: relative;
 }
+.incident:first-child { border-top: 0; }
+.incident::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--pending);
+}
+.incident.investigating::before { background: var(--st-investigating); }
+.incident.fixing::before        { background: var(--st-fixing); }
+.incident.fixed::before         { background: var(--st-fixed); }
+.incident.limitation::before    { background: var(--st-limitation); }
+.incident h3 { margin: 0 0 4px; font-size: 15px; line-height: 1.4; }
+.incident p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+.inc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 12.5px;
+  color: var(--muted-dim);
+}
+.state-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.state-tag.investigating { color: var(--st-investigating); }
+.state-tag.fixing        { color: var(--st-fixing); }
+.state-tag.fixed         { color: var(--st-fixed); }
+.state-tag.limitation    { color: var(--st-limitation); }
 
-/* --------------------------------------------------------- Stat tiles */
+.empty {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+.empty svg { color: var(--ok); flex: none; }
 
-.tile-label {
-  font-size: 12px;
+.more-row { padding: 12px 18px; border-top: 1px solid var(--line); }
+
+/* ------------------------------------------------------------ Release */
+
+.release-head { padding: 16px 18px 4px; }
+.release-head h3 { margin: 0; font-size: 16px; }
+.release-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.change {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+}
+.change:first-of-type { border-top: 0; }
+.change p { margin: 0; color: var(--muted); font-size: 14px; }
+.kind {
+  flex: none;
+  min-width: 64px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-top: 2px;
+  border: 1px solid var(--line-hi);
+}
+.kind.new      { color: #d9a8ff; border-color: rgba(199, 77, 255, 0.5); }
+.kind.improved { color: #8fc2ff; border-color: rgba(106, 169, 255, 0.5); }
+.kind.fixed    { color: var(--ok); border-color: rgba(61, 220, 151, 0.45); }
+.changes { padding: 6px 0 8px; }
+
+/* ------------------------------------------------------------ History */
+
+.day { padding: 14px 18px; border-top: 1px solid var(--line); }
+.day:first-child { border-top: 0; }
+.day h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.day .none { color: var(--muted-dim); font-size: 13.5px; }
+.day ul { list-style: none; margin: 0; padding: 0; }
+.day li {
+  display: grid;
+  grid-template-columns: 172px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: 14px;
+}
+.day li .t { min-width: 0; color: var(--muted); }
+@media (max-width: 560px) {
+  .day li { grid-template-columns: 1fr; gap: 0; padding: 6px 0; }
+}
+.day .more { margin-top: 4px; }
+
+/* ------------------------------------------------------------ Metrics */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.metric { padding: 14px 18px; border-left: 1px solid var(--line); }
+.metric:first-child { border-left: 0; }
+.metric .m-label {
+  font-size: 11.5px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted-dim);
-  font-weight: 600;
 }
-
-/* The hero number carries the weight; the label above it stays quiet. */
-.tile-value {
-  margin-top: 6px;
-  font-size: clamp(26px, 3.4vw, 34px);
+.metric .m-value {
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+.metric .m-note { font-size: 12.5px; color: var(--muted-dim); }
+@media (max-width: 700px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .metric:nth-child(3) { border-left: 0; }
+  .metric:nth-child(n + 3) { border-top: 1px solid var(--line); }
 }
 
-.tile-note { margin-top: 4px; font-size: 13px; color: var(--muted); }
-
-.state {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid transparent;
-}
-
-.state.ok   { color: var(--ok);   background: rgba(61, 220, 151, 0.12); border-color: rgba(61, 220, 151, 0.35); }
-.state.warn { color: var(--warn); background: rgba(255, 181, 71, 0.12); border-color: rgba(255, 181, 71, 0.35); }
-
-.state .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-
-/* ------------------------------------------------------------- Charts */
-
-.chart-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
-.chart-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.chart { padding: 16px 18px 12px; margin-top: 12px; }
+.chart-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.chart-title { font-size: 15px; font-weight: 650; }
 .chart-sub { font-size: 13px; color: var(--muted-dim); margin-left: auto; }
-
-.donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
-
-.donut-centre-value {
-  font-size: 26px;
-  font-weight: 700;
-  fill: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.donut-centre-label { font-size: 11px; fill: var(--muted-dim); letter-spacing: 0.1em; }
-
-/* Identity is never colour alone: every series is named in the legend and
-   again on its own row, so a reader who cannot separate the hues still can. */
-.legend { display: flex; flex-direction: column; gap: 10px; min-width: 190px; }
-
-.legend-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-
-.legend-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex: none;
-  /* A 2px ring in the surface colour, so touching marks never bleed together. */
-  box-shadow: 0 0 0 2px var(--void);
-}
-
-.legend-name { color: var(--muted); }
-.legend-value { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
-
-.bars { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
-
+.bars { display: flex; flex-direction: column; gap: 12px; }
 .bar-row { display: grid; grid-template-columns: 78px 1fr auto; align-items: center; gap: 12px; }
-
 .bar-label { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-
 .bar-track {
   display: block;
-  position: relative;
   height: 12px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
   overflow: hidden;
 }
-
 .bar-fill {
-  /* Block, not inline. A span is inline by default, and width and height are
-     simply ignored on an inline box: the bars rendered as empty tracks. */
+  /* Block, not inline: width and height are ignored on an inline box. */
   display: block;
   height: 100%;
-  /* Rounded only at the data end, anchored flat to the baseline. */
   border-radius: 0 4px 4px 0;
   background: var(--accent);
   transition: width 0.6s var(--ease);
 }
-
-.bar-value { font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: right; }
-
-/* Tooltip, shared by the donut and the bars. */
-.tip {
-  position: fixed;
-  z-index: 40;
-  pointer-events: none;
-  padding: 8px 11px;
-  border-radius: 10px;
-  background: rgba(12, 6, 22, 0.94);
-  border: 1px solid var(--glass-line);
-  font-size: 13px;
-  line-height: 1.45;
-  opacity: 0;
-  transition: opacity 0.12s var(--ease);
-  white-space: nowrap;
-}
-
-.tip.show { opacity: 1; }
-.tip b { font-variant-numeric: tabular-nums; }
-
-.donut-seg { cursor: default; transition: opacity 0.15s var(--ease); }
-.donut-seg:hover { opacity: 0.82; }
-
-/* ------------------------------------------------------------- Issues */
-
-.issue { padding: 16px 0; }
-.issue + .issue { border-top: 1px solid rgba(255, 255, 255, 0.07); }
-
-.issue-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-
-.issue h3 { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
-
-.issue p { margin: 8px 0 0; font-size: 14.5px; color: var(--muted); max-width: 78ch; }
-
-.issue-meta { margin-left: auto; font-size: 12.5px; color: var(--muted-dim); white-space: nowrap; }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  border: 1px solid currentColor;
-  /* The border and the icon carry as much as the fill does, so the badge is
-     still legible in forced-colours mode and in print. */
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.badge svg { flex: none; }
-
-.badge.investigating { color: var(--st-investigating); }
-.badge.fixing        { color: var(--st-fixing); }
-.badge.fixed         { color: var(--st-fixed); }
-.badge.limitation    { color: var(--st-limitation); }
-
-.issues-none {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--ok);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* ------------------------------------------------------------ Changes */
-
-.change { display: flex; gap: 12px; align-items: baseline; padding: 11px 0; }
-.change + .change { border-top: 1px solid rgba(255, 255, 255, 0.07); }
-
-.kind {
-  flex: none;
-  width: 76px;
-  padding: 3px 0;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-.kind.new      { background: rgba(199, 77, 255, 0.20); color: #d98cff; }
-.kind.improved { background: rgba(42, 111, 176, 0.28); color: #74b3e8; }
-.kind.fixed    { background: rgba(61, 220, 151, 0.16); color: var(--ok); }
-
-.change p { margin: 0; font-size: 14.5px; }
-
-.older {
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: 14px;
-  border: 1px dashed var(--glass-line);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.older p { margin: 0; color: var(--muted); font-size: 14.5px; flex: 1 1 320px; }
-
-/* --------------------------------------------------- Table & footer */
-
+.bar-value { font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
 details.table { margin-top: 14px; }
-
-details.table summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--muted-dim);
-  padding: 6px 0;
-}
-
+details.table summary { cursor: pointer; font-size: 13px; color: var(--muted-dim); padding: 4px 0; }
 details.table summary:hover { color: var(--muted); }
-
-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13.5px; }
-th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
 th { color: var(--muted-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .skeleton {
-  border-radius: 8px;
-  background: linear-gradient(90deg, var(--glass) 25%, var(--glass-hi) 50%, var(--glass) 75%);
+  display: inline-block;
+  width: 70px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.12), rgba(255,255,255,.05));
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
-
 @keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
 
-.note { color: var(--muted-dim); font-size: 13.5px; }
+/* ------------------------------------------------------------- Footer */
 
 footer {
-  margin-top: 40px;
-  padding: 28px 0 40px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--muted-dim);
-  font-size: 13.5px;
+  margin: 48px 0 36px;
   display: flex;
-  gap: 20px;
   flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13px;
+  color: var(--muted-dim);
 }
-
 footer a { color: var(--muted); text-decoration: none; }
 footer a:hover { color: var(--ink); }
+footer .grow { flex: 1; }
 
-/* --------------------------------------------------------- Handy */
-
-/* The bar was built as a single row of brand, links and button, which adds up
-   to far more than a phone is wide: the download button ended up past the
-   right edge, cut off and unreachable, and the brand broke across two lines.
-   Below this width it becomes two rows and stops sticking, because a bar that
-   tall would otherwise sit on a tenth of the screen for the whole page. */
-@media (max-width: 760px) {
-  .inner, .nav { width: min(1120px, 100% - 28px); }
-
-  .nav {
-    position: static;
-    height: auto;
-    flex-wrap: wrap;
-    gap: 10px 14px;
-    padding: 12px 0 6px;
-  }
-
-  .brand { font-size: 15px; }
-  .brand svg { width: 26px; height: 26px; }
-
-  /* The switcher takes over the auto margin, so it and the download button
-     stay packed together on the right of the first row instead of drifting
-     apart once the nav links drop to their own row below. */
-  .lang-switch { margin-left: auto; }
-  .nav-cta { padding: 8px 14px; }
-
-  .nav-links {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-    gap: 18px;
-    font-size: 14px;
-  }
-
-  /* Big enough to hit. As plain inline links these were 22 to 23 pixels tall,
-     well under what a finger lands on reliably. */
-  .nav-links a,
-  footer a,
-  details.table summary { display: inline-block; padding: 7px 0; }
-
-  .head { padding: 28px 0 6px; }
-  .head p, .issue p { max-width: none; }
-  section { padding: 20px 0; }
-
-  .card { padding: 16px; }
-  .grid { gap: 12px; }
-
-  /* The legend claimed a fixed 190px beside a 180px chart, which does not fit
-     next to each other here. Stacked, both get the full width. */
-  .legend { min-width: 100%; }
-  .donut-wrap { gap: 16px; }
-
-  .chart-head { flex-wrap: wrap; gap: 2px 12px; }
-  .chart-sub { margin-left: 0; }
-
-  /* The date moves under the title instead of being pushed to a right edge
-     that is no longer there. */
-  .issue-meta { margin-left: 0; width: 100%; }
-
-  /* Three columns of numbers do not fit. The table scrolls by itself rather
-     than dragging the whole page sideways with it. */
-  details.table { overflow-x: auto; }
-  th, td { padding: 7px 6px; font-size: 13px; }
-
-  /* A tooltip is placed at the pointer and never wrapped, so a long one ran
-     off a narrow screen. */
-  .tip { max-width: calc(100vw - 20px); white-space: normal; }
-
-  footer { margin-top: 28px; gap: 4px 18px; }
-}
-
-/* Narrow phones, where the fixed columns of the bar chart leave the bar itself
-   almost nothing. */
-@media (max-width: 420px) {
-  .bar-row { grid-template-columns: 60px 1fr auto; gap: 8px; }
-  .bar-label { font-size: 12.5px; }
-  .bar-value { min-width: 42px; font-size: 12.5px; }
-  .kind { width: 66px; }
-  .nav-links { gap: 14px; }
-  .tile-note, .issue p, .change p { font-size: 14px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
-  html { scroll-behavior: auto; }
-}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 </head>
 
-<body data-palette="#2a6fb0,#c05cf5,#cf7c2e">
+<body>
 
-<nav class="nav">
-  <a class="brand" href="https://launchgabi.com/">
-    <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="lg" x1="6" y1="58" x2="58" y2="6" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#7c2ae8"/><stop offset="1" stop-color="#ff5cc8"/>
-        </linearGradient>
-      </defs>
-      <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#lg)"/>
-      <path d="M22 20v24h20" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span>Launch Gabi<small>Status</small></span>
-  </a>
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="https://launchgabi.com/">
+      <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="6" y1="58" x2="58" y2="6" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#7c2ae8"/><stop offset="1" stop-color="#ff5cc8"/>
+          </linearGradient>
+        </defs>
+        <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#lg)"/>
+        <path d="M22 20v24h20" stroke="#fff" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Launch Gabi<small>Status</small></span>
+    </a>
 
-  <div class="nav-links">
-    <a href="https://launchgabi.com/" data-i18n="navHome">Startseite</a>
-    <a href="https://launchgabi.com/#hilfe" data-i18n="navHelp">Hilfe</a>
-    <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a>
-  </div>
-
-  <div class="lang-switch" role="group" aria-label="Sprache / Language">
-    <button type="button" data-lang="de" class="active">DE</button>
-    <button type="button" data-lang="en">EN</button>
-  </div>
-
-  <a class="nav-cta" href="https://launchgabi.com/#download" data-i18n="navDownload">Herunterladen</a>
-</nav>
-
-<main class="inner">
-
-  <div class="head">
-    <h1 data-i18n="heroTitle">Status</h1>
-    <p data-i18n="heroText">
-      Aktuelle Version, wie oft Launch Gabi heruntergeladen wurde und was zuletzt
-      behoben wurde. Die Zahlen kommen direkt von GitHub und werden bei jedem
-      Aufruf frisch geladen.
-    </p>
-  </div>
-
-  <!-- ============================ TILES ============================ -->
-  <section aria-labelledby="h-ueberblick">
-    <h2 id="h-ueberblick" data-i18n="hOverview">Überblick</h2>
-    <div class="grid tiles">
-      <div class="card">
-        <div class="tile-label" data-i18n="tileVersion">Aktuelle Version</div>
-        <div class="tile-value" id="t-version"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-version-note" data-i18n="loading">wird geladen…</div>
-      </div>
-
-      <div class="card">
-        <div class="tile-label" data-i18n="tileDownloads">Downloads gesamt</div>
-        <div class="tile-value" id="t-downloads"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-downloads-note" data-i18n="tileDownloadsNote">über alle Versionen</div>
-      </div>
-
-      <div class="card">
-        <div class="tile-label" data-i18n="tileReleases">Veröffentlichungen</div>
-        <div class="tile-value" id="t-releases"><span class="skeleton" style="display:block;height:34px"></span></div>
-        <div class="tile-note" id="t-releases-note" data-i18n="tileReleasesNote">seit dem ersten Release</div>
-      </div>
-
-      <div class="card">
-        <div class="tile-label" data-i18n="tileAvailability">Verfügbarkeit</div>
-        <div class="tile-value" style="font-size:20px;padding-top:6px">
-          <span class="state ok" id="t-state"><span class="dot"></span><span data-i18n="checking">wird geprüft</span></span>
-        </div>
-        <div class="tile-note" id="t-state-note" data-i18n="availabilityNote">Windows, macOS und Linux</div>
-      </div>
+    <div class="nav-links">
+      <a href="https://launchgabi.com/" data-i18n="navHome">Startseite</a>
+      <a href="https://launchgabi.com/#hilfe" data-i18n="navHelp">Hilfe</a>
+      <a href="https://discord.gg/busbahnhof" target="_blank" rel="noopener noreferrer">Discord</a>
     </div>
-  </section>
 
-  <!-- =========================== CHARTS ============================ -->
-  <section aria-labelledby="h-zahlen">
-    <h2 id="h-zahlen" data-i18n="hDownloads">Downloads</h2>
+    <div class="lang-switch" role="group" aria-label="Sprache / Language">
+      <button type="button" data-lang="de" class="active">DE</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
 
-    <div class="grid charts">
+    <a class="nav-cta" href="https://launchgabi.com/#download" data-i18n="navDownload">Herunterladen</a>
+  </nav>
 
-      <!-- Part of a whole, three parts: a ring is the honest form here. -->
-      <div class="card">
-        <div class="chart-head">
-          <span class="chart-title" data-i18n="byPlatform">Nach Plattform</span>
+  <main>
+
+    <!-- ========================= OVERALL ========================= -->
+    <div class="banner pending" id="banner" role="status" aria-live="polite">
+      <div class="b-icon" id="banner-icon"></div>
+      <div class="b-text">
+        <h1 id="banner-title" data-i18n="checkingAll">Dienste werden geprüft…</h1>
+        <p id="banner-sub"></p>
+      </div>
+      <button class="btn" id="recheck" type="button" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        <span data-i18n="recheck">Erneut prüfen</span>
+      </button>
+    </div>
+    <p class="banner-note" id="banner-note"></p>
+
+    <!-- ======================= COMPONENTS ======================== -->
+    <section aria-labelledby="h-services">
+      <div class="sec-head">
+        <h2 id="h-services" data-i18n="hServices">Dienste</h2>
+        <span class="sec-sub" data-i18n="servicesSub">Live aus deinem Browser geprüft</span>
+      </div>
+      <div class="panel" id="services"></div>
+      <p class="legend-note" data-i18n="servicesNote">
+        Geprüft wird bei jedem Aufruf dieser Seite, direkt von deinem Gerät aus. Ist ein Dienst
+        nur bei dir nicht erreichbar, kann das auch an deiner Verbindung, einem Werbeblocker
+        oder einer Firewall liegen.
+      </p>
+    </section>
+
+    <!-- ======================== INCIDENTS ======================== -->
+    <section aria-labelledby="h-incidents">
+      <div class="sec-head">
+        <h2 id="h-incidents" data-i18n="hIncidents">Aktuelle Meldungen</h2>
+        <span class="sec-sub" id="incidents-sub"></span>
+      </div>
+      <div class="panel" id="incidents"></div>
+    </section>
+
+    <!-- ========================= RELEASE ========================= -->
+    <section aria-labelledby="h-release">
+      <div class="sec-head">
+        <h2 id="h-release" data-i18n="hRelease">Neueste Version</h2>
+        <span class="sec-sub" id="release-date"></span>
+      </div>
+      <div class="panel">
+        <div class="release-head">
+          <h3 id="release-title">…</h3>
+          <p id="release-headline"></p>
         </div>
+        <div class="changes" id="release-changes"></div>
+      </div>
+    </section>
 
-        <div class="donut-wrap">
-          <svg width="180" height="180" viewBox="0 0 180 180" id="donut" role="img"
-               aria-labelledby="donut-title">
-            <title id="donut-title" data-i18n="donutTitle">Anteil der Downloads je Plattform</title>
-            <circle cx="90" cy="90" r="66" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="22"></circle>
-            <g id="donut-segs"></g>
-            <text x="90" y="86" text-anchor="middle" class="donut-centre-value" id="donut-total">…</text>
-            <text x="90" y="104" text-anchor="middle" class="donut-centre-label" data-i18n="donutTotalLabel">GESAMT</text>
-          </svg>
+    <!-- ======================= LIMITATIONS ======================= -->
+    <section aria-labelledby="h-limits" id="limits-section" hidden>
+      <div class="sec-head">
+        <h2 id="h-limits" data-i18n="hLimits">Bekannte Grenzen</h2>
+        <span class="sec-sub" data-i18n="limitsSub">Dauerhaft, kein Fehler im eigentlichen Sinn</span>
+      </div>
+      <div class="panel" id="limits"></div>
+    </section>
 
-          <div class="legend" id="donut-legend"></div>
+    <!-- ========================= HISTORY ========================= -->
+    <section aria-labelledby="h-history">
+      <div class="sec-head">
+        <h2 id="h-history" data-i18n="hHistory">Verlauf</h2>
+        <span class="sec-sub" data-i18n="historySub">Gemeldete Probleme nach Tag</span>
+      </div>
+      <div class="panel" id="history"></div>
+    </section>
+
+    <!-- ========================= METRICS ========================= -->
+    <section aria-labelledby="h-metrics">
+      <div class="sec-head">
+        <h2 id="h-metrics" data-i18n="hMetrics">Kennzahlen</h2>
+        <span class="sec-sub" data-i18n="metricsSub">Direkt von GitHub</span>
+      </div>
+      <div class="panel metrics">
+        <div class="metric">
+          <div class="m-label" data-i18n="mVersion">Version</div>
+          <div class="m-value" id="m-version"><span class="skeleton"></span></div>
+          <div class="m-note" id="m-version-note"></div>
         </div>
-
-        <details class="table">
-          <summary data-i18n="showAsTable">Als Tabelle anzeigen</summary>
-          <table id="platform-table">
-            <thead><tr><th data-i18n="thPlatform">Plattform</th><th class="num" data-i18n="thDownloads">Downloads</th><th class="num" data-i18n="thShare">Anteil</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </details>
+        <div class="metric">
+          <div class="m-label" data-i18n="mDownloads">Downloads</div>
+          <div class="m-value" id="m-downloads"><span class="skeleton"></span></div>
+          <div class="m-note" data-i18n="mDownloadsNote">über alle Versionen</div>
+        </div>
+        <div class="metric">
+          <div class="m-label" data-i18n="mPlatforms">Plattformen</div>
+          <div class="m-value" id="m-platforms"><span class="skeleton"></span></div>
+          <div class="m-note" id="m-platforms-note"></div>
+        </div>
+        <div class="metric">
+          <div class="m-label" data-i18n="mReleases">Veröffentlichungen</div>
+          <div class="m-value" id="m-releases"><span class="skeleton"></span></div>
+          <div class="m-note" id="m-releases-note"></div>
+        </div>
       </div>
 
-      <!-- Magnitude across versions: bars, one axis, sorted newest first. -->
-      <div class="card">
+      <div class="panel chart">
         <div class="chart-head">
           <span class="chart-title" data-i18n="byVersion">Nach Version</span>
           <span class="chart-sub" id="bars-sub"></span>
         </div>
-
-        <div class="bars" id="bars" role="img" aria-label="Downloads je Version" data-i18n-attr="aria-label:barsAriaLabel"></div>
-
+        <div class="bars" id="bars" role="img" aria-label="Downloads je Version" data-i18n-aria="barsAria"></div>
         <details class="table">
           <summary data-i18n="showAsTable">Als Tabelle anzeigen</summary>
           <table id="version-table">
@@ -664,60 +651,19 @@ footer a:hover { color: var(--ink); }
           </table>
         </details>
       </div>
+    </section>
 
-    </div>
-
-    <p class="note" id="data-note" style="margin-top:14px"></p>
-  </section>
-
-  <!-- ========================== ISSUES ============================= -->
-  <section aria-labelledby="h-offen">
-    <h2 id="h-offen" data-i18n="hIssues">Bekannte Probleme</h2>
-
-    <div class="card">
-      <div class="chart-head">
-        <span class="chart-title" id="issues-count" data-i18n="loading">wird geladen…</span>
-        <span class="chart-sub" data-i18n="issuesSub">Erledigtes verschwindet hier, sobald die Version draußen ist</span>
-      </div>
-
-      <div id="issues-list"></div>
-    </div>
-  </section>
-
-  <!-- ========================== CHANGES ============================ -->
-  <section aria-labelledby="h-neu">
-    <h2 id="h-neu" data-i18n="hChanges">Zuletzt behoben</h2>
-
-    <div class="card">
-      <div class="chart-head">
-        <span class="chart-title" id="fix-version">…</span>
-        <span class="chart-sub" id="fix-date"></span>
-      </div>
-      <p class="note" id="fix-headline" style="margin:2px 0 10px"></p>
-
-      <div id="fix-list"></div>
-
-      <div class="older">
-        <p data-i18n-html="olderTextHtml">
-          Ältere Einträge stehen vollständig im Launcher selbst, unter
-          <strong>Einstellungen &rarr; Neuerungen</strong>. Dort bleibt jede Version
-          stehen, auch die von früher.
-        </p>
-        <a class="nav-cta" href="https://launchgabi.com/#download" data-i18n="olderCta">Launcher herunterladen</a>
-      </div>
-    </div>
-  </section>
+  </main>
 
   <footer>
     <span>Launch Gabi</span>
     <a href="https://launchgabi.com/impressum.html" data-i18n="footerImprint">Impressum</a>
     <a href="https://launchgabi.com/datenschutz.html" data-i18n="footerPrivacy">Datenschutz</a>
     <a href="https://github.com/Gabi12u/Project-Launch-Gabi/releases" target="_blank" rel="noopener noreferrer" data-i18n="footerReleases">Alle Releases</a>
+    <span class="grow"></span>
+    <span data-i18n="footerNote">Die Liste der Meldungen stammt direkt aus dem Launcher-Code.</span>
   </footer>
-
-</main>
-
-<div class="tip" id="tip" role="status" aria-live="polite"></div>
+</div>
 
 <script>
 (function () {
@@ -725,462 +671,6 @@ footer a:hover { color: var(--ink); }
 
   var REPO = 'Gabi12u/Project-Launch-Gabi';
 
-  // Fixed order, never cycled: a platform keeps its colour whatever the
-  // download numbers do, so the ring cannot repaint itself between visits.
-  var PLATFORMS = [
-    { key: 'win',   name: 'Windows', colour: '#2a6fb0', test: function (n) { return /\.exe$/i.test(n); } },
-    { key: 'mac',   name: 'macOS',   colour: '#c05cf5', test: function (n) { return /\.dmg$/i.test(n); } },
-    { key: 'linux', name: 'Linux',   colour: '#cf7c2e', test: function (n) { return /\.appimage$/i.test(n); } }
-  ];
-
-  var tip = document.getElementById('tip');
-
-  function showTip(html, event) {
-    tip.innerHTML = html;
-    tip.classList.add('show');
-    moveTip(event);
-  }
-
-  function moveTip(event) {
-    // Kept inside the viewport, so a mark near the right edge does not push
-    // its own tooltip off screen.
-    var pad = 14;
-    var x = event.clientX + pad;
-    var y = event.clientY + pad;
-    var box = tip.getBoundingClientRect();
-    if (x + box.width > window.innerWidth - 8) x = event.clientX - box.width - pad;
-    if (y + box.height > window.innerHeight - 8) y = event.clientY - box.height - pad;
-    tip.style.left = x + 'px';
-    tip.style.top = y + 'px';
-  }
-
-  function hideTip() { tip.classList.remove('show'); }
-
-  // Every fixed piece of text on the page, in both languages. The dynamic
-  // entries are small builder functions so a number or a date can still be
-  // dropped into the right spot without typing the sentence around it twice.
-  var I18N = {
-    de: {
-      navHome: 'Startseite',
-      navHelp: 'Hilfe',
-      navDownload: 'Herunterladen',
-      heroTitle: 'Status',
-      heroText: 'Aktuelle Version, wie oft Launch Gabi heruntergeladen wurde und was zuletzt ' +
-        'behoben wurde. Die Zahlen kommen direkt von GitHub und werden bei jedem Aufruf frisch geladen.',
-      hOverview: 'Überblick',
-      tileVersion: 'Aktuelle Version',
-      loading: 'wird geladen…',
-      tileDownloads: 'Downloads gesamt',
-      tileDownloadsNote: 'über alle Versionen',
-      tileReleases: 'Veröffentlichungen',
-      tileReleasesNote: 'seit dem ersten Release',
-      tileAvailability: 'Verfügbarkeit',
-      checking: 'wird geprüft',
-      availabilityNote: 'Windows, macOS und Linux',
-      hDownloads: 'Downloads',
-      byPlatform: 'Nach Plattform',
-      donutTitle: 'Anteil der Downloads je Plattform',
-      donutTotalLabel: 'GESAMT',
-      showAsTable: 'Als Tabelle anzeigen',
-      thPlatform: 'Plattform',
-      thDownloads: 'Downloads',
-      thShare: 'Anteil',
-      byVersion: 'Nach Version',
-      barsAriaLabel: 'Downloads je Version',
-      thVersion: 'Version',
-      thPublished: 'Veröffentlicht',
-      hIssues: 'Bekannte Probleme',
-      issuesSub: 'Erledigtes verschwindet hier, sobald die Version draußen ist',
-      hChanges: 'Zuletzt behoben',
-      olderTextHtml: 'Ältere Einträge stehen vollständig im Launcher selbst, unter ' +
-        '<strong>Einstellungen → Neuerungen</strong>. Dort bleibt jede Version stehen, auch die von früher.',
-      olderCta: 'Launcher herunterladen',
-      footerImprint: 'Impressum',
-      footerPrivacy: 'Datenschutz',
-      footerReleases: 'Alle Releases',
-      metaTitle: 'Status: Launch Gabi',
-      metaDescription: 'Aktuelle Version, Downloadzahlen nach Plattform und die neuesten Behebungen von Launch Gabi.',
-
-      versionLabel: function (v) { return 'Version ' + v; },
-      versionNote: function (d) { return 'veröffentlicht am ' + d; },
-      releasesNote: function (d) { return 'seit ' + d; },
-      availAll: 'alle Plattformen',
-      availAllNote: 'Windows, macOS und Linux verfügbar',
-      availPartial: 'unvollständig',
-      missingNote: function (names) { return 'Es fehlt: ' + names; },
-      dataNote: function (stamp) {
-        return 'Gezählt werden nur die Installationsdateien, nicht die Update-Dateien, die der Launcher ' +
-          'selbst im Hintergrund abruft. Stand: ' + stamp + '.';
-      },
-      versionsCount: function (n) { return n + (n === 1 ? ' Version' : ' Versionen'); },
-      tipShare: function (name, count, pctText) { return '<b>' + name + '</b><br>' + count + ' Downloads · ' + pctText; },
-      tipVersion: function (tag, count, d) { return '<b>' + tag + '</b><br>' + count + ' Downloads<br>' + d; },
-      unreachable: 'nicht erreichbar',
-      unknown: 'unbekannt',
-      numbersUnavailable: 'Die Zahlen konnten nicht geladen werden.',
-      rateLimited: 'GitHub hat die Anfrage vorerst abgelehnt (zu viele Aufrufe von dieser Leitung). In einer Stunde geht es wieder.',
-      httpError: function (status) { return 'GitHub antwortete mit HTTP ' + status + '.'; },
-      noReleasesYet: 'Es sind noch keine Veröffentlichungen vorhanden.',
-      issuesNone: 'Nichts Offenes',
-      issuesOpenCount: function (n) { return n + (n === 1 ? ' offener Punkt' : ' offene Punkte'); },
-      issuesNoneDetail: 'Zurzeit sind keine Probleme bekannt.',
-      since: function (d) { return 'seit ' + d; },
-      fixedComing: function (v) { return ', kommt mit ' + v; },
-      fixedInVersion: function (v) { return ' in ' + v; }
-    },
-    en: {
-      navHome: 'Home',
-      navHelp: 'Help',
-      navDownload: 'Download',
-      heroTitle: 'Status',
-      heroText: 'The current version, how often Launch Gabi has been downloaded and what was fixed ' +
-        'most recently. The numbers come straight from GitHub and are loaded fresh on every visit.',
-      hOverview: 'Overview',
-      tileVersion: 'Current version',
-      loading: 'loading…',
-      tileDownloads: 'Total downloads',
-      tileDownloadsNote: 'across all versions',
-      tileReleases: 'Releases',
-      tileReleasesNote: 'since the first release',
-      tileAvailability: 'Availability',
-      checking: 'checking…',
-      availabilityNote: 'Windows, macOS and Linux',
-      hDownloads: 'Downloads',
-      byPlatform: 'By platform',
-      donutTitle: 'Share of downloads by platform',
-      donutTotalLabel: 'TOTAL',
-      showAsTable: 'Show as table',
-      thPlatform: 'Platform',
-      thDownloads: 'Downloads',
-      thShare: 'Share',
-      byVersion: 'By version',
-      barsAriaLabel: 'Downloads by version',
-      thVersion: 'Version',
-      thPublished: 'Published',
-      hIssues: 'Known issues',
-      issuesSub: 'Fixed items disappear here as soon as the version is out',
-      hChanges: 'Recently fixed',
-      olderTextHtml: 'Older entries live in full inside the launcher itself, under ' +
-        '<strong>Settings → What’s New</strong>. Every version stays there, including the old ones.',
-      olderCta: 'Download launcher',
-      footerImprint: 'Imprint',
-      footerPrivacy: 'Privacy policy',
-      footerReleases: 'All releases',
-      metaTitle: 'Status: Launch Gabi',
-      metaDescription: 'Current version, download numbers by platform and the newest fixes from Launch Gabi.',
-
-      versionLabel: function (v) { return 'Version ' + v; },
-      versionNote: function (d) { return 'published on ' + d; },
-      releasesNote: function (d) { return 'since ' + d; },
-      availAll: 'all platforms',
-      availAllNote: 'Windows, macOS and Linux available',
-      availPartial: 'incomplete',
-      missingNote: function (names) { return 'Missing: ' + names; },
-      dataNote: function (stamp) {
-        return 'Only the installer files are counted, not the update feed files the launcher fetches on ' +
-          'its own in the background. As of ' + stamp + '.';
-      },
-      versionsCount: function (n) { return n + (n === 1 ? ' version' : ' versions'); },
-      tipShare: function (name, count, pctText) { return '<b>' + name + '</b><br>' + count + ' downloads · ' + pctText; },
-      tipVersion: function (tag, count, d) { return '<b>' + tag + '</b><br>' + count + ' downloads<br>' + d; },
-      unreachable: 'unavailable',
-      unknown: 'unknown',
-      numbersUnavailable: 'The numbers could not be loaded.',
-      rateLimited: 'GitHub declined the request for now (too many calls from this connection). It will be available again in an hour.',
-      httpError: function (status) { return 'GitHub responded with HTTP ' + status + '.'; },
-      noReleasesYet: 'There are no releases yet.',
-      issuesNone: 'Nothing open',
-      issuesOpenCount: function (n) { return n + (n === 1 ? ' open item' : ' open items'); },
-      issuesNoneDetail: 'No problems are known at the moment.',
-      since: function (d) { return 'since ' + d; },
-      fixedComing: function (v) { return ', coming in ' + v; },
-      fixedInVersion: function (v) { return ' in ' + v; }
-    }
-  };
-
-  // Defaults to German; changed only through setLang, further down.
-  var LANG = 'de';
-
-  function t(key) { return I18N[LANG][key]; }
-
-  function num(value) { return value.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE'); }
-
-  // The two languages format a share differently: a comma and a space before
-  // the sign in German, a dot and no space in English.
-  function pct(share) {
-    var value = share * 100;
-    return LANG === 'en' ? value.toFixed(1) + '%' : value.toFixed(1).replace('.', ',') + ' %';
-  }
-
-  function date(iso) {
-    try {
-      return new Date(iso).toLocaleDateString(LANG === 'en' ? 'en-US' : 'de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
-    } catch (err) { return ''; }
-  }
-
-  function dateTime(d) {
-    try { return d.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE'); } catch (err) { return ''; }
-  }
-
-  function set(id, text) { document.getElementById(id).textContent = text; }
-
-  // Swaps every fixed label and heading over to the current language, without
-  // touching anything built from live data, which the render functions redo
-  // on their own whenever the language changes.
-  function applyStaticText() {
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      el.textContent = t(el.getAttribute('data-i18n'));
-    });
-    document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
-      el.innerHTML = t(el.getAttribute('data-i18n-html'));
-    });
-    document.querySelectorAll('[data-i18n-attr]').forEach(function (el) {
-      el.getAttribute('data-i18n-attr').split(',').forEach(function (pair) {
-        var parts = pair.split(':');
-        el.setAttribute(parts[0], t(parts[1]));
-      });
-    });
-    document.title = t('metaTitle');
-    var metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute('content', t('metaDescription'));
-  }
-
-  /* ------------------------------------------------------- Donut ---- */
-
-  function drawDonut(parts, total) {
-    var segs = document.getElementById('donut-segs');
-    var legend = document.getElementById('donut-legend');
-    var body = document.querySelector('#platform-table tbody');
-    segs.innerHTML = '';
-    legend.innerHTML = '';
-    body.innerHTML = '';
-
-    document.getElementById('donut-total').textContent = total > 0 ? num(total) : '0';
-
-    var radius = 66;
-    var circumference = 2 * Math.PI * radius;
-    var offset = 0;
-
-    parts.forEach(function (part) {
-      var share = total > 0 ? part.value / total : 0;
-      var length = share * circumference;
-
-      if (length > 0) {
-        var arc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        arc.setAttribute('cx', '90');
-        arc.setAttribute('cy', '90');
-        arc.setAttribute('r', String(radius));
-        arc.setAttribute('fill', 'none');
-        arc.setAttribute('stroke', part.colour);
-        arc.setAttribute('stroke-width', '22');
-        // A 2px gap in the surface colour between neighbouring segments, so two
-        // fills never touch and read as one.
-        arc.setAttribute('stroke-dasharray', Math.max(length - 2, 0.5) + ' ' + circumference);
-        arc.setAttribute('stroke-dashoffset', String(-offset));
-        arc.setAttribute('transform', 'rotate(-90 90 90)');
-        arc.setAttribute('class', 'donut-seg');
-        segs.appendChild(arc);
-
-        arc.addEventListener('mouseenter', function (event) {
-          showTip(t('tipShare')(part.name, num(part.value), pct(share)), event);
-        });
-        arc.addEventListener('mousemove', moveTip);
-        arc.addEventListener('mouseleave', hideTip);
-      }
-      offset += length;
-
-      var row = document.createElement('div');
-      row.className = 'legend-row';
-      row.innerHTML =
-        '<span class="legend-swatch" style="background:' + part.colour + '"></span>' +
-        '<span class="legend-name">' + part.name + '</span>' +
-        '<span class="legend-value">' + num(part.value) + '</span>';
-      legend.appendChild(row);
-
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + part.name + '</td><td class="num">' + num(part.value) +
-        '</td><td class="num">' + pct(share) + '</td>';
-      body.appendChild(tr);
-    });
-  }
-
-  /* -------------------------------------------------------- Bars ---- */
-
-  function drawBars(versions) {
-    var host = document.getElementById('bars');
-    var body = document.querySelector('#version-table tbody');
-    host.innerHTML = '';
-    body.innerHTML = '';
-
-    var max = 0;
-    versions.forEach(function (v) { if (v.total > max) max = v.total; });
-
-    versions.forEach(function (v) {
-      var row = document.createElement('div');
-      row.className = 'bar-row';
-
-      var width = max > 0 ? Math.max((v.total / max) * 100, 1.5) : 0;
-      row.innerHTML =
-        '<span class="bar-label">' + v.tag + '</span>' +
-        '<span class="bar-track"><span class="bar-fill" style="width:' + width + '%"></span></span>' +
-        '<span class="bar-value">' + num(v.total) + '</span>';
-
-      row.addEventListener('mouseenter', function (event) {
-        showTip(t('tipVersion')(v.tag, num(v.total), date(v.published)), event);
-      });
-      row.addEventListener('mousemove', moveTip);
-      row.addEventListener('mouseleave', hideTip);
-
-      host.appendChild(row);
-
-      var tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + v.tag + '</td><td>' + date(v.published) + '</td><td class="num">' + num(v.total) + '</td>';
-      body.appendChild(tr);
-    });
-
-    document.getElementById('bars-sub').textContent = t('versionsCount')(versions.length);
-  }
-
-  /* -------------------------------------------------------- Load ---- */
-
-  // Set once the release list is in, so a language switch can redraw every
-  // number and date in the new locale without asking GitHub again.
-  var fetchState = null;
-  // Set instead of fetchState when the request itself failed, so a language
-  // switch can redraw the right error message rather than losing it.
-  var lastFailure = null;
-
-  function renderFailed(failure) {
-    ['t-version', 't-downloads', 't-releases'].forEach(function (id) {
-      document.getElementById(id).textContent = '…';
-    });
-    set('t-version-note', t('unreachable'));
-    var state = document.getElementById('t-state');
-    state.className = 'state warn';
-    state.innerHTML = '<span class="dot"></span>' + t('unknown');
-    set('t-state-note', t('numbersUnavailable'));
-
-    var message = t('numbersUnavailable');
-    if (failure.kind === 'rateLimited') message = t('rateLimited');
-    else if (failure.kind === 'http') message = t('httpError')(failure.status);
-    else if (failure.kind === 'noReleases') message = t('noReleasesYet');
-
-    document.getElementById('data-note').textContent = message;
-  }
-
-  function renderFetchedStats() {
-    if (!fetchState) return;
-    var latest = fetchState.latest;
-    var releases = fetchState.releases;
-    var totals = fetchState.totals;
-    var grand = fetchState.grand;
-    var perVersion = fetchState.perVersion;
-
-    set('t-version', latest.tag_name);
-    set('t-version-note', t('versionNote')(date(latest.published_at)));
-    set('t-downloads', num(grand));
-    set('t-releases', String(releases.length));
-    set('t-releases-note', t('releasesNote')(date(releases[releases.length - 1].published_at)));
-
-    // "Available" here means one thing only, and the page says which: does
-    // the newest release actually carry an installer for all three systems.
-    var missing = PLATFORMS.filter(function (p) {
-      return !(latest.assets || []).some(function (a) { return p.test(a.name); });
-    });
-
-    var state = document.getElementById('t-state');
-    if (missing.length === 0) {
-      state.className = 'state ok';
-      state.innerHTML = '<span class="dot"></span>' + t('availAll');
-      set('t-state-note', t('availAllNote'));
-    } else {
-      state.className = 'state warn';
-      state.innerHTML = '<span class="dot"></span>' + t('availPartial');
-      set('t-state-note', t('missingNote')(missing.map(function (p) { return p.name; }).join(', ')));
-    }
-
-    drawDonut(PLATFORMS.map(function (p) {
-      return { name: p.name, colour: p.colour, value: totals[p.key] };
-    }), grand);
-
-    drawBars(perVersion.slice(0, 8));
-
-    document.getElementById('data-note').textContent = t('dataNote')(dateTime(fetchState.fetchedAt));
-  }
-
-  fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=100', {
-    headers: { Accept: 'application/vnd.github+json' },
-    // Same reasoning as on the main site: a cached answer would keep showing
-    // a version that is no longer the current one.
-    cache: 'no-store'
-  })
-    .then(function (response) {
-      if (response.status === 403) {
-        var rateLimit = new Error('rate-limited');
-        rateLimit.kind = 'rateLimited';
-        throw rateLimit;
-      }
-      if (!response.ok) {
-        var httpFail = new Error('http-error');
-        httpFail.kind = 'http';
-        httpFail.status = response.status;
-        throw httpFail;
-      }
-      return response.json();
-    })
-    .then(function (releases) {
-      releases = (releases || []).filter(function (r) { return !r.draft; });
-      if (releases.length === 0) {
-        lastFailure = { kind: 'noReleases' };
-        renderFailed(lastFailure);
-        return;
-      }
-
-      var totals = { win: 0, mac: 0, linux: 0 };
-      var grand = 0;
-      var perVersion = [];
-
-      releases.forEach(function (release) {
-        var sum = 0;
-        (release.assets || []).forEach(function (asset) {
-          var count = asset.download_count || 0;
-          // Only real installers are counted. The update feeds (latest.yml and
-          // friends) are fetched by the launcher itself on every check, so
-          // counting them would drown the human downloads entirely.
-          PLATFORMS.forEach(function (p) {
-            if (p.test(asset.name)) { totals[p.key] += count; sum += count; }
-          });
-        });
-        grand += sum;
-        perVersion.push({ tag: release.tag_name, total: sum, published: release.published_at });
-      });
-
-      var latest = releases[0];
-      releasedVersion = latest.tag_name;
-      // Now that the current version is known, the fix badges can tell
-      // "already out" from "waiting for the next release".
-      renderIssues();
-
-      fetchState = {
-        latest: latest,
-        releases: releases,
-        totals: totals,
-        grand: grand,
-        perVersion: perVersion,
-        fetchedAt: new Date()
-      };
-      renderFetchedStats();
-    })
-    .catch(function (err) {
-      lastFailure = err && err.kind ? { kind: err.kind, status: err.status } : { kind: 'generic' };
-      renderFailed(lastFailure);
-    });
-
-  /* ------------------------------------------------------ Changes --- */
-
-  // Mirrors the newest entry from the launcher's own list. Older versions are
-  // deliberately not repeated here: the launcher keeps the full history, and
-  // that is the one place it can never drift out of date.
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
     "version": "1.0.20",
@@ -5212,18 +4702,418 @@ footer a:hover { color: var(--ink); }
 
   var KIND_LABEL = { new: 'Neu', improved: 'Besser', fixed: 'Behoben' };
 
-  // Small, distinct shapes, so the state is readable without relying on the
-  // colour at all.
-  var ICONS = {
-    investigating: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>',
-    fixing:        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3a5 5 0 0 0-4.6 7L3 17.4V21h3.6l7.4-7.4A5 5 0 1 0 15 3z"/></svg>',
-    fixed:         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 6.5"/></svg>',
-    limitation:    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>'
+  /* ------------------------------------------------------------ Text */
+
+  var I18N = {
+    de: {
+      navHome: 'Startseite',
+      navHelp: 'Hilfe',
+      navDownload: 'Herunterladen',
+      checkingAll: 'Dienste werden geprüft…',
+      recheck: 'Erneut prüfen',
+      hServices: 'Dienste',
+      servicesSub: 'Live aus deinem Browser geprüft',
+      servicesNote: 'Geprüft wird bei jedem Aufruf dieser Seite, direkt von deinem Gerät aus. Ist ein Dienst nur bei dir nicht erreichbar, kann das auch an deiner Verbindung, einem Werbeblocker oder einer Firewall liegen.',
+      hIncidents: 'Aktuelle Meldungen',
+      hRelease: 'Neueste Version',
+      hLimits: 'Bekannte Grenzen',
+      limitsSub: 'Dauerhaft, kein Fehler im eigentlichen Sinn',
+      hHistory: 'Verlauf',
+      historySub: 'Gemeldete Probleme nach Tag',
+      hMetrics: 'Kennzahlen',
+      metricsSub: 'Direkt von GitHub',
+      mVersion: 'Version',
+      mDownloads: 'Downloads',
+      mDownloadsNote: 'über alle Versionen',
+      mPlatforms: 'Plattformen',
+      mReleases: 'Veröffentlichungen',
+      footerImprint: 'Impressum',
+      footerPrivacy: 'Datenschutz',
+      footerReleases: 'Alle Releases',
+      footerNote: 'Die Liste der Meldungen stammt direkt aus dem Launcher-Code.',
+
+      groupLauncher: 'Launch Gabi',
+      groupAccount: 'Anmeldung',
+      groupGame: 'Minecraft',
+      groupContent: 'Mods und Loader',
+
+      stOk: 'Funktioniert',
+      stSlow: 'Langsam',
+      stDown: 'Nicht erreichbar',
+      stError: 'Antwortet fehlerhaft',
+      stPartial: 'Teilweise gestört',
+      stPending: 'Wird geprüft',
+
+      bannerOk: 'Alles läuft',
+      bannerSlow: 'Einige Dienste antworten langsam',
+      bannerDown: function (n) { return n === 1 ? 'Ein Dienst hat gerade Probleme' : n + ' Dienste haben gerade Probleme'; },
+      bannerChecked: function (time) { return 'Zuletzt geprüft um ' + time + ' Uhr, von deinem Gerät aus'; },
+      bannerIssues: function (n) { return n === 1 ? 'Im Launcher selbst wird gerade 1 bekanntes Problem behoben.' : 'Im Launcher selbst werden gerade ' + n + ' bekannte Probleme behoben.'; },
+      bannerIssuesLink: 'Zu den Meldungen',
+
+      incidentsNone: 'Gerade gibt es keine offenen Meldungen.',
+      incidentsCount: function (n) { return n === 1 ? '1 offen' : n + ' offen'; },
+      showAll: function (n) { return 'Alle ' + n + ' anzeigen'; },
+      showLess: 'Weniger anzeigen',
+      since: function (d) { return 'seit ' + d; },
+      fixedComing: function (v) { return 'Behoben, kommt mit ' + v; },
+      fixedIn: function (v) { return 'Behoben in ' + v; },
+
+      releaseTitle: function (v) { return 'Version ' + v; },
+      releasedOn: function (d) { return 'veröffentlicht am ' + d; },
+
+      dayNone: 'Keine Meldungen.',
+      dayMore: function (n) { return n === 1 ? '1 weitere' : n + ' weitere'; },
+      olderDays: 'Ältere Tage anzeigen',
+      today: 'Heute',
+      yesterday: 'Gestern',
+
+      versionNote: function (d) { return 'seit ' + d; },
+      platformsNote: 'Windows, macOS, Linux',
+      platformsMissing: function (names) { return 'Es fehlt: ' + names; },
+      releasesNote: function (d) { return 'seit ' + d; },
+      unavailable: 'nicht verfügbar',
+      byVersion: 'Nach Version',
+      barsAria: 'Downloads je Version',
+      versionsCount: function (n) { return n === 1 ? '1 Version' : n + ' Versionen'; },
+      showAsTable: 'Als Tabelle anzeigen',
+      thVersion: 'Version',
+      thPublished: 'Veröffentlicht',
+      thDownloads: 'Downloads',
+      barTitle: function (tag, count, d) { return tag + ': ' + count + ' Downloads, veröffentlicht am ' + d; },
+
+      descGithub: 'Downloads und automatische Updates',
+      descWebsite: 'launchgabi.com',
+      descMicrosoft: 'Anmeldung mit dem Microsoft-Account',
+      descXbox: 'Xbox Live, Teil der Anmeldung',
+      descMcServices: 'Minecraft-Profil, Skins und Lizenz',
+      descMojang: 'Versionsliste und Spieldateien',
+      descModrinth: 'Mods, Modpacks, Shader und Pakete',
+      descCurseForge: 'Mods und Modpacks',
+      descFabric: 'Fabric-Loader',
+      descQuilt: 'Quilt-Loader',
+      descForge: 'Forge-Loader',
+      descNeoForge: 'NeoForge-Loader',
+      descJava: 'Java-Downloads über Adoptium'
+    },
+    en: {
+      navHome: 'Home',
+      navHelp: 'Help',
+      navDownload: 'Download',
+      checkingAll: 'Checking services…',
+      recheck: 'Check again',
+      hServices: 'Services',
+      servicesSub: 'Checked live from your browser',
+      servicesNote: 'Everything is checked each time this page is opened, straight from your device. If a service is unreachable only for you, that can also be down to your connection, an ad blocker or a firewall.',
+      hIncidents: 'Current reports',
+      hRelease: 'Latest version',
+      hLimits: 'Known limits',
+      limitsSub: 'Permanent, not a bug as such',
+      hHistory: 'History',
+      historySub: 'Reported problems by day',
+      hMetrics: 'Metrics',
+      metricsSub: 'Straight from GitHub',
+      mVersion: 'Version',
+      mDownloads: 'Downloads',
+      mDownloadsNote: 'across all versions',
+      mPlatforms: 'Platforms',
+      mReleases: 'Releases',
+      footerImprint: 'Legal notice',
+      footerPrivacy: 'Privacy',
+      footerReleases: 'All releases',
+      footerNote: 'The list of reports comes straight from the launcher code.',
+
+      groupLauncher: 'Launch Gabi',
+      groupAccount: 'Sign-in',
+      groupGame: 'Minecraft',
+      groupContent: 'Mods and loaders',
+
+      stOk: 'Operational',
+      stSlow: 'Slow',
+      stDown: 'Unreachable',
+      stError: 'Responding with errors',
+      stPartial: 'Partly degraded',
+      stPending: 'Checking',
+
+      bannerOk: 'All systems operational',
+      bannerSlow: 'Some services are responding slowly',
+      bannerDown: function (n) { return n === 1 ? 'One service is having problems' : n + ' services are having problems'; },
+      bannerChecked: function (time) { return 'Last checked at ' + time + ', from your device'; },
+      bannerIssues: function (n) { return n === 1 ? '1 known problem in the launcher itself is being fixed.' : n + ' known problems in the launcher itself are being fixed.'; },
+      bannerIssuesLink: 'See reports',
+
+      incidentsNone: 'There are no open reports right now.',
+      incidentsCount: function (n) { return n + ' open'; },
+      showAll: function (n) { return 'Show all ' + n; },
+      showLess: 'Show less',
+      since: function (d) { return 'since ' + d; },
+      fixedComing: function (v) { return 'Fixed, coming in ' + v; },
+      fixedIn: function (v) { return 'Fixed in ' + v; },
+
+      releaseTitle: function (v) { return 'Version ' + v; },
+      releasedOn: function (d) { return 'released on ' + d; },
+
+      dayNone: 'No reports.',
+      dayMore: function (n) { return n + ' more'; },
+      olderDays: 'Show older days',
+      today: 'Today',
+      yesterday: 'Yesterday',
+
+      versionNote: function (d) { return 'since ' + d; },
+      platformsNote: 'Windows, macOS, Linux',
+      platformsMissing: function (names) { return 'Missing: ' + names; },
+      releasesNote: function (d) { return 'since ' + d; },
+      unavailable: 'unavailable',
+      byVersion: 'By version',
+      barsAria: 'Downloads per version',
+      versionsCount: function (n) { return n === 1 ? '1 version' : n + ' versions'; },
+      showAsTable: 'Show as table',
+      thVersion: 'Version',
+      thPublished: 'Published',
+      thDownloads: 'Downloads',
+      barTitle: function (tag, count, d) { return tag + ': ' + count + ' downloads, published on ' + d; },
+
+      descGithub: 'Downloads and automatic updates',
+      descWebsite: 'launchgabi.com',
+      descMicrosoft: 'Sign-in with your Microsoft account',
+      descXbox: 'Xbox Live, part of signing in',
+      descMcServices: 'Minecraft profile, skins and licence',
+      descMojang: 'Version list and game files',
+      descModrinth: 'Mods, modpacks, shaders and packs',
+      descCurseForge: 'Mods and modpacks',
+      descFabric: 'Fabric loader',
+      descQuilt: 'Quilt loader',
+      descForge: 'Forge loader',
+      descNeoForge: 'NeoForge loader',
+      descJava: 'Java downloads through Adoptium'
+    }
   };
 
-  // Filled once the release list arrives, so a fix can say whether it is
-  // actually out yet or still waiting for the next version.
-  var releasedVersion = null;
+  var LANG = 'de';
+  function t(key) { return I18N[LANG][key]; }
+  function num(value) { return value.toLocaleString(LANG === 'en' ? 'en-US' : 'de-DE'); }
+
+  function parseDay(iso) {
+    var p = String(iso).split('-').map(Number);
+    return new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+  }
+  function date(value) {
+    var d = value instanceof Date ? value : (/^\d{4}-\d{2}-\d{2}$/.test(value) ? parseDay(value) : new Date(value));
+    return d.toLocaleDateString(LANG === 'en' ? 'en-GB' : 'de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  function clock(d) {
+    return d.toLocaleTimeString(LANG === 'en' ? 'en-GB' : 'de-DE', { hour: '2-digit', minute: '2-digit' });
+  }
+  function dayKey(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  /* ----------------------------------------------------------- Icons */
+
+  var ICON = {
+    ok: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>',
+    slow: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    partial: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></svg>',
+    bigOk: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>',
+    bigSlow: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    bigDown: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></svg>',
+    bigPending: '<span class="svc-state pending" style="min-width:0"><span class="spin"></span></span>',
+    investigating: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>',
+    fixing: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3a5 5 0 0 0-4.6 7L3 17.4V21h3.6l7.4-7.4A5 5 0 1 0 15 3z"/></svg>',
+    fixed: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5"/></svg>',
+    limitation: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>'
+  };
+
+  /* -------------------------------------------------------- Services */
+
+  // Every service the launcher actually talks to. `cors` checks read the
+  // real HTTP status; hosts that do not allow browser requests are probed
+  // with `no-cors`, which only proves they answered at all.
+  var SERVICES = [
+    { id: 'github', group: 'groupLauncher', name: 'GitHub Releases', desc: 'descGithub', url: 'https://api.github.com/repos/' + REPO + '/releases?per_page=100', mode: 'cors' },
+    { id: 'website', group: 'groupLauncher', name: 'Website', desc: 'descWebsite', url: 'https://www.launchgabi.com/', mode: 'no-cors' },
+    { id: 'microsoft', group: 'groupAccount', name: 'Microsoft', desc: 'descMicrosoft', url: 'https://login.microsoftonline.com/consumers/v2.0/.well-known/openid-configuration', mode: 'cors' },
+    { id: 'xbox', group: 'groupAccount', name: 'Xbox Live', desc: 'descXbox', url: 'https://user.auth.xboxlive.com/', mode: 'no-cors' },
+    { id: 'mcservices', group: 'groupAccount', name: 'Minecraft Services', desc: 'descMcServices', url: 'https://api.minecraftservices.com/', mode: 'no-cors' },
+    { id: 'mojang', group: 'groupGame', name: 'Mojang', desc: 'descMojang', url: 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json', mode: 'cors' },
+    { id: 'java', group: 'groupGame', name: 'Adoptium', desc: 'descJava', url: 'https://api.adoptium.net/v3/info/available_releases', mode: 'cors' },
+    { id: 'modrinth', group: 'groupContent', name: 'Modrinth', desc: 'descModrinth', url: 'https://api.modrinth.com/v2/tag/loader', mode: 'cors' },
+    { id: 'curseforge', group: 'groupContent', name: 'CurseForge', desc: 'descCurseForge', url: 'https://api.curseforge.com/', mode: 'cors' },
+    { id: 'fabric', group: 'groupContent', name: 'Fabric', desc: 'descFabric', url: 'https://meta.fabricmc.net/v2/versions/loader', mode: 'cors' },
+    { id: 'quilt', group: 'groupContent', name: 'Quilt', desc: 'descQuilt', url: 'https://meta.quiltmc.org/v3/versions/loader', mode: 'cors' },
+    { id: 'forge', group: 'groupContent', name: 'Forge', desc: 'descForge', url: 'https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml', mode: 'cors' },
+    { id: 'neoforge', group: 'groupContent', name: 'NeoForge', desc: 'descNeoForge', url: 'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge', mode: 'cors' }
+  ];
+
+  var SLOW_MS = 4000;
+  var TIMEOUT_MS = 12000;
+
+  // id -> { state: 'pending' | 'ok' | 'slow' | 'error' | 'down' | 'partial', ms, note }
+  var results = {};
+  var checkedAt = null;
+  var releases = null;
+  var releasesFetchedAt = 0;
+
+  function probe(service) {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () { if (controller) controller.abort(); }, TIMEOUT_MS);
+    var started = performance.now();
+    return fetch(service.url, {
+      mode: service.mode,
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller ? controller.signal : undefined
+    }).then(function (res) {
+      var ms = Math.round(performance.now() - started);
+      clearTimeout(timer);
+      if (service.mode === 'cors' && !res.ok) return { state: 'error', ms: ms, res: res };
+      return { state: ms > SLOW_MS ? 'slow' : 'ok', ms: ms, res: res };
+    }).catch(function () {
+      clearTimeout(timer);
+      return { state: 'down', ms: null };
+    });
+  }
+
+  function runChecks() {
+    var button = document.getElementById('recheck');
+    button.disabled = true;
+    SERVICES.forEach(function (s) {
+      // GitHub allows 60 unauthenticated requests an hour, so a quick
+      // second check reuses the answer from a moment ago.
+      if (s.id === 'github' && releases && Date.now() - releasesFetchedAt < 120000 && results.github) return;
+      results[s.id] = { state: 'pending', ms: null };
+    });
+    renderServices();
+    renderBanner();
+
+    return Promise.all(SERVICES.map(function (service) {
+      if (results[service.id] && results[service.id].state !== 'pending') return Promise.resolve();
+      return probe(service).then(function (result) {
+        if (service.id !== 'github' || result.state === 'down' || result.state === 'error') {
+          results[service.id] = { state: result.state, ms: result.ms };
+          return;
+        }
+        return result.res.json().then(function (list) {
+          releases = list.filter(function (r) { return !r.draft && !r.prerelease; });
+          releasesFetchedAt = Date.now();
+          var missing = missingPlatforms();
+          results.github = missing.length
+            ? { state: 'partial', ms: result.ms, note: t('platformsMissing')(missing.map(function (p) { return p.name; }).join(', ')) }
+            : { state: result.state, ms: result.ms };
+          renderMetrics();
+          renderIncidents();
+          renderHistory();
+        }).catch(function () {
+          results.github = { state: 'error', ms: result.ms };
+        });
+      }).then(function () { renderServices(); });
+    })).then(function () {
+      checkedAt = new Date();
+      button.disabled = false;
+      renderServices();
+      renderBanner();
+    });
+  }
+
+  function stateLabel(r) {
+    return {
+      pending: t('stPending'),
+      ok: t('stOk'),
+      slow: t('stSlow'),
+      error: t('stError'),
+      down: t('stDown'),
+      partial: t('stPartial')
+    }[r.state];
+  }
+  function stateClass(r) {
+    if (r.state === 'error' || r.state === 'down') return 'down';
+    if (r.state === 'partial') return 'slow';
+    return r.state;
+  }
+  function stateIcon(r) {
+    if (r.state === 'pending') return '<span class="spin"></span>';
+    if (r.state === 'ok') return ICON.ok;
+    if (r.state === 'slow') return ICON.slow;
+    if (r.state === 'partial') return ICON.partial;
+    return ICON.down;
+  }
+
+  function renderServices() {
+    var host = document.getElementById('services');
+    host.innerHTML = '';
+    var lastGroup = null;
+    SERVICES.forEach(function (service) {
+      if (service.group !== lastGroup) {
+        host.appendChild(el('div', 'group-title', t(service.group)));
+        lastGroup = service.group;
+      }
+      var r = results[service.id] || { state: 'pending' };
+      var row = el('div', 'svc');
+      var main = el('div', 'svc-main');
+      main.appendChild(el('div', 'svc-name', service.name));
+      main.appendChild(el('div', 'svc-desc', r.note ? t(service.desc) + ' · ' + r.note : t(service.desc)));
+      row.appendChild(main);
+      row.appendChild(el('span', 'svc-ms', r.ms != null ? num(r.ms) + ' ms' : ''));
+      var state = el('span', 'svc-state ' + stateClass(r));
+      state.innerHTML = stateIcon(r) + '<span></span>';
+      state.lastChild.textContent = stateLabel(r);
+      row.appendChild(state);
+      host.appendChild(row);
+    });
+  }
+
+  function openIssues() {
+    var list = LANG === 'en' ? ISSUES_EN : ISSUES;
+    return list.filter(function (i) { return i.state === 'investigating' || i.state === 'fixing'; });
+  }
+
+  function renderBanner() {
+    var banner = document.getElementById('banner');
+    var icon = document.getElementById('banner-icon');
+    var title = document.getElementById('banner-title');
+    var sub = document.getElementById('banner-sub');
+    var all = SERVICES.map(function (s) { return results[s.id] || { state: 'pending' }; });
+    var pending = all.some(function (r) { return r.state === 'pending'; });
+    var bad = all.filter(function (r) { return r.state === 'down' || r.state === 'error'; }).length;
+    var slow = all.some(function (r) { return r.state === 'slow' || r.state === 'partial'; });
+
+    var kind = pending ? 'pending' : bad ? 'down' : slow ? 'slow' : 'ok';
+    banner.className = 'banner ' + kind;
+    icon.innerHTML = { pending: ICON.bigPending, ok: ICON.bigOk, slow: ICON.bigSlow, down: ICON.bigDown }[kind];
+    title.textContent = pending ? t('checkingAll') : bad ? t('bannerDown')(bad) : slow ? t('bannerSlow') : t('bannerOk');
+    sub.textContent = checkedAt && !pending ? t('bannerChecked')(clock(checkedAt)) : '';
+
+    var note = document.getElementById('banner-note');
+    var open = openIssues().length;
+    note.innerHTML = '';
+    if (open > 0) {
+      note.appendChild(document.createTextNode(t('bannerIssues')(open) + ' '));
+      var a = el('a', '', t('bannerIssuesLink'));
+      a.href = '#h-incidents';
+      note.appendChild(a);
+    }
+  }
+
+  /* ------------------------------------------------------- Versions */
+
+  var PLATFORMS = [
+    { key: 'win', name: 'Windows', test: function (n) { return /\.exe$/i.test(n); } },
+    { key: 'mac', name: 'macOS', test: function (n) { return /\.dmg$/i.test(n); } },
+    { key: 'linux', name: 'Linux', test: function (n) { return /\.appimage$/i.test(n); } }
+  ];
+
+  function missingPlatforms() {
+    if (!releases || !releases.length) return [];
+    var assets = releases[0].assets || [];
+    return PLATFORMS.filter(function (p) { return !assets.some(function (a) { return p.test(a.name); }); });
+  }
 
   function compareVersions(x, y) {
     var a = String(x).replace(/^v/, '').split('.').map(Number);
@@ -5237,9 +5127,9 @@ footer a:hover { color: var(--ink); }
   }
 
   // Until the release list has arrived (or if it never does), the newest
-  // version in the changelog stands in for "what is out". Otherwise every
-  // old fix would flash up first and stay for good after a failed request.
-  function baselineVersion() {
+  // version in the changelog stands in for "what is out".
+  function releasedVersion() {
+    if (releases && releases.length) return releases[0].tag_name.replace(/^v/, '');
     var found = String(LATEST.version).match(/\d+\.\d+\.\d+/g) || [];
     return found.reduce(function (best, v) {
       return best === null || compareVersions(v, best) > 0 ? v : best;
@@ -5247,122 +5137,308 @@ footer a:hover { color: var(--ink); }
   }
 
   function isNewerThanReleased(version) {
-    var out = releasedVersion || baselineVersion();
-    if (!version || !out) return false;
-    return compareVersions(version, out) > 0;
+    var out = releasedVersion();
+    return Boolean(version && out && compareVersions(version, out) > 0);
   }
 
-  function renderIssues() {
-    var issues = LANG === 'en' ? ISSUES_EN : ISSUES;
-    var issueLabel = LANG === 'en' ? ISSUE_LABEL_EN : ISSUE_LABEL;
+  function stateText(issue) {
+    var labels = LANG === 'en' ? ISSUE_LABEL_EN : ISSUE_LABEL;
+    if (issue.state === 'fixed' && issue.fixedIn) {
+      return isNewerThanReleased(issue.fixedIn) ? t('fixedComing')(issue.fixedIn) : t('fixedIn')(issue.fixedIn);
+    }
+    return labels[issue.state];
+  }
 
-    var host = document.getElementById('issues-list');
-    // Cleared first: this runs again once the versions are known, and again
-    // on every language switch.
+  function stateTag(issue) {
+    var tag = el('span', 'state-tag ' + issue.state);
+    tag.innerHTML = ICON[issue.state] + '<span></span>';
+    tag.lastChild.textContent = stateText(issue);
+    return tag;
+  }
+
+  /* ------------------------------------------------------ Incidents */
+
+  var INCIDENT_LIMIT = 6;
+  var showAllIncidents = false;
+
+  function renderIncidents() {
+    var list = LANG === 'en' ? ISSUES_EN : ISSUES;
+    var host = document.getElementById('incidents');
     host.innerHTML = '';
-    // A fix that is already in a published version lives in "Zuletzt
-    // behoben" below. Only the ones still waiting for the next release stay
-    // here, next to what is open.
-    var visible = issues.filter(function (i) {
-      return i.state !== 'fixed' || isNewerThanReleased(i.fixedIn);
+
+    // Open items, plus fixes that are done but not in a published version
+    // yet: for anyone affected today, both are still current.
+    var current = list.filter(function (i) {
+      return i.state === 'investigating' || i.state === 'fixing' || (i.state === 'fixed' && isNewerThanReleased(i.fixedIn));
     });
-    var open = visible.filter(function (i) { return i.state !== 'fixed'; });
+    var order = { investigating: 0, fixing: 1, fixed: 2 };
+    current.sort(function (a, b) {
+      return order[a.state] - order[b.state] || (a.since < b.since ? 1 : a.since > b.since ? -1 : 0);
+    });
 
-    document.getElementById('issues-count').textContent =
-      open.length === 0 ? t('issuesNone') : t('issuesOpenCount')(open.length);
+    var open = current.filter(function (i) { return i.state !== 'fixed'; }).length;
+    document.getElementById('incidents-sub').textContent = open ? t('incidentsCount')(open) : '';
 
-    if (visible.length === 0) {
-      host.innerHTML = '<div class="issues-none">' + ICONS.fixed +
-        '<span>' + t('issuesNoneDetail') + '</span></div>';
+    if (!current.length) {
+      var empty = el('div', 'empty');
+      empty.innerHTML = ICON.ok + '<span></span>';
+      empty.lastChild.textContent = t('incidentsNone');
+      host.appendChild(empty);
       return;
     }
 
-    // Open items first, and within those the ones actively being worked on.
-    var order = { fixing: 0, investigating: 1, limitation: 2, fixed: 3 };
-    visible.slice()
-      .sort(function (a, b) { return order[a.state] - order[b.state]; })
-      .forEach(function (issue) {
-        var meta = [t('since')(date(issue.since))];
-        if (issue.platforms && issue.platforms.length) meta.push(issue.platforms.join(', '));
+    var shown = showAllIncidents ? current : current.slice(0, INCIDENT_LIMIT);
+    shown.forEach(function (issue) {
+      var item = el('article', 'incident ' + issue.state);
+      item.appendChild(el('h3', '', issue.title));
+      var meta = el('div', 'inc-meta');
+      meta.appendChild(stateTag(issue));
+      meta.appendChild(el('span', '', t('since')(date(issue.since))));
+      if (issue.platforms && issue.platforms.length) meta.appendChild(el('span', '', issue.platforms.join(', ')));
+      item.appendChild(meta);
+      item.appendChild(el('p', '', issue.detail));
+      host.appendChild(item);
+    });
 
-        var label = issueLabel[issue.state];
-        if (issue.state === 'fixed' && issue.fixedIn) {
-          // "Behoben in 1.0.14" reads as though that version were available.
-          // Until it actually is, the badge says so plainly instead.
-          label += isNewerThanReleased(issue.fixedIn)
-            ? t('fixedComing')(issue.fixedIn)
-            : t('fixedInVersion')(issue.fixedIn);
-        }
-
-        var article = document.createElement('article');
-        article.className = 'issue';
-        article.innerHTML =
-          '<div class="issue-head">' +
-            '<span class="badge ' + issue.state + '">' + ICONS[issue.state] + label + '</span>' +
-            '<h3></h3>' +
-            '<span class="issue-meta">' + meta.join(' · ') + '</span>' +
-          '</div><p></p>';
-        article.querySelector('h3').textContent = issue.title;
-        article.querySelector('p').textContent = issue.detail;
-        host.appendChild(article);
+    if (current.length > INCIDENT_LIMIT) {
+      var row = el('div', 'more-row');
+      var btn = el('button', 'btn-link', showAllIncidents ? t('showLess') : t('showAll')(current.length));
+      btn.type = 'button';
+      btn.addEventListener('click', function () {
+        showAllIncidents = !showAllIncidents;
+        renderIncidents();
       });
+      row.appendChild(btn);
+      host.appendChild(row);
+    }
   }
 
-  function renderChangelog() {
+  function renderLimits() {
+    var list = (LANG === 'en' ? ISSUES_EN : ISSUES).filter(function (i) { return i.state === 'limitation'; });
+    var section = document.getElementById('limits-section');
+    var host = document.getElementById('limits');
+    section.hidden = list.length === 0;
+    host.innerHTML = '';
+    list.forEach(function (issue) {
+      var item = el('article', 'incident limitation');
+      item.appendChild(el('h3', '', issue.title));
+      var meta = el('div', 'inc-meta');
+      meta.appendChild(stateTag(issue));
+      if (issue.platforms && issue.platforms.length) meta.appendChild(el('span', '', issue.platforms.join(', ')));
+      item.appendChild(meta);
+      item.appendChild(el('p', '', issue.detail));
+      host.appendChild(item);
+    });
+  }
+
+  /* -------------------------------------------------------- Release */
+
+  function renderRelease() {
     var latest = LANG === 'en' ? LATEST_EN : LATEST;
     var kindLabel = LANG === 'en' ? KIND_LABEL_EN : KIND_LABEL;
-
-    set('fix-version', t('versionLabel')(latest.version));
-    set('fix-date', date(latest.date));
-    set('fix-headline', latest.headline);
-
-    var list = document.getElementById('fix-list');
-    list.innerHTML = '';
+    document.getElementById('release-title').textContent = t('releaseTitle')(latest.version);
+    document.getElementById('release-headline').textContent = latest.headline;
+    document.getElementById('release-date').textContent = t('releasedOn')(date(latest.date));
+    var host = document.getElementById('release-changes');
+    host.innerHTML = '';
     latest.changes.forEach(function (change) {
-      var row = document.createElement('div');
-      row.className = 'change';
-      row.innerHTML = '<span class="kind ' + change.kind + '">' + kindLabel[change.kind] + '</span><p></p>';
-      row.querySelector('p').textContent = change.text;
-      list.appendChild(row);
+      var row = el('div', 'change');
+      row.appendChild(el('span', 'kind ' + change.kind, kindLabel[change.kind]));
+      row.appendChild(el('p', '', change.text));
+      host.appendChild(row);
+    });
+  }
+
+  /* -------------------------------------------------------- History */
+
+  var historyDays = 14;
+  var expandedDays = {};
+
+  function renderHistory() {
+    var list = LANG === 'en' ? ISSUES_EN : ISSUES;
+    var byDay = {};
+    var earliest = null;
+    list.forEach(function (issue) {
+      if (issue.state === 'limitation') return;
+      (byDay[issue.since] = byDay[issue.since] || []).push(issue);
+      if (!earliest || issue.since < earliest) earliest = issue.since;
+    });
+
+    var host = document.getElementById('history');
+    host.innerHTML = '';
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var earliestDate = earliest ? parseDay(earliest) : today;
+
+    for (var i = 0; i < historyDays; i++) {
+      var day = new Date(today);
+      day.setDate(today.getDate() - i);
+      if (day < earliestDate) break;
+      var key = dayKey(day);
+      var block = el('div', 'day');
+      var heading = i === 0 ? t('today') + ', ' + date(day) : i === 1 ? t('yesterday') + ', ' + date(day) : date(day);
+      block.appendChild(el('h3', '', heading));
+      var items = byDay[key] || [];
+      if (!items.length) {
+        block.appendChild(el('div', 'none', t('dayNone')));
+      } else {
+        var ul = el('ul');
+        var limit = expandedDays[key] ? items.length : 5;
+        items.slice(0, limit).forEach(function (issue) {
+          var li = el('li');
+          li.appendChild(stateTag(issue));
+          li.appendChild(el('span', 't', issue.title));
+          ul.appendChild(li);
+        });
+        block.appendChild(ul);
+        if (items.length > limit) {
+          var more = el('button', 'btn-link more', t('dayMore')(items.length - limit));
+          more.type = 'button';
+          more.addEventListener('click', (function (k) {
+            return function () { expandedDays[k] = true; renderHistory(); };
+          })(key));
+          block.appendChild(more);
+        }
+      }
+      host.appendChild(block);
+    }
+
+    var oldest = new Date(today);
+    oldest.setDate(today.getDate() - historyDays + 1);
+    if (earliest && oldest > earliestDate) {
+      var row = el('div', 'more-row');
+      var btn = el('button', 'btn-link', t('olderDays'));
+      btn.type = 'button';
+      btn.addEventListener('click', function () {
+        historyDays += 30;
+        renderHistory();
+      });
+      row.appendChild(btn);
+      host.appendChild(row);
+    }
+  }
+
+  /* -------------------------------------------------------- Metrics */
+
+  function renderMetrics() {
+    if (!releases) {
+      if (results.github && (results.github.state === 'down' || results.github.state === 'error')) {
+        ['m-version', 'm-downloads', 'm-platforms', 'm-releases'].forEach(function (id) {
+          document.getElementById(id).textContent = t('unavailable');
+          document.getElementById(id).style.fontSize = '15px';
+        });
+      }
+      return;
+    }
+    var latest = releases[0];
+    var total = 0;
+    var perPlatform = { win: 0, mac: 0, linux: 0 };
+    releases.forEach(function (r) {
+      (r.assets || []).forEach(function (a) {
+        PLATFORMS.forEach(function (p) {
+          if (p.test(a.name)) { perPlatform[p.key] += a.download_count; total += a.download_count; }
+        });
+      });
+    });
+    ['m-version', 'm-downloads', 'm-platforms', 'm-releases'].forEach(function (id) {
+      document.getElementById(id).style.fontSize = '';
+    });
+    document.getElementById('m-version').textContent = latest ? latest.tag_name.replace(/^v/, '') : '';
+    document.getElementById('m-version-note').textContent = latest ? t('versionNote')(date(latest.published_at)) : '';
+    document.getElementById('m-downloads').textContent = num(total);
+    var missing = missingPlatforms();
+    document.getElementById('m-platforms').textContent = String(PLATFORMS.length - missing.length) + ' / ' + PLATFORMS.length;
+    document.getElementById('m-platforms-note').textContent = missing.length
+      ? t('platformsMissing')(missing.map(function (p) { return p.name; }).join(', '))
+      : PLATFORMS.map(function (p) { return p.name + ' ' + num(perPlatform[p.key]); }).join(' · ');
+    document.getElementById('m-releases').textContent = num(releases.length);
+    drawBars(releases.slice(0, 8).map(function (r) {
+      var count = 0;
+      (r.assets || []).forEach(function (a) {
+        if (PLATFORMS.some(function (p) { return p.test(a.name); })) count += a.download_count;
+      });
+      return { tag: r.tag_name, published: r.published_at, total: count };
+    }));
+    var first = releases[releases.length - 1];
+    document.getElementById('m-releases-note').textContent = first ? t('releasesNote')(date(first.published_at)) : '';
+  }
+
+  // Newest first, one axis, same accent for every bar: this compares one
+  // measure across versions, so colour carries no extra meaning here.
+  function drawBars(versions) {
+    var host = document.getElementById('bars');
+    var body = document.querySelector('#version-table tbody');
+    host.innerHTML = '';
+    body.innerHTML = '';
+    var max = 0;
+    versions.forEach(function (v) { if (v.total > max) max = v.total; });
+    versions.forEach(function (v) {
+      var row = el('div', 'bar-row');
+      row.title = t('barTitle')(v.tag, num(v.total), date(v.published));
+      row.appendChild(el('span', 'bar-label', v.tag));
+      var track = el('span', 'bar-track');
+      var fill = el('span', 'bar-fill');
+      fill.style.width = (max > 0 ? Math.max((v.total / max) * 100, 1.5) : 0) + '%';
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el('span', 'bar-value', num(v.total)));
+      host.appendChild(row);
+
+      var tr = el('tr');
+      tr.appendChild(el('td', '', v.tag));
+      tr.appendChild(el('td', '', date(v.published)));
+      tr.appendChild(el('td', 'num', num(v.total)));
+      body.appendChild(tr);
+    });
+    document.getElementById('bars-sub').textContent = t('versionsCount')(versions.length);
+  }
+
+  /* ------------------------------------------------------- Language */
+
+  function applyStaticText() {
+    document.querySelectorAll('[data-i18n]').forEach(function (node) {
+      var value = t(node.getAttribute('data-i18n'));
+      if (typeof value === 'string') node.textContent = value;
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(function (node) {
+      node.setAttribute('aria-label', t(node.getAttribute('data-i18n-aria')));
     });
   }
 
   var STORAGE_KEY = 'lg-status-lang';
 
-  // Switches every language-dependent part of the page at once, without a
-  // reload: the fixed labels, the two data-driven lists, and the download
-  // stats if they already arrived.
   function setLang(lang, persist) {
     LANG = lang === 'en' ? 'en' : 'de';
     document.documentElement.lang = LANG;
-
     document.querySelectorAll('.lang-switch button').forEach(function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-lang') === LANG);
     });
-
     applyStaticText();
-    renderIssues();
-    renderChangelog();
-
-    if (lastFailure) renderFailed(lastFailure);
-    else if (fetchState) renderFetchedStats();
-
+    renderServices();
+    renderBanner();
+    renderIncidents();
+    renderRelease();
+    renderLimits();
+    renderHistory();
+    renderMetrics();
     if (persist) {
-      try { localStorage.setItem(STORAGE_KEY, LANG); } catch (err) { /* private mode, storage disabled, and so on */ }
+      try { localStorage.setItem(STORAGE_KEY, LANG); } catch (err) { /* storage unavailable */ }
     }
   }
 
   document.querySelectorAll('.lang-switch button').forEach(function (btn) {
     btn.addEventListener('click', function () { setLang(btn.getAttribute('data-lang'), true); });
   });
+  document.getElementById('recheck').addEventListener('click', function () { runChecks(); });
 
-  var initialLang = 'de';
+  var initialLang = (navigator.language || '').toLowerCase().indexOf('de') === 0 ? 'de' : 'en';
   try {
     var stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'en' || stored === 'de') initialLang = stored;
-  } catch (err) { /* falls back to German */ }
+  } catch (err) { /* falls back to the browser language */ }
 
   setLang(initialLang, false);
+  runChecks();
 })();
 </script>
 
