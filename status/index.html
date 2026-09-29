@@ -1183,104 +1183,104 @@ footer a:hover { color: var(--ink); }
   // that is the one place it can never drift out of date.
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.18 und 1.0.19",
-    "date": "2026-09-13",
-    "headline": "Die Anmeldung läuft jetzt über eine eigene Anwendung, ohne Fehler 400.",
+    "version": "1.0.20",
+    "date": "2026-09-29",
+    "headline": "Englisch als zweite Sprache, ein Launcher, der beim Spielen zur Seite tritt, und über 130 Fehler behoben.",
     "changes": [
       {
-        "kind": "fixed",
-        "text": "Bei einzelnen Konten brach die Microsoft-Anmeldung mit einem Fehler 400 ab, weil der Launcher sich mit der Anwendungs-ID des offiziellen Minecraft-Launchers anmeldete und Microsoft diese gemeinsame Anwendung für fremde Programme zunehmend ablehnt. Launch Gabi hat jetzt eine eigene Anwendung, mit der der gesamte Anmeldeweg von Hand nachgemessen wurde."
+        "kind": "new",
+        "text": "Launch Gabi gibt es jetzt auch auf Englisch. Die Sprache lässt sich unter Einstellungen, Darstellung wechseln, danach startet der Launcher einmal neu. Eine neue Installation richtet sich nach der Sprache des Systems."
       },
       {
         "kind": "new",
-        "text": "Ein eigenes Live-Log-Fenster öffnet sich beim Start jeder Instanz, im Stil eines klassischen Launcher-Konsolenfensters. Es schließt sich von selbst, sobald das Spiel endet, und der Log-Tab der Instanz öffnet sich dann automatisch im Hauptfenster."
-      },
-      {
-        "kind": "fixed",
-        "text": "Das Launcher-Fenster zu schließen konnte ein laufendes Spiel mit beenden, selbst wenn unter Einstellungen eingetragen war, es weiterlaufen zu lassen. Das Fenster versteckt sich jetzt stattdessen und kommt zurück, sobald kein Spiel mehr läuft."
+        "text": "Beim Spielstart tritt der Launcher jetzt zur Seite: Das Hauptfenster wird ausgeblendet, und nur das Live-Log bleibt offen. Über \"Launcher öffnen\" im Log-Fenster oder durch Schließen des Log-Fensters kommt es zurück. Wer das nicht möchte, stellt es unter Einstellungen, Start, Verhalten beim Spielstart wieder um."
       },
       {
         "kind": "new",
-        "text": "Ein Fehler in der Programmoberfläche lässt nicht mehr das ganze Fenster leer zurück, sondern zeigt jetzt einen Hinweis mit der Möglichkeit, es noch einmal zu versuchen oder zur Startseite zurückzukehren."
+        "text": "Datapacks wirken jetzt in Welten: Beim Installieren fragt der Launcher, in welche Welten sie sollen, und in der Instanz lassen sie sich nachträglich zuordnen."
+      },
+      {
+        "kind": "improved",
+        "text": "Folgenreiche Schritte wie Entfernen, Reparieren oder der Wechsel des Datenordners fragen jetzt vorher nach. Neu sind außerdem Duplizieren und ein Rechtsklick-Menü an den Instanzkarten, eine Sortierung der installierten Inhalte und eine geschätzte Restzeit bei langen Downloads."
+      },
+      {
+        "kind": "improved",
+        "text": "Die Einrichtung beim ersten Start zeigt ihre Schritte an und führt nach der Anmeldung direkt zum Anlegen der ersten Instanz."
+      },
+      {
+        "kind": "improved",
+        "text": "Sicherungen werden Datei für Datei geschrieben statt komplett im Arbeitsspeicher, zeigen ihren Fortschritt und lassen sich abbrechen. Eine durch einen Absturz unterbrochene Wiederherstellung wird beim nächsten Start rückgängig gemacht."
+      },
+      {
+        "kind": "improved",
+        "text": "Mehr Sicherheit: Java-Downloads werden per Prüfsumme geprüft, Modpacks laden nur von erlaubten Servern, eigene Startbefehle und Java-Pfade brauchen beim ersten Mal eine Bestätigung, und Anmeldedaten werden in Protokollen und Fehlerberichten geschwärzt."
       },
       {
         "kind": "fixed",
-        "text": "Eine fertige oder fehlgeschlagene Aufgabe konnte in der Aufgabenanzeige hängen bleiben, statt nach kurzer Zeit zu verschwinden."
+        "text": "Das Verhalten beim Spielstart unter Einstellungen wirkte bisher nur auf neu angelegte Instanzen. Instanzen folgen jetzt der globalen Einstellung, solange bei ihnen selbst nichts anderes gewählt ist."
       },
       {
         "kind": "fixed",
-        "text": "Ein Konto ließ sich ohne Rückfrage entfernen, und der Datenschutz-Dialog zu Fehlerberichten beantwortete sich dauerhaft mit Nein, wenn man ihn nur wegklickte statt eine der beiden Schaltflächen zu nutzen."
+        "text": "Minecraft bis 1.12.2, auch Forge-Modpacks für 1.7.10 und 1.12.2, startete nicht, wenn im Pfad des Datenordners ein Leerzeichen steckte, etwa bei einem Windows-Benutzernamen mit Leerzeichen."
       },
       {
         "kind": "fixed",
-        "text": "Regler wie Arbeitsspeicher oder gleichzeitige Downloads schrieben bei jedem einzelnen Schritt sofort in die Einstellungsdatei, was auf langsameren Platten spürbar ruckelte."
+        "text": "Mod-Updates installieren jetzt auch neu benötigte Bibliotheken, und eine Bibliothek wie die Fabric API wird nicht mehr doppelt geholt, wenn sie schon vom anderen Anbieter installiert ist."
       },
       {
         "kind": "fixed",
-        "text": "Eine bewusst deaktivierte Mod konnte sich nach einer automatischen Aktualisierung unbemerkt wieder einschalten."
-      },
-      {
-        "kind": "new",
-        "text": "Kann das Betriebssystem keine Verschlüsselung für ein Anmeldetoken anbieten, was vor allem auf manchen Linux-Systemen vorkommt, zeigt der Kontobereich der Einstellungen jetzt einen dauerhaften Hinweis darauf."
-      },
-      {
-        "kind": "fixed",
-        "text": "Eine ganze Reihe weiterer, kleinerer Fehler bei der Reparatur, der Instanzverwaltung sowie der Fabric-, Quilt-, Forge- und Java-Installation, im Einzelnen auf der Statusseite aufgeführt."
-      },
-      {
-        "kind": "fixed",
-        "text": "Die Beta-Funktion \"Eigene Startseite\" war unbeabsichtigt deaktiviert und ist jetzt wieder unter Einstellungen, Darstellung zu finden."
+        "text": "Über 120 weitere Fehler sind behoben, von Abbrechen-Knöpfen ohne Wirkung bis zu Fehlermeldungen mit vollem Dateipfad. Alle stehen einzeln auf der Statusseite."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.18 and 1.0.19",
-    "date": "2026-09-13",
-    "headline": "Sign in now runs through its own application, no more error 400.",
+    "version": "1.0.20",
+    "date": "2026-09-29",
+    "headline": "English as a second language, a launcher that steps aside while you play, and more than 130 bugs fixed.",
     "changes": [
       {
-        "kind": "fixed",
-        "text": "For some accounts, Microsoft sign in aborted with error 400, because the launcher signed in with the official Minecraft launcher’s own application id, and Microsoft increasingly refuses that shared application for outside programs. Launch Gabi now has its own application, and the whole sign-in path was measured by hand against it."
+        "kind": "new",
+        "text": "Launch Gabi is now also available in English. The language can be switched under Settings, Appearance, after which the launcher restarts once. A new installation follows the system language."
       },
       {
         "kind": "new",
-        "text": "A dedicated live-log window now opens whenever an instance starts, in the style of a classic launcher console window. It closes on its own once the game ends, and the instance’s Log tab then opens automatically in the main window."
-      },
-      {
-        "kind": "fixed",
-        "text": "Closing the launcher window could end a running game along with it, even with the setting saying to keep it going. The window now hides instead, and comes back once no game is running any more."
+        "text": "The launcher now steps aside when a game starts: the main window hides and only the live log stays open. \"Open launcher\" in the log window, or closing the log window, brings it back. Anyone who prefers otherwise can change it under Settings, Startup, When a game starts."
       },
       {
         "kind": "new",
-        "text": "A fault in the interface no longer leaves the whole window blank. It now shows a message with a way to try again or go back to the home page."
+        "text": "Data packs now take effect in worlds: when installing, the launcher asks which worlds they should go into, and they can be assigned later from the instance."
+      },
+      {
+        "kind": "improved",
+        "text": "Steps with lasting effects, such as removing, repairing or changing the data folder, now ask first. Also new: duplicating and a right-click menu on instance cards, sorting of installed content, and an estimated time left for long downloads."
+      },
+      {
+        "kind": "improved",
+        "text": "The setup on first start shows its steps and, after signing in, goes straight to creating the first instance."
+      },
+      {
+        "kind": "improved",
+        "text": "Backups are written file by file instead of entirely in memory, show their progress and can be cancelled. A restore interrupted by a crash is undone on the next start."
+      },
+      {
+        "kind": "improved",
+        "text": "More security: Java downloads are verified by checksum, modpacks only download from allowed servers, custom launch commands and Java paths need a confirmation the first time, and sign-in data is redacted in logs and error reports."
       },
       {
         "kind": "fixed",
-        "text": "A finished or failed task could get stuck in the task tray instead of disappearing after a moment."
+        "text": "The launch behavior in the settings used to affect only newly created instances. Instances now follow the global setting unless something else is chosen for them."
       },
       {
         "kind": "fixed",
-        "text": "An account could be removed with no confirmation, and the crash-report privacy dialog answered itself with No for good if it was merely dismissed rather than answered with one of its two buttons."
+        "text": "Minecraft up to 1.12.2, including Forge modpacks for 1.7.10 and 1.12.2, did not start when the data folder path contained a space, for example with a Windows user name containing a space."
       },
       {
         "kind": "fixed",
-        "text": "Sliders such as memory or concurrent downloads wrote to the settings file on every single step, which visibly stuttered on slower drives."
+        "text": "Mod updates now also install newly required libraries, and a library such as Fabric API is no longer fetched twice when it is already installed from the other provider."
       },
       {
         "kind": "fixed",
-        "text": "A deliberately disabled mod could quietly turn itself back on after an automatic update."
-      },
-      {
-        "kind": "new",
-        "text": "When the operating system cannot offer encryption for a sign-in token, which mostly happens on some Linux systems, the accounts section of Settings now shows a standing notice about it."
-      },
-      {
-        "kind": "fixed",
-        "text": "A number of further, smaller fixes to repair, instance management, and Fabric, Quilt, Forge and Java installation, listed individually on the status page."
-      },
-      {
-        "kind": "fixed",
-        "text": "The \"custom start screen\" beta feature was unintentionally disabled and now lives under Settings, Appearance again."
+        "text": "More than 120 further bugs are fixed, from Cancel buttons without effect to error messages showing the full file path. All of them are listed individually on the status page."
       }
     ]
   };

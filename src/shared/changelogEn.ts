@@ -22,6 +22,37 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.20': {
+    headline: 'English as a second language, a launcher that steps aside while you play, and more than 130 bugs fixed.',
+    changes: [
+      'Launch Gabi is now also available in English. The language can be switched under Settings, ' +
+        'Appearance, after which the launcher restarts once. A new installation follows the system ' +
+        'language.',
+      'The launcher now steps aside when a game starts: the main window hides and only the live log ' +
+        'stays open. "Open launcher" in the log window, or closing the log window, brings it back. ' +
+        'Anyone who prefers otherwise can change it under Settings, Startup, When a game starts.',
+      'Data packs now take effect in worlds: when installing, the launcher asks which worlds they ' +
+        'should go into, and they can be assigned later from the instance.',
+      'Steps with lasting effects, such as removing, repairing or changing the data folder, now ask ' +
+        'first. Also new: duplicating and a right-click menu on instance cards, sorting of installed ' +
+        'content, and an estimated time left for long downloads.',
+      'The setup on first start shows its steps and, after signing in, goes straight to creating the ' +
+        'first instance.',
+      'Backups are written file by file instead of entirely in memory, show their progress and can be ' +
+        'cancelled. A restore interrupted by a crash is undone on the next start.',
+      'More security: Java downloads are verified by checksum, modpacks only download from allowed ' +
+        'servers, custom launch commands and Java paths need a confirmation the first time, and sign-in ' +
+        'data is redacted in logs and error reports.',
+      'The launch behavior in the settings used to affect only newly created instances. Instances now ' +
+        'follow the global setting unless something else is chosen for them.',
+      'Minecraft up to 1.12.2, including Forge modpacks for 1.7.10 and 1.12.2, did not start when the ' +
+        'data folder path contained a space, for example with a Windows user name containing a space.',
+      'Mod updates now also install newly required libraries, and a library such as Fabric API is no ' +
+        'longer fetched twice when it is already installed from the other provider.',
+      'More than 120 further bugs are fixed, from Cancel buttons without effect to error messages ' +
+        'showing the full file path. All of them are listed individually on the status page.'
+    ]
+  },
   '1.0.19': {
     headline: 'Small bug fix.',
     changes: [

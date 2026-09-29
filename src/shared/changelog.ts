@@ -34,6 +34,57 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.20',
+    date: '2026-09-29',
+    headline: 'Englisch als zweite Sprache, ein Launcher, der beim Spielen zur Seite tritt, und über 130 Fehler behoben.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Launch Gabi gibt es jetzt auch auf Englisch. Die Sprache lässt sich unter Einstellungen, Darstellung wechseln, danach startet der Launcher einmal neu. Eine neue Installation richtet sich nach der Sprache des Systems.'
+      },
+      {
+        kind: 'new',
+        text: 'Beim Spielstart tritt der Launcher jetzt zur Seite: Das Hauptfenster wird ausgeblendet, und nur das Live-Log bleibt offen. Über "Launcher öffnen" im Log-Fenster oder durch Schließen des Log-Fensters kommt es zurück. Wer das nicht möchte, stellt es unter Einstellungen, Start, Verhalten beim Spielstart wieder um.'
+      },
+      {
+        kind: 'new',
+        text: 'Datapacks wirken jetzt in Welten: Beim Installieren fragt der Launcher, in welche Welten sie sollen, und in der Instanz lassen sie sich nachträglich zuordnen.'
+      },
+      {
+        kind: 'improved',
+        text: 'Folgenreiche Schritte wie Entfernen, Reparieren oder der Wechsel des Datenordners fragen jetzt vorher nach. Neu sind außerdem Duplizieren und ein Rechtsklick-Menü an den Instanzkarten, eine Sortierung der installierten Inhalte und eine geschätzte Restzeit bei langen Downloads.'
+      },
+      {
+        kind: 'improved',
+        text: 'Die Einrichtung beim ersten Start zeigt ihre Schritte an und führt nach der Anmeldung direkt zum Anlegen der ersten Instanz.'
+      },
+      {
+        kind: 'improved',
+        text: 'Sicherungen werden Datei für Datei geschrieben statt komplett im Arbeitsspeicher, zeigen ihren Fortschritt und lassen sich abbrechen. Eine durch einen Absturz unterbrochene Wiederherstellung wird beim nächsten Start rückgängig gemacht.'
+      },
+      {
+        kind: 'improved',
+        text: 'Mehr Sicherheit: Java-Downloads werden per Prüfsumme geprüft, Modpacks laden nur von erlaubten Servern, eigene Startbefehle und Java-Pfade brauchen beim ersten Mal eine Bestätigung, und Anmeldedaten werden in Protokollen und Fehlerberichten geschwärzt.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Das Verhalten beim Spielstart unter Einstellungen wirkte bisher nur auf neu angelegte Instanzen. Instanzen folgen jetzt der globalen Einstellung, solange bei ihnen selbst nichts anderes gewählt ist.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Minecraft bis 1.12.2, auch Forge-Modpacks für 1.7.10 und 1.12.2, startete nicht, wenn im Pfad des Datenordners ein Leerzeichen steckte, etwa bei einem Windows-Benutzernamen mit Leerzeichen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mod-Updates installieren jetzt auch neu benötigte Bibliotheken, und eine Bibliothek wie die Fabric API wird nicht mehr doppelt geholt, wenn sie schon vom anderen Anbieter installiert ist.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Über 120 weitere Fehler sind behoben, von Abbrechen-Knöpfen ohne Wirkung bis zu Fehlermeldungen mit vollem Dateipfad. Alle stehen einzeln auf der Statusseite.'
+      }
+    ]
+  },
+  {
     version: '1.0.19',
     date: '2026-09-13',
     headline: 'Kleinere Fehlerbehebung.',
