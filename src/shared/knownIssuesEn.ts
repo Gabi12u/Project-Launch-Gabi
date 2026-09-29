@@ -1916,6 +1916,12 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'While an instance was starting, being set up or getting mods, "Delete" and "Repair" could still ' +
       'be clicked and confirmed. Only then came the message that it was not possible right now. ' +
       '"Duplicate" was already greyed out in the same situation.'
+  },
+  'duplizieren-falsche-meldung': {
+    title: 'A second click on "Duplicate" said the mods were being worked on',
+    detail:
+      'While an instance was still being duplicated, another attempt replied that the mods were being ' +
+      'worked on, instead of saying that the instance is being copied right now.'
   }
 }
 

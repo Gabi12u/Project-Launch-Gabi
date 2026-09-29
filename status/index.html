@@ -2732,6 +2732,13 @@ footer .grow { flex: 1; }
       "detail": "Während eine Instanz startete, eingerichtet wurde oder Mods bekam, ließen sich „Löschen“ und „Reparieren“ trotzdem anklicken und bestätigen. Erst danach kam die Meldung, dass es gerade nicht geht. „Duplizieren“ war in derselben Lage schon ausgegraut.",
       "state": "fixing",
       "since": "2026-09-29"
+    },
+    {
+      "id": "duplizieren-falsche-meldung",
+      "title": "Ein zweiter Klick auf „Duplizieren“ meldete, an den Mods werde gearbeitet",
+      "detail": "Lief das Duplizieren einer Instanz noch, antwortete ein weiterer Versuch mit dem Hinweis, an den Mods werde gerade gearbeitet, statt zu sagen, dass die Instanz gerade kopiert wird.",
+      "state": "fixing",
+      "since": "2026-09-29"
     }
   ];
   var ISSUE_LABEL = {
@@ -4688,6 +4695,13 @@ footer .grow { flex: 1; }
       "id": "loeschen-reparieren-erst-nach-bestaetigung-abgelehnt",
       "title": "Deleting and repairing a busy instance only failed after the confirmation",
       "detail": "While an instance was starting, being set up or getting mods, \"Delete\" and \"Repair\" could still be clicked and confirmed. Only then came the message that it was not possible right now. \"Duplicate\" was already greyed out in the same situation.",
+      "state": "fixing",
+      "since": "2026-09-29"
+    },
+    {
+      "id": "duplizieren-falsche-meldung",
+      "title": "A second click on \"Duplicate\" said the mods were being worked on",
+      "detail": "While an instance was still being duplicated, another attempt replied that the mods were being worked on, instead of saying that the instance is being copied right now.",
       "state": "fixing",
       "since": "2026-09-29"
     }

@@ -3000,6 +3000,15 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'nicht geht. „Duplizieren“ war in derselben Lage schon ausgegraut.',
     state: 'fixing',
     since: '2026-09-29'
+  },
+  {
+    id: 'duplizieren-falsche-meldung',
+    title: 'Ein zweiter Klick auf „Duplizieren“ meldete, an den Mods werde gearbeitet',
+    detail:
+      'Lief das Duplizieren einer Instanz noch, antwortete ein weiterer Versuch mit dem Hinweis, an ' +
+      'den Mods werde gerade gearbeitet, statt zu sagen, dass die Instanz gerade kopiert wird.',
+    state: 'fixing',
+    since: '2026-09-29'
   }
 ]
 

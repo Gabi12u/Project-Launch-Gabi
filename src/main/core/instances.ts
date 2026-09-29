@@ -26,12 +26,12 @@ import {
 import { getSettings, readJson, writeJsonAtomic } from '../store'
 import { emit, notify } from '../events'
 import { log } from '../logger'
-import { withTask } from '../tasks'
+import { TaskCancelledError, withTask } from '../tasks'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
-import { assertNotCopying, isContentBusy, markCopying, unmarkCopying, withContentLock, withItemLock } from './contentLock'
+import { assertNotCopying, isContentBusy, isCopying, markCopying, unmarkCopying, withContentLock, withItemLock } from './contentLock'
 import { isRestoring } from './restoreLock'
 import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
@@ -311,7 +311,8 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
 
   // Fire and forget: progress is reported through the task system.
   void installInstance(id).catch((err) => {
-    logger.error(`Installation von ${id} fehlgeschlagen:`, err)
+    if (err instanceof TaskCancelledError) logger.info(`Installation von ${id} abgebrochen`)
+    else logger.error(`Installation von ${id} fehlgeschlagen:`, err)
   })
 
   return instance
@@ -591,6 +592,11 @@ function assertInstanceIdle(id: string, actionPastParticiple: string): void {
         `The instance is starting and cannot be ${actionPastParticiple}.`
       )
     )
+  }
+  // Checked first: a duplicate in progress also holds the content lock, and
+  // a second click on Duplicate was told the mods were being worked on.
+  if (isCopying(id)) {
+    throw new Error(tr('Diese Instanz wird gerade kopiert. Warte, bis das fertig ist.', 'This instance is being copied right now. Wait until that is done.'))
   }
   if (isContentBusy(id)) {
     throw new Error(tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das fertig ist.', 'The mods of this instance are being worked on right now. Wait until that is done.'))

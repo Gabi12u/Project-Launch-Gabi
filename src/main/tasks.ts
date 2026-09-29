@@ -150,7 +150,10 @@ export class Task {
     this.task.state = error instanceof TaskCancelledError ? 'cancelled' : 'failed'
     this.task.error = message
     this.task.detail = message
-    logger.error(`Task "${this.task.title}" fehlgeschlagen:`, error)
+    // A cancel is the user's own choice, not a fault: logged as an error it
+    // buried real failures in every log someone sent in.
+    if (error instanceof TaskCancelledError) logger.info(`Task "${this.task.title}" abgebrochen`)
+    else logger.error(`Task "${this.task.title}" fehlgeschlagen:`, error)
     this.push()
     // Nothing else may run under this handle once it has failed.
     this.abort()
