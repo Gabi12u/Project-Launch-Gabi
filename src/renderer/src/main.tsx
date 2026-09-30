@@ -9,6 +9,7 @@ import './styles/effects.css'
 import './styles/logo-intro.css'
 import { App } from './App'
 import { GameLogWindow } from './views/GameLogWindow'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // The live-log window opened per launch (main/gameLogWindow.ts) loads this
 // same bundle with a `gameLog` query parameter rather than getting a second
@@ -17,13 +18,19 @@ import { GameLogWindow } from './views/GameLogWindow'
 const params = new URLSearchParams(window.location.search)
 const gameLogInstanceId = params.get('gameLog')
 
+// Caught out here as well. The log window had no boundary at all, and it has
+// no frame of its own, so a render error left an empty window with nothing to
+// close it by. The launcher's own boundary only exists once it is ready, so a
+// failure during loading blanked it the same way.
 const root = (
   <StrictMode>
-    {gameLogInstanceId ? (
-      <GameLogWindow instanceId={gameLogInstanceId} instanceName={params.get('name') ?? gameLogInstanceId} />
-    ) : (
-      <App />
-    )}
+    <ErrorBoundary variant="app">
+      {gameLogInstanceId ? (
+        <GameLogWindow instanceId={gameLogInstanceId} instanceName={params.get('name') ?? gameLogInstanceId} />
+      ) : (
+        <App />
+      )}
+    </ErrorBoundary>
   </StrictMode>
 )
 

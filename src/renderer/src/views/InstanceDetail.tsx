@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type MouseEvent} from 'react'
+import { LogRow, createLineBatcher, logLineKey } from '../components/LogRow'
 import type {
   CompatibilityReport,
   ContentItem,
@@ -26,7 +27,6 @@ import {
   formatMemory,
   formatPlayTime,
   formatRelative,
-  formatTime,
   loaderColor,
   pluralise
 } from '../lib/format'
@@ -1481,16 +1481,18 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
       })
       .catch(() => undefined)
 
-    // One state update per batch rather than per line; see instanceLog.ts.
+    // One state update per batch rather than per line (see instanceLog.ts),
+    // and at most four a second while the game floods the log.
+    const batcher = createLineBatcher((mine) => setLines((current) => [...current, ...mine].slice(-1200)))
     const off = window.gabi.events.onLogLines((batch) => {
       const mine = batch.filter((line) => line.instanceId === instanceId)
-      if (mine.length === 0) return
-      setLines((current) => [...current, ...mine].slice(-1200))
+      if (mine.length > 0) batcher.push(mine)
     })
 
     return () => {
       cancelled = true
       off()
+      batcher.dispose()
     }
   }, [instanceId])
 
@@ -1553,12 +1555,7 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
             {tr('Noch keine Ausgabe. Starte die Instanz, um das Live-Log zu sehen.', 'No output yet. Start the instance to see the live log.')}
           </div>
         ) : (
-          shown.map((line, index) => (
-            <div key={index} className={`log-line ${line.stream === 'launcher' ? 'launcher' : line.level}`}>
-              <span className="log-time">{formatTime(line.time)}</span>
-              <span>{line.text}</span>
-            </div>
-          ))
+          shown.map((line) => <LogRow key={logLineKey(line)} line={line} />)
         )}
       </div>
 

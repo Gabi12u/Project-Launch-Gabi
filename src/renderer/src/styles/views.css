@@ -774,6 +774,11 @@
   white-space: pre-wrap;
   word-break: break-word;
   padding: 1px 0;
+  /* Rows scrolled out of view skip layout and paint. With 1200 rows replaced
+     several times a second under a flooding game, laying out the ones nobody
+     can see was most of the work. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 17px;
 }
 
 .log-time {

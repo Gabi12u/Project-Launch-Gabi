@@ -140,6 +140,11 @@ export function archMatchesHost(arch: string): boolean {
   return normalise(arch) === normalise(process.arch)
 }
 
+/** True for a 32-bit x86 JVM, whose heap cannot grow much past 1.5 GB. */
+export function is32BitJava(arch: string): boolean {
+  return ['x86', 'i386', 'i486', 'i586', 'i686', 'ia32'].includes((arch ?? '').trim().toLowerCase())
+}
+
 export function majorFromVersion(version: string): number {
   // "1.8.0_402" -> 8, "21.0.5" -> 21
   const cleaned = version.trim()

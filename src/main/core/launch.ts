@@ -26,7 +26,7 @@ import {
   type VersionJson
 } from './mojang'
 import { extractNatives } from './archive'
-import { requiredJavaMajor, resolveJava } from './java'
+import { is32BitJava, requiredJavaMajor, resolveJava } from './java'
 import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath } from './commandApproval'
 import {
   getInstance,
@@ -578,6 +578,22 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // reach the JVM as `-XmxNaNM`, which it refuses to start with.
     const configuredMemory = Math.round(Number(instance.settings.memoryMb))
     const memory = Number.isFinite(configuredMemory) ? Math.max(512, configuredMemory) : 2048
+
+    // The automatic Java choice skips 32-bit runtimes for exactly this reason,
+    // but a Java path set by hand bypasses it, and the JVM then stopped at once
+    // with "Could not reserve enough space for object heap" and no hint why.
+    if (is32BitJava(java.arch) && memory > 1536) {
+      logger.warn(`${instance.name}: 32-Bit-Java mit ${memory} MB Arbeitsspeicher`)
+      notify(
+        'warning',
+        tr('32-Bit-Java mit zu viel Arbeitsspeicher', '32-bit Java with too much memory'),
+        tr(
+          `Das eingestellte Java ist eine 32-Bit-Version und kann nur etwa 1,5 GB nutzen, eingestellt sind ${memory} MB. Minecraft bricht dann meist sofort ab. Wähle ein 64-Bit-Java oder weniger Arbeitsspeicher.`,
+          `The chosen Java is a 32-bit version and can only use about 1.5 GB, but ${memory} MB are set. Minecraft then usually stops right away. Pick a 64-bit Java or less memory.`
+        ),
+        { route: `/instances/${instanceId}?tab=settings` }
+      )
+    }
 
     const placeholders: Placeholders = {
       natives_directory: nativesDir,

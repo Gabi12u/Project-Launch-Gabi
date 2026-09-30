@@ -1,5 +1,8 @@
 import type { CompatibilityIssue, CompatibilityReport, ContentItem, Instance, LoaderId } from '@shared/types'
+import { join } from 'node:path'
 import { getInstance, syncContentWithDisk } from './instances'
+import { readEntryJson, readEntryText } from './archive'
+import { paths } from '../paths'
 import { modrinth, curseforge } from '../providers'
 import { log } from '../logger'
 import { tr } from '@shared/i18n'
@@ -100,6 +103,31 @@ function isShaderLoader(item: ContentItem): boolean {
   if (item.provider === 'local' && /^(iris|oculus)-/i.test(item.fileName)) return true
   if (/^optifine[_-]/i.test(item.fileName)) return true
   return false
+}
+
+/**
+ * The mod ids a jar declares to the instance's loader, read from the jar's own
+ * metadata. This is exactly what a loader refuses to start over when two jars
+ * share one, whatever their file names or download sources say.
+ */
+async function declaredModIds(instanceId: string, item: ContentItem, loader: LoaderId): Promise<string[]> {
+  const file = join(paths.mods(instanceId), item.fileName)
+  const ids: string[] = []
+  if (loader === 'fabric' || loader === 'quilt') {
+    if (loader === 'quilt') {
+      const quilt = await readEntryJson<{ quilt_loader?: { id?: unknown } }>(file, 'quilt.mod.json')
+      if (typeof quilt?.quilt_loader?.id === 'string') ids.push(quilt.quilt_loader.id)
+    }
+    const fabric = await readEntryJson<{ id?: unknown }>(file, 'fabric.mod.json')
+    if (typeof fabric?.id === 'string') ids.push(fabric.id)
+  } else if (loader === 'forge' || loader === 'neoforge') {
+    for (const entry of ['META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
+      const text = await readEntryText(file, entry)
+      if (!text) continue
+      for (const match of text.matchAll(/^\s*modId\s*=\s*["']([^"']+)["']/gm)) ids.push(match[1])
+    }
+  }
+  return ids
 }
 
 /**
@@ -299,7 +327,17 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     // A mixed group (three files, only two of them provably the same mod) is
     // treated as a name-only match throughout, rather than guessing which
     // pair the user meant.
-    const certain = duplicates.every((mod) => sameMod(mod, duplicates[0]))
+    let certain = duplicates.every((mod) => sameMod(mod, duplicates[0]))
+
+    // The same mod from Modrinth and from CurseForge carries neither a shared
+    // project id nor the same file hash, so it stayed a mere warning, which
+    // the Play button never shows, and the loader then refused to start over
+    // the duplicate mod id. The id the jars themselves declare settles it.
+    if (!certain) {
+      const idSets = await Promise.all(duplicates.map((mod) => declaredModIds(instanceId, mod, instance.loader)))
+      const [first, ...rest] = idSets
+      certain = first.length > 0 && first.some((id) => rest.every((ids) => ids.includes(id)))
+    }
 
     if (certain) {
       issues.push({

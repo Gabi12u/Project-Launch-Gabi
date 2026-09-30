@@ -121,6 +121,12 @@ function compareForgeVersionsNewestFirst(a: string, b: string): number {
 async function listForgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
   const xml = await fetchText(`${FORGE_MAVEN}/net/minecraftforge/forge/maven-metadata.xml`)
   const all = [...xml.matchAll(/<version>([^<]+)<\/version>/g)].map((m) => m[1])
+  // The real file lists thousands of builds. None at all means something else
+  // answered, such as a Wi-Fi sign-in page, and an empty list would have read
+  // as "Forge has no build for this version" (same rule as fabric.ts).
+  if (all.length === 0) {
+    throw new Error(tr('Unerwartete Antwort beim Laden der Forge-Versionen', 'Unexpected response while loading the Forge versions'))
+  }
 
   let recommended: string | undefined
   let latest: string | undefined
@@ -159,6 +165,9 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
       'neoforge-legacy-versions',
       30 * 60 * 1000
     )
+    if (!Array.isArray(data?.versions)) {
+      throw new Error(tr('Unerwartete Antwort beim Laden der NeoForge-Versionen', 'Unexpected response while loading the NeoForge versions'))
+    }
     const prefix = `${mcVersion}-`
     return data.versions
       .filter((v) => v.startsWith(prefix))
@@ -176,6 +185,11 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
     'neoforge-versions',
     30 * 60 * 1000
   )
+  // Same guard as fabric.ts: a body of the wrong shape used to throw a raw
+  // English TypeError here instead of a readable message.
+  if (!Array.isArray(data?.versions)) {
+    throw new Error(tr('Unerwartete Antwort beim Laden der NeoForge-Versionen', 'Unexpected response while loading the NeoForge versions'))
+  }
 
   const prefix = neoforgePrefix(mcVersion)
   return data.versions

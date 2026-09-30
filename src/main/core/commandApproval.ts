@@ -93,7 +93,13 @@ function approvalsFile(): string {
 let cache: Record<string, number> | null = null
 
 function loadApprovals(): Record<string, number> {
-  if (!cache) cache = readJson<Record<string, number>>(approvalsFile(), {})
+  if (!cache) {
+    // A file holding valid JSON of the wrong shape (null, a number) came back
+    // as is, and the `in` checks below then threw on every launch of an
+    // instance with a Java path, wrapper or pre-launch command.
+    const raw = readJson<unknown>(approvalsFile(), {})
+    cache = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, number>) : {}
+  }
   return cache
 }
 

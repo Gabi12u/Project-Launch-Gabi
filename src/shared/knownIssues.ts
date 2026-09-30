@@ -3272,6 +3272,76 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Das Log zeigte die Meldungen außerdem als rohes XML.',
     state: 'fixing',
     since: '2026-09-30'
+  },
+  {
+    id: 'minimieren-beendet-spiel',
+    title: 'Mit „Launcher minimieren“ konnte das Schließen des Launchers das laufende Spiel hart beenden',
+    detail:
+      'War beim Spielstart „Launcher minimieren“ eingestellt und wurde der Launcher geschlossen, ' +
+      'während Minecraft lief, beendete er das Spiel sofort mit, ohne dass es noch speichern konnte. ' +
+      'Nur bei offenem Log-Fenster blieb das Spiel am Leben, dann ließ sich der Launcher aber bis zum ' +
+      'Spielende nicht mehr öffnen.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'doppelter-mod-zwei-quellen',
+    title: 'Derselbe Mod von Modrinth und CurseForge verhinderte den Spielstart ohne Hinweis',
+    detail:
+      'War ein Mod einmal von Modrinth und einmal von CurseForge installiert, galt das nur als ' +
+      'Warnung, die beim Spielen nicht angezeigt wurde. Minecraft startete dann nicht, weil der ' +
+      'Mod-Loader dieselbe Mod-ID doppelt fand.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'curseforge-pakete-im-modordner',
+    title: 'CurseForge-Modpacks legten Resourcepacks und Shader in den Mod-Ordner',
+    detail:
+      'Enthielt ein CurseForge-Modpack Resourcepacks oder Shader, landeten diese beim Import im ' +
+      'Mod-Ordner. Dort wirkten sie nicht und tauchten auch in der Liste der Inhalte nicht auf.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'java-32bit-eigener-pfad',
+    title: 'Ein fest eingestelltes 32-Bit-Java mit viel Arbeitsspeicher startete das Spiel nicht, ohne Hinweis',
+    detail:
+      'Wurde für eine Instanz von Hand ein 32-Bit-Java gewählt und mehr als etwa 1,5 GB ' +
+      'Arbeitsspeicher eingestellt, brach Minecraft sofort ab. Der Launcher warnte nicht, obwohl er ' +
+      'dieselbe Grenze bei der automatischen Java-Wahl beachtet.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'anmeldeseite-im-netz',
+    title: 'Hinter einer WLAN-Anmeldeseite zeigte der Launcher unverständliche Fehler',
+    detail:
+      'Leitete ein Netz, etwa im Hotel, in der Schule oder im Zug, Anfragen auf eine eigene ' +
+      'Anmeldeseite um, erschien ein englischer Fehler wie „Unexpected token“. Die Forge-Versionsliste ' +
+      'behauptete dann außerdem, es gebe keine Version.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'abbrechen-wartet-auf-andere-installation',
+    title: 'Abbrechen konnte hängen, wenn zwei Installationen dieselbe Datei brauchten',
+    detail:
+      'Luden zwei Installationen gleichzeitig dieselbe Datei, etwa eine gemeinsame Bibliothek, ' +
+      'reagierte die zweite erst auf „Abbrechen“, wenn die erste mit dieser Datei fertig war. Das ' +
+      'konnte Minuten dauern.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'entdecken-unpassende-version-ohne-hinweis',
+    title: 'Im Projektfenster von Entdecken fehlte der Hinweis auf unpassende Versionen',
+    detail:
+      'Wurde dort „Nur kompatible“ ausgeschaltet, sahen alle Versionen gleich aus. Eine Version für ' +
+      'einen anderen Loader oder eine andere Minecraft-Version ließ sich ohne jede Warnung auswählen ' +
+      'und installieren.',
+    state: 'fixing',
+    since: '2026-10-01'
   }
 ]
 

@@ -3445,6 +3445,55 @@ footer a:hover { color: var(--ink); }
       "detail": "Schrieb Minecraft sehr viele Log-Zeilen auf einmal, etwa Warnungen beim Laden der Texturen vieler Mods, schickte der Launcher jede Zeile einzeln an seine Fenster. Log-Fenster und Launcher kamen nicht mehr hinterher, reagierten nicht und wurden nach einiger Zeit neu geladen. Das Log zeigte die Meldungen außerdem als rohes XML.",
       "state": "fixing",
       "since": "2026-09-30"
+    },
+    {
+      "id": "minimieren-beendet-spiel",
+      "title": "Mit „Launcher minimieren“ konnte das Schließen des Launchers das laufende Spiel hart beenden",
+      "detail": "War beim Spielstart „Launcher minimieren“ eingestellt und wurde der Launcher geschlossen, während Minecraft lief, beendete er das Spiel sofort mit, ohne dass es noch speichern konnte. Nur bei offenem Log-Fenster blieb das Spiel am Leben, dann ließ sich der Launcher aber bis zum Spielende nicht mehr öffnen.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "doppelter-mod-zwei-quellen",
+      "title": "Derselbe Mod von Modrinth und CurseForge verhinderte den Spielstart ohne Hinweis",
+      "detail": "War ein Mod einmal von Modrinth und einmal von CurseForge installiert, galt das nur als Warnung, die beim Spielen nicht angezeigt wurde. Minecraft startete dann nicht, weil der Mod-Loader dieselbe Mod-ID doppelt fand.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "curseforge-pakete-im-modordner",
+      "title": "CurseForge-Modpacks legten Resourcepacks und Shader in den Mod-Ordner",
+      "detail": "Enthielt ein CurseForge-Modpack Resourcepacks oder Shader, landeten diese beim Import im Mod-Ordner. Dort wirkten sie nicht und tauchten auch in der Liste der Inhalte nicht auf.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "java-32bit-eigener-pfad",
+      "title": "Ein fest eingestelltes 32-Bit-Java mit viel Arbeitsspeicher startete das Spiel nicht, ohne Hinweis",
+      "detail": "Wurde für eine Instanz von Hand ein 32-Bit-Java gewählt und mehr als etwa 1,5 GB Arbeitsspeicher eingestellt, brach Minecraft sofort ab. Der Launcher warnte nicht, obwohl er dieselbe Grenze bei der automatischen Java-Wahl beachtet.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "anmeldeseite-im-netz",
+      "title": "Hinter einer WLAN-Anmeldeseite zeigte der Launcher unverständliche Fehler",
+      "detail": "Leitete ein Netz, etwa im Hotel, in der Schule oder im Zug, Anfragen auf eine eigene Anmeldeseite um, erschien ein englischer Fehler wie „Unexpected token“. Die Forge-Versionsliste behauptete dann außerdem, es gebe keine Version.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "abbrechen-wartet-auf-andere-installation",
+      "title": "Abbrechen konnte hängen, wenn zwei Installationen dieselbe Datei brauchten",
+      "detail": "Luden zwei Installationen gleichzeitig dieselbe Datei, etwa eine gemeinsame Bibliothek, reagierte die zweite erst auf „Abbrechen“, wenn die erste mit dieser Datei fertig war. Das konnte Minuten dauern.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "entdecken-unpassende-version-ohne-hinweis",
+      "title": "Im Projektfenster von Entdecken fehlte der Hinweis auf unpassende Versionen",
+      "detail": "Wurde dort „Nur kompatible“ ausgeschaltet, sahen alle Versionen gleich aus. Eine Version für einen anderen Loader oder eine andere Minecraft-Version ließ sich ohne jede Warnung auswählen und installieren.",
+      "state": "fixing",
+      "since": "2026-10-01"
     }
   ];
   var ISSUE_LABEL = {
@@ -5606,6 +5655,55 @@ footer a:hover { color: var(--ink); }
       "detail": "If Minecraft wrote very many log lines at once, for example warnings while loading the textures of many mods, the launcher sent every line to its windows one by one. The log window and the launcher could not keep up, stopped responding and were reloaded after a while. The log also showed the messages as raw XML.",
       "state": "fixing",
       "since": "2026-09-30"
+    },
+    {
+      "id": "minimieren-beendet-spiel",
+      "title": "With \"Minimize the launcher\", closing the launcher could kill the running game",
+      "detail": "If \"Minimize the launcher\" was set for game starts and the launcher was closed while Minecraft ran, it ended the game along with it, without a chance to save. Only with the log window open did the game survive, but then the launcher could not be opened again until the game ended.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "doppelter-mod-zwei-quellen",
+      "title": "The same mod from Modrinth and CurseForge stopped the game from starting without a hint",
+      "detail": "If a mod was installed once from Modrinth and once from CurseForge, that only counted as a warning, which was not shown when playing. Minecraft then did not start because the mod loader found the same mod ID twice.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "curseforge-pakete-im-modordner",
+      "title": "CurseForge modpacks put resource packs and shaders into the mods folder",
+      "detail": "If a CurseForge modpack contained resource packs or shaders, the import put them into the mods folder. They had no effect there and did not show up in the content list either.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "java-32bit-eigener-pfad",
+      "title": "A pinned 32-bit Java with a lot of memory did not start the game, with no hint",
+      "detail": "If a 32-bit Java was picked by hand for an instance with more than about 1.5 GB of memory, Minecraft stopped right away. The launcher gave no warning, although it respects the same limit when it picks Java itself.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "anmeldeseite-im-netz",
+      "title": "Behind a Wi-Fi sign-in page the launcher showed cryptic errors",
+      "detail": "If a network, for example in a hotel, at school or on a train, redirected requests to its own sign-in page, an English error like \"Unexpected token\" appeared. The Forge version list then also claimed there was no version.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "abbrechen-wartet-auf-andere-installation",
+      "title": "Cancelling could hang when two installs needed the same file",
+      "detail": "If two installs loaded the same file at once, such as a shared library, the second one only reacted to \"Cancel\" once the first was done with that file. That could take minutes.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "entdecken-unpassende-version-ohne-hinweis",
+      "title": "The Discover project window gave no hint about versions that do not fit",
+      "detail": "With \"Compatible only\" turned off there, all versions looked the same. A version for another loader or Minecraft version could be picked and installed without any warning.",
+      "state": "fixing",
+      "since": "2026-10-01"
     }
   ];
   var ISSUE_LABEL_EN = {

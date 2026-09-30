@@ -101,12 +101,14 @@ export function formatDateTime(value: number): string {
   })
 }
 
+let timeFormat: Intl.DateTimeFormat | null = null
+
 export function formatTime(value: number): string {
-  return new Date(value).toLocaleTimeString(locale(), {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
+  // One formatter for the session: toLocaleTimeString builds a new one on
+  // every call, which added up to thousands a second in a flooding log. The
+  // language only changes with a restart, so it cannot go stale.
+  timeFormat ??= new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return timeFormat.format(value)
 }
 
 export function formatMemory(mb: number): string {

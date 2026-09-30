@@ -7,7 +7,7 @@ import { getSettings, saveSettings, takeInstanceBehaviourMigration } from './sto
 import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
-import { launchInstance, stopAll } from './core/launch'
+import { launchInstance } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, onAdoptedEnded, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
@@ -189,17 +189,17 @@ function createWindow(): BrowserWindow {
   window.on('unmaximize', pushWindowState)
 
   // The close button used to always quit the whole app, so a running game
-  // ended up quitting with it regardless of what "Beim Spielstart" says,
-  // since Minecraft is a child of this process. Mirrors the same check
-  // `before-quit` already makes: only a launcher explicitly set to close
-  // along with the game is allowed to actually quit here. Everyone else gets
-  // the same hide the launcher already does the moment a game starts, and
-  // `handleWindowRestore` (launch.ts) brings it back once the last one ends.
+  // ended up quitting with it, since Minecraft is a child of this process.
+  // While a game runs or starts, closing hides the launcher instead, the same
+  // hide it already does the moment a game starts, and `handleWindowRestore`
+  // (launch.ts) brings it back once the last one ends. That holds for every
+  // "Beim Spielstart" choice: "close" is shown as "Launcher minimieren", and
+  // treating it as "quit along with the game" killed the game unsaved.
   window.on('close', (event) => {
     // A launch still preparing (no process yet) is just as much a reason to
     // keep it alive as one already running: quitting now would cut a download
     // or a Java install off mid way with nothing left to finish it.
-    if ((runningCount() > 0 || startingCount() > 0) && getSettings().launchBehaviour !== 'close') {
+    if (runningCount() > 0 || startingCount() > 0) {
       event.preventDefault()
       window.hide()
     }
@@ -506,10 +506,9 @@ function bootstrap(): void {
 
     disposeUpdater()
     void disposeRecording()
-    // Minecraft keeps running on its own; only stop it if the user asked us to.
-    // Killed outright rather than gracefully: the escalation timer inside
-    // `stopInstance` would die with this process before it could ever fire.
-    if (getSettings().launchBehaviour === 'close') stopAll(true)
+    // Minecraft keeps running on its own and is adopted again on the next
+    // start. It used to be killed here for "Launcher minimieren", with no
+    // chance to save the world.
   })
 }
 

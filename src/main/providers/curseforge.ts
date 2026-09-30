@@ -472,6 +472,33 @@ export async function getFiles(fileIds: number[]): Promise<ProjectVersion[]> {
   return response.data.map(mapFile)
 }
 
+/**
+ * The content type of each project, by project id, for a modpack manifest.
+ * A manifest lists files only, and a file does not say whether it is a mod,
+ * a resource pack or a shader. Missing entries mean "unknown"; the caller
+ * then treats the file as a mod, as before.
+ */
+export async function getProjectTypes(projectIds: string[]): Promise<Map<string, ContentType | 'modpack'>> {
+  const types = new Map<string, ContentType | 'modpack'>()
+  const ids = [...new Set(projectIds.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
+  for (let i = 0; i < ids.length; i += 100) {
+    try {
+      const response = await fetchJson<CfListResponse<{ id: number; classId: number }>>(`${API}/mods`, {
+        method: 'POST',
+        headers: { ...headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modIds: ids.slice(i, i + 100) })
+      })
+      if (!Array.isArray(response?.data)) continue
+      for (const mod of response.data) {
+        if (typeof mod?.id === 'number' && typeof mod.classId === 'number') types.set(String(mod.id), toContentType(mod.classId))
+      }
+    } catch (err) {
+      logger.warn('Projektarten für den Modpack-Import nicht abrufbar:', err)
+    }
+  }
+  return types
+}
+
 export async function getCategories(type: ContentType | 'modpack'): Promise<string[]> {
   try {
     const response = await fetchJson<CfListResponse<{ id: number; name: string; classId: number }>>(

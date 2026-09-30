@@ -690,6 +690,10 @@ function ProjectModal({
   }, [versions, mcVersion, loader])
 
   const shown = onlyCompatible && mcVersion ? compatibleVersions : versions
+  // With the filter off every version looked alike, so one for another loader
+  // or Minecraft version could be installed without a word. Marked the same
+  // way the version picker marks them.
+  const compatibleIds = useMemo(() => new Set(compatibleVersions.map((version) => version.versionId)), [compatibleVersions])
 
   // `versions` arrives sorted newest first (see the provider), so the first
   // compatible entry is what "Neueste installieren" would actually fetch.
@@ -809,6 +813,9 @@ function ProjectModal({
                       </span>
                     </div>
                     <div className="row gap-8">
+                      {mcVersion && !compatibleIds.has(version.versionId) && (
+                        <span className="badge danger">{tr('Passt nicht', 'Does not fit')}</span>
+                      )}
                       <span
                         className={`badge ${
                           version.releaseType === 'release'

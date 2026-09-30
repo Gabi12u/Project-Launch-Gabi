@@ -44,9 +44,15 @@ export class ErrorBoundary extends Component<Props, State> {
     // `unhandledrejection` events. A render error caught here never reaches
     // either, by definition, so without this call it would simply stop being
     // reported the moment something started catching it.
-    void window.gabi.reports
-      .record('ui:boundary', error.message, `${error.stack ?? ''}\n${info.componentStack ?? ''}`)
-      .catch(() => undefined)
+    // Guarded: a missing preload bridge is one of the errors this can catch,
+    // and reporting through it would throw a second time.
+    try {
+      void window.gabi.reports
+        .record('ui:boundary', error.message, `${error.stack ?? ''}\n${info.componentStack ?? ''}`)
+        .catch(() => undefined)
+    } catch {
+      // nothing left to report through
+    }
   }
 
   componentDidUpdate(prevProps: Props): void {

@@ -273,6 +273,38 @@ export async function httpRequest(
   throw lastError
 }
 
+/** The host of a URL for a message, or the URL itself when it does not parse. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
+
+/** Resolves with `promise`, or rejects as cancelled the moment `signal` aborts. */
+function untilDoneOrCancelled(promise: Promise<void>, signal?: AbortSignal): Promise<void> {
+  if (!signal) return promise
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new TaskCancelledError())
+      return
+    }
+    const onAbort = (): void => reject(new TaskCancelledError())
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      () => {
+        signal.removeEventListener('abort', onAbort)
+        resolve()
+      },
+      (err: unknown) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(err)
+      }
+    )
+  })
+}
+
 /**
  * Reads the body inside the retry loop rather than after it.
  *
@@ -289,7 +321,21 @@ export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3)
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await httpRequest(url, init, 0)
-      return (await res.json()) as T
+      try {
+        return (await res.json()) as T
+      } catch (parseErr) {
+        // A Wi-Fi sign-in page (hotel, school, train) answers every request
+        // with 200 and its own HTML. The engine's "Unexpected token '<'" then
+        // reached the user untranslated and with no hint at the real cause.
+        if (!(parseErr instanceof SyntaxError)) throw parseErr
+        throw new Error(
+          tr(
+            `${hostOf(url)} hat keine lesbare Antwort geschickt. Falls du in einem WLAN mit Anmeldeseite bist, etwa im Hotel oder in der Schule, melde dich dort zuerst an.`,
+            `${hostOf(url)} did not send a readable answer. If you are on a Wi-Fi with a sign-in page, for example in a hotel or at school, sign in there first.`
+          ),
+          { cause: parseErr }
+        )
+      }
     } catch (err) {
       lastError = err
       if (!isRetryable(err) || attempt === retries) break
@@ -562,9 +608,14 @@ export async function downloadFile(
     // do not adopt its result. The slot is keyed by destination alone, so it
     // may have been fetching different bytes for the same file name; only our
     // own hash and size decide whether what landed there is what we asked for.
-    await running.catch((err: unknown) => {
-      waitedError = err
-    })
+    // Raced against our own cancel: the other writer belongs to another task
+    // and can take minutes, and "Abbrechen" used to sit through all of it.
+    await untilDoneOrCancelled(
+      running.catch((err: unknown) => {
+        waitedError = err
+      }),
+      signal
+    )
   }
 
   // Prefer the concrete failure over "you never got a turn": a 404, a blocked
@@ -597,11 +648,6 @@ export interface DownloadAllOptions {
   onError?: (item: DownloadItem, err: unknown) => 'skip' | 'fail'
 }
 
-/**
- * Downloads a batch in parallel. Progress is reported by bytes when sizes are
- * known and by file count otherwise, so both asset packs (many tiny files with
- * sizes) and loader jars (few files, no sizes) get a sensible bar.
- */
 /**
  * One pool of transfers for every batch at once. Each `downloadAll` used to
  * open its own `concurrentDownloads` connections, so five installs side by
@@ -651,6 +697,11 @@ async function acquireDownloadSlot(signal?: AbortSignal): Promise<() => void> {
   }
 }
 
+/**
+ * Downloads a batch in parallel. Progress is reported by bytes when sizes are
+ * known and by file count otherwise, so both asset packs (many tiny files with
+ * sizes) and loader jars (few files, no sizes) get a sensible bar.
+ */
 export async function downloadAll(
   items: DownloadItem[],
   options: DownloadAllOptions = {}

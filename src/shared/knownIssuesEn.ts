@@ -2097,6 +2097,52 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'of many mods, the launcher sent every line to its windows one by one. The log window and the ' +
       'launcher could not keep up, stopped responding and were reloaded after a while. The log also ' +
       'showed the messages as raw XML.'
+  },
+  'minimieren-beendet-spiel': {
+    title: 'With "Minimize the launcher", closing the launcher could kill the running game',
+    detail:
+      'If "Minimize the launcher" was set for game starts and the launcher was closed while Minecraft ' +
+      'ran, it ended the game along with it, without a chance to save. Only with the log window open ' +
+      'did the game survive, but then the launcher could not be opened again until the game ended.'
+  },
+  'doppelter-mod-zwei-quellen': {
+    title: 'The same mod from Modrinth and CurseForge stopped the game from starting without a hint',
+    detail:
+      'If a mod was installed once from Modrinth and once from CurseForge, that only counted as a ' +
+      'warning, which was not shown when playing. Minecraft then did not start because the mod loader ' +
+      'found the same mod ID twice.'
+  },
+  'curseforge-pakete-im-modordner': {
+    title: 'CurseForge modpacks put resource packs and shaders into the mods folder',
+    detail:
+      'If a CurseForge modpack contained resource packs or shaders, the import put them into the mods ' +
+      'folder. They had no effect there and did not show up in the content list either.'
+  },
+  'java-32bit-eigener-pfad': {
+    title: 'A pinned 32-bit Java with a lot of memory did not start the game, with no hint',
+    detail:
+      'If a 32-bit Java was picked by hand for an instance with more than about 1.5 GB of memory, ' +
+      'Minecraft stopped right away. The launcher gave no warning, although it respects the same limit ' +
+      'when it picks Java itself.'
+  },
+  'anmeldeseite-im-netz': {
+    title: 'Behind a Wi-Fi sign-in page the launcher showed cryptic errors',
+    detail:
+      'If a network, for example in a hotel, at school or on a train, redirected requests to its own ' +
+      'sign-in page, an English error like "Unexpected token" appeared. The Forge version list then ' +
+      'also claimed there was no version.'
+  },
+  'abbrechen-wartet-auf-andere-installation': {
+    title: 'Cancelling could hang when two installs needed the same file',
+    detail:
+      'If two installs loaded the same file at once, such as a shared library, the second one only ' +
+      'reacted to "Cancel" once the first was done with that file. That could take minutes.'
+  },
+  'entdecken-unpassende-version-ohne-hinweis': {
+    title: 'The Discover project window gave no hint about versions that do not fit',
+    detail:
+      'With "Compatible only" turned off there, all versions looked the same. A version for another ' +
+      'loader or Minecraft version could be picked and installed without any warning.'
   }
 }
 

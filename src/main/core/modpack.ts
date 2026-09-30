@@ -565,11 +565,20 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       )
     }
 
-    // `fileName` comes from the API, so it is pinned into the mods folder
-    // rather than trusted as a path.
+    // A manifest also lists resource packs and shaders, and they all went into
+    // mods/, where they did nothing and never showed up in the content list.
+    // The project's own class decides the folder; an unknown one stays a mod.
+    const projectTypes = await curseforge.getProjectTypes(resolved.map((version) => version.projectId))
+    const typeOf = (version: ProjectVersion): ContentType => {
+      const type = projectTypes.get(version.projectId)
+      return type === 'resourcepack' || type === 'shaderpack' ? type : 'mod'
+    }
+
+    // `fileName` comes from the API, so it is pinned into its folder rather
+    // than trusted as a path.
     const downloads: DownloadItem[] = resolved.map((version) => ({
       url: version.downloadUrl,
-      path: safeJoin(join(gameDir, 'mods'), basename(version.fileName)),
+      path: safeJoin(join(gameDir, overrideFolderFor(typeOf(version))), basename(version.fileName)),
       sha1: version.sha1,
       size: version.size
     }))
@@ -629,7 +638,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       ...synced,
       content: synced.content.map((item) => {
         const version = byFileName.get(item.fileName.replace(/\.disabled$/, ''))
-        if (!version || item.type !== 'mod') return item
+        if (!version || item.type !== typeOf(version)) return item
         return {
           ...item,
           provider: 'curseforge',

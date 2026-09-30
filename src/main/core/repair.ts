@@ -955,6 +955,23 @@ export async function cleanTempFiles(instanceId?: string): Promise<number> {
           } catch {
             // Vanished on its own, or a download still holds it open.
           }
+          continue
+        }
+        // A mod the repair set aside while fetching its replacement. When the
+        // launcher was closed or crashed in between, the original stayed
+        // parked under this name for good and the mod was simply gone. It goes
+        // back if nothing replaced it, and is dropped if something did.
+        const parked = /^(.+)\.repair-\d+$/.exec(entry.name)
+        if (parked) {
+          try {
+            if ((await stat(full)).mtimeMs > cutoff) continue
+            const original = join(dir, parked[1])
+            if (existsSync(original)) rmSync(full, { force: true })
+            else renameSync(full, original)
+            removed++
+          } catch {
+            // Still in use, or gone already; the next sweep tries again.
+          }
         }
       }
     } catch {

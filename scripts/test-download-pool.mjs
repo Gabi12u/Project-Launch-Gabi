@@ -34,11 +34,16 @@ let started = 0
 
 // Answers every request after a short wait with a body that trickles out, so
 // several transfers genuinely overlap.
-globalThis.fetch = async () => {
+globalThis.fetch = async (url) => {
+  // A Wi-Fi sign-in page answers everything with 200 and HTML.
+  if (String(url).includes('/portal/')) {
+    return new Response('<html><body>Bitte anmelden</body></html>', { status: 200 })
+  }
   started++
   open++
   maxOpen = Math.max(maxOpen, open)
-  await new Promise((resolve) => setTimeout(resolve, 15))
+  // One file that takes long, for the "waiting on another install" case.
+  await new Promise((resolve) => setTimeout(resolve, String(url).includes('/slow/') ? 2000 : 15))
   let sent = false
   const body = new ReadableStream({
     async pull(controller) {
@@ -158,6 +163,36 @@ try {
   check(started === 9, `9 Uebertragungen erwartet, ${started} gestartet`)
   check(maxOpen === LIMIT, `nach dem Abbruch sollten wieder ${LIMIT} Plaetze frei sein, es waren ${maxOpen}`)
   console.log(`Danach: ${started} Dateien, ${maxOpen} gleichzeitig`)
+
+  // --- 4. Cancel while another install downloads the same file ----------
+  const shared = { url: 'https://example.invalid/slow/shared.bin', path: join(work, 'files', 'shared.bin'), size: FILE_BYTES }
+  const owner = downloadAll([shared], { task: fakeTask() })
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  const waiter = fakeTask()
+  const waiterRun = downloadAll([shared], { task: waiter })
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  const cancelAt = Date.now()
+  waiter.cancel()
+  const waiterErr = await waiterRun.then(
+    () => null,
+    (err) => err
+  )
+  const reactedMs = Date.now() - cancelAt
+  check(waiterErr?.name === 'TaskCancelledError', `Abbruch beim Warten auf eine fremde Datei erwartet, erhalten: ${waiterErr}`)
+  check(reactedMs < 500, `Abbruch sollte sofort greifen, dauerte ${reactedMs} ms`)
+  await owner
+  check(existsSync(shared.path), 'die gemeinsame Datei fehlt, obwohl die erste Installation weiterlief')
+  console.log(`Abbruch beim Warten auf fremden Download: ${waiterErr?.name}, nach ${reactedMs} ms`)
+
+  // --- 5. HTML instead of JSON gives a readable message ------------------
+  const { fetchJson } = require(out)
+  const htmlErr = await fetchJson('https://api.example.invalid/portal/data.json', undefined, 0).then(
+    () => null,
+    (err) => err
+  )
+  check(htmlErr && !/Unexpected token/.test(htmlErr.message), `lesbare Meldung erwartet, erhalten: ${htmlErr?.message}`)
+  check(htmlErr && /api\.example\.invalid/.test(htmlErr.message), `Meldung sollte den Server nennen: ${htmlErr?.message}`)
+  console.log(`HTML statt JSON: ${htmlErr?.message}`)
 } catch (err) {
   problems.push(`Unerwarteter Fehler: ${err?.stack ?? err}`)
 } finally {

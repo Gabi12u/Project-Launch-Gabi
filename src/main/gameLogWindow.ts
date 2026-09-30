@@ -141,11 +141,39 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
     return { action: 'deny' }
   })
 
+  // Same watchdog as the main window (index.ts). This is the window that shows
+  // a flooding game's log first, and it had none: stuck, it stayed stuck, its
+  // Stop button with it.
+  let unresponsiveTimer: NodeJS.Timeout | null = null
+  win.on('unresponsive', () => {
+    logger.warn(`Log-Fenster von ${instanceId} reagiert nicht mehr`)
+    unresponsiveTimer ??= setTimeout(() => {
+      unresponsiveTimer = null
+      if (win.isDestroyed()) return
+      logger.error(`Log-Fenster von ${instanceId} reagiert seit 10s nicht, lade neu`)
+      win.webContents.reload()
+    }, 10_000)
+  })
+  win.on('responsive', () => {
+    if (unresponsiveTimer) {
+      clearTimeout(unresponsiveTimer)
+      unresponsiveTimer = null
+    }
+  })
+  win.on('closed', () => {
+    if (unresponsiveTimer) clearTimeout(unresponsiveTimer)
+  })
+
   const query = `?gameLog=${encodeURIComponent(instanceId)}&name=${encodeURIComponent(instanceName)}`
+  // Logged rather than left as an unhandled rejection: a damaged install left
+  // this window blank with nothing in the log to say why.
+  const failedToLoad = (err: unknown): void => {
+    logger.error(`Log-Fenster von ${instanceId} konnte nicht geladen werden:`, err)
+  }
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    void win.loadURL(process.env['ELECTRON_RENDERER_URL'] + query)
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'] + query).catch(failedToLoad)
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'), { search: query })
+    win.loadFile(join(__dirname, '../renderer/index.html'), { search: query }).catch(failedToLoad)
   }
 }
 

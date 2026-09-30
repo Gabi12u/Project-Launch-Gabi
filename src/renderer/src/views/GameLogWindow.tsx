@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type JSX } from 'react'
 import type { LaunchStatus, LogLine } from '@shared/types'
-import { formatTime } from '../lib/format'
+import { LogRow, createLineBatcher, logLineKey } from '../components/LogRow'
 import { refreshSettings } from '../lib/store'
 import { Ambient } from '../components/Ambient'
 import { IconClose, IconMinimize } from '../components/Icons'
@@ -68,11 +68,12 @@ export function GameLogWindow({
       })
       .catch(() => undefined)
 
-    // One state update per batch rather than per line; see instanceLog.ts.
+    // One state update per batch rather than per line (see instanceLog.ts),
+    // and at most four a second while the game floods the log.
+    const batcher = createLineBatcher((mine) => setLines((current) => [...current, ...mine].slice(-1200)))
     const offLine = window.gabi.events.onLogLines((batch) => {
       const mine = batch.filter((line) => line.instanceId === instanceId)
-      if (mine.length === 0) return
-      setLines((current) => [...current, ...mine].slice(-1200))
+      if (mine.length > 0) batcher.push(mine)
     })
     const offStatus = window.gabi.events.onLaunchStatus((next) => {
       if (next.instanceId !== instanceId) return
@@ -89,6 +90,7 @@ export function GameLogWindow({
       cancelled = true
       offLine()
       offStatus()
+      batcher.dispose()
     }
   }, [instanceId])
 
@@ -180,12 +182,7 @@ export function GameLogWindow({
           {lines.length === 0 ? (
             <div className="muted" style={{ padding: 12 }}>{tr('Noch keine Ausgabe.', 'No output yet.')}</div>
           ) : (
-            lines.map((line, index) => (
-              <div key={index} className={`log-line ${line.stream === 'launcher' ? 'launcher' : line.level}`}>
-                <span className="log-time">{formatTime(line.time)}</span>
-                <span>{line.text}</span>
-              </div>
-            ))
+            lines.map((line) => <LogRow key={logLineKey(line)} line={line} />)
           )}
         </div>
       </div>
