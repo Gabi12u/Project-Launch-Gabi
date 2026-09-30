@@ -129,6 +129,7 @@ export function Onboarding(): JSX.Element {
                       void saveSettings({ accentColor: color })
                     }}
                     aria-label={accentName(color)}
+                    aria-pressed={accent === color}
                   />
                 ))}
               </div>

@@ -61,6 +61,15 @@
 .boot.is-intro,
 .boot.is-leaving { cursor: pointer; }
 
+/* The unfocused-window pause in base.css froze the intro half drawn until the
+   fallback timer, most often right at login when Windows withholds focus.
+   The intro is short and ends on its own, so it keeps playing regardless. */
+:root[data-idle='true'] .boot *,
+:root[data-idle='true'] .boot *::before,
+:root[data-idle='true'] .boot *::after {
+  animation-play-state: running !important;
+}
+
 /* --- Wordmark in the boot splash ---------------------------------------- */
 
 .boot-status {

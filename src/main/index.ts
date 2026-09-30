@@ -9,10 +9,10 @@ import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance, stopAll } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
-import { adoptRunningFromDisk, pruneAdopted, runningCount, startingCount } from './core/running'
+import { adoptRunningFromDisk, onAdoptedEnded, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { sweepStagingDirs } from './core/java'
-import { loadInstances, migrateInstanceLaunchBehaviour, tryGetInstance } from './core/instances'
+import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
 import { checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
@@ -348,6 +348,16 @@ function bootstrap(): void {
 
     registerProtocol()
     registerIpc()
+    // A game that outlived a launcher restart has no exit handler here, so
+    // its play time and session were never recorded. The end is noticed by
+    // the regular adopted check, a few seconds late at most.
+    onAdoptedEnded((game, endedAt) => {
+      try {
+        recordSession(game.instanceId, { startedAt: game.startedAt, endedAt, crashed: false, exitCode: null })
+      } catch (err) {
+        logger.warn(`Spielsitzung von ${game.instanceId} konnte nicht gespeichert werden:`, err)
+      }
+    })
     // Before the instances are read, so their `running` flag reflects a game
     // the previous session left behind rather than claiming nothing is up.
     adoptRunningFromDisk()

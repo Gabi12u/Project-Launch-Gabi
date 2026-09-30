@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
-import { initials, skinHeadStyle } from '../lib/format'
+import { initials } from '../lib/format'
+import { useSkinHead } from '../lib/hooks'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
 import {
@@ -29,6 +30,7 @@ export function Sidebar(): JSX.Element {
   const section = parseRoute(route).section
   const updateCount = instances.reduce((sum, i) => sum + i.updateCount, 0)
   const active = accounts.find((a) => a.active)
+  const skinHead = useSkinHead(active?.skinUrl)
   const running = instances.filter((i) => i.running).length
 
   const entries: NavEntry[] = [
@@ -118,13 +120,13 @@ export function Sidebar(): JSX.Element {
 
         <button className="account-chip no-drag" onClick={() => setAccountOpen(true)}>
           <div
-            className={`avatar${active && skinHeadStyle(active.skinUrl) ? ' skin-head' : ''}`}
-            style={active ? (skinHeadStyle(active.skinUrl) ?? undefined) : undefined}
+            className={`avatar${active && skinHead ? ' skin-head' : ''}`}
+            style={active ? (skinHead ?? undefined) : undefined}
           >
             {/* The head is painted by the background layers, so the tile stays
                 empty whenever a skin is available. Without one it falls back
                 to the initials, which is the offline-account case. */}
-            {active ? (skinHeadStyle(active.skinUrl) ? '' : initials(active.username)) : '?'}
+            {active ? (skinHead ? '' : initials(active.username)) : '?'}
           </div>
           <div className="col grow" style={{ overflow: 'hidden' }}>
             <span className="truncate" style={{ fontSize: 13, fontWeight: 620 }}>

@@ -171,6 +171,15 @@ export function initials(name: string): string {
  * case; the caller then renders the initials tile as before.
  */
 export function skinHeadStyle(skinUrl: string | undefined): CSSProperties | null {
+  const secure = skinImageUrl(skinUrl)
+  if (!secure) return null
+
+  // Quoted, so a URL containing brackets or spaces cannot break out of url().
+  return { ['--skin' as string]: `url("${encodeURI(secure)}")` }
+}
+
+/** The address the skin texture is actually loaded from, or null without a skin. */
+export function skinImageUrl(skinUrl: string | undefined): string | null {
   if (!skinUrl) return null
 
   // Mojang hands out texture links over plain http, and the renderer's
@@ -180,10 +189,7 @@ export function skinHeadStyle(skinUrl: string | undefined): CSSProperties | null
   // textures.minecraft.net serves the identical file over https, and this is
   // done at display time rather than when storing so accounts that were saved
   // before this fix are corrected too, without needing a fresh login.
-  const secure = skinUrl.startsWith('http://') ? `https://${skinUrl.slice('http://'.length)}` : skinUrl
-
-  // Quoted, so a URL containing brackets or spaces cannot break out of url().
-  return { ['--skin' as string]: `url("${encodeURI(secure)}")` }
+  return skinUrl.startsWith('http://') ? `https://${skinUrl.slice('http://'.length)}` : skinUrl
 }
 
 /**

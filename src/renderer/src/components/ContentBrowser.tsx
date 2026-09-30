@@ -99,6 +99,11 @@ interface Props {
   openProjectId?: string
 }
 
+/** Identifies one project across providers for the busy state of its button. */
+function installKey(item: { provider: string; projectId: string }): string {
+  return `${item.provider}:${item.projectId}`
+}
+
 export function ContentBrowser({
   instanceId,
   blockedReason,
@@ -245,8 +250,11 @@ export function ContentBrowser({
   const install = async (item: SearchResultItem, versionId?: string, worlds?: string[]): Promise<void> => {
     if (!instanceId) return
     // Guards against a double click landing twice before the first render.
-    if (installing.has(item.projectId)) return
-    setInstalling((current) => new Set(current).add(item.projectId))
+    // Keyed with the provider: a Modrinth and a CurseForge project can share
+    // an id, and one install then showed the other one as busy too.
+    const key = installKey(item)
+    if (installing.has(key)) return
+    setInstalling((current) => new Set(current).add(key))
 
     try {
       if (item.type === 'modpack') {
@@ -279,7 +287,7 @@ export function ContentBrowser({
     } finally {
       setInstalling((current) => {
         const next = new Set(current)
-        next.delete(item.projectId)
+        next.delete(key)
         return next
       })
     }
@@ -449,7 +457,7 @@ export function ContentBrowser({
                 // installed because an unrelated Modrinth project happened to
                 // carry the same id.
                 installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
-                installing={installing.has(item.projectId)}
+                installing={installing.has(installKey(item))}
                 canInstall={Boolean(instanceId) && !blockedReason}
                 onInstall={() =>
                   item.type === 'datapack' ? setWorldPickFor({ item }) : void install(item)
@@ -488,7 +496,7 @@ export function ContentBrowser({
               ? setWorldPickFor({ item: detail, versionId })
               : void install(detail, versionId)
           }
-          installing={installing.has(detail.projectId)}
+          installing={installing.has(installKey(detail))}
         />
       )}
 
@@ -575,7 +583,7 @@ function ProjectCard({
           ) : (
             <IconDownload size={14} />
           )}
-          {installed ? tr('Installiert', 'Installed') : installing ? '' : tr('Installieren', 'Install')}
+          {installed ? tr('Installiert', 'Installed') : installing ? tr('Wird installiert…', 'Installing…') : tr('Installieren', 'Install')}
         </button>
       )}
     </article>

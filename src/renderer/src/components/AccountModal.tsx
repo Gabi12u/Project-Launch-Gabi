@@ -1,7 +1,8 @@
 import { useEffect, useState, type JSX, useRef} from 'react'
 import type { Account, DeviceCodePrompt } from '@shared/types'
 import { refreshAccounts, toast, toastError, useStore } from '../lib/store'
-import { initials, skinHeadStyle } from '../lib/format'
+import { initials } from '../lib/format'
+import { useSkinHead } from '../lib/hooks'
 import { Confirm, CopyButton, Modal } from './ui'
 import { IconCheck, IconExternal, IconTrash, IconUser } from './Icons'
 import { tr } from '@shared/i18n'
@@ -237,13 +238,11 @@ function AccountRow({
   onActivate: () => void
   onRemove: () => void
 }): JSX.Element {
+  const skinHead = useSkinHead(account.skinUrl)
   return (
     <div className="content-row">
-      <div
-        className={`avatar lg${skinHeadStyle(account.skinUrl) ? ' skin-head' : ''}`}
-        style={skinHeadStyle(account.skinUrl) ?? undefined}
-      >
-        {skinHeadStyle(account.skinUrl) ? '' : initials(account.username)}
+      <div className={`avatar lg${skinHead ? ' skin-head' : ''}`} style={skinHead ?? undefined}>
+        {skinHead ? '' : initials(account.username)}
       </div>
 
       <div className="grow">

@@ -11,6 +11,7 @@ import { getSettings } from '../store'
 import { emit, getMainWindow, navigate, notify } from '../events'
 import { closeGameLogWindow, hasGameLogWindow, openGameLogWindow } from '../gameLogWindow'
 import { createLog4jParser } from './log4jParse'
+import { createBackup } from './backups'
 import { log } from '../logger'
 import { Task, TaskCancelledError } from '../tasks'
 import {
@@ -835,6 +836,16 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         recordSession(instanceId, { startedAt, endedAt, crashed, exitCode: code })
       } catch (err) {
         logger.warn(`Spielsitzung von ${instanceId} konnte nicht gespeichert werden:`, err)
+      }
+
+      // "Back up automatically": the worlds just changed, so right after a
+      // session is when a copy is worth having. The setting existed before
+      // but nothing ever acted on it. Runs in the background and only logs a
+      // failure; the keep count in the settings trims the old ones.
+      if (getSettings().automaticBackups && existsSync(paths.saves(instanceId))) {
+        void createBackup(instanceId, { reason: 'automatic', includes: ['saves'] }).catch((err: unknown) => {
+          logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen:`, err)
+        })
       }
 
       pushLog({

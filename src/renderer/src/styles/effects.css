@@ -96,6 +96,12 @@
   background: none;
 }
 
+/* The field drops its own ring to blend into the header, so the header line
+   carries the focus instead. Without it there was no visible focus at all. */
+.palette-input:focus-within {
+  border-bottom-color: var(--accent);
+}
+
 .palette-list {
   overflow-y: auto;
   padding: 8px;

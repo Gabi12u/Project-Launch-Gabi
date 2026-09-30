@@ -602,6 +602,55 @@ export interface DownloadAllOptions {
  * known and by file count otherwise, so both asset packs (many tiny files with
  * sizes) and loader jars (few files, no sizes) get a sensible bar.
  */
+/**
+ * One pool of transfers for every batch at once. Each `downloadAll` used to
+ * open its own `concurrentDownloads` connections, so five installs side by
+ * side ran forty transfers that slowed each other down and buried the main
+ * process in progress work. The setting now caps the launcher as a whole.
+ */
+let activeDownloads = 0
+const waitingDownloads: Array<() => void> = []
+
+function downloadSlotLimit(): number {
+  const wanted = getSettings().concurrentDownloads
+  return Number.isFinite(wanted) ? Math.max(1, wanted) : 8
+}
+
+/** Waits for a free transfer slot; the returned function gives it back. */
+async function acquireDownloadSlot(signal?: AbortSignal): Promise<() => void> {
+  if (activeDownloads < downloadSlotLimit()) {
+    activeDownloads++
+  } else {
+    await new Promise<void>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new TaskCancelledError())
+        return
+      }
+      const grant = (): void => {
+        signal?.removeEventListener('abort', onAbort)
+        resolve()
+      }
+      const onAbort = (): void => {
+        const at = waitingDownloads.indexOf(grant)
+        if (at >= 0) waitingDownloads.splice(at, 1)
+        reject(new TaskCancelledError())
+      }
+      waitingDownloads.push(grant)
+      signal?.addEventListener('abort', onAbort, { once: true })
+    })
+    // A granted slot was handed over by `release` below, already counted.
+  }
+
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    const next = waitingDownloads.shift()
+    if (next) next()
+    else activeDownloads--
+  }
+}
+
 export async function downloadAll(
   items: DownloadItem[],
   options: DownloadAllOptions = {}
@@ -679,15 +728,20 @@ export async function downloadAll(
       const item = pending[index]
 
       try {
-        await downloadFile(
-          item,
-          (delta) => {
-            doneBytes += delta
-            report()
-          },
-          3,
-          task?.signal
-        )
+        const release = await acquireDownloadSlot(task?.signal)
+        try {
+          await downloadFile(
+            item,
+            (delta) => {
+              doneBytes += delta
+              report()
+            },
+            3,
+            task?.signal
+          )
+        } finally {
+          release()
+        }
       } catch (err) {
         // A cancellation is never a per-file decision.
         if (err instanceof TaskCancelledError || task?.cancelled) throw err

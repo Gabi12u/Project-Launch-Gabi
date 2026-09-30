@@ -27,6 +27,7 @@ import { getSettings, readJsonResult, writeJsonAtomic } from '../store'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { TaskCancelledError, withTask } from '../tasks'
+import { sha1File } from './net'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
@@ -557,7 +558,11 @@ export function updateInstance(id: string, patch: InstancePatch): Instance {
     settings: { ...current.settings, ...patch.settings }
   }
 
-  return persist(next)
+  const saved = persist(next)
+  // "Remove background" and any other change that drops a picture.
+  removeUnusedImage(id, current.appearance.icon, saved.appearance)
+  removeUnusedImage(id, current.appearance.background, saved.appearance)
+  return saved
 }
 
 /**
@@ -783,7 +788,21 @@ export function setInstanceImage(id: string, sourceFile: string, kind: 'icon' | 
   else appearance.background = reference
 
   persist({ ...instance, appearance })
+  // The picture this replaced is no longer referenced by anything; every new
+  // pick used to leave another file behind for good, copied along by duplicate.
+  removeUnusedImage(id, kind === 'icon' ? instance.appearance.icon : instance.appearance.background, appearance)
   return reference
+}
+
+/** Deletes an `img:` file once neither the icon nor the background points at it. */
+function removeUnusedImage(id: string, reference: string | null | undefined, now: Instance['appearance']): void {
+  if (!reference || !reference.startsWith('img:')) return
+  if (now.icon === reference || now.background === reference) return
+  try {
+    rmSync(safeJoin(paths.icons(id), reference.slice(4)), { force: true })
+  } catch (err) {
+    logger.warn(`Altes Bild ${reference} von ${id} nicht entfernt:`, err)
+  }
 }
 
 /** Resolves an `img:` reference to an absolute path for the renderer. */
@@ -1046,6 +1065,22 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
         continue
       }
 
+      // Renamed by hand: a record of the same type whose own file is gone and
+      // whose hash matches keeps its origin, update checks and worlds instead
+      // of turning into anonymous local content.
+      const renamedFrom = await findRenamedRecord(folder.dir, folder.type, fileName)
+      if (renamedFrom) {
+        claimed.add(renamedFrom.id)
+        if (renamedFrom.type === 'datapack' && renamedFrom.enabled && renamedFrom.worlds?.length) {
+          const source = join(folder.dir, fileName)
+          for (const world of renamedFrom.worlds) {
+            if (copyDatapackIntoWorld(id, world, source, bare)) removeDatapackFromWorld(id, world, bareExact(renamedFrom.fileName))
+          }
+        }
+        result.push({ ...renamedFrom, fileName, enabled })
+        continue
+      }
+
       // Unknown file: register it as local content so it still shows up.
       // Skipped, not thrown, if it vanished between `readdirSync` and here:
       // deleting a file mid-scan otherwise took the whole reconciliation down
@@ -1074,8 +1109,40 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
     }
   }
 
+  // A datapack whose file was deleted outside the launcher leaves its copies
+  // in the worlds behind; Minecraft kept loading them with no way to remove
+  // them from the UI.
+  for (const gone of instance.content) {
+    if (claimed.has(gone.id) || gone.type !== 'datapack' || !gone.enabled || !gone.worlds?.length) continue
+    for (const world of gone.worlds) removeDatapackFromWorld(id, world, bareExact(gone.fileName))
+  }
+
   if (sameContent(instance.content, result)) return instance
   return persist({ ...instance, content: result })
+
+  async function findRenamedRecord(
+    dir: string,
+    type: ContentItem['type'],
+    fileName: string
+  ): Promise<ContentItem | null> {
+    const candidates = instance.content.filter(
+      (c) =>
+        c.type === type &&
+        !claimed.has(c.id) &&
+        typeof c.sha1 === 'string' &&
+        c.sha1.length > 0 &&
+        !existsSync(join(dir, bareExact(c.fileName))) &&
+        !existsSync(join(dir, `${bareExact(c.fileName)}.disabled`))
+    )
+    if (candidates.length === 0) return null
+    let hash: string
+    try {
+      hash = await sha1File(join(dir, fileName))
+    } catch {
+      return null
+    }
+    return candidates.find((c) => c.sha1?.toLowerCase() === hash.toLowerCase()) ?? null
+  }
 }
 
 /**

@@ -14,8 +14,7 @@ import {
   setNavigationGuard,
   toast,
   toastError,
-  useStore
-} from '../lib/store'
+  useStore, getState } from '../lib/store'
 import { createShortcut, startInstance, stopInstance } from '../lib/actions'
 import { clickable } from '../lib/a11y'
 import {
@@ -242,6 +241,9 @@ export function InstanceDetailView({
       setNavigationGuard(null)
       navigate('/instances')
     } catch (err) {
+      // Closed here too: on success the navigation away closes it, on a
+      // failure it otherwise stayed open over the error.
+      setConfirmDelete(false)
       toastError(err, tr('Instanz konnte nicht gelöscht werden', 'Instance could not be deleted'))
     }
   }
@@ -685,7 +687,13 @@ function OverviewTab({
                   </div>
                   <div className="content-meta">
                     {formatPlayTime(session.durationMs)}
-                    {session.crashed && <span className="badge danger">{tr(`Absturz (Code ${session.exitCode})`, `Crash (code ${session.exitCode})`)}</span>}
+                    {session.crashed && (
+                      <span className="badge danger">
+                        {typeof session.exitCode === 'number'
+                          ? tr(`Absturz (Code ${session.exitCode})`, `Crash (code ${session.exitCode})`)
+                          : tr('Absturz', 'Crash')}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1316,7 +1324,9 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
   // until the user navigated away and back. The list refreshes on the edge
   // from recording to not recording, which is exactly when a new file exists.
   useEffect(() => {
-    let wasActive = false
+    // Seeded from the live state: a recording already running when the tab
+    // opened never counted as "was active", so its finished clip never showed.
+    let wasActive = getState().recording.active
     return window.gabi.events.onRecordingState((state) => {
       if (wasActive && !state.active) void load()
       wasActive = state.active

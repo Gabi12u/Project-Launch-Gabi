@@ -232,10 +232,12 @@ export function BackupsView(): JSX.Element {
           try {
             await window.gabi.backups.restore(restoring.instanceId, restoring.id)
             toast('success', tr('Wiederhergestellt', 'Restored'), restoring.name)
-            setRestoring(null)
             await load()
           } catch (err) {
             toastError(err, tr('Wiederherstellung fehlgeschlagen', 'Restore failed'))
+          } finally {
+            // Also after a failure, where the dialog otherwise stayed open.
+            setRestoring(null)
           }
         }}
         onCancel={() => setRestoring(null)}
@@ -259,10 +261,11 @@ export function BackupsView(): JSX.Element {
           try {
             await window.gabi.backups.remove(deleting.instanceId, deleting.id)
             toast('success', tr('Sicherung gelöscht', 'Backup deleted'), deleting.name)
-            setDeleting(null)
             await load()
           } catch (err) {
             toastError(err, tr('Löschen fehlgeschlagen', 'Deleting failed'))
+          } finally {
+            setDeleting(null)
           }
         }}
         onCancel={() => setDeleting(null)}

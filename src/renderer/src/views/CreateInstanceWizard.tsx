@@ -402,6 +402,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 <button
                   key={entry.id}
                   className={`option ${loader === entry.id ? 'selected' : ''}`}
+                  aria-pressed={loader === entry.id}
                   // Locked while the check is still running, too. It used to
                   // stay clickable during that window, so a loader could be
                   // picked before anyone knew whether a build for this
@@ -547,6 +548,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   style={{ background: choice, color: choice }}
                   onClick={() => setAccent(choice)}
                   aria-label={accentName(choice)}
+                  aria-pressed={accent === choice}
                 />
               ))}
             </div>

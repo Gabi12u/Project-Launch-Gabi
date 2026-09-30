@@ -30,6 +30,11 @@ export function BootSplash({ ready, onDone }: { ready: boolean; onDone: () => vo
   const { settings } = useStore()
   const [phase, setPhase] = useState<Phase>('loading')
   const finished = useRef(false)
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current)
+  }, [])
 
   const finish = (): void => {
     if (finished.current) return
@@ -75,7 +80,9 @@ export function BootSplash({ ready, onDone }: { ready: boolean; onDone: () => vo
 
   // The light pass is the last part of the intro.
   const onAnimationEnd = (event: AnimationEvent): void => {
-    if (phase === 'intro' && event.animationName === 'lg-sweep') setTimeout(leave, HOLD_MS)
+    if (phase === 'intro' && event.animationName === 'lg-sweep' && !holdTimer.current) {
+      holdTimer.current = setTimeout(leave, HOLD_MS)
+    }
   }
 
   return (

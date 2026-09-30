@@ -129,6 +129,28 @@ jobs:
           # Taken from package.json rather than the ref, so a manual re-run from
           # the Actions tab targets the same release a tag push would.
           TAG="v$(node -p "require('./package.json').version")"
+
+          # A pushed tag that does not match package.json would publish the
+          # installers under a different version than they report.
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$TAG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zu package.json ($TAG)"
+            exit 1
+          fi
+
+          # A manual run for a version that was never tagged used to create
+          # the tag on the spot, at whatever commit the branch pointed to.
+          if ! git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG existiert nicht. Erst taggen, dann bauen."
+            exit 1
+          fi
+
+          # Only the highest version may be marked latest. Rebuilding an older
+          # release by hand used to make it "latest" again, and every launcher
+          # on a newer version was then offered that older one.
+          HIGHEST=$( { gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName --jq '.[].tagName'; echo "$TAG"; } | grep -E '^v[0-9]' | sort -V | tail -1)
+          if [ "$HIGHEST" = "$TAG" ]; then LATEST=true; else LATEST=false; fi
+          echo "Höchste Version: $HIGHEST, $TAG wird latest: $LATEST"
+
           mkdir -p out
           find artifacts -type f -exec cp {} out/ \;
 
@@ -146,7 +168,8 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "$TAG" \
             --generate-notes \
-            --latest \
+            --verify-tag \
+            --latest="$LATEST" \
             out/*
 
       - name: Verify the release is complete

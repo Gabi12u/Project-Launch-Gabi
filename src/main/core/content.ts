@@ -438,8 +438,11 @@ async function installContentOnce(
           provider,
           projectId: dependency.projectId,
           versionId: dependency.versionId,
-          type,
-          // A datapack's own required datapacks belong in the same worlds.
+          // The dependency's own type decides its folder: a resource pack or
+          // shader needing a mod used to install that mod as a pack, where it
+          // did nothing. Only a datapack's own required datapacks stay
+          // datapacks (they are looked up the same way) and go into the same worlds.
+          type: type === 'datapack' ? 'datapack' : undefined,
           worlds: type === 'datapack' ? item.worlds : undefined,
           visited,
           task: options.task,
@@ -732,7 +735,8 @@ async function installNewDependencies(instanceId: string, item: ContentItem): Pr
         provider,
         projectId: dependency.projectId,
         versionId: dependency.versionId,
-        type: item.type,
+        // Same rule as the install path: the dependency's own type decides.
+        type: item.type === 'datapack' ? 'datapack' : undefined,
         asDependency: true
       })
     } catch (err) {

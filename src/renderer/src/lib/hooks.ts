@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type RefObject } from 'react'
 import type { InstanceSummary } from '@shared/types'
 import { getState } from './store'
+import { skinHeadStyle, skinImageUrl } from './format'
 
 /**
  * Writes the cursor position into `--mx` / `--my` on the element so CSS can
@@ -306,4 +307,44 @@ export function useInstanceIcon(instance: InstanceSummary): string | null {
   }, [instance.id, instance.appearance.icon])
 
   return src
+}
+
+/**
+ * The skin head for an avatar tile, or null when the initials should show.
+ *
+ * The head is a CSS background, which reports no load failure: without a
+ * connection, or with the texture server down, the tile stayed empty with
+ * the skin class applied. The same address is loaded once here to find out,
+ * and tried again when the connection comes back.
+ */
+export function useSkinHead(skinUrl: string | undefined): CSSProperties | null {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    const onOnline = (): void => setAttempt((n) => n + 1)
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [])
+
+  useEffect(() => {
+    const url = skinImageUrl(skinUrl)
+    if (!url || !skinUrl) return
+    let cancelled = false
+    const image = new Image()
+    image.onload = () => {
+      if (!cancelled) setFailedUrl(null)
+    }
+    image.onerror = () => {
+      if (!cancelled) setFailedUrl(skinUrl)
+    }
+    image.src = url
+    return () => {
+      cancelled = true
+      image.onload = null
+      image.onerror = null
+    }
+  }, [skinUrl, attempt])
+
+  return skinUrl && failedUrl === skinUrl ? null : skinHeadStyle(skinUrl)
 }

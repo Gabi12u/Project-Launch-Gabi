@@ -78,6 +78,12 @@ export function GameLogWindow({
       if (next.instanceId !== instanceId) return
       setStatus(next)
     })
+    // The launch can race through its phases before this window has even
+    // loaded; without asking once, the state badge stayed empty all session.
+    void window.gabi.launch
+      .status(instanceId)
+      .then((current) => setStatus((existing) => existing ?? current))
+      .catch(() => undefined)
 
     return () => {
       cancelled = true
@@ -108,7 +114,6 @@ export function GameLogWindow({
     void refreshSettings().catch(() => undefined)
   }, [])
 
-  const ended = status?.phase === 'stopped' || status?.phase === 'crashed' || status?.phase === 'idle'
 
   return (
     <div className="app col" style={{ height: '100vh' }}>
@@ -156,7 +161,9 @@ export function GameLogWindow({
             >
               {tr('Protokoll kopieren', 'Copy log')}
             </button>
-            {!ended && (
+            {/* Only once the game process exists: before that, stopping has
+                nothing to act on and the button did nothing at all. */}
+            {status?.phase === 'running' && (
               <button className="btn sm danger" onClick={() => void window.gabi.launch.stop(instanceId)}>
                 {tr('Beenden', 'Stop')}
               </button>

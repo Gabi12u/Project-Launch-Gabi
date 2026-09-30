@@ -126,7 +126,7 @@ const logger = log('ipc')
  * below are not gated: minimize, maximize and close act on the sending window
  * itself, and `window:show-launcher` exists for the log window's own button.
  */
-const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([IPC.launchLogs, IPC.launchStop, IPC.settingsGet])
+const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([IPC.launchLogs, IPC.launchStop, IPC.launchStatus, IPC.settingsGet])
 
 /** Wraps a handler so renderer-side errors arrive as readable messages. */
 function handle<T extends unknown[], R>(
@@ -328,6 +328,21 @@ export function registerIpc(): void {
       runningCount() + startingCount() > 0
     ) {
       throw new Error(tr('Der Datenordner lässt sich nur wechseln, solange kein Spiel läuft.', 'The data folder can only be changed while no game is running.'))
+    }
+    // Same for a download, an instance still being set up, an import or a
+    // backup: they keep writing into the old folder and then cannot find their
+    // instance in the new one, which made a freshly created instance vanish.
+    if (
+      patch.dataDirectory !== undefined &&
+      patch.dataDirectory !== previous.dataDirectory &&
+      listTasks().some((task) => task.state === 'running')
+    ) {
+      throw new Error(
+        tr(
+          'Der Datenordner lässt sich erst wechseln, wenn alle Downloads und Aufgaben fertig sind.',
+          'The data folder can only be changed once all downloads and tasks are finished.'
+        )
+      )
     }
     const next = saveSettings(patch)
 

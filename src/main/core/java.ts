@@ -11,6 +11,7 @@ import { downloadFile, fetchJson } from './net'
 import { extractAll, extractTarGz } from './archive'
 import { TaskCancelledError, type Task } from '../tasks'
 import { osArch, osName, type VersionJson } from './mojang'
+import { runningCount } from './running'
 import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('java')
@@ -68,6 +69,8 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
     // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) landed in 21w37a,
     // not at the start of 2021 (21w03a was still 1.17, Java 16). Anything
     // older than that predates the bump.
+    // 26.1 moved to Java 25, and every snapshot of 2026 belongs to it.
+    if (year >= 26) return 25
     if (year >= 24) return 21
     if (year >= 22) return 17
     if (year === 21) return week >= 37 ? 17 : 16
@@ -89,6 +92,11 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
   if (!/^\d+\.\d+/.test(id)) return 21
 
   const parts = id.split('.')
+  // From 2026 on versions are named after the year ("26.1", "26.1-snapshot-1")
+  // and need Java 25. Read as "1.x" they fell through to Java 8.
+  const leading = Number(parts[0])
+  if (leading >= 26) return 25
+  if (leading !== 1) return 21
   // A trailing qualifier ("16-pre1", "14 Pre-Release 1", "rc1") rides along
   // on the minor or patch token instead of getting its own dot. Left in,
   // Number() turned the whole token into NaN and every pre-release build
@@ -552,6 +560,10 @@ export function sweepStagingDirs(): void {
       if (!isStagingDir(entry)) continue
       // Owned by an install that is still running; not ours to delete.
       if (liveStaging.has(entry)) continue
+      // A parked install can be the one a running game was started from.
+      // Deleting it pulled files out from under that JVM; it waits for a
+      // moment with no game running instead.
+      if (entry.includes('.old-') && runningCount() > 0) continue
       try {
         rmSync(join(root, entry), { recursive: true, force: true })
         logger.info(`Verwaisten Entpack-Ordner entfernt: ${entry}`)
@@ -588,7 +600,7 @@ interface AdoptiumArchiveMetadata {
 async function adoptiumArchiveMetadata(
   major: number,
   imageType: 'jdk' | 'jre'
-): Promise<AdoptiumArchiveMetadata | null> {
+): Promise<AdoptiumArchiveMetadata | 'unavailable' | null> {
   try {
     const url =
       `https://api.adoptium.net/v3/assets/latest/${major}/hotspot` +
@@ -596,6 +608,9 @@ async function adoptiumArchiveMetadata(
     const releases = await fetchJson<
       Array<{ binary?: { package?: { link?: string; size?: number; checksum?: string } } }>
     >(url)
+    // An empty answer means Adoptium has no build of this Java for this
+    // system at all, which no amount of retrying changes.
+    if (Array.isArray(releases) && releases.length === 0) return 'unavailable'
     const pkg = releases[0]?.binary?.package
     if (
       !pkg ||
@@ -647,6 +662,14 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
   const imageType = major <= 8 ? 'jdk' : 'jre'
 
   const metadata = await adoptiumArchiveMetadata(major, imageType)
+  if (metadata === 'unavailable') {
+    throw new Error(
+      tr(
+        `Für Java ${major} gibt es kein Paket für dieses System (${adoptiumOs()}, ${adoptiumArch()}). Wähle in den Instanz-Einstellungen ein installiertes Java aus.`,
+        `There is no Java ${major} package for this system (${adoptiumOs()}, ${adoptiumArch()}). Pick an installed Java in the instance settings.`
+      )
+    )
+  }
   if (!metadata) {
     throw new Error(tr('Die Prüfsumme für Java konnte nicht geladen werden. Versuche es später erneut.', 'The checksum for Java could not be loaded. Try again later.'))
   }
@@ -771,10 +794,14 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
           }
           throw swapErr
         }
-        try {
-          rmSync(parked, { recursive: true, force: true })
-        } catch {
-          // Leftover old install is harmless once the new one is in place.
+        // Only with no game running: one may still be using the old files.
+        // Otherwise the next sweep with every game closed removes it.
+        if (runningCount() === 0) {
+          try {
+            rmSync(parked, { recursive: true, force: true })
+          } catch {
+            // Leftover old install is harmless once the new one is in place.
+          }
         }
       } finally {
         liveStaging.delete(basename(parked))

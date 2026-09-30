@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX } from 'react'
 import type { InstanceLaunchBehaviour, JavaRuntime } from '@shared/types'
 import type { InstanceDetail } from '@shared/api'
 import { ACCENT_CHOICES, ICON_CHOICES } from '@shared/defaults'
+import { accentName } from '../lib/accents'
 import { refreshInstances, toast, toastError } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
 import { formatMemory } from '../lib/format'
@@ -18,6 +19,21 @@ interface Props {
 
 export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Props): JSX.Element {
   const memoryMax = useMemorySliderMax()
+  // Same rule as the create wizard: only clamp once the real installed RAM
+  // is known, not against the fallback ceiling the hook answers with first.
+  const [memoryKnown, setMemoryKnown] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void window.gabi.app
+      .info()
+      .then((info) => {
+        if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [name, setName] = useState(instance.name)
   const [description, setDescription] = useState(instance.description)
   const [group, setGroup] = useState(instance.group)
@@ -149,6 +165,10 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       // The stored name is the one the toast should report, not the raw field.
       const savedName = name.trim() || instance.name
       const savedGroup = group.trim()
+      // The slider shows at most the installed RAM, but the stored value was
+      // saved unchanged, so an instance with more than the machine has (an
+      // import, a copied folder) kept failing to start after every save.
+      const savedMemory = memoryKnown ? Math.min(memory, memoryMax) : memory
 
       await window.gabi.instances.update(instance.id, {
         name: savedName,
@@ -157,7 +177,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         appearance: { ...instance.appearance, icon, accent },
         settings: {
           ...instance.settings,
-          memoryMb: memory,
+          memoryMb: savedMemory,
           jvmArgs,
           envVars,
           preLaunchCommand: preLaunch,
@@ -183,7 +203,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
         savedGroup,
         icon,
         accent,
-        memory,
+        savedMemory,
         jvmArgs,
         envVars,
         preLaunch,
@@ -200,6 +220,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       // the backend rejected.
       setName(savedName)
       setGroup(savedGroup)
+      setMemory(savedMemory)
       setWidth(safeWidth)
       setHeight(safeHeight)
 
@@ -343,7 +364,8 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                   className={`swatch ${accent === choice ? 'selected' : ''}`}
                   style={{ background: choice, color: choice }}
                   onClick={() => setAccent(choice)}
-                  aria-label={choice}
+                  aria-label={accentName(choice)}
+                  aria-pressed={accent === choice}
                 />
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type {
   ContentItem,
@@ -620,6 +620,31 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     await syncContentWithDisk(instance.id)
     task.throwIfCancelled()
 
+    // The sync only sees files, so every mod came out as local content with
+    // no project id: no update checks, and an export bundled each one as a
+    // binary. The CurseForge answer above already names project and file.
+    const byFileName = new Map(resolved.map((version) => [basename(version.fileName), version]))
+    const synced = getInstance(instance.id)
+    persist({
+      ...synced,
+      content: synced.content.map((item) => {
+        const version = byFileName.get(item.fileName.replace(/\.disabled$/, ''))
+        if (!version || item.type !== 'mod') return item
+        return {
+          ...item,
+          provider: 'curseforge',
+          projectId: version.projectId,
+          versionId: version.versionId,
+          version: version.versionNumber || item.version,
+          sha1: version.sha1 ?? item.sha1,
+          size: version.size ?? item.size,
+          gameVersions: version.gameVersions.length > 0 ? version.gameVersions : item.gameVersions,
+          loaders: version.loaders.length > 0 ? version.loaders : item.loaders,
+          releasedAt: version.releasedAt || item.releasedAt
+        }
+      })
+    })
+
     // Raced against the task's own signal: the base setup alone can take
     // minutes, and a cancel here must not sit through all of it.
     const baseSetupOk = await waitForInstanceSetup(instance.id, task.signal)
@@ -985,6 +1010,40 @@ export interface ExportOptions {
   includeFolders?: string[]
 }
 
+/**
+ * Top-level folders modpacks ship next to `config`. An allowlist on purpose:
+ * other folders in a game directory hold the player's own data, and some
+ * (Essential's, for one) keep account details a shared pack must never carry.
+ */
+const PACK_FOLDERS = new Set([
+  'config',
+  'defaultconfigs',
+  'kubejs',
+  'scripts',
+  'global_packs',
+  'globalpacks',
+  'openloader',
+  'resources',
+  'patchouli_books',
+  'fancymenu_data',
+  'paxi'
+])
+
+/**
+ * The folders a pack export carries by default. Only `config` used to go
+ * along, so scripts (kubejs, scripts), defaultconfigs and similar folders a
+ * modpack depends on were missing from the exported file.
+ */
+function packFolders(gameDir: string): string[] {
+  try {
+    return readdirSync(gameDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && PACK_FOLDERS.has(entry.name.toLowerCase()))
+      .map((entry) => entry.name)
+  } catch {
+    return ['config']
+  }
+}
+
 /** Hashes a file already on disk, used when the provider did not supply a sha512. */
 function sha512File(file: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -1076,7 +1135,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
 
     const gameDir = paths.gameDir(instanceId)
     const overrideFolders = [
-      ...new Set([...(options.includeFolders ?? ['config']), ...bundled.map((b) => b.split('/')[0])])
+      ...new Set([...(options.includeFolders ?? packFolders(gameDir)), ...bundled.map((b) => b.split('/')[0])])
     ].filter((folder) => existsSync(join(gameDir, folder)))
 
     mkdirSync(join(options.targetFile, '..'), { recursive: true })

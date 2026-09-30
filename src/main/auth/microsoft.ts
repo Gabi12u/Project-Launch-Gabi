@@ -239,10 +239,24 @@ export async function loginWithMicrosoft(): Promise<Account> {
   logger.info(`Anmeldung über ${endpoints.kind === 'live' ? 'login.live.com' : 'Azure AD'}`)
 
   try {
-    const device = await fetchJson<DeviceCodeResponse>(
-      endpoints.device,
-      form({ client_id: clientId, scope: SCOPE, ...endpoints.deviceExtra })
-    )
+    let device: DeviceCodeResponse
+    try {
+      device = await fetchJson<DeviceCodeResponse>(
+        endpoints.device,
+        form({ client_id: clientId, scope: SCOPE, ...endpoints.deviceExtra })
+      )
+    } catch (err) {
+      // Without a connection this was a bare "fetch failed" in English. An
+      // answer from Microsoft keeps its own handling below.
+      if (err instanceof HttpError) throw err
+      throw new Error(
+        tr(
+          'Keine Verbindung zu Microsoft. Prüfe deine Internetverbindung und versuche es erneut.',
+          'No connection to Microsoft. Check your internet connection and try again.'
+        ),
+        { cause: err }
+      )
+    }
 
     const prompt: DeviceCodePrompt = {
       userCode: device.user_code,
@@ -874,7 +888,17 @@ async function refreshAccessToken(accountId: string): Promise<string> {
     // Microsoft's raw answer (long, English, full of trace ids) used to reach
     // the launch status as it was.
     logger.warn(`Token-Erneuerung für ${account.username} fehlgeschlagen:`, err)
-    if (err instanceof HttpError && err.status >= 400 && err.status < 500 && err.status !== 429) {
+    // Only these codes mean the token itself is gone. Any other answer (for
+    // example "temporarily_unavailable") told the user to sign in again for
+    // an outage on Microsoft's side, which a new sign in did not fix either.
+    const signInAgain = ['invalid_grant', 'interaction_required', 'invalid_client', 'unauthorized_client']
+    if (
+      err instanceof HttpError &&
+      err.status >= 400 &&
+      err.status < 500 &&
+      err.status !== 429 &&
+      (!err.code || signInAgain.includes(err.code))
+    ) {
       // Expired after long inactivity, revoked by a password change or by
       // removing the app's access: only a fresh sign in helps.
       throw new Error(
@@ -976,10 +1000,6 @@ async function refreshAccessToken(accountId: string): Promise<string> {
         a.id === accountId
           ? {
               ...a,
-              accessToken: accessEnc.value,
-              refreshToken: refreshEnc?.value ?? a.refreshToken,
-              secure: accessEnc.secure,
-              accessSecure: accessEnc.secure,
               // A kept-over refresh token (no fresh one in this grant) keeps
               // its own flag instead of adopting this run's access-token one:
               // without this, a refresh token still sitting there encrypted
@@ -987,7 +1007,10 @@ async function refreshAccessToken(accountId: string): Promise<string> {
               // the access token happened to get a different flag, and the
               // next refresh handed its ciphertext to Microsoft as if it were
               // the real token.
-              refreshSecure: refreshEnc ? refreshEnc.secure : refreshSecureOf(a),
+              ...upgradeRefreshToken(a, refreshEnc),
+              accessToken: accessEnc.value,
+              secure: accessEnc.secure,
+              accessSecure: accessEnc.secure,
               expiresAt: Date.now() + mc.expires_in * 1000,
               skinUrl: skinUrl ?? a.skinUrl,
               // Backfilled once, from whichever id this refresh actually used
@@ -1053,6 +1076,24 @@ export function createOfflineAccount(username: string): Account {
  * Account list management
  * ------------------------------------------------------------------ */
 
+/**
+ * The refresh token to store after a renewal. A kept-over token saved as plain
+ * text back when the system had no encryption is encrypted now if it can be;
+ * before, only a rotated token ever was, so the long-lived one could stay
+ * unprotected for good.
+ */
+function upgradeRefreshToken(
+  account: StoredAccount,
+  fresh: { value: string; secure: boolean } | undefined
+): Pick<StoredAccount, 'refreshToken' | 'refreshSecure'> {
+  if (fresh) return { refreshToken: fresh.value, refreshSecure: fresh.secure }
+  if (account.refreshToken && !refreshSecureOf(account)) {
+    const upgraded = encrypt(account.refreshToken)
+    if (upgraded.secure) return { refreshToken: upgraded.value, refreshSecure: true }
+  }
+  return { refreshToken: account.refreshToken, refreshSecure: refreshSecureOf(account) }
+}
+
 export function toPublicAccount(account: StoredAccount): Account {
   return {
     id: account.id,
@@ -1062,7 +1103,12 @@ export function toPublicAccount(account: StoredAccount): Account {
     expiresAt: account.expiresAt,
     skinUrl: account.skinUrl,
     active: account.active,
-    secure: account.secure
+    // Both tokens count. Only the access token's flag used to be shown, so the
+    // hint vanished while the long-lived refresh token was still plain text.
+    secure:
+      account.type === 'microsoft'
+        ? Boolean(accessSecureOf(account)) && (!account.refreshToken || Boolean(refreshSecureOf(account)))
+        : account.secure
   }
 }
 

@@ -423,7 +423,11 @@ function pruneAutomatic(instanceId: string): void {
   if (!Number.isFinite(keep) || keep <= 0) return
 
   const entries = readIndex(instanceId)
-  const automatic = entries.filter((e) => e.reason === 'automatic').sort((a, b) => b.createdAt - a.createdAt)
+  // Backups taken before mod updates are just as automatic from the user's
+  // side, and were never cleaned up at all, piling up with every update run.
+  const automatic = entries
+    .filter((e) => e.reason === 'automatic' || e.reason === 'pre-update')
+    .sort((a, b) => b.createdAt - a.createdAt)
   const excess = automatic.slice(keep).filter((e) => !inUse.has(e.id))
 
   if (excess.length === 0) return

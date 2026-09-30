@@ -8,6 +8,7 @@ import type {
 } from '@shared/types'
 import type { AppInfo, ErrorReport } from '@shared/api'
 import { ACCENT_CHOICES } from '@shared/defaults'
+import { accentName } from '../lib/accents'
 import { changeKindLabel, changelogLocalized } from '@shared/changelogEn'
 import { navigate, refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { memorySliderMax, useDebouncedSetting } from '../lib/hooks'
@@ -99,6 +100,7 @@ function LanguageSetting(): JSX.Element {
           <button
             key={language.id}
             className={`option ${settings.language === language.id ? 'selected' : ''}`}
+            aria-pressed={settings.language === language.id}
             onClick={async () => {
               if (settings.language === language.id) return
               const ok = await saveSettings({ language: language.id })
@@ -442,7 +444,12 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   {tr('Hier liegen Instanzen, Versionen, Bibliotheken und Java-Laufzeiten.', 'Instances, versions, libraries and Java runtimes are stored here.')}
                 </p>
                 <div className="row gap-8">
-                  <input className="input" value={settings.dataDirectory} readOnly />
+                  <input
+                    className="input"
+                    value={settings.dataDirectory}
+                    readOnly
+                    aria-label={tr('Speicherort', 'Storage location')}
+                  />
                   <button className="btn" onClick={() => setConfirmDataDir(true)}>
                     {tr('Ändern', 'Change')}
                   </button>
@@ -470,6 +477,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     <button
                       key={theme.id}
                       className={`option ${settings.theme === theme.id ? 'selected' : ''}`}
+                      aria-pressed={settings.theme === theme.id}
                       onClick={() => void saveSettings({ theme: theme.id })}
                     >
                       <div
@@ -495,7 +503,10 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                       className={`swatch ${settings.accentColor === color ? 'selected' : ''}`}
                       style={{ background: color, color }}
                       onClick={() => void saveSettings({ accentColor: color })}
-                      aria-label={color}
+                      // A color name rather than the hex code a screen reader
+                      // used to spell out letter by letter.
+                      aria-label={accentName(color)}
+                      aria-pressed={settings.accentColor === color}
                     />
                   ))}
                 </div>
@@ -515,7 +526,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <h3>{tr('Eigene Startseite (Beta)', 'Custom title screen (beta)')}</h3>
                 <p className="hint">
                   {tr(
-                    'Tauscht Hintergrund und die normalen Knöpfe im Minecraft-Hauptmenü gegen einen eigenen Stil von Launch Gabi, per Ressourcenpaket, ohne das Spiel selbst zu verändern. Wirkt ab dem nächsten Start einer Instanz, auf Minecraft 1.20.2 und neuer. Ein Mod-Knopf, der den normalen Minecraft-Knopf verwendet, sieht automatisch genauso aus, einer mit eigener Zeichnung nicht. Noch in Arbeit: kein eigenes Menü mit eigenen Animationen, das bleibt ein größeres, eigenes Vorhaben.',
+                    'Tauscht Hintergrund und die normalen Knöpfe im Minecraft-Hauptmenü gegen einen eigenen Stil von Launch Gabi, per Resourcepack, ohne das Spiel selbst zu verändern. Wirkt ab dem nächsten Start einer Instanz, auf Minecraft 1.20.2 und neuer. Ein Mod-Knopf, der den normalen Minecraft-Knopf verwendet, sieht automatisch genauso aus, einer mit eigener Zeichnung nicht. Noch in Arbeit: kein eigenes Menü mit eigenen Animationen, das bleibt ein größeres, eigenes Vorhaben.',
                     'Replaces the background and the regular buttons in the Minecraft main menu with a Launch Gabi style, using a resource pack, without changing the game itself. Takes effect from the next start of an instance, on Minecraft 1.20.2 and newer. A mod button that uses the regular Minecraft button automatically looks the same, one with its own artwork does not. Still in progress: no custom menu with its own animations yet, that remains a bigger project of its own.'
                   )}
                 </p>
@@ -708,6 +719,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     className="input"
                     type="password"
                     placeholder={tr('API-Schlüssel einfügen', 'Paste API key')}
+                    aria-label={tr('CurseForge-API-Schlüssel', 'CurseForge API key')}
                     value={apiKey}
                     onChange={(event) => setApiKey(event.target.value)}
                   />
@@ -728,7 +740,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <h3>{tr('Automatische Sicherungen', 'Automatic backups')}</h3>
                 <SettingToggle
                   label={tr('Automatisch sichern', 'Back up automatically')}
-                  hint={tr('Legt regelmäßig Sicherungen der Welten an.', 'Regularly creates backups of your worlds.')}
+                  hint={tr('Sichert nach jeder Spielsitzung die Welten der gespielten Instanz.', 'Backs up the worlds of the instance you played after every session.')}
                   checked={settings.automaticBackups}
                   onChange={(value) => void saveSettings({ automaticBackups: value })}
                 />
@@ -768,7 +780,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               <div className="row gap-8 mt-12">
                 <input
                   className="input"
-                  placeholder="Azure Client-ID"
+                  placeholder={tr('Azure-Client-ID', 'Azure client ID')}
+                  aria-label={tr('Microsoft-Anwendungs-ID', 'Microsoft application ID')}
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
                 />

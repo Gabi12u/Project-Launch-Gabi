@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type JSX } from 'react'
+import type { TaskProgress } from '@shared/types'
 import {
   applyTheme,
   navigate,
@@ -79,13 +80,30 @@ export function App(): JSX.Element {
 
   /* --- Main process events --------------------------------------- */
   useEffect(() => {
+    // Several installs at once each report progress many times a second, and
+    // every single report re-rendered the whole app. Collected here and
+    // applied together at most ten times a second.
+    const pendingTasks = new Map<string, TaskProgress>()
+    let taskFlush: ReturnType<typeof setTimeout> | null = null
+    const flushTasks = (): void => {
+      taskFlush = null
+      if (pendingTasks.size === 0) return
+      const batch = [...pendingTasks.values()]
+      pendingTasks.clear()
+      setState((current) => {
+        const ids = new Set(batch.map((task) => task.id))
+        // Finished tasks disappear from the dock but stay long enough to read.
+        return { tasks: [...current.tasks.filter((t) => !ids.has(t.id)), ...batch] }
+      })
+    }
+
     const unsubscribe = [
       window.gabi.events.onTask((task) => {
-        setState((current) => {
-          const others = current.tasks.filter((t) => t.id !== task.id)
-          // Finished tasks disappear from the dock but stay long enough to read.
-          return { tasks: [...others, task] }
-        })
+        pendingTasks.delete(task.id)
+        pendingTasks.set(task.id, task)
+        // A finished or failed task shows at once; only progress waits.
+        if (task.state !== 'running') flushTasks()
+        else taskFlush ??= setTimeout(flushTasks, 100)
       }),
 
       // The main process only sends this once it drops a task for good. Until
@@ -93,6 +111,8 @@ export function App(): JSX.Element {
       // grew for the life of the session, and a finished or failed task stayed
       // in it, and in the dock, forever.
       window.gabi.events.onTaskRemoved((id) => {
+        // Dropped from the batch too, or the next flush would bring it back.
+        pendingTasks.delete(id)
         setState((current) => ({ tasks: current.tasks.filter((t) => t.id !== id) }))
       }),
 
@@ -153,7 +173,10 @@ export function App(): JSX.Element {
       })
     ]
 
-    return () => unsubscribe.forEach((off) => off())
+    return () => {
+      unsubscribe.forEach((off) => off())
+      if (taskFlush) clearTimeout(taskFlush)
+    }
   }, [])
 
   /* --- Faults in the interface ------------------------------------ */
@@ -266,7 +289,14 @@ export function App(): JSX.Element {
   const parsed = parseRoute(route)
 
   if (!ready || !introDone) {
-    return <BootSplash ready={ready} onDone={finishIntro} />
+    // Toasts too: a notice that arrived during loading or the intro used to
+    // expire before anything could show it.
+    return (
+      <>
+        <BootSplash ready={ready} onDone={finishIntro} />
+        <Toasts />
+      </>
+    )
   }
 
   if (!settings.onboarded) {

@@ -2061,7 +2061,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'error that never went away.'
   },
   'vorabpruefung-java-26': {
-    title: 'The pre-launch check showed Java 21 instead of 25 for Minecraft 26',
+    title: 'The pre-launch check showed Java 8 instead of Java 25 for Minecraft 26',
     detail:
       'If the version file could not be loaded yet, the pre-launch display guessed a too old Java ' +
       'version for the new Minecraft versions. The actual launch was not affected.'

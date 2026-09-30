@@ -3218,7 +3218,7 @@ export const KNOWN_ISSUES: KnownIssue[] = [
   },
   {
     id: 'vorabpruefung-java-26',
-    title: 'Die Prüfung vor dem Start zeigte für Minecraft 26 Java 21 statt 25',
+    title: 'Die Prüfung vor dem Start zeigte für Minecraft 26 Java 8 statt Java 25',
     detail:
       'Konnte die Versionsdatei noch nicht geladen werden, schätzte die Anzeige vor dem Start für die ' +
       'neuen Minecraft-Versionen eine zu alte Java-Version. Der eigentliche Start war davon nicht ' +
