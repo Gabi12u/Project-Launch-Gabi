@@ -3249,6 +3249,202 @@ footer a:hover { color: var(--ink); }
       "detail": "Lief das Duplizieren einer Instanz noch, antwortete ein weiterer Versuch mit dem Hinweis, an den Mods werde gerade gearbeitet, statt zu sagen, dass die Instanz gerade kopiert wird.",
       "state": "fixing",
       "since": "2026-09-29"
+    },
+    {
+      "id": "datei-gesperrt-beiseite",
+      "title": "Eine kurz gesperrte Instanz-, Einstellungs- oder Account-Datei wurde als beschädigt beiseitegelegt",
+      "detail": "Hielt beim Start ein Virenscanner oder ein Cloud-Dienst eine dieser Dateien kurz fest, legte der Launcher sie beiseite, als wäre sie kaputt. Eine Instanz erschien dann als leere „Unbenannt“-Instanz ohne Mods und Spielzeit, Einstellungen oder Accounts fehlten.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "spielende-gesperrte-datei",
+      "title": "Nach dem Spielende kam der Launcher manchmal nicht zurück",
+      "detail": "Konnte die Spielzeit beim Beenden von Minecraft nicht gespeichert werden, weil die Instanzdatei gerade gesperrt war, brach der Rest ab: Der Zustand blieb auf „läuft“, und ein ausgeblendeter Launcher kam nicht wieder hervor.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "spielzeit-nach-neustart",
+      "title": "Spielzeit über einen Launcher-Neustart hinweg wurde nicht gezählt",
+      "detail": "Lief Minecraft weiter, während der Launcher neu gestartet wurde, zum Beispiel für ein Update, wurde diese Spielsitzung nie in die Spielzeit und „Zuletzt gespielt“ übernommen.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "bilder-bleiben-liegen",
+      "title": "Alte Instanz-Bilder blieben auf der Festplatte liegen",
+      "detail": "Jedes neue eigene Icon oder Hintergrundbild einer Instanz legte eine weitere Datei an, alte wurden nie gelöscht, auch nicht beim Entfernen des Hintergrunds. Beim Duplizieren wurden sie alle mitkopiert.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "datenordner-waehrend-einrichtung",
+      "title": "Der Datenordner ließ sich wechseln, während eine neue Instanz noch eingerichtet wurde",
+      "detail": "Wurde der Datenordner geändert, solange eine gerade angelegte Instanz noch lud, verschwand diese Instanz ohne Hinweis, und ihre halb geladenen Dateien blieben im alten Ordner.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "abhaengigkeit-falscher-ordner",
+      "title": "Abhängigkeiten von Resourcepacks und Shadern landeten im falschen Ordner",
+      "detail": "Brauchte ein Resourcepack oder Shader einen Mod, wurde dieser Mod ebenfalls als Resourcepack oder Shader installiert. Er lag dann im falschen Ordner, wirkte nicht, und keine Prüfung bemerkte es.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "umbenannte-datei-verliert-infos",
+      "title": "Eine im Explorer umbenannte Mod-Datei verlor ihre Herkunft",
+      "detail": "Wurde eine Mod- oder Pack-Datei von Hand umbenannt, erkannte der Launcher sie nur noch als lokale Datei ohne Herkunft, Updates fanden sich nicht mehr. Bei Data Packs blieben alte Kopien in den Welten liegen.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "launcher-versteckt-altes-spiel",
+      "title": "Der Launcher blieb versteckt, wenn noch ein Spiel aus einer früheren Sitzung lief",
+      "detail": "Lief noch ein Spiel von vor einem Launcher-Neustart, kam der ausgeblendete Launcher nach dem Ende eines anderen Spiels nicht zurück, auch nicht, als das alte Spiel später endete.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "log-beenden-vor-start",
+      "title": "„Beenden“ im Log-Fenster wirkte vor dem Spielstart nicht",
+      "detail": "Während der Vorbereitung, also beim Herunterladen, Java-Installieren oder Entpacken, zeigte das Log-Fenster den Knopf „Beenden“, ein Klick tat aber nichts.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "log-zustand-leer",
+      "title": "Das Zustandsschild im Log-Fenster blieb manchmal leer",
+      "detail": "Startete eine Instanz schneller, als das Log-Fenster aufging, fehlte oben der Zustand wie „Läuft“ für die ganze Sitzung.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "absturz-code-null",
+      "title": "Im Spielverlauf stand „Absturz (Code null)“",
+      "detail": "Wurde Minecraft auf macOS oder Linux vom System beendet, zeigte der Verlauf „Code null“ statt eines verständlichen Hinweises.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "curseforge-import-ohne-herkunft",
+      "title": "Mods aus importierten CurseForge-Modpacks galten als lokale Dateien",
+      "detail": "Nach dem Import eines CurseForge-Modpacks waren alle Mods ohne Verbindung zu CurseForge. Updates und die Kompatibilitätsprüfung griffen für sie nie.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "export-fehlende-ordner",
+      "title": "Der Export als Modpack ließ Ordner wie kubejs oder defaultconfigs weg",
+      "detail": "Beim Export einer Instanz als Modpack kamen nur config und die Inhaltsordner mit. Skripte, Standardeinstellungen und ähnliche Ordner, die viele Modpacks brauchen, fehlten im exportierten Paket.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "aufnahme-erscheint-nicht",
+      "title": "Eine fertige Aufnahme erschien nicht im geöffneten Aufnahmen-Tab",
+      "detail": "Lief eine Aufnahme schon, als man den Tab öffnete, tauchte sie nach dem Ende dort nicht auf, bis man den Tab neu öffnete.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "bestaetigung-bleibt-offen",
+      "title": "Bestätigungsfenster blieben nach einem Fehler offen",
+      "detail": "Schlug das Löschen einer Instanz oder das Wiederherstellen oder Löschen einer Sicherung fehl, blieb das Fenster mit der Rückfrage stehen und musste von Hand geschlossen werden.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "automatisch-sichern-wirkungslos",
+      "title": "„Automatisch sichern“ legte keine Sicherungen an",
+      "detail": "Der Schalter in den Einstellungen versprach regelmäßige Sicherungen der Welten, es wurde aber nie eine angelegt. Wer sich darauf verlassen hat, hatte keine Sicherung.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "sicherungsliste-ueberschrieben",
+      "title": "Eine beschädigte Sicherungsliste wurde still überschrieben",
+      "detail": "War die Liste der Sicherungen einer Instanz beschädigt, überschrieb die nächste Sicherung sie ohne Hinweis. Alle älteren Sicherungen waren danach im Launcher nicht mehr erreichbar.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "update-sicherungen-unbegrenzt",
+      "title": "Sicherungen vor Mod-Updates wurden nie aufgeräumt",
+      "detail": "Vor jedem „Alle aktualisieren“ entstand eine Sicherung der Welten, die nie gelöscht wurde. Mit der Zeit belegten sie ohne Grenze Speicherplatz.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "dateien-oeffnen-haertung",
+      "title": "Die Sperre gegen das Öffnen fremder Programme hing am änderbaren Datenordner",
+      "detail": "Der Launcher öffnet nur Dateien aus seinen eigenen Ordnern. Diese Grenze ließ sich über die Einstellung des Datenordners verschieben. Ausnutzbar war das nur, wenn in der Oberfläche schon fremder Code lief. Programme und Skripte werden jetzt grundsätzlich nicht mehr geöffnet.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "java-unter-spiel-geloescht",
+      "title": "Eine Java-Neuinstallation konnte ein laufendes Spiel abstürzen lassen",
+      "detail": "Wurde ein vom Launcher verwaltetes Java neu installiert, während ein Spiel damit lief, löschte der Launcher den alten Ordner sofort. Minecraft konnte dann mitten in der Sitzung abstürzen.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "arbeitsspeicher-ueber-maximum",
+      "title": "Die Instanz-Einstellungen konnten mehr Arbeitsspeicher speichern als vorhanden",
+      "detail": "Stand bei einer Instanz mehr Arbeitsspeicher als der Rechner hat, etwa nach einem Import, zeigte der Regler das Maximum, gespeichert wurde aber der alte zu hohe Wert. Das Spiel startete dann nicht.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "java-kein-paket-meldung",
+      "title": "Fehlte ein Java-Paket für den Rechner, hieß es „Versuche es später erneut“",
+      "detail": "Gibt es eine Java-Version für ein System gar nicht, meldete der Launcher trotzdem einen vorübergehenden Fehler, der nie verschwand.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "vorabpruefung-java-26",
+      "title": "Die Prüfung vor dem Start zeigte für Minecraft 26 Java 21 statt 25",
+      "detail": "Konnte die Versionsdatei noch nicht geladen werden, schätzte die Anzeige vor dem Start für die neuen Minecraft-Versionen eine zu alte Java-Version. Der eigentliche Start war davon nicht betroffen.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "anmeldung-offline-rohtext",
+      "title": "Die Anmeldung ohne Internet zeigte einen englischen Fehler",
+      "detail": "Wer sich ohne Verbindung mit Microsoft anmelden wollte, bekam nur „fetch failed“ zu sehen statt eines Hinweises auf die fehlende Verbindung.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "schluessel-ungeschuetzt-kein-hinweis",
+      "title": "Der Hinweis auf ungeschützt gespeicherte Anmeldedaten konnte fehlen",
+      "detail": "Wurde die Verschlüsselung des Systems erst später verfügbar, blieb der langlebige Anmeldeschlüssel unverschlüsselt, während der Hinweis in den Einstellungen schon verschwand.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "skin-leer",
+      "title": "Lud ein Skin nicht, blieb das Profilbild leer",
+      "detail": "War der Skin eines Accounts nicht erreichbar, zum Beispiel ohne Internet, blieb das Profilbild in der Seitenleiste und der Account-Liste leer statt die Initialen zu zeigen.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "viele-installationen-traege",
+      "title": "Bei vielen gleichzeitigen Installationen reagierte die Oberfläche träge",
+      "detail": "Liefen viele Installationen gleichzeitig, bremsten sich die Downloads gegenseitig, und die Oberfläche reagierte mit spürbarer Verzögerung.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "launcher-haengt-bei-log-flut",
+      "title": "Bei großen Modpacks hing der Launcher nach einigen Minuten oder startete die Oberfläche neu",
+      "detail": "Schrieb Minecraft sehr viele Log-Zeilen auf einmal, etwa Warnungen beim Laden der Texturen vieler Mods, schickte der Launcher jede Zeile einzeln an seine Fenster. Log-Fenster und Launcher kamen nicht mehr hinterher, reagierten nicht und wurden nach einiger Zeit neu geladen. Das Log zeigte die Meldungen außerdem als rohes XML.",
+      "state": "fixing",
+      "since": "2026-09-30"
     }
   ];
   var ISSUE_LABEL = {
@@ -5214,6 +5410,202 @@ footer a:hover { color: var(--ink); }
       "detail": "While an instance was still being duplicated, another attempt replied that the mods were being worked on, instead of saying that the instance is being copied right now.",
       "state": "fixing",
       "since": "2026-09-29"
+    },
+    {
+      "id": "datei-gesperrt-beiseite",
+      "title": "A briefly locked instance, settings or account file was set aside as damaged",
+      "detail": "If a virus scanner or cloud service briefly held one of these files at startup, the launcher set it aside as if it were broken. An instance then showed up as an empty \"Unnamed\" instance without mods and play time, or settings and accounts were missing.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "spielende-gesperrte-datei",
+      "title": "The launcher sometimes did not come back after the game ended",
+      "detail": "If the play time could not be saved when Minecraft closed because the instance file was locked at that moment, the rest was skipped: the state stayed on \"running\", and a hidden launcher did not come back.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "spielzeit-nach-neustart",
+      "title": "Play time across a launcher restart was not counted",
+      "detail": "If Minecraft kept running while the launcher restarted, for example for an update, that session was never added to the play time and \"Last played\".",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "bilder-bleiben-liegen",
+      "title": "Old instance images stayed on disk",
+      "detail": "Every new custom icon or background image of an instance added another file, old ones were never deleted, not even when removing the background. Duplicating copied all of them along.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "datenordner-waehrend-einrichtung",
+      "title": "The data folder could be changed while a new instance was still being set up",
+      "detail": "If the data folder was changed while a freshly created instance was still downloading, that instance disappeared without notice, and its half downloaded files stayed in the old folder.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "abhaengigkeit-falscher-ordner",
+      "title": "Dependencies of resource packs and shaders landed in the wrong folder",
+      "detail": "If a resource pack or shader needed a mod, that mod was installed as a resource pack or shader too. It then sat in the wrong folder, had no effect, and no check noticed.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "umbenannte-datei-verliert-infos",
+      "title": "A mod file renamed in Explorer lost its origin",
+      "detail": "If a mod or pack file was renamed by hand, the launcher only saw it as a local file without origin, and updates were no longer found. For data packs, old copies stayed in the worlds.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "launcher-versteckt-altes-spiel",
+      "title": "The launcher stayed hidden while a game from an earlier session was running",
+      "detail": "If a game from before a launcher restart was still running, the hidden launcher did not come back after another game ended, not even when the old game ended later.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "log-beenden-vor-start",
+      "title": "\"Stop\" in the log window had no effect before the game started",
+      "detail": "During preparation, meaning while downloading, installing Java or unpacking, the log window showed the \"Stop\" button, but clicking it did nothing.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "log-zustand-leer",
+      "title": "The state badge in the log window sometimes stayed empty",
+      "detail": "If an instance started faster than the log window opened, the state such as \"Running\" was missing at the top for the whole session.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "absturz-code-null",
+      "title": "The session history showed \"Crash (code null)\"",
+      "detail": "If Minecraft was ended by the system on macOS or Linux, the history showed \"code null\" instead of an understandable note.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "curseforge-import-ohne-herkunft",
+      "title": "Mods from imported CurseForge modpacks counted as local files",
+      "detail": "After importing a CurseForge modpack, none of its mods were linked to CurseForge. Updates and the compatibility check never applied to them.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "export-fehlende-ordner",
+      "title": "Exporting as a modpack left out folders such as kubejs or defaultconfigs",
+      "detail": "When exporting an instance as a modpack, only config and the content folders were included. Scripts, default configs and similar folders many modpacks need were missing from the exported pack.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "aufnahme-erscheint-nicht",
+      "title": "A finished recording did not show up in the open recordings tab",
+      "detail": "If a recording was already running when the tab was opened, it did not show up there after it ended until the tab was opened again.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "bestaetigung-bleibt-offen",
+      "title": "Confirmation dialogs stayed open after an error",
+      "detail": "If deleting an instance or restoring or deleting a backup failed, the confirmation dialog stayed open and had to be closed by hand.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "automatisch-sichern-wirkungslos",
+      "title": "\"Back up automatically\" did not create any backups",
+      "detail": "The switch in the settings promised regular backups of the worlds, but none was ever created. Anyone relying on it had no backup.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "sicherungsliste-ueberschrieben",
+      "title": "A damaged backup list was silently overwritten",
+      "detail": "If an instance's backup list was damaged, the next backup overwrote it without notice. All older backups were no longer reachable in the launcher afterwards.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "update-sicherungen-unbegrenzt",
+      "title": "Backups before mod updates were never cleaned up",
+      "detail": "Every \"Update all\" created a backup of the worlds that was never deleted. Over time they took up disk space without limit.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "dateien-oeffnen-haertung",
+      "title": "The block against opening foreign programs depended on the changeable data folder",
+      "detail": "The launcher only opens files from its own folders. That boundary could be moved through the data folder setting. This was only exploitable if foreign code was already running in the interface. Programs and scripts are now never opened at all.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "java-unter-spiel-geloescht",
+      "title": "A Java reinstall could crash a running game",
+      "detail": "If a Java managed by the launcher was reinstalled while a game was running with it, the launcher deleted the old folder right away. Minecraft could then crash in the middle of the session.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "arbeitsspeicher-ueber-maximum",
+      "title": "Instance settings could save more memory than available",
+      "detail": "If an instance had more memory set than the computer has, for example after an import, the slider showed the maximum, but the old too high value was saved. The game then did not start.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "java-kein-paket-meldung",
+      "title": "If no Java package existed for the computer, it said \"Try again later\"",
+      "detail": "If a Java version does not exist for a system at all, the launcher still reported a temporary error that never went away.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "vorabpruefung-java-26",
+      "title": "The pre-launch check showed Java 21 instead of 25 for Minecraft 26",
+      "detail": "If the version file could not be loaded yet, the pre-launch display guessed a too old Java version for the new Minecraft versions. The actual launch was not affected.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "anmeldung-offline-rohtext",
+      "title": "Signing in without internet showed an English error",
+      "detail": "Anyone trying to sign in with Microsoft without a connection only saw \"fetch failed\" instead of a note about the missing connection.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "schluessel-ungeschuetzt-kein-hinweis",
+      "title": "The notice about unprotected sign-in data could be missing",
+      "detail": "If the system's encryption only became available later, the long-lived sign-in key stayed unencrypted while the notice in the settings already disappeared.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "skin-leer",
+      "title": "If a skin did not load, the profile picture stayed empty",
+      "detail": "If an account's skin was unreachable, for example without internet, the profile picture in the sidebar and the account list stayed empty instead of showing the initials.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "viele-installationen-traege",
+      "title": "With many simultaneous installs the interface became sluggish",
+      "detail": "With many installs running at the same time, the downloads slowed each other down, and the interface responded with a noticeable delay.",
+      "state": "fixing",
+      "since": "2026-09-30"
+    },
+    {
+      "id": "launcher-haengt-bei-log-flut",
+      "title": "With large modpacks the launcher hung after a few minutes or restarted its interface",
+      "detail": "If Minecraft wrote very many log lines at once, for example warnings while loading the textures of many mods, the launcher sent every line to its windows one by one. The log window and the launcher could not keep up, stopped responding and were reloaded after a while. The log also showed the messages as raw XML.",
+      "state": "fixing",
+      "since": "2026-09-30"
     }
   ];
   var ISSUE_LABEL_EN = {

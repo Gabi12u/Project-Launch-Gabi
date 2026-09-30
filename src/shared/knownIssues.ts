@@ -3009,6 +3009,269 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'den Mods werde gerade gearbeitet, statt zu sagen, dass die Instanz gerade kopiert wird.',
     state: 'fixing',
     since: '2026-09-29'
+  },
+  {
+    id: 'datei-gesperrt-beiseite',
+    title: 'Eine kurz gesperrte Instanz-, Einstellungs- oder Account-Datei wurde als beschädigt beiseitegelegt',
+    detail:
+      'Hielt beim Start ein Virenscanner oder ein Cloud-Dienst eine dieser Dateien kurz fest, legte ' +
+      'der Launcher sie beiseite, als wäre sie kaputt. Eine Instanz erschien dann als leere ' +
+      '„Unbenannt“-Instanz ohne Mods und Spielzeit, Einstellungen oder Accounts fehlten.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'spielende-gesperrte-datei',
+    title: 'Nach dem Spielende kam der Launcher manchmal nicht zurück',
+    detail:
+      'Konnte die Spielzeit beim Beenden von Minecraft nicht gespeichert werden, weil die Instanzdatei ' +
+      'gerade gesperrt war, brach der Rest ab: Der Zustand blieb auf „läuft“, und ein ausgeblendeter ' +
+      'Launcher kam nicht wieder hervor.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'spielzeit-nach-neustart',
+    title: 'Spielzeit über einen Launcher-Neustart hinweg wurde nicht gezählt',
+    detail:
+      'Lief Minecraft weiter, während der Launcher neu gestartet wurde, zum Beispiel für ein Update, ' +
+      'wurde diese Spielsitzung nie in die Spielzeit und „Zuletzt gespielt“ übernommen.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'bilder-bleiben-liegen',
+    title: 'Alte Instanz-Bilder blieben auf der Festplatte liegen',
+    detail:
+      'Jedes neue eigene Icon oder Hintergrundbild einer Instanz legte eine weitere Datei an, alte ' +
+      'wurden nie gelöscht, auch nicht beim Entfernen des Hintergrunds. Beim Duplizieren wurden sie ' +
+      'alle mitkopiert.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'datenordner-waehrend-einrichtung',
+    title: 'Der Datenordner ließ sich wechseln, während eine neue Instanz noch eingerichtet wurde',
+    detail:
+      'Wurde der Datenordner geändert, solange eine gerade angelegte Instanz noch lud, verschwand ' +
+      'diese Instanz ohne Hinweis, und ihre halb geladenen Dateien blieben im alten Ordner.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'abhaengigkeit-falscher-ordner',
+    title: 'Abhängigkeiten von Resourcepacks und Shadern landeten im falschen Ordner',
+    detail:
+      'Brauchte ein Resourcepack oder Shader einen Mod, wurde dieser Mod ebenfalls als Resourcepack ' +
+      'oder Shader installiert. Er lag dann im falschen Ordner, wirkte nicht, und keine Prüfung ' +
+      'bemerkte es.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'umbenannte-datei-verliert-infos',
+    title: 'Eine im Explorer umbenannte Mod-Datei verlor ihre Herkunft',
+    detail:
+      'Wurde eine Mod- oder Pack-Datei von Hand umbenannt, erkannte der Launcher sie nur noch als ' +
+      'lokale Datei ohne Herkunft, Updates fanden sich nicht mehr. Bei Data Packs blieben alte Kopien ' +
+      'in den Welten liegen.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'launcher-versteckt-altes-spiel',
+    title: 'Der Launcher blieb versteckt, wenn noch ein Spiel aus einer früheren Sitzung lief',
+    detail:
+      'Lief noch ein Spiel von vor einem Launcher-Neustart, kam der ausgeblendete Launcher nach dem ' +
+      'Ende eines anderen Spiels nicht zurück, auch nicht, als das alte Spiel später endete.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'log-beenden-vor-start',
+    title: '„Beenden“ im Log-Fenster wirkte vor dem Spielstart nicht',
+    detail:
+      'Während der Vorbereitung, also beim Herunterladen, Java-Installieren oder Entpacken, zeigte das ' +
+      'Log-Fenster den Knopf „Beenden“, ein Klick tat aber nichts.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'log-zustand-leer',
+    title: 'Das Zustandsschild im Log-Fenster blieb manchmal leer',
+    detail:
+      'Startete eine Instanz schneller, als das Log-Fenster aufging, fehlte oben der Zustand wie ' +
+      '„Läuft“ für die ganze Sitzung.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'absturz-code-null',
+    title: 'Im Spielverlauf stand „Absturz (Code null)“',
+    detail:
+      'Wurde Minecraft auf macOS oder Linux vom System beendet, zeigte der Verlauf „Code null“ statt ' +
+      'eines verständlichen Hinweises.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'curseforge-import-ohne-herkunft',
+    title: 'Mods aus importierten CurseForge-Modpacks galten als lokale Dateien',
+    detail:
+      'Nach dem Import eines CurseForge-Modpacks waren alle Mods ohne Verbindung zu CurseForge. ' +
+      'Updates und die Kompatibilitätsprüfung griffen für sie nie.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'export-fehlende-ordner',
+    title: 'Der Export als Modpack ließ Ordner wie kubejs oder defaultconfigs weg',
+    detail:
+      'Beim Export einer Instanz als Modpack kamen nur config und die Inhaltsordner mit. Skripte, ' +
+      'Standardeinstellungen und ähnliche Ordner, die viele Modpacks brauchen, fehlten im exportierten ' +
+      'Paket.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'aufnahme-erscheint-nicht',
+    title: 'Eine fertige Aufnahme erschien nicht im geöffneten Aufnahmen-Tab',
+    detail:
+      'Lief eine Aufnahme schon, als man den Tab öffnete, tauchte sie nach dem Ende dort nicht auf, ' +
+      'bis man den Tab neu öffnete.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'bestaetigung-bleibt-offen',
+    title: 'Bestätigungsfenster blieben nach einem Fehler offen',
+    detail:
+      'Schlug das Löschen einer Instanz oder das Wiederherstellen oder Löschen einer Sicherung fehl, ' +
+      'blieb das Fenster mit der Rückfrage stehen und musste von Hand geschlossen werden.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'automatisch-sichern-wirkungslos',
+    title: '„Automatisch sichern“ legte keine Sicherungen an',
+    detail:
+      'Der Schalter in den Einstellungen versprach regelmäßige Sicherungen der Welten, es wurde aber ' +
+      'nie eine angelegt. Wer sich darauf verlassen hat, hatte keine Sicherung.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'sicherungsliste-ueberschrieben',
+    title: 'Eine beschädigte Sicherungsliste wurde still überschrieben',
+    detail:
+      'War die Liste der Sicherungen einer Instanz beschädigt, überschrieb die nächste Sicherung sie ' +
+      'ohne Hinweis. Alle älteren Sicherungen waren danach im Launcher nicht mehr erreichbar.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'update-sicherungen-unbegrenzt',
+    title: 'Sicherungen vor Mod-Updates wurden nie aufgeräumt',
+    detail:
+      'Vor jedem „Alle aktualisieren“ entstand eine Sicherung der Welten, die nie gelöscht wurde. Mit ' +
+      'der Zeit belegten sie ohne Grenze Speicherplatz.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'dateien-oeffnen-haertung',
+    title: 'Die Sperre gegen das Öffnen fremder Programme hing am änderbaren Datenordner',
+    detail:
+      'Der Launcher öffnet nur Dateien aus seinen eigenen Ordnern. Diese Grenze ließ sich über die ' +
+      'Einstellung des Datenordners verschieben. Ausnutzbar war das nur, wenn in der Oberfläche schon ' +
+      'fremder Code lief. Programme und Skripte werden jetzt grundsätzlich nicht mehr geöffnet.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'java-unter-spiel-geloescht',
+    title: 'Eine Java-Neuinstallation konnte ein laufendes Spiel abstürzen lassen',
+    detail:
+      'Wurde ein vom Launcher verwaltetes Java neu installiert, während ein Spiel damit lief, löschte ' +
+      'der Launcher den alten Ordner sofort. Minecraft konnte dann mitten in der Sitzung abstürzen.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'arbeitsspeicher-ueber-maximum',
+    title: 'Die Instanz-Einstellungen konnten mehr Arbeitsspeicher speichern als vorhanden',
+    detail:
+      'Stand bei einer Instanz mehr Arbeitsspeicher als der Rechner hat, etwa nach einem Import, ' +
+      'zeigte der Regler das Maximum, gespeichert wurde aber der alte zu hohe Wert. Das Spiel startete ' +
+      'dann nicht.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'java-kein-paket-meldung',
+    title: 'Fehlte ein Java-Paket für den Rechner, hieß es „Versuche es später erneut“',
+    detail:
+      'Gibt es eine Java-Version für ein System gar nicht, meldete der Launcher trotzdem einen ' +
+      'vorübergehenden Fehler, der nie verschwand.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'vorabpruefung-java-26',
+    title: 'Die Prüfung vor dem Start zeigte für Minecraft 26 Java 21 statt 25',
+    detail:
+      'Konnte die Versionsdatei noch nicht geladen werden, schätzte die Anzeige vor dem Start für die ' +
+      'neuen Minecraft-Versionen eine zu alte Java-Version. Der eigentliche Start war davon nicht ' +
+      'betroffen.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'anmeldung-offline-rohtext',
+    title: 'Die Anmeldung ohne Internet zeigte einen englischen Fehler',
+    detail:
+      'Wer sich ohne Verbindung mit Microsoft anmelden wollte, bekam nur „fetch failed“ zu sehen statt ' +
+      'eines Hinweises auf die fehlende Verbindung.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'schluessel-ungeschuetzt-kein-hinweis',
+    title: 'Der Hinweis auf ungeschützt gespeicherte Anmeldedaten konnte fehlen',
+    detail:
+      'Wurde die Verschlüsselung des Systems erst später verfügbar, blieb der langlebige ' +
+      'Anmeldeschlüssel unverschlüsselt, während der Hinweis in den Einstellungen schon verschwand.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'skin-leer',
+    title: 'Lud ein Skin nicht, blieb das Profilbild leer',
+    detail:
+      'War der Skin eines Accounts nicht erreichbar, zum Beispiel ohne Internet, blieb das Profilbild ' +
+      'in der Seitenleiste und der Account-Liste leer statt die Initialen zu zeigen.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'viele-installationen-traege',
+    title: 'Bei vielen gleichzeitigen Installationen reagierte die Oberfläche träge',
+    detail:
+      'Liefen viele Installationen gleichzeitig, bremsten sich die Downloads gegenseitig, und die ' +
+      'Oberfläche reagierte mit spürbarer Verzögerung.',
+    state: 'fixing',
+    since: '2026-09-30'
+  },
+  {
+    id: 'launcher-haengt-bei-log-flut',
+    title: 'Bei großen Modpacks hing der Launcher nach einigen Minuten oder startete die Oberfläche neu',
+    detail:
+      'Schrieb Minecraft sehr viele Log-Zeilen auf einmal, etwa Warnungen beim Laden der Texturen ' +
+      'vieler Mods, schickte der Launcher jede Zeile einzeln an seine Fenster. Log-Fenster und ' +
+      'Launcher kamen nicht mehr hinterher, reagierten nicht und wurden nach einiger Zeit neu geladen. ' +
+      'Das Log zeigte die Meldungen außerdem als rohes XML.',
+    state: 'fixing',
+    since: '2026-09-30'
   }
 ]
 

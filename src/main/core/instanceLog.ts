@@ -18,12 +18,33 @@ import { emit } from '../events'
 const logBuffers = new Map<string, LogLine[]>()
 const LOG_BUFFER_SIZE = 800
 
+/**
+ * Lines waiting for the next batch. A heavily modded game can print thousands
+ * of lines a second while loading textures; sending each one on its own made
+ * both windows redraw their whole log for every line, until they stopped
+ * responding and the main window was reloaded as if it had crashed.
+ */
+let pending: LogLine[] = []
+let flushTimer: NodeJS.Timeout | null = null
+const FLUSH_MS = 100
+/** More than a view keeps anyway (1200 lines); older ones in a burst are only in the buffer. */
+const MAX_BATCH = 1200
+
+function flushLogs(): void {
+  flushTimer = null
+  if (pending.length === 0) return
+  const batch = pending.length > MAX_BATCH ? pending.slice(-MAX_BATCH) : pending
+  pending = []
+  emit(EVENTS.logLines, batch)
+}
+
 export function pushLog(line: LogLine): void {
   const buffer = logBuffers.get(line.instanceId) ?? []
   buffer.push(line)
   if (buffer.length > LOG_BUFFER_SIZE) buffer.splice(0, buffer.length - LOG_BUFFER_SIZE)
   logBuffers.set(line.instanceId, buffer)
-  emit(EVENTS.logLine, line)
+  pending.push(line)
+  if (!flushTimer) flushTimer = setTimeout(flushLogs, FLUSH_MS)
 }
 
 export function getLogBuffer(instanceId: string): LogLine[] {

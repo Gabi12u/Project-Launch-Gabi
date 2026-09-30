@@ -307,6 +307,7 @@ export function listAdopted(): AdoptedGame[] {
     } else {
       adopted.delete(instanceId)
       removed = true
+      adoptedEnded(game)
     }
   }
   if (removed) {
@@ -333,6 +334,7 @@ export function isRunning(instanceId: string): boolean {
   // lazily here is what makes the guard self-healing, on top of the periodic
   // sweep started in `ensureAdoptedCheck`.
   adopted.delete(instanceId)
+  adoptedEnded(orphan)
   persist()
   stopAdoptedCheckIfIdle()
   announce()
@@ -353,6 +355,35 @@ export function activeVersionIds(): string[] {
     ...[...running.values()].map((game) => game.versionId),
     ...[...adopted.values()].filter((game) => alive(game.pid)).map((game) => game.versionId)
   ]
+}
+
+/** Games this launcher session started itself, without adopted ones. */
+export function ownRunningCount(): number {
+  return running.size
+}
+
+type AdoptedEndListener = (game: AdoptedGame, endedAt: number) => void
+const adoptedEndListeners = new Set<AdoptedEndListener>()
+
+/**
+ * Called when a game adopted from an earlier session is found to have ended.
+ * The play time of such a session was never recorded, because only a game
+ * this session spawned itself has an exit handler.
+ */
+export function onAdoptedEnded(listener: AdoptedEndListener): () => void {
+  adoptedEndListeners.add(listener)
+  return () => adoptedEndListeners.delete(listener)
+}
+
+function adoptedEnded(game: AdoptedGame): void {
+  const endedAt = Date.now()
+  for (const listener of adoptedEndListeners) {
+    try {
+      listener(game, endedAt)
+    } catch (err) {
+      logger.warn(`Ende von ${game.instanceId} konnte nicht verarbeitet werden:`, err)
+    }
+  }
 }
 
 export function runningCount(): number {

@@ -68,9 +68,11 @@ export function GameLogWindow({
       })
       .catch(() => undefined)
 
-    const offLine = window.gabi.events.onLogLine((line) => {
-      if (line.instanceId !== instanceId) return
-      setLines((current) => [...current, line].slice(-1200))
+    // One state update per batch rather than per line; see instanceLog.ts.
+    const offLine = window.gabi.events.onLogLines((batch) => {
+      const mine = batch.filter((line) => line.instanceId === instanceId)
+      if (mine.length === 0) return
+      setLines((current) => [...current, ...mine].slice(-1200))
     })
     const offStatus = window.gabi.events.onLaunchStatus((next) => {
       if (next.instanceId !== instanceId) return

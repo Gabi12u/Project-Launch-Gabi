@@ -139,6 +139,8 @@ export const EVENTS = {
   instanceChanged: 'evt:instance-changed',
   launchStatus: 'evt:launch-status',
   logLine: 'evt:log-line',
+  /** Log lines in batches, at most every 100 ms; see instanceLog.ts. */
+  logLines: 'evt:log-lines',
   deviceCode: 'evt:device-code',
   accountsChanged: 'evt:accounts-changed',
   notification: 'evt:notification',

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from
 import { join, resolve, sep } from 'node:path'
 import type { BackupEntry } from '@shared/types'
 import { paths } from '../paths'
-import { getSettings, readJson, writeJsonAtomic } from '../store'
+import { getSettings, readJson, readJsonResult, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
 import { withTask } from '../tasks'
@@ -106,8 +106,24 @@ function indexFile(instanceId: string): string {
   return join(paths.instanceBackups(instanceId), 'backups.json')
 }
 
-function readIndex(instanceId: string): BackupEntry[] {
-  return readJson<BackupEntry[]>(indexFile(instanceId), [])
+/**
+ * The backup list of an instance. A damaged list is set aside with a notice;
+ * a list that cannot be read right now (locked) reads as empty for display,
+ * but `forWrite` refuses instead, because writing the new list back would
+ * otherwise drop every older backup from it for good.
+ */
+function readIndex(instanceId: string, forWrite = false): BackupEntry[] {
+  const result = readJsonResult<BackupEntry[]>(indexFile(instanceId), true)
+  if (result.ok) return Array.isArray(result.value) ? result.value : []
+  if (forWrite && result.reason === 'unreadable') {
+    throw new Error(
+      tr(
+        'Die Liste der Sicherungen ist gerade gesperrt. Versuche es gleich noch einmal.',
+        'The list of backups is locked right now. Try again in a moment.'
+      )
+    )
+  }
+  return []
 }
 
 function writeIndex(instanceId: string, entries: BackupEntry[]): void {
@@ -325,7 +341,7 @@ async function createBackupUnlocked(
         includes: existing
       }
 
-      const entries = [entry, ...readIndex(instanceId)]
+      const entries = [entry, ...readIndex(instanceId, true)]
       try {
         writeIndex(instanceId, entries)
       } catch {

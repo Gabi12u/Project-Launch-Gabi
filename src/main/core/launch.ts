@@ -10,6 +10,7 @@ import { paths } from '../paths'
 import { getSettings } from '../store'
 import { emit, getMainWindow, navigate, notify } from '../events'
 import { closeGameLogWindow, hasGameLogWindow, openGameLogWindow } from '../gameLogWindow'
+import { createLog4jParser } from './log4jParse'
 import { log } from '../logger'
 import { Task, TaskCancelledError } from '../tasks'
 import {
@@ -38,20 +39,7 @@ import {
 import { checkCompatibility } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
 import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
-import {
-  activeVersionIds,
-  clearRunning,
-  clearStarting,
-  getAdopted,
-  getRunning,
-  isRunning,
-  isStarting,
-  listRunning,
-  markStarting,
-  runningCount,
-  setRunning,
-  startingCount
-} from './running'
+import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount } from './running'
 import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
@@ -840,7 +828,14 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         )
       }
 
-      recordSession(instanceId, { startedAt, endedAt, crashed, exitCode: code })
+      // Guarded like markPlayed below: a scanner locking instance.json for a
+      // moment threw here and skipped the rest of this handler, the status
+      // and bringing a hidden launcher back included.
+      try {
+        recordSession(instanceId, { startedAt, endedAt, crashed, exitCode: code })
+      } catch (err) {
+        logger.warn(`Spielsitzung von ${instanceId} konnte nicht gespeichert werden:`, err)
+      }
 
       pushLog({
         instanceId,
@@ -972,7 +967,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // Closing the window during preparation only hides it; bring it back so
       // the error is actually seen.
       const win = getMainWindow()
-      if (win && !win.isDestroyed() && runningCount() === 0) {
+      if (win && !win.isDestroyed() && ownRunningCount() === 0) {
         // Launch behaviour "minimize" leaves the window minimized, which
         // Windows still reports as visible, so the visibility check alone
         // never catches it.
@@ -1018,24 +1013,25 @@ function attachOutput(instanceId: string, child: ReturnType<typeof spawn>): void
     // back a partial character, `carry` holds back a partial line.
     const decoder = new StringDecoder('utf8')
     let carry = ''
+    // Mojang's log config writes the console as XML; this turns each event
+    // back into one readable line and passes everything else through.
+    const parser = createLog4jParser(
+      (parsed) => pushLog({ instanceId, stream, level: parsed.level, text: parsed.text, time: parsed.time }),
+      (line) => classify(stream, line)
+    )
 
     const onData = (chunk: Buffer): void => {
       const parts = (carry + decoder.write(chunk)).split(/\r?\n/)
       // The last element is whatever came before the next newline arrives.
       carry = parts.pop() ?? ''
-      for (const raw of parts) {
-        const line = raw.trimEnd()
-        if (!line) continue
-        pushLog({ instanceId, stream, level: classify(stream, line), text: line, time: Date.now() })
-      }
+      for (const raw of parts) parser.push(raw)
     }
 
     const onEnd = (): void => {
-      const line = (carry + decoder.end()).trimEnd()
+      const rest = carry + decoder.end()
       carry = ''
-      if (line) {
-        pushLog({ instanceId, stream, level: classify(stream, line), text: line, time: Date.now() })
-      }
+      if (rest) parser.push(rest)
+      parser.end()
     }
 
     return { onData, onEnd }
@@ -1176,7 +1172,10 @@ function handleWindowRestore(instanceId: string): void {
   // up after the first one quits, while a second is still going, would undo
   // the very hide that game itself is still relying on, and would close that
   // other game's own still-needed live-log window early.
-  if (runningCount() > 0) return
+  // Only games this session started count: a game adopted from before a
+  // restart never hid the window, and waiting for it left the launcher hidden
+  // for good once this one ended.
+  if (ownRunningCount() > 0) return
   navigate(`/instances/${instanceId}?tab=logs`)
   const win = getMainWindow()
   if (!win || win.isDestroyed()) return

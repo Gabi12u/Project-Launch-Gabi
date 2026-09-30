@@ -1,5 +1,5 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { basename, extname, resolve, sep } from 'node:path'
 import { totalmem } from 'node:os'
@@ -158,6 +158,8 @@ function handle<T extends unknown[], R>(
  * backups — lives under one of these two roots, so anything else is refused
  * rather than executed.
  */
+const OPENABLE_FILE = /\.(png|jpe?g|gif|webp|bmp|mp4|webm|mkv|mov|txt|log|json|toml|cfg|properties|zip|mrpack)$/i
+
 function openLauncherPath(target: string): Promise<string> {
   const resolved = resolve(target)
   // The reports folder sits in userData next to the logs, not under the data
@@ -167,6 +169,16 @@ function openLauncherPath(target: string): Promise<string> {
   const inside = roots.some((dir) => resolved === dir || resolved.startsWith(dir.endsWith(sep) ? dir : dir + sep))
   if (!inside) {
     throw new Error(tr('Dieser Pfad liegt außerhalb der Launcher-Ordner.', 'This path is outside the launcher folders.'))
+  }
+  // The data folder is a setting, so the roots above alone could be moved to
+  // anywhere. Folders and a fixed set of harmless file types are all the
+  // launcher ever opens; programs and scripts are refused whatever the root.
+  try {
+    if (statSync(resolved).isFile() && !OPENABLE_FILE.test(resolved)) {
+      throw new Error(tr('Diese Datei öffnet der Launcher nicht.', 'The launcher does not open this file.'))
+    }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') throw err
   }
   // openPath never rejects: it resolves with an error string, or '' on
   // success. Handing that straight back reported a missing folder or a broken
@@ -516,7 +528,9 @@ export function registerIpc(): void {
     // the scrubbing treats it exactly like a main-process fault.
     const error = new Error(String(message))
     error.stack = String(detail || '')
-    reportError(`renderer:${String(area)}`, error)
+    // Free text from the renderer, printed outside the report's code block.
+    const safeArea = String(area).replace(/[^a-z0-9:_-]/gi, '').slice(0, 40) || 'unknown'
+    reportError(`renderer:${safeArea}`, error)
   })
   handle(IPC.recordingToggle, (instanceId?: string) => toggleRecording(instanceId))
   handle(IPC.recordingChunk, (sessionId: number, data: ArrayBuffer) => appendChunk(sessionId, data))

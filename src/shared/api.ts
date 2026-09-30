@@ -333,6 +333,8 @@ export interface GabiApi {
     onInstanceChanged(fn: (change: InstanceChange) => void): Unsubscribe
     onLaunchStatus(fn: (status: LaunchStatus) => void): Unsubscribe
     onLogLine(fn: (line: LogLine) => void): Unsubscribe
+    /** The same lines, one call per batch, so a view can update once per batch. */
+    onLogLines(fn: (lines: LogLine[]) => void): Unsubscribe
     onDeviceCode(fn: (prompt: DeviceCodePrompt | null) => void): Unsubscribe
     onAccountsChanged(fn: (accounts: Account[]) => void): Unsubscribe
     onNotification(fn: (notification: AppNotification) => void): Unsubscribe

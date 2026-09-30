@@ -185,7 +185,11 @@ const api = {
     onTaskRemoved: (fn: (payload: never) => void) => on(EVENTS.taskRemoved, fn),
     onInstanceChanged: (fn: (payload: never) => void) => on(EVENTS.instanceChanged, fn),
     onLaunchStatus: (fn: (payload: never) => void) => on(EVENTS.launchStatus, fn),
-    onLogLine: (fn: (payload: never) => void) => on(EVENTS.logLine, fn),
+    onLogLine: (fn: (payload: never) => void) =>
+      on(EVENTS.logLines, ((lines: never[]) => {
+        for (const line of lines) fn(line)
+      }) as (payload: never) => void),
+    onLogLines: (fn: (payload: never) => void) => on(EVENTS.logLines, fn),
     onDeviceCode: (fn: (payload: never) => void) => on(EVENTS.deviceCode, fn),
     onAccountsChanged: (fn: (payload: never) => void) => on(EVENTS.accountsChanged, fn),
     onNotification: (fn: (payload: never) => void) => on(EVENTS.notification, fn),

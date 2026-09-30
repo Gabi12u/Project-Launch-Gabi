@@ -36,41 +36,73 @@ export function writeJsonAtomic(file: string, data: unknown): void {
   }
 }
 
-export function readJson<T>(file: string, fallback: T, quarantine = false): T {
-  try {
-    if (!existsSync(file)) return fallback
-    return JSON.parse(readFileSync(file, 'utf8')) as T
-  } catch (err) {
-    // A file that simply is not there yet (or vanished between the check above
-    // and the read, a narrow race) is not corruption, just nothing to read.
-    if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') return fallback
+/** Blocks the main thread briefly; only used between a few read retries. */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
 
-    logger.warn(`Konnte ${file} nicht lesen:`, err)
-    // Only for files the launcher rebuilds from scratch; journals, indexes and
-    // instance.json have callers that deal with unreadable content themselves.
-    if (!quarantine) return fallback
+export type JsonReadResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; reason: 'missing' | 'corrupt' | 'unreadable' }
 
-    // Left in place, a file that fails to parse (bad JSON, a truncated write
-    // that escaped writeJsonAtomic, hand editing) fails the exact same way on
-    // every future read, forever. Moved aside once instead, best effort, so
-    // the fallback takes over cleanly and the next write starts a fresh file
-    // rather than tripping over the broken one again and again.
+/**
+ * Reads a JSON file and says why when it could not.
+ *
+ * "unreadable" means the read itself failed (EBUSY, EPERM, EACCES): a virus
+ * scanner or a sync client holding the file for a moment. That says nothing
+ * about the content, so it is retried a few times and never quarantined.
+ * Only "corrupt", a file that was read but does not parse, is set aside.
+ * Quarantining the locked case turned a perfectly good instance into an
+ * empty one and made the next save overwrite the real file.
+ */
+export function readJsonResult<T>(file: string, quarantine = false): JsonReadResult<T> {
+  for (let attempt = 0; ; attempt++) {
     try {
-      const corrupted = `${file}.corrupt-${Date.now()}`
-      renameSync(file, corrupted)
-      notify(
-        'warning',
-        tr('Datei beschädigt', 'File damaged'),
-        tr(
-          `Die Datei ${basename(file)} war beschädigt und wurde als ${basename(corrupted)} beiseitegelegt.`,
-          `The file ${basename(file)} was damaged and was set aside as ${basename(corrupted)}.`
-        )
-      )
-    } catch (renameErr) {
-      logger.warn(`Konnte ${file} nicht beiseitelegen:`, renameErr)
+      if (!existsSync(file)) return { ok: false, reason: 'missing' }
+      return { ok: true, value: JSON.parse(readFileSync(file, 'utf8')) as T }
+    } catch (err) {
+      // A file that simply is not there yet (or vanished between the check
+      // above and the read, a narrow race) is not corruption, just nothing to read.
+      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') return { ok: false, reason: 'missing' }
+      if (!(err instanceof SyntaxError)) {
+        if (attempt < 3) {
+          sleepSync(150)
+          continue
+        }
+        logger.warn(`Konnte ${file} nicht lesen, die Datei bleibt unangetastet:`, err)
+        return { ok: false, reason: 'unreadable' }
+      }
+      logger.warn(`Konnte ${file} nicht lesen:`, err)
+      if (quarantine) quarantineFile(file)
+      return { ok: false, reason: 'corrupt' }
     }
+  }
+}
 
-    return fallback
+export function readJson<T>(file: string, fallback: T, quarantine = false): T {
+  const result = readJsonResult<T>(file, quarantine)
+  return result.ok ? result.value : fallback
+}
+
+function quarantineFile(file: string): void {
+  // Left in place, a file that fails to parse (bad JSON, a truncated write
+  // that escaped writeJsonAtomic, hand editing) fails the exact same way on
+  // every future read, forever. Moved aside once instead, best effort, so
+  // the fallback takes over cleanly and the next write starts a fresh file
+  // rather than tripping over the broken one again and again.
+  try {
+    const corrupted = `${file}.corrupt-${Date.now()}`
+    renameSync(file, corrupted)
+    notify(
+      'warning',
+      tr('Datei beschädigt', 'File damaged'),
+      tr(
+        `Die Datei ${basename(file)} war beschädigt und wurde als ${basename(corrupted)} beiseitegelegt.`,
+        `The file ${basename(file)} was damaged and was set aside as ${basename(corrupted)}.`
+      )
+    )
+  } catch (renameErr) {
+    logger.warn(`Konnte ${file} nicht beiseitelegen:`, renameErr)
   }
 }
 

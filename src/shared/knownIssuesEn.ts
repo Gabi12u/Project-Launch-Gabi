@@ -1922,6 +1922,181 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'While an instance was still being duplicated, another attempt replied that the mods were being ' +
       'worked on, instead of saying that the instance is being copied right now.'
+  },
+  'datei-gesperrt-beiseite': {
+    title: 'A briefly locked instance, settings or account file was set aside as damaged',
+    detail:
+      'If a virus scanner or cloud service briefly held one of these files at startup, the launcher ' +
+      'set it aside as if it were broken. An instance then showed up as an empty "Unnamed" instance ' +
+      'without mods and play time, or settings and accounts were missing.'
+  },
+  'spielende-gesperrte-datei': {
+    title: 'The launcher sometimes did not come back after the game ended',
+    detail:
+      'If the play time could not be saved when Minecraft closed because the instance file was locked ' +
+      'at that moment, the rest was skipped: the state stayed on "running", and a hidden launcher did ' +
+      'not come back.'
+  },
+  'spielzeit-nach-neustart': {
+    title: 'Play time across a launcher restart was not counted',
+    detail:
+      'If Minecraft kept running while the launcher restarted, for example for an update, that session ' +
+      'was never added to the play time and "Last played".'
+  },
+  'bilder-bleiben-liegen': {
+    title: 'Old instance images stayed on disk',
+    detail:
+      'Every new custom icon or background image of an instance added another file, old ones were ' +
+      'never deleted, not even when removing the background. Duplicating copied all of them along.'
+  },
+  'datenordner-waehrend-einrichtung': {
+    title: 'The data folder could be changed while a new instance was still being set up',
+    detail:
+      'If the data folder was changed while a freshly created instance was still downloading, that ' +
+      'instance disappeared without notice, and its half downloaded files stayed in the old folder.'
+  },
+  'abhaengigkeit-falscher-ordner': {
+    title: 'Dependencies of resource packs and shaders landed in the wrong folder',
+    detail:
+      'If a resource pack or shader needed a mod, that mod was installed as a resource pack or shader ' +
+      'too. It then sat in the wrong folder, had no effect, and no check noticed.'
+  },
+  'umbenannte-datei-verliert-infos': {
+    title: 'A mod file renamed in Explorer lost its origin',
+    detail:
+      'If a mod or pack file was renamed by hand, the launcher only saw it as a local file without ' +
+      'origin, and updates were no longer found. For data packs, old copies stayed in the worlds.'
+  },
+  'launcher-versteckt-altes-spiel': {
+    title: 'The launcher stayed hidden while a game from an earlier session was running',
+    detail:
+      'If a game from before a launcher restart was still running, the hidden launcher did not come ' +
+      'back after another game ended, not even when the old game ended later.'
+  },
+  'log-beenden-vor-start': {
+    title: '"Stop" in the log window had no effect before the game started',
+    detail:
+      'During preparation, meaning while downloading, installing Java or unpacking, the log window ' +
+      'showed the "Stop" button, but clicking it did nothing.'
+  },
+  'log-zustand-leer': {
+    title: 'The state badge in the log window sometimes stayed empty',
+    detail:
+      'If an instance started faster than the log window opened, the state such as "Running" was ' +
+      'missing at the top for the whole session.'
+  },
+  'absturz-code-null': {
+    title: 'The session history showed "Crash (code null)"',
+    detail:
+      'If Minecraft was ended by the system on macOS or Linux, the history showed "code null" instead ' +
+      'of an understandable note.'
+  },
+  'curseforge-import-ohne-herkunft': {
+    title: 'Mods from imported CurseForge modpacks counted as local files',
+    detail:
+      'After importing a CurseForge modpack, none of its mods were linked to CurseForge. Updates and ' +
+      'the compatibility check never applied to them.'
+  },
+  'export-fehlende-ordner': {
+    title: 'Exporting as a modpack left out folders such as kubejs or defaultconfigs',
+    detail:
+      'When exporting an instance as a modpack, only config and the content folders were included. ' +
+      'Scripts, default configs and similar folders many modpacks need were missing from the exported ' +
+      'pack.'
+  },
+  'aufnahme-erscheint-nicht': {
+    title: 'A finished recording did not show up in the open recordings tab',
+    detail:
+      'If a recording was already running when the tab was opened, it did not show up there after it ' +
+      'ended until the tab was opened again.'
+  },
+  'bestaetigung-bleibt-offen': {
+    title: 'Confirmation dialogs stayed open after an error',
+    detail:
+      'If deleting an instance or restoring or deleting a backup failed, the confirmation dialog ' +
+      'stayed open and had to be closed by hand.'
+  },
+  'automatisch-sichern-wirkungslos': {
+    title: '"Back up automatically" did not create any backups',
+    detail:
+      'The switch in the settings promised regular backups of the worlds, but none was ever created. ' +
+      'Anyone relying on it had no backup.'
+  },
+  'sicherungsliste-ueberschrieben': {
+    title: 'A damaged backup list was silently overwritten',
+    detail:
+      'If an instance\'s backup list was damaged, the next backup overwrote it without notice. All ' +
+      'older backups were no longer reachable in the launcher afterwards.'
+  },
+  'update-sicherungen-unbegrenzt': {
+    title: 'Backups before mod updates were never cleaned up',
+    detail:
+      'Every "Update all" created a backup of the worlds that was never deleted. Over time they took ' +
+      'up disk space without limit.'
+  },
+  'dateien-oeffnen-haertung': {
+    title: 'The block against opening foreign programs depended on the changeable data folder',
+    detail:
+      'The launcher only opens files from its own folders. That boundary could be moved through the ' +
+      'data folder setting. This was only exploitable if foreign code was already running in the ' +
+      'interface. Programs and scripts are now never opened at all.'
+  },
+  'java-unter-spiel-geloescht': {
+    title: 'A Java reinstall could crash a running game',
+    detail:
+      'If a Java managed by the launcher was reinstalled while a game was running with it, the ' +
+      'launcher deleted the old folder right away. Minecraft could then crash in the middle of the ' +
+      'session.'
+  },
+  'arbeitsspeicher-ueber-maximum': {
+    title: 'Instance settings could save more memory than available',
+    detail:
+      'If an instance had more memory set than the computer has, for example after an import, the ' +
+      'slider showed the maximum, but the old too high value was saved. The game then did not start.'
+  },
+  'java-kein-paket-meldung': {
+    title: 'If no Java package existed for the computer, it said "Try again later"',
+    detail:
+      'If a Java version does not exist for a system at all, the launcher still reported a temporary ' +
+      'error that never went away.'
+  },
+  'vorabpruefung-java-26': {
+    title: 'The pre-launch check showed Java 21 instead of 25 for Minecraft 26',
+    detail:
+      'If the version file could not be loaded yet, the pre-launch display guessed a too old Java ' +
+      'version for the new Minecraft versions. The actual launch was not affected.'
+  },
+  'anmeldung-offline-rohtext': {
+    title: 'Signing in without internet showed an English error',
+    detail:
+      'Anyone trying to sign in with Microsoft without a connection only saw "fetch failed" instead of ' +
+      'a note about the missing connection.'
+  },
+  'schluessel-ungeschuetzt-kein-hinweis': {
+    title: 'The notice about unprotected sign-in data could be missing',
+    detail:
+      'If the system\'s encryption only became available later, the long-lived sign-in key stayed ' +
+      'unencrypted while the notice in the settings already disappeared.'
+  },
+  'skin-leer': {
+    title: 'If a skin did not load, the profile picture stayed empty',
+    detail:
+      'If an account\'s skin was unreachable, for example without internet, the profile picture in the ' +
+      'sidebar and the account list stayed empty instead of showing the initials.'
+  },
+  'viele-installationen-traege': {
+    title: 'With many simultaneous installs the interface became sluggish',
+    detail:
+      'With many installs running at the same time, the downloads slowed each other down, and the ' +
+      'interface responded with a noticeable delay.'
+  },
+  'launcher-haengt-bei-log-flut': {
+    title: 'With large modpacks the launcher hung after a few minutes or restarted its interface',
+    detail:
+      'If Minecraft wrote very many log lines at once, for example warnings while loading the textures ' +
+      'of many mods, the launcher sent every line to its windows one by one. The log window and the ' +
+      'launcher could not keep up, stopped responding and were reloaded after a while. The log also ' +
+      'showed the messages as raw XML.'
   }
 }
 

@@ -23,7 +23,7 @@ import {
   RESERVED_WINDOWS_NAMES,
   safeJoin
 } from '../paths'
-import { getSettings, readJson, writeJsonAtomic } from '../store'
+import { getSettings, readJsonResult, writeJsonAtomic } from '../store'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { TaskCancelledError, withTask } from '../tasks'
@@ -95,9 +95,22 @@ export function loadInstances(force = false): Instance[] {
       const file = paths.instanceFile(entry)
       if (!existsSync(file)) continue
       try {
-        // Quarantined like launcher.json: an unreadable file is set aside with
-        // a notice instead of being silently overwritten by the next save.
-        const raw = readJson<Partial<Instance>>(file, {}, true)
+        // A damaged file is set aside with a notice. A locked one (a scanner
+        // holding it for a moment) is skipped for now instead: caching a blank
+        // stand in would have let the next save overwrite the intact file.
+        const result = readJsonResult<Partial<Instance>>(file, true)
+        if (!result.ok && result.reason === 'unreadable') {
+          notify(
+            'warning',
+            tr('Instanz nicht geladen', 'Instance not loaded'),
+            tr(
+              `Die Instanz „${entry}“ war beim Start gesperrt und fehlt deshalb in der Liste. Nach einem Neustart des Launchers ist sie wieder da.`,
+              `The instance "${entry}" was locked at startup and is therefore missing from the list. After restarting the launcher it is back.`
+            )
+          )
+          continue
+        }
+        const raw = result.ok && result.value && typeof result.value === 'object' ? result.value : {}
         cache.set(entry, normalise(raw, entry))
       } catch (err) {
         logger.error(`Instanz ${entry} konnte nicht geladen werden:`, err)
