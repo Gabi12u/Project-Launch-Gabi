@@ -7,7 +7,7 @@ import { getSettings, readJson, readJsonResult, writeJsonAtomic } from '../store
 import { log } from '../logger'
 import { notify } from '../events'
 import { withTask } from '../tasks'
-import { extractAllSlowly, listEntries, zipFolder, ZIP_TEMP_SUFFIX } from './archive'
+import { extractAllSlowly, listEntriesStreaming, zipFolder, ZIP_TEMP_SUFFIX } from './archive'
 import { getInstance } from './instances'
 import { withRestoreLock } from './restoreLock'
 import { isRunning, isStarting } from './running'
@@ -788,7 +788,7 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
         task.update(tr('Sicherung wird geprüft…', 'Checking backup…'), null)
         let entryCount = 0
         try {
-          entryCount = listEntries(archive).length
+          entryCount = (await listEntriesStreaming(archive)).length
         } catch (err) {
           throw new Error(
             tr(

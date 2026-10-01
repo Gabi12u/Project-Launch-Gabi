@@ -723,10 +723,29 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   // not a mutex, so it does not by itself stop a mod install or update from
   // running concurrently against the same folder. `markCopying` is the actual
   // mutex here: those mutations refuse outright while it is set.
-  const { cp } = await import('node:fs/promises')
+  const { cp, lstat } = await import('node:fs/promises')
+  // Folder links (a saves or shaderpacks folder moved to another drive and
+  // linked back) are left out. Copying one tries to create a new link, which
+  // Windows refuses without admin rights, and the whole duplicate failed with
+  // a raw EPERM. Following it instead would copy, or later change, data that
+  // lives outside this instance.
+  const sourceDir = paths.gameDir(id)
+  const skippedLinks: string[] = []
+  const skipLinks = async (src: string): Promise<boolean> => {
+    if (src === sourceDir) return true
+    try {
+      if ((await lstat(src)).isSymbolicLink()) {
+        skippedLinks.push(src.slice(sourceDir.length + 1))
+        return false
+      }
+    } catch {
+      // Gone already; the copy reports that itself.
+    }
+    return true
+  }
   markCopying(id)
   try {
-    await withContentLock(id, () => cp(paths.gameDir(id), paths.gameDir(newId), { recursive: true }))
+    await withContentLock(id, () => cp(sourceDir, paths.gameDir(newId), { recursive: true, filter: skipLinks }))
 
     // The instance's custom icon/background lives in a sibling folder next to
     // the game dir (see paths.icons), so the copy above never touched it.
@@ -766,6 +785,19 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
 
   persist(clone)
   logger.info(`Instanz ${id} nach ${newId} dupliziert`)
+  if (skippedLinks.length > 0) {
+    logger.info(`Verknüpfungen beim Duplizieren ausgelassen: ${skippedLinks.join(', ')}`)
+    const shown = skippedLinks.slice(0, 3).join(', ') + (skippedLinks.length > 3 ? tr(' und weitere', ' and more') : '')
+    const one = skippedLinks.length === 1
+    notify(
+      'info',
+      tr('Verknüpfte Ordner nicht kopiert', 'Linked folders not copied'),
+      tr(
+        `${shown} ${one ? 'zeigt' : 'zeigen'} auf einen Ort außerhalb der Instanz und ${one ? 'wurde' : 'wurden'} nicht in ${name} übernommen.`,
+        `${shown} ${one ? 'points' : 'point'} to a place outside the instance and ${one ? 'was' : 'were'} not taken over into ${name}.`
+      )
+    )
+  }
   return clone
 }
 
@@ -898,26 +930,34 @@ export async function listWorlds(id: string): Promise<WorldInfo[]> {
   return worlds.sort((a, b) => b.lastPlayed - a.lastPlayed)
 }
 
-export function listScreenshots(id: string, limit = 40): { file: string; takenAt: number }[] {
+export async function listScreenshots(id: string, limit = 40): Promise<{ file: string; takenAt: number }[]> {
   // Same existence check as `listWorlds`, for the same reason.
   getInstance(id)
   const dir = paths.screenshots(id)
   if (!existsSync(dir)) return []
 
-  return readdirSync(dir)
-    .filter((f) => /\.(png|jpg|jpeg)$/i.test(f))
-    // Skipped per file like listWorlds and listRecordings: one screenshot
-    // still being written or locked by a scanner used to empty the whole tab.
-    .flatMap((f) => {
-      const full = join(dir, f)
-      try {
-        return [{ file: full, takenAt: statSync(full).mtimeMs }]
-      } catch {
-        return []
-      }
-    })
-    .sort((a, b) => b.takenAt - a.takenAt)
-    .slice(0, limit)
+  // Asynchronous, in small groups. Listing and stat-ing every file in one
+  // synchronous go held the whole main process for most of a second with a
+  // few thousand screenshots, downloads and the live log included, and the
+  // Recordings tab reloads this after every finished recording.
+  const names = (await readdir(dir)).filter((f) => /\.(png|jpg|jpeg)$/i.test(f))
+  const shots: { file: string; takenAt: number }[] = []
+  for (let i = 0; i < names.length; i += 64) {
+    const group = await Promise.all(
+      names.slice(i, i + 64).map(async (f) => {
+        const full = join(dir, f)
+        // Skipped per file like listWorlds and listRecordings: one screenshot
+        // still being written or locked by a scanner used to empty the whole tab.
+        try {
+          return { file: full, takenAt: (await stat(full)).mtimeMs }
+        } catch {
+          return null
+        }
+      })
+    )
+    for (const shot of group) if (shot) shots.push(shot)
+  }
+  return shots.sort((a, b) => b.takenAt - a.takenAt).slice(0, limit)
 }
 
 /* ------------------------------------------------------------------ *

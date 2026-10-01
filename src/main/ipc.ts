@@ -554,7 +554,7 @@ export function registerIpc(): void {
   handle(IPC.recordingFailed, (sessionId: number, message: string) => failRecording(message, sessionId))
 
   handle(IPC.instanceScreenshots, async (id: string) => {
-    const shots = listScreenshots(id)
+    const shots = await listScreenshots(id)
     // Inline the images so the renderer needs no file:// access.
     return Promise.all(
       shots.map(async (shot) => {

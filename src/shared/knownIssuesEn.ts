@@ -2143,6 +2143,33 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'With "Compatible only" turned off there, all versions looked the same. A version for another ' +
       'loader or Minecraft version could be picked and installed without any warning.'
+  },
+  'sicherung-ab-2gb-nicht-einspielbar': {
+    title: 'Backups of 2 GB or more could not be restored',
+    detail:
+      'A backup of 2 GB or more, for example of a large world, could be created, but when restoring it ' +
+      'the launcher said it was damaged. The backup itself is intact and can be restored with the fix. ' +
+      'Large backups below that size also made the launcher hang noticeably while restoring.'
+  },
+  'screenshots-frieren-launcher-ein': {
+    title: 'Many screenshots briefly froze the launcher when opening the recordings',
+    detail:
+      'If an instance held thousands of screenshots, the whole launcher stood still for a moment when ' +
+      'opening the Recordings tab and after every finished recording, almost a second with 5000 ' +
+      'pictures. Downloads and the live log paused along with it.'
+  },
+  'duplizieren-mit-verknuepfung': {
+    title: 'Duplicating failed when the instance contained a folder link',
+    detail:
+      'If someone had redirected for example the saves or shaderpacks folder to another drive with a ' +
+      'link, duplicating stopped with a raw error and created no copy.'
+  },
+  'launcher-verschwindet-bei-altem-spiel': {
+    title: 'With a game from an earlier session still running, the launcher could not be closed',
+    detail:
+      'If a Minecraft started before a launcher restart was still running, closing the launcher only ' +
+      'hid it. It did not come back after that game ended either and kept running invisibly until it ' +
+      'was opened again.'
   }
 }
 

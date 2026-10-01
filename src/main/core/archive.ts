@@ -1,5 +1,7 @@
 import AdmZip from 'adm-zip'
 import { ZipFile } from 'yazl'
+import { openPromise as openZipForReading, type Entry as ZipReadEntry, type ZipFile as ZipReader } from 'yauzl'
+import { pipeline } from 'node:stream/promises'
 import { randomUUID } from 'node:crypto'
 import {
   copyFileSync,
@@ -26,16 +28,6 @@ import { TaskCancelledError } from '../tasks'
 import { tr } from '@shared/i18n'
 
 const logger = log('archive')
-
-/** Gives an extracted file the modification time stored in the archive. */
-function keepEntryTime(target: string, entry: AdmZip.IZipEntry): void {
-  try {
-    const time = entry.header.time
-    if (time instanceof Date && !Number.isNaN(time.getTime())) utimesSync(target, time, time)
-  } catch {
-    // Only the date is lost; the file itself is written.
-  }
-}
 
 /**
  * Upper bound for a single entry's decompressed size.
@@ -184,9 +176,9 @@ export function extractAll(archivePath: string, targetDir: string, overwrite = t
  *
  * `extractAll` inflates and writes the whole thing in one blocking call, which
  * for a backup that includes world saves means the launcher stops answering
- * for as long as it takes — no window, no progress, nothing to cancel. This
- * does the same work in slices, so the interface stays alive and the caller
- * can report how far along it is.
+ * for as long as it takes, with no window, no progress, nothing to cancel.
+ * This streams every entry instead, so the interface stays alive and the
+ * caller can report how far along it is.
  */
 export async function extractAllSlowly(
   archivePath: string,
@@ -203,48 +195,122 @@ export async function extractAllSlowly(
   includeRoots?: ReadonlySet<string>
 ): Promise<number> {
   mkdirSync(targetDir, { recursive: true })
-  const zip = new AdmZip(archivePath)
-  const allEntries = zip.getEntries()
-  assertReasonableArchive(allEntries, archivePath)
-  const entries = includeRoots
-    ? allEntries.filter((entry) => includeRoots.has(entry.entryName.split('/')[0]))
-    : allEntries
+  // Streamed rather than opened with AdmZip, which reads the whole archive
+  // into memory first. Node refuses that outright for files of 2 GB or more,
+  // so a backup of a large world could be made but never restored, and the
+  // launcher called it damaged. Smaller big archives froze the app while the
+  // read ran.
+  const zip = await openZipStreaming(archivePath)
+  try {
+    const allEntries = await readZipEntries(zip, archivePath)
+    assertReasonableArchive(
+      allEntries.map((entry) => ({ header: { size: entry.uncompressedSize } })),
+      archivePath
+    )
+    const entries = includeRoots
+      ? allEntries.filter((entry) => includeRoots.has(entry.fileName.split('/')[0]))
+      : allEntries
 
-  let done = 0
-  let lastBreath = Date.now()
-  for (const entry of entries) {
-    // Asked before each entry, so a cancel takes effect within one file
-    // instead of after the whole archive. Without this the button went
-    // through, nothing checked it, and the run still reported success.
-    checkCancelled?.()
+    let done = 0
+    let lastReport = 0
+    for (const entry of entries) {
+      // Asked before each entry, so a cancel takes effect within one file
+      // instead of after the whole archive. Without this the button went
+      // through, nothing checked it, and the run still reported success.
+      checkCancelled?.()
 
-    // The entry name comes out of the archive, so it decides where this
-    // writes. `safeJoin` refuses anything that climbs out of the target.
-    const target = safeJoin(targetDir, entry.entryName)
+      // The entry name comes out of the archive, so it decides where this
+      // writes. `safeJoin` refuses anything that climbs out of the target.
+      const target = safeJoin(targetDir, entry.fileName)
 
-    if (entry.isDirectory) {
-      mkdirSync(target, { recursive: true })
-    } else {
-      assertReasonableSize(entry)
-      mkdirSync(join(target, '..'), { recursive: true })
-      writeFileSync(target, entry.getData())
-      keepEntryTime(target, entry)
+      if (entry.fileName.endsWith('/')) {
+        mkdirSync(target, { recursive: true })
+      } else {
+        assertReasonableSize({ header: { size: entry.uncompressedSize }, entryName: entry.fileName })
+        mkdirSync(dirname(target), { recursive: true })
+        await pipeline(await zip.openReadStreamPromise(entry), createWriteStream(target))
+        try {
+          const time = entry.getLastModDate()
+          if (!Number.isNaN(time.getTime())) utimesSync(target, time, time)
+        } catch {
+          // Only the date is lost; the file itself is written.
+        }
+      }
+
+      done++
+      if (Date.now() - lastReport >= 100) {
+        onProgress?.(done, entries.length)
+        lastReport = Date.now()
+      }
     }
-
-    done++
-    // Measured in time, not in entries. Counting to 40 meant an archive with
-    // fewer than 40 entries never yielded once and blocked the app for its
-    // whole extraction, which is the freeze this function exists to avoid. A
-    // config folder is routinely smaller than that, and a handful of large
-    // files can take longer than a thousand small ones.
-    if (Date.now() - lastBreath >= 16) {
-      onProgress?.(done, entries.length)
-      await new Promise((resolve) => setImmediate(resolve))
-      lastBreath = Date.now()
-    }
+    onProgress?.(done, entries.length)
+    return done
+  } finally {
+    zip.close()
   }
-  onProgress?.(done, entries.length)
-  return done
+}
+
+/** Opens an archive for reading entry by entry, without loading it whole. */
+function openZipStreaming(archivePath: string): Promise<ZipReader> {
+  // `validateEntrySizes` makes the reader stop at an entry that inflates to
+  // more than it declared, so the size checks below cannot be talked around.
+  return openZipForReading(archivePath, { lazyEntries: true, autoClose: false, validateEntrySizes: true })
+}
+
+/** Every entry of an opened archive, read from its central directory only. */
+function readZipEntries(zip: ZipReader, archivePath: string): Promise<ZipReadEntry[]> {
+  return new Promise((resolvePromise, reject) => {
+    const entries: ZipReadEntry[] = []
+    const onEntry = (entry: ZipReadEntry): void => {
+      entries.push(entry)
+      if (entries.length > MAX_ARCHIVE_ENTRIES) {
+        cleanUp()
+        reject(
+          new Error(
+            tr(`${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`, `${archivePath} contains more than ${MAX_ARCHIVE_ENTRIES} entries, rejected.`)
+          )
+        )
+        return
+      }
+      zip.readEntry()
+    }
+    const onEnd = (): void => {
+      cleanUp()
+      resolvePromise(entries)
+    }
+    const onError = (err: Error): void => {
+      cleanUp()
+      reject(err)
+    }
+    const cleanUp = (): void => {
+      zip.off('entry', onEntry)
+      zip.off('end', onEnd)
+      zip.off('error', onError)
+    }
+    zip.on('entry', onEntry)
+    zip.on('end', onEnd)
+    zip.on('error', onError)
+    zip.readEntry()
+  })
+}
+
+/**
+ * The entries of an archive, read from its directory alone. The streaming
+ * counterpart of `listEntries`, for archives that can be larger than the
+ * 2 GB Node reads in one piece, such as backups of big worlds.
+ */
+export async function listEntriesStreaming(archivePath: string): Promise<ZipEntryInfo[]> {
+  const zip = await openZipStreaming(archivePath)
+  try {
+    const entries = await readZipEntries(zip, archivePath)
+    return entries.map((entry) => ({
+      name: entry.fileName,
+      isDirectory: entry.fileName.endsWith('/'),
+      size: entry.uncompressedSize
+    }))
+  } finally {
+    zip.close()
+  }
 }
 
 /** Extracts only entries under `prefix`, stripping the prefix from the output path. */

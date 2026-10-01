@@ -3342,6 +3342,46 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'und installieren.',
     state: 'fixing',
     since: '2026-10-01'
+  },
+  {
+    id: 'sicherung-ab-2gb-nicht-einspielbar',
+    title: 'Sicherungen ab 2 GB ließen sich nicht wiederherstellen',
+    detail:
+      'Eine Sicherung von 2 GB oder mehr, etwa einer großen Welt, ließ sich anlegen, beim ' +
+      'Wiederherstellen meldete der Launcher aber, sie sei beschädigt. Die Sicherung selbst ist intakt ' +
+      'und lässt sich mit der Reparatur einspielen. Auch große Sicherungen unter dieser Grenze ' +
+      'ließen den Launcher beim Einspielen spürbar hängen.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'screenshots-frieren-launcher-ein',
+    title: 'Viele Screenshots ließen den Launcher beim Öffnen der Aufnahmen kurz einfrieren',
+    detail:
+      'Lagen in einer Instanz Tausende Screenshots, stand der ganze Launcher beim Öffnen des Reiters ' +
+      'Aufnahmen und nach jeder beendeten Aufnahme kurz still, bei 5000 Bildern fast eine Sekunde. ' +
+      'Downloads und das Live-Log hielten dabei mit an.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'duplizieren-mit-verknuepfung',
+    title: 'Duplizieren schlug fehl, wenn die Instanz eine Ordner-Verknüpfung enthielt',
+    detail:
+      'Hatte jemand etwa den Ordner saves oder shaderpacks per Verknüpfung auf eine andere Festplatte ' +
+      'umgeleitet, brach Duplizieren mit einem rohen Fehler ab und legte keine Kopie an.',
+    state: 'fixing',
+    since: '2026-10-01'
+  },
+  {
+    id: 'launcher-verschwindet-bei-altem-spiel',
+    title: 'Lief noch ein Spiel aus einer früheren Sitzung, ließ sich der Launcher nicht schließen',
+    detail:
+      'Lief ein Minecraft weiter, das vor einem Neustart des Launchers gestartet worden war, blendete ' +
+      'das Schließen den Launcher nur aus. Er kam auch nach dem Ende dieses Spiels nicht wieder und ' +
+      'lief unsichtbar weiter, bis man ihn erneut öffnete.',
+    state: 'fixing',
+    since: '2026-10-01'
   }
 ]
 

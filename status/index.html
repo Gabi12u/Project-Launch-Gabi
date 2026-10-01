@@ -3494,6 +3494,34 @@ footer a:hover { color: var(--ink); }
       "detail": "Wurde dort „Nur kompatible“ ausgeschaltet, sahen alle Versionen gleich aus. Eine Version für einen anderen Loader oder eine andere Minecraft-Version ließ sich ohne jede Warnung auswählen und installieren.",
       "state": "fixing",
       "since": "2026-10-01"
+    },
+    {
+      "id": "sicherung-ab-2gb-nicht-einspielbar",
+      "title": "Sicherungen ab 2 GB ließen sich nicht wiederherstellen",
+      "detail": "Eine Sicherung von 2 GB oder mehr, etwa einer großen Welt, ließ sich anlegen, beim Wiederherstellen meldete der Launcher aber, sie sei beschädigt. Die Sicherung selbst ist intakt und lässt sich mit der Reparatur einspielen. Auch große Sicherungen unter dieser Grenze ließen den Launcher beim Einspielen spürbar hängen.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "screenshots-frieren-launcher-ein",
+      "title": "Viele Screenshots ließen den Launcher beim Öffnen der Aufnahmen kurz einfrieren",
+      "detail": "Lagen in einer Instanz Tausende Screenshots, stand der ganze Launcher beim Öffnen des Reiters Aufnahmen und nach jeder beendeten Aufnahme kurz still, bei 5000 Bildern fast eine Sekunde. Downloads und das Live-Log hielten dabei mit an.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "duplizieren-mit-verknuepfung",
+      "title": "Duplizieren schlug fehl, wenn die Instanz eine Ordner-Verknüpfung enthielt",
+      "detail": "Hatte jemand etwa den Ordner saves oder shaderpacks per Verknüpfung auf eine andere Festplatte umgeleitet, brach Duplizieren mit einem rohen Fehler ab und legte keine Kopie an.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "launcher-verschwindet-bei-altem-spiel",
+      "title": "Lief noch ein Spiel aus einer früheren Sitzung, ließ sich der Launcher nicht schließen",
+      "detail": "Lief ein Minecraft weiter, das vor einem Neustart des Launchers gestartet worden war, blendete das Schließen den Launcher nur aus. Er kam auch nach dem Ende dieses Spiels nicht wieder und lief unsichtbar weiter, bis man ihn erneut öffnete.",
+      "state": "fixing",
+      "since": "2026-10-01"
     }
   ];
   var ISSUE_LABEL = {
@@ -5702,6 +5730,34 @@ footer a:hover { color: var(--ink); }
       "id": "entdecken-unpassende-version-ohne-hinweis",
       "title": "The Discover project window gave no hint about versions that do not fit",
       "detail": "With \"Compatible only\" turned off there, all versions looked the same. A version for another loader or Minecraft version could be picked and installed without any warning.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "sicherung-ab-2gb-nicht-einspielbar",
+      "title": "Backups of 2 GB or more could not be restored",
+      "detail": "A backup of 2 GB or more, for example of a large world, could be created, but when restoring it the launcher said it was damaged. The backup itself is intact and can be restored with the fix. Large backups below that size also made the launcher hang noticeably while restoring.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "screenshots-frieren-launcher-ein",
+      "title": "Many screenshots briefly froze the launcher when opening the recordings",
+      "detail": "If an instance held thousands of screenshots, the whole launcher stood still for a moment when opening the Recordings tab and after every finished recording, almost a second with 5000 pictures. Downloads and the live log paused along with it.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "duplizieren-mit-verknuepfung",
+      "title": "Duplicating failed when the instance contained a folder link",
+      "detail": "If someone had redirected for example the saves or shaderpacks folder to another drive with a link, duplicating stopped with a raw error and created no copy.",
+      "state": "fixing",
+      "since": "2026-10-01"
+    },
+    {
+      "id": "launcher-verschwindet-bei-altem-spiel",
+      "title": "With a game from an earlier session still running, the launcher could not be closed",
+      "detail": "If a Minecraft started before a launcher restart was still running, closing the launcher only hid it. It did not come back after that game ended either and kept running invisibly until it was opened again.",
       "state": "fixing",
       "since": "2026-10-01"
     }

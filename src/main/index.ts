@@ -9,7 +9,7 @@ import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
 import { launchInstance } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
-import { adoptRunningFromDisk, onAdoptedEnded, pruneAdopted, runningCount, startingCount } from './core/running'
+import { adoptRunningFromDisk, onAdoptedEnded, ownRunningCount, pruneAdopted, runningCount, startingCount } from './core/running'
 import { cleanTempFiles } from './core/repair'
 import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
@@ -199,7 +199,11 @@ function createWindow(): BrowserWindow {
     // A launch still preparing (no process yet) is just as much a reason to
     // keep it alive as one already running: quitting now would cut a download
     // or a Java install off mid way with nothing left to finish it.
-    if (runningCount() > 0 || startingCount() > 0) {
+    // Only games this session started count. One left over from before a
+    // restart has no exit handler here, so nothing ever brought the hidden
+    // launcher back, and it went on running invisibly. Quitting does not
+    // touch that game; it is adopted again on the next start.
+    if (ownRunningCount() > 0 || startingCount() > 0) {
       event.preventDefault()
       window.hide()
     }

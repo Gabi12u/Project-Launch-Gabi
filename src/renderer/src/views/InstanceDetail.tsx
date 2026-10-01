@@ -1483,7 +1483,14 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
     // One state update per batch rather than per line (see instanceLog.ts),
     // and at most four a second while the game floods the log.
-    const batcher = createLineBatcher((mine) => setLines((current) => [...current, ...mine].slice(-1200)))
+    const batcher = createLineBatcher((mine) => {
+      // Lines still held in the batcher when "Leeren" was clicked would
+      // otherwise come back a moment later; the clear time decides, as it
+      // already does for the history above.
+      const cutoff = logClearedAt.get(instanceId) ?? 0
+      const fresh = mine.filter((line) => line.time > cutoff)
+      if (fresh.length > 0) setLines((current) => [...current, ...fresh].slice(-1200))
+    })
     const off = window.gabi.events.onLogLines((batch) => {
       const mine = batch.filter((line) => line.instanceId === instanceId)
       if (mine.length > 0) batcher.push(mine)
