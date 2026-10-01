@@ -142,7 +142,7 @@
     text-decoration: none;
     color: var(--ink);
   }
-  .brand strong { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.02em; }
+  .brand strong { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
   .brand svg { display: block; }
 
   .nav-links { display: flex; gap: 4px; margin-left: auto; }
@@ -205,10 +205,44 @@
     background: linear-gradient(135deg, var(--accent), var(--accent-deep));
   }
 
+  /* Phones get a menu button instead of the row of links, which simply
+     disappeared below 720px and left Status and Discord unreachable from
+     the top of the page. */
+  .nav-menu {
+    display: none;
+    appearance: none;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--glass-line);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    cursor: pointer;
+  }
+
   @media (max-width: 720px) {
     .nav-links { display: none; }
     .lang-switch { margin-left: auto; }
-    .nav-cta { margin-left: auto; }
+    /* The hero carries the big download button already, and a phone gets
+       the "open this on your computer" note there instead. */
+    .nav-cta { display: none; }
+    .nav-menu { display: grid; }
+    .nav.open .nav-links {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: absolute;
+      top: calc(var(--nav-h) - 4px);
+      left: 12px;
+      right: 12px;
+      padding: 10px;
+      background: rgba(16, 7, 28, 0.96);
+      border: 1px solid var(--glass-line);
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    }
+    .nav.open .nav-links a { padding: 13px 14px; font-size: 1rem; }
   }
 
   /* ================================================================== *
@@ -424,6 +458,41 @@
   }
   .feature h3 { margin: 0 0 8px; font-size: 1.06rem; font-weight: 680; letter-spacing: -0.018em; }
   .feature p { margin: 0; color: var(--muted); font-size: .93rem; line-height: 1.6; }
+
+  /* ================================================================== *
+   * Screenshots
+   * ================================================================== */
+  .shots { display: grid; gap: 16px; }
+  .shot-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .shot-tabs button {
+    appearance: none;
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 650;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-line);
+    padding: 10px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .25s var(--ease), background .25s var(--ease);
+  }
+  .shot-tabs button:hover { color: #fff; }
+  .shot-tabs button[aria-selected="true"] {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .shot-frame { padding: 10px; border-radius: calc(var(--r) + 6px); }
+  .shot-frame img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    transition: opacity .25s var(--ease);
+  }
+  .shot-caption { color: var(--muted); font-size: .95rem; margin: 0; max-width: 64ch; }
 
   /* ================================================================== *
    * Download rows
@@ -739,7 +808,7 @@
     <strong>Launch Gabi</strong>
   </a>
 
-  <div class="nav-links">
+  <div class="nav-links" id="navLinks">
     <a href="#funktionen" data-i18n="nav.functions">Funktionen</a>
     <a href="#download" data-i18n="nav.download">Download</a>
     <a href="#hilfe" data-i18n="nav.help">Hilfe</a>
@@ -751,6 +820,10 @@
     <button type="button" data-lang="de" aria-pressed="true">DE</button>
     <button type="button" data-lang="en" aria-pressed="false">EN</button>
   </div>
+
+  <button class="nav-menu" type="button" aria-expanded="false" aria-controls="navLinks" aria-label="Menü">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
 
   <a class="nav-cta" href="#download" data-i18n="nav.cta">Herunterladen</a>
 </nav>
@@ -775,6 +848,27 @@
   </section>
 
   <div class="veil">
+
+    <!-- ======================== SCREENSHOTS ======================== -->
+    <!-- Real captures of the launcher, taken with a demo profile. The
+         language decides which set is shown (assets/shots/<view>-<lang>). -->
+    <section id="einblick" class="inner">
+      <div class="reveal">
+        <p class="eyebrow" data-i18n="shots.eyebrow">Einblick</p>
+        <h2 data-i18n="shots.title">So sieht Launch Gabi aus</h2>
+      </div>
+      <div class="shots reveal">
+        <div class="shot-tabs" role="tablist" id="shotTabs">
+          <button type="button" role="tab" aria-selected="true" data-shot="home" data-i18n="shots.tab.home">Startseite</button>
+          <button type="button" role="tab" aria-selected="false" data-shot="instances" data-i18n="shots.tab.instances">Instanzen</button>
+          <button type="button" role="tab" aria-selected="false" data-shot="detail" data-i18n="shots.tab.detail">Eine Instanz</button>
+        </div>
+        <div class="shot-frame glass">
+          <img id="shotImg" src="assets/shots/home-de.webp" width="1600" height="1000" alt="Startseite von Launch Gabi" decoding="async">
+        </div>
+        <p class="shot-caption" id="shotCaption">Die zuletzt gespielte Instanz startest du mit einem Klick, alle anderen liegen direkt darunter.</p>
+      </div>
+    </section>
 
     <!-- ========================= FEATURES ========================= -->
     <section id="funktionen" class="inner">
@@ -842,6 +936,13 @@
           <h3 data-i18n="features.f8.title">Updates von allein</h3>
           <p data-i18n="features.f8.body">Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft
             gerade Minecraft, wartet er.</p>
+        </article>
+
+        <article class="feature glass reveal">
+          <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
+          <h3 data-i18n="features.f9.title">Live-Log und Aufnahmen</h3>
+          <p data-i18n="features.f9.body">Ein eigenes Fenster zeigt, was Minecraft gerade schreibt. Mit F9 nimmst du ein Video vom
+            Spiel auf, samt Ton und ohne Zusatzprogramm.</p>
         </article>
 
       </div>
@@ -960,7 +1061,7 @@ var I18N = {
       ogTitle: 'Launch Gabi: Minecraft-Launcher',
       ogDescription: 'Beliebig viele getrennte Instanzen, alle vier Mod Loader vollautomatisch, Mods von Modrinth und CurseForge. Kostenlos für Windows, macOS und Linux.'
     },
-    nav: { functions: 'Funktionen', download: 'Download', help: 'Hilfe', cta: 'Herunterladen' },
+    nav: { functions: 'Funktionen', download: 'Download', help: 'Hilfe', cta: 'Herunterladen', menu: 'Menü' },
     hero: {
       badge: 'Kostenlos · Open für alle',
       title: 'Minecraft,<br>endlich aufgeräumt.',
@@ -975,11 +1076,23 @@ var I18N = {
       f1: { title: 'Getrennte Instanzen', body: 'Beliebig viele Installationen nebeneinander, jede mit eigener Version, eigenen Mods, Welten und RAM-Einstellung. Assets werden geteilt statt vervielfacht.' },
       f2: { title: 'Alle vier Mod Loader', body: 'Fabric, NeoForge, Forge und Quilt installieren sich vollautomatisch. Forge und NeoForge patcht Launch Gabi selbst. Ein externer Installer ist nicht nötig.' },
       f3: { title: 'Java ohne Nachdenken', body: 'Vorhandene JDKs werden auf dem System gefunden. Fehlt die passende Version, lädt Launch Gabi ein Temurin-Runtime und verwaltet es selbst.' },
-      f4: { title: 'Modrinth &amp; CurseForge', body: 'Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data Packs. Abhängigkeiten kommen automatisch mit.' },
+      f4: { title: 'Modrinth &amp; CurseForge', body: 'Eine Suche über beide Plattformen: Mods, Modpacks, Resourcepacks, Shader und Data Packs. Abhängigkeiten kommen automatisch mit, Data Packs landen direkt in den Welten, die du auswählst.' },
       f5: { title: 'Prüfung vor dem Start', body: 'Loader-Konflikte, Versions-Mismatches, fehlende Abhängigkeiten, doppelte Mods. Für jedes lösbare Problem gibt es einen Knopf, der es behebt.' },
       f6: { title: 'Backups', body: 'Welten, Konfiguration und Mods sichern. Wiederherstellen legt vorher automatisch eine Sicherheitskopie an. Vor Mod-Updates geschieht das auf Wunsch von allein.' },
       f7: { title: 'Selbstreparatur', body: 'Prüft Ordnerstruktur, Client-Jar, Bibliotheken, Assets, Natives und Mod-Dateien per SHA1 und repariert, was defekt ist.' },
-      f8: { title: 'Updates von allein', body: 'Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft gerade Minecraft, wartet er.' }
+      f8: { title: 'Updates von allein', body: 'Der Launcher aktualisiert sich im Hintergrund und installiert beim Beenden. Läuft gerade Minecraft, wartet er.' },
+      f9: { title: 'Live-Log und Aufnahmen', body: 'Ein eigenes Fenster zeigt, was Minecraft gerade schreibt. Mit F9 nimmst du ein Video vom Spiel auf, samt Ton und ohne Zusatzprogramm.' }
+    },
+    shots: {
+      eyebrow: 'Einblick',
+      title: 'So sieht Launch Gabi aus',
+      tab: { home: 'Startseite', instances: 'Instanzen', detail: 'Eine Instanz' },
+      alt: { home: 'Startseite von Launch Gabi', instances: 'Übersicht der Instanzen in Launch Gabi', detail: 'Seite einer einzelnen Instanz in Launch Gabi' },
+      caption: {
+        home: 'Die zuletzt gespielte Instanz startest du mit einem Klick, alle anderen liegen direkt darunter.',
+        instances: 'Alle Instanzen nebeneinander, jede mit eigener Version, eigenem Mod Loader und eigenen Mods.',
+        detail: 'Jede Instanz prüft vor dem Start, ob alles zusammenpasst, und lässt sich reparieren, duplizieren, sichern und als Modpack exportieren.'
+      }
     },
     download: {
       eyebrow: 'Download',
@@ -1044,7 +1157,7 @@ var I18N = {
       ogTitle: 'Launch Gabi: Minecraft Launcher',
       ogDescription: 'As many separate instances as you want, all four mod loaders fully automatic, mods from Modrinth and CurseForge. Free for Windows, macOS and Linux.'
     },
-    nav: { functions: 'Features', download: 'Download', help: 'Help', cta: 'Download now' },
+    nav: { functions: 'Features', download: 'Download', help: 'Help', cta: 'Download now', menu: 'Menu' },
     hero: {
       badge: 'Free · open to everyone',
       title: 'Minecraft,<br>finally organized.',
@@ -1059,11 +1172,23 @@ var I18N = {
       f1: { title: 'Separate instances', body: 'As many installations side by side as you like, each with its own version, mods, worlds, and RAM setting. Assets are shared instead of duplicated.' },
       f2: { title: 'All four mod loaders', body: 'Fabric, NeoForge, Forge, and Quilt install themselves fully automatically. Launch Gabi patches Forge and NeoForge itself, no external installer needed.' },
       f3: { title: 'Java without the hassle', body: 'Existing JDKs on your system are detected automatically. If the right version is missing, Launch Gabi downloads a Temurin runtime and manages it itself.' },
-      f4: { title: 'Modrinth &amp; CurseForge', body: 'One search across both platforms: mods, modpacks, resource packs, shaders, and data packs. Dependencies come along automatically.' },
+      f4: { title: 'Modrinth &amp; CurseForge', body: 'One search across both platforms: mods, modpacks, resource packs, shaders, and data packs. Dependencies come along automatically, and data packs go straight into the worlds you pick.' },
       f5: { title: 'Checked before launch', body: 'Loader conflicts, version mismatches, missing dependencies, duplicate mods. Every problem that can be fixed comes with a button that fixes it.' },
       f6: { title: 'Backups', body: 'Back up worlds, config, and mods. Restoring automatically makes a safety copy first. It can do the same before mod updates on its own if you want.' },
       f7: { title: 'Self repair', body: 'Checks folder structure, client jar, libraries, assets, natives, and mod files via SHA1, and repairs whatever is broken.' },
-      f8: { title: 'Updates on its own', body: 'The launcher updates itself in the background and installs the update on exit. If Minecraft is currently running, it waits.' }
+      f8: { title: 'Updates on its own', body: 'The launcher updates itself in the background and installs the update on exit. If Minecraft is currently running, it waits.' },
+      f9: { title: 'Live log and recordings', body: 'A window of its own shows what Minecraft is writing right now. Press F9 to record a video of the game, sound included, without any extra program.' }
+    },
+    shots: {
+      eyebrow: 'A look inside',
+      title: 'This is Launch Gabi',
+      tab: { home: 'Home', instances: 'Instances', detail: 'One instance' },
+      alt: { home: 'Launch Gabi home screen', instances: 'Overview of the instances in Launch Gabi', detail: 'Page of a single instance in Launch Gabi' },
+      caption: {
+        home: 'Start the instance you played last with one click, all others are right below.',
+        instances: 'All instances side by side, each with its own version, mod loader and mods.',
+        detail: 'Every instance checks before starting that everything fits together, and can be repaired, duplicated, backed up and exported as a modpack.'
+      }
     },
     download: {
       eyebrow: 'Download',
@@ -1175,8 +1300,58 @@ function applyLanguage() {
     buttons[j].setAttribute('aria-pressed', pressed ? 'true' : 'false');
   }
 
+  var menuButton = document.querySelector('.nav-menu');
+  if (menuButton) menuButton.setAttribute('aria-label', t('nav.menu'));
+  if (typeof renderShot === 'function') renderShot();
   if (typeof renderDownloadState === 'function') renderDownloadState();
 }
+
+/* ------------------------------------------------------------------ *
+ * Screenshots: one picture per tab, in the current language
+ * ------------------------------------------------------------------ */
+var shotView = 'home';
+function renderShot() {
+  var img = document.getElementById('shotImg');
+  var caption = document.getElementById('shotCaption');
+  if (!img || !caption) return;
+  img.src = 'assets/shots/' + shotView + '-' + i18nState.lang + '.webp';
+  img.alt = t('shots.alt.' + shotView);
+  caption.textContent = t('shots.caption.' + shotView);
+  var tabs = document.querySelectorAll('#shotTabs button');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-shot') === shotView ? 'true' : 'false');
+  }
+}
+document.addEventListener('click', function (ev) {
+  var tab = ev.target.closest && ev.target.closest('#shotTabs button');
+  if (!tab) return;
+  shotView = tab.getAttribute('data-shot');
+  renderShot();
+});
+
+/* ------------------------------------------------------------------ *
+ * Phone menu
+ * ------------------------------------------------------------------ */
+(function () {
+  var nav = document.getElementById('nav');
+  var button = document.querySelector('.nav-menu');
+  if (!nav || !button) return;
+  function setOpen(open) {
+    nav.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  button.addEventListener('click', function () { setOpen(!nav.classList.contains('open')); });
+  // A link inside closes it again, as does a tap anywhere else or Escape.
+  document.getElementById('navLinks').addEventListener('click', function (ev) {
+    if (ev.target.closest('a')) setOpen(false);
+  });
+  document.addEventListener('click', function (ev) {
+    if (nav.classList.contains('open') && !nav.contains(ev.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') setOpen(false);
+  });
+})();
 
 (function () {
   i18nState.lang = loadSavedLang();

@@ -2813,8 +2813,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach dem Wechsel auf Englisch blieb die Sprachangabe der Oberfläche auf Deutsch. ' +
       'Bildschirmleser lasen den englischen Text deshalb mit deutscher Aussprache vor.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'neustart-startet-instanz-erneut',
@@ -2822,8 +2823,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde der Launcher über die Desktop-Verknüpfung einer Instanz geöffnet, übernahm der Neustart ' +
       'nach einem Sprachwechsel diesen Aufruf und startete die Instanz noch einmal, ohne Rückfrage.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'datapack-geloeschte-welt',
@@ -2833,8 +2835,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Launcher beim Ein- oder Ausschalten, Aktualisieren oder Versionswechsel des Data Packs ihren ' +
       'Ordner neu an. Die leere Welt erschien danach in der Liste und ließ sich im Launcher nicht ' +
       'entfernen.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'sicherung-zeitstempel',
@@ -2843,8 +2846,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Sicherungen speicherten für jede Datei den Zeitpunkt der Sicherung statt ihres echten ' +
       'Änderungsdatums, und beim Wiederherstellen bekam jede Datei den aktuellen Zeitpunkt. Welten ' +
       'wirkten danach alle gerade gespielt, und Screenshots standen in zufälliger Reihenfolge.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'anmeldung-abgelaufen-rohtext',
@@ -2853,8 +2857,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lief die Anmeldung eines Accounts ab, etwa nach 90 Tagen ohne Nutzung oder nach einer ' +
       'Passwortänderung, erschien beim Spielstart ein langer englischer Text von Microsoft statt des ' +
       'Hinweises, sich neu anzumelden.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'anmeldung-netzwerk-abbruch',
@@ -2863,8 +2868,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Fiel die Verbindung während der Anmeldung für einen Moment aus, zum Beispiel beim WLAN-Wechsel, ' +
       'brach der ganze Vorgang mit einer technischen Meldung ab, obwohl der Anmeldecode noch gültig ' +
       'war.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'account-sitzung-abgelaufen-falsch',
@@ -2873,8 +2879,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Die Account-Liste zeigte diesen Hinweis an jedem Microsoft-Account, mit dem seit etwa einem Tag ' +
       'kein Spiel gestartet wurde. Die Anmeldung erneuert sich in diesem Fall aber beim nächsten Start ' +
       'von selbst.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'screenshots-tab-leer',
@@ -2882,8 +2889,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde ein Screenshot gerade geschrieben oder von einem Virenscanner kurz gesperrt, während man ' +
       'den Bereich öffnete, zeigte er gar keine Screenshots an, obwohl sie vorhanden waren.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'java-32bit-gewaehlt',
@@ -2892,8 +2900,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War die einzige passende Java-Installation eine 32-Bit-Version, verwendete der Launcher sie ' +
       'auch bei automatischer Java-Verwaltung. Mit mehr als etwa 1,5 GB Arbeitsspeicher startete das ' +
       'Spiel dann nicht.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'java-pfad-fehlt-ohne-hinweis',
@@ -2902,8 +2911,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde das in einer Instanz fest eingestellte Java deinstalliert oder verschoben, startete der ' +
       'Launcher still mit einem anderen Java. Ein daraus folgender Fehler ließ sich so kaum auf die ' +
       'Ursache zurückführen.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'update-waehrend-aufgabe',
@@ -2911,8 +2921,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Das Einspielen eines Updates wartete nur auf laufende Spiele, nicht auf Downloads, Importe oder ' +
       'Sicherungen. Diese brachen dann ohne Hinweis ab und mussten neu gestartet werden.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'update-fehler-rohtext',
@@ -2920,8 +2931,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Unter Einstellungen, Updates stand bei einer fehlgeschlagenen Prüfung der rohe, meist englische ' +
       'Fehlertext, etwa zu einer fehlenden Internetverbindung.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'neoforge-neue-versionen',
@@ -2930,8 +2942,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Seit Minecraft seine Versionen nach Jahreszahlen benennt, fand der Launcher für 26.1, 26.2 und ' +
       '26.3 keine NeoForge-Versionen und zeigte NeoForge als nicht verfügbar an, obwohl es sie gibt. ' +
       'Vorabversionen von NeoForge galten außerdem als stabil.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'curseforge-shader-nach-loader',
@@ -2940,8 +2953,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Bei der Suche mit eingeschaltetem Versionsfilter schränkte der Launcher auch Shader, ' +
       'Resourcepacks und Data Packs von CurseForge auf den Loader der Instanz ein. Diese Inhalte ' +
       'haben keinen Loader, deshalb fehlten die CurseForge-Treffer weitgehend.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'update-1020-instanz-startverhalten',
@@ -2951,8 +2965,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Einstellungen“ umgestellt, auch wenn das bei ihr absichtlich so eingestellt war. Wer das ' +
       'betrifft, stellt es in den Einstellungen der Instanz neu ein. Ab der nächsten Version bleiben ' +
       'solche bewussten Einstellungen beim Umstieg erhalten.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'zahlen-punkt-statt-komma',
@@ -2960,8 +2975,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Beim Herunterladen von Spieldateien, Java und Modpacks sowie in der Meldung nach einer Aufnahme ' +
       'standen Größen auf Deutsch als 150.3 MB statt 150,3 MB.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'vorab-pruefung-haengt',
@@ -2970,8 +2986,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Schlug die Prüfung auf der Instanzseite einmal fehl, etwa durch einen kurzen Netzwerkaussetzer, ' +
       'zeigte der Bereich „Vor dem Start“ danach für immer „Wird geladen“, und die Mod-Kompatibilität ' +
       'verschwand ganz. Dass man neu prüfen muss, war nirgends zu sehen.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'zuletzt-gespielt-neue-instanz',
@@ -2979,8 +2996,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach dem Anlegen der ersten Instanz stand auf der Startseite „Zuletzt gespielt“ darüber und ' +
       'direkt darunter „Zuletzt gespielt: nie“.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'log-leeren-kommt-zurueck',
@@ -2988,8 +3006,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach „Leeren“ im Log-Tab kamen alle alten Zeilen zurück, sobald man einen anderen Tab öffnete ' +
       'und wieder zum Log wechselte.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'loeschen-reparieren-erst-nach-bestaetigung-abgelehnt',
@@ -2998,8 +3017,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Während eine Instanz startete, eingerichtet wurde oder Mods bekam, ließen sich „Löschen“ und ' +
       '„Reparieren“ trotzdem anklicken und bestätigen. Erst danach kam die Meldung, dass es gerade ' +
       'nicht geht. „Duplizieren“ war in derselben Lage schon ausgegraut.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'duplizieren-falsche-meldung',
@@ -3007,8 +3027,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Lief das Duplizieren einer Instanz noch, antwortete ein weiterer Versuch mit dem Hinweis, an ' +
       'den Mods werde gerade gearbeitet, statt zu sagen, dass die Instanz gerade kopiert wird.',
-    state: 'fixing',
-    since: '2026-09-29'
+    state: 'fixed',
+    since: '2026-09-29',
+    fixedIn: '1.0.21'
   },
   {
     id: 'datei-gesperrt-beiseite',
@@ -3017,8 +3038,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Hielt beim Start ein Virenscanner oder ein Cloud-Dienst eine dieser Dateien kurz fest, legte ' +
       'der Launcher sie beiseite, als wäre sie kaputt. Eine Instanz erschien dann als leere ' +
       '„Unbenannt“-Instanz ohne Mods und Spielzeit, Einstellungen oder Accounts fehlten.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'spielende-gesperrte-datei',
@@ -3027,8 +3049,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Konnte die Spielzeit beim Beenden von Minecraft nicht gespeichert werden, weil die Instanzdatei ' +
       'gerade gesperrt war, brach der Rest ab: Der Zustand blieb auf „läuft“, und ein ausgeblendeter ' +
       'Launcher kam nicht wieder hervor.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'spielzeit-nach-neustart',
@@ -3036,8 +3059,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Lief Minecraft weiter, während der Launcher neu gestartet wurde, zum Beispiel für ein Update, ' +
       'wurde diese Spielsitzung nie in die Spielzeit und „Zuletzt gespielt“ übernommen.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'bilder-bleiben-liegen',
@@ -3046,8 +3070,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Jedes neue eigene Icon oder Hintergrundbild einer Instanz legte eine weitere Datei an, alte ' +
       'wurden nie gelöscht, auch nicht beim Entfernen des Hintergrunds. Beim Duplizieren wurden sie ' +
       'alle mitkopiert.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'datenordner-waehrend-einrichtung',
@@ -3055,8 +3080,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde der Datenordner geändert, solange eine gerade angelegte Instanz noch lud, verschwand ' +
       'diese Instanz ohne Hinweis, und ihre halb geladenen Dateien blieben im alten Ordner.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'abhaengigkeit-falscher-ordner',
@@ -3065,8 +3091,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Brauchte ein Resourcepack oder Shader einen Mod, wurde dieser Mod ebenfalls als Resourcepack ' +
       'oder Shader installiert. Er lag dann im falschen Ordner, wirkte nicht, und keine Prüfung ' +
       'bemerkte es.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'umbenannte-datei-verliert-infos',
@@ -3075,8 +3102,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde eine Mod- oder Pack-Datei von Hand umbenannt, erkannte der Launcher sie nur noch als ' +
       'lokale Datei ohne Herkunft, Updates fanden sich nicht mehr. Bei Data Packs blieben alte Kopien ' +
       'in den Welten liegen.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'launcher-versteckt-altes-spiel',
@@ -3084,8 +3112,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Lief noch ein Spiel von vor einem Launcher-Neustart, kam der ausgeblendete Launcher nach dem ' +
       'Ende eines anderen Spiels nicht zurück, auch nicht, als das alte Spiel später endete.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'log-beenden-vor-start',
@@ -3093,8 +3122,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Während der Vorbereitung, also beim Herunterladen, Java-Installieren oder Entpacken, zeigte das ' +
       'Log-Fenster den Knopf „Beenden“, ein Klick tat aber nichts.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'log-zustand-leer',
@@ -3102,8 +3132,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Startete eine Instanz schneller, als das Log-Fenster aufging, fehlte oben der Zustand wie ' +
       '„Läuft“ für die ganze Sitzung.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'absturz-code-null',
@@ -3111,8 +3142,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde Minecraft auf macOS oder Linux vom System beendet, zeigte der Verlauf „Code null“ statt ' +
       'eines verständlichen Hinweises.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'curseforge-import-ohne-herkunft',
@@ -3120,8 +3152,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Nach dem Import eines CurseForge-Modpacks waren alle Mods ohne Verbindung zu CurseForge. ' +
       'Updates und die Kompatibilitätsprüfung griffen für sie nie.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'export-fehlende-ordner',
@@ -3130,8 +3163,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Beim Export einer Instanz als Modpack kamen nur config und die Inhaltsordner mit. Skripte, ' +
       'Standardeinstellungen und ähnliche Ordner, die viele Modpacks brauchen, fehlten im exportierten ' +
       'Paket.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'aufnahme-erscheint-nicht',
@@ -3139,8 +3173,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Lief eine Aufnahme schon, als man den Tab öffnete, tauchte sie nach dem Ende dort nicht auf, ' +
       'bis man den Tab neu öffnete.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'bestaetigung-bleibt-offen',
@@ -3148,8 +3183,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Schlug das Löschen einer Instanz oder das Wiederherstellen oder Löschen einer Sicherung fehl, ' +
       'blieb das Fenster mit der Rückfrage stehen und musste von Hand geschlossen werden.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'automatisch-sichern-wirkungslos',
@@ -3157,8 +3193,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Der Schalter in den Einstellungen versprach regelmäßige Sicherungen der Welten, es wurde aber ' +
       'nie eine angelegt. Wer sich darauf verlassen hat, hatte keine Sicherung.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'sicherungsliste-ueberschrieben',
@@ -3166,8 +3203,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'War die Liste der Sicherungen einer Instanz beschädigt, überschrieb die nächste Sicherung sie ' +
       'ohne Hinweis. Alle älteren Sicherungen waren danach im Launcher nicht mehr erreichbar.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'update-sicherungen-unbegrenzt',
@@ -3175,8 +3213,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Vor jedem „Alle aktualisieren“ entstand eine Sicherung der Welten, die nie gelöscht wurde. Mit ' +
       'der Zeit belegten sie ohne Grenze Speicherplatz.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'dateien-oeffnen-haertung',
@@ -3185,8 +3224,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Der Launcher öffnet nur Dateien aus seinen eigenen Ordnern. Diese Grenze ließ sich über die ' +
       'Einstellung des Datenordners verschieben. Ausnutzbar war das nur, wenn in der Oberfläche schon ' +
       'fremder Code lief. Programme und Skripte werden jetzt grundsätzlich nicht mehr geöffnet.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'java-unter-spiel-geloescht',
@@ -3194,8 +3234,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde ein vom Launcher verwaltetes Java neu installiert, während ein Spiel damit lief, löschte ' +
       'der Launcher den alten Ordner sofort. Minecraft konnte dann mitten in der Sitzung abstürzen.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'arbeitsspeicher-ueber-maximum',
@@ -3204,8 +3245,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Stand bei einer Instanz mehr Arbeitsspeicher als der Rechner hat, etwa nach einem Import, ' +
       'zeigte der Regler das Maximum, gespeichert wurde aber der alte zu hohe Wert. Das Spiel startete ' +
       'dann nicht.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'java-kein-paket-meldung',
@@ -3213,8 +3255,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Gibt es eine Java-Version für ein System gar nicht, meldete der Launcher trotzdem einen ' +
       'vorübergehenden Fehler, der nie verschwand.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'vorabpruefung-java-26',
@@ -3223,8 +3266,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Konnte die Versionsdatei noch nicht geladen werden, schätzte die Anzeige vor dem Start für die ' +
       'neuen Minecraft-Versionen eine zu alte Java-Version. Der eigentliche Start war davon nicht ' +
       'betroffen.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'anmeldung-offline-rohtext',
@@ -3232,8 +3276,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer sich ohne Verbindung mit Microsoft anmelden wollte, bekam nur „fetch failed“ zu sehen statt ' +
       'eines Hinweises auf die fehlende Verbindung.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'schluessel-ungeschuetzt-kein-hinweis',
@@ -3241,8 +3286,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wurde die Verschlüsselung des Systems erst später verfügbar, blieb der langlebige ' +
       'Anmeldeschlüssel unverschlüsselt, während der Hinweis in den Einstellungen schon verschwand.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'skin-leer',
@@ -3250,8 +3296,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'War der Skin eines Accounts nicht erreichbar, zum Beispiel ohne Internet, blieb das Profilbild ' +
       'in der Seitenleiste und der Account-Liste leer statt die Initialen zu zeigen.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'viele-installationen-traege',
@@ -3259,8 +3306,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Liefen viele Installationen gleichzeitig, bremsten sich die Downloads gegenseitig, und die ' +
       'Oberfläche reagierte mit spürbarer Verzögerung.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'launcher-haengt-bei-log-flut',
@@ -3270,8 +3318,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'vieler Mods, schickte der Launcher jede Zeile einzeln an seine Fenster. Log-Fenster und ' +
       'Launcher kamen nicht mehr hinterher, reagierten nicht und wurden nach einiger Zeit neu geladen. ' +
       'Das Log zeigte die Meldungen außerdem als rohes XML.',
-    state: 'fixing',
-    since: '2026-09-30'
+    state: 'fixed',
+    since: '2026-09-30',
+    fixedIn: '1.0.21'
   },
   {
     id: 'minimieren-beendet-spiel',
@@ -3281,8 +3330,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'während Minecraft lief, beendete er das Spiel sofort mit, ohne dass es noch speichern konnte. ' +
       'Nur bei offenem Log-Fenster blieb das Spiel am Leben, dann ließ sich der Launcher aber bis zum ' +
       'Spielende nicht mehr öffnen.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'doppelter-mod-zwei-quellen',
@@ -3291,8 +3341,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War ein Mod einmal von Modrinth und einmal von CurseForge installiert, galt das nur als ' +
       'Warnung, die beim Spielen nicht angezeigt wurde. Minecraft startete dann nicht, weil der ' +
       'Mod-Loader dieselbe Mod-ID doppelt fand.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'curseforge-pakete-im-modordner',
@@ -3300,8 +3351,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Enthielt ein CurseForge-Modpack Resourcepacks oder Shader, landeten diese beim Import im ' +
       'Mod-Ordner. Dort wirkten sie nicht und tauchten auch in der Liste der Inhalte nicht auf.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'java-32bit-eigener-pfad',
@@ -3310,8 +3362,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde für eine Instanz von Hand ein 32-Bit-Java gewählt und mehr als etwa 1,5 GB ' +
       'Arbeitsspeicher eingestellt, brach Minecraft sofort ab. Der Launcher warnte nicht, obwohl er ' +
       'dieselbe Grenze bei der automatischen Java-Wahl beachtet.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'anmeldeseite-im-netz',
@@ -3320,8 +3373,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Leitete ein Netz, etwa im Hotel, in der Schule oder im Zug, Anfragen auf eine eigene ' +
       'Anmeldeseite um, erschien ein englischer Fehler wie „Unexpected token“. Die Forge-Versionsliste ' +
       'behauptete dann außerdem, es gebe keine Version.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'abbrechen-wartet-auf-andere-installation',
@@ -3330,8 +3384,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Luden zwei Installationen gleichzeitig dieselbe Datei, etwa eine gemeinsame Bibliothek, ' +
       'reagierte die zweite erst auf „Abbrechen“, wenn die erste mit dieser Datei fertig war. Das ' +
       'konnte Minuten dauern.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'entdecken-unpassende-version-ohne-hinweis',
@@ -3340,8 +3395,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde dort „Nur kompatible“ ausgeschaltet, sahen alle Versionen gleich aus. Eine Version für ' +
       'einen anderen Loader oder eine andere Minecraft-Version ließ sich ohne jede Warnung auswählen ' +
       'und installieren.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'sicherung-ab-2gb-nicht-einspielbar',
@@ -3351,8 +3407,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wiederherstellen meldete der Launcher aber, sie sei beschädigt. Die Sicherung selbst ist intakt ' +
       'und lässt sich mit der Reparatur einspielen. Auch große Sicherungen unter dieser Grenze ' +
       'ließen den Launcher beim Einspielen spürbar hängen.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'screenshots-frieren-launcher-ein',
@@ -3361,8 +3418,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lagen in einer Instanz Tausende Screenshots, stand der ganze Launcher beim Öffnen des Reiters ' +
       'Aufnahmen und nach jeder beendeten Aufnahme kurz still, bei 5000 Bildern fast eine Sekunde. ' +
       'Downloads und das Live-Log hielten dabei mit an.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'duplizieren-mit-verknuepfung',
@@ -3370,8 +3428,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Hatte jemand etwa den Ordner saves oder shaderpacks per Verknüpfung auf eine andere Festplatte ' +
       'umgeleitet, brach Duplizieren mit einem rohen Fehler ab und legte keine Kopie an.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
   },
   {
     id: 'launcher-verschwindet-bei-altem-spiel',
@@ -3380,6 +3439,17 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lief ein Minecraft weiter, das vor einem Neustart des Launchers gestartet worden war, blendete ' +
       'das Schließen den Launcher nur aus. Er kam auch nach dem Ende dieses Spiels nicht wieder und ' +
       'lief unsichtbar weiter, bis man ihn erneut öffnete.',
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.21'
+  },
+  {
+    id: 'entdecken-namen-abgeschnitten',
+    title: 'In Entdecken waren Projektnamen auf wenige Buchstaben abgeschnitten',
+    detail:
+      'In der normalen Fenstergröße stand der Installieren-Knopf neben dem Text der Ergebniskarten und ' +
+      'ließ dem Namen kaum Platz. Namen und Autoren endeten nach wenigen Buchstaben, und das Datum ' +
+      'brach auf mehrere Zeilen um.',
     state: 'fixing',
     since: '2026-10-01'
   }

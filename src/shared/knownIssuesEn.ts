@@ -2170,6 +2170,13 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'If a Minecraft started before a launcher restart was still running, closing the launcher only ' +
       'hid it. It did not come back after that game ended either and kept running invisibly until it ' +
       'was opened again.'
+  },
+  'entdecken-namen-abgeschnitten': {
+    title: 'Project names in Discover were cut off after a few letters',
+    detail:
+      'At the normal window size the Install button sat next to the text of the result cards and left ' +
+      'the name hardly any room. Names and authors ended after a few letters, and the date wrapped ' +
+      'over several lines.'
   }
 }
 

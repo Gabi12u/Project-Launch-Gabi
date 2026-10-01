@@ -22,6 +22,18 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.21': {
+    headline: 'A logo intro at startup, a launcher that stays smooth even with large modpacks, and 60 bugs fixed.',
+    changes: [
+      'The Launch Gabi logo now plays briefly at startup before the launcher opens. Anyone who prefers not to see it can turn it off under Settings, Startup.',
+      'With large modpacks the launcher could hang after a few minutes and reload itself when Minecraft wrote very many log lines. The log now stays smooth even at thousands of lines per second and shows the messages readably instead of as raw XML.',
+      'Backups of 2 GB or more, for example of large worlds, could not be restored. That now works, including backups made earlier. "Back up automatically" also finally takes effect after every play session.',
+      'With "Minimize the launcher", closing the launcher ended a running game at once, without a chance to save. Closing now only hides the launcher until the game ends.',
+      'The same mod from Modrinth and from CurseForge is now caught before starting, instead of Minecraft simply not starting. CurseForge modpacks keep the origin of their mods when imported and put resource packs and shaders into the right folders, and exporting as a modpack now also takes folders such as kubejs and defaultconfigs along.',
+      'Several installs at once no longer slow each other down: the setting for simultaneous downloads now applies to the whole launcher, and "Cancel" takes effect at once.',
+      'Dozens of other bugs are fixed, such as missing play time after a launcher restart, the wrong Java version for Minecraft 26, cryptic messages without internet or behind a Wi-Fi sign-in page, and empty profile pictures. Each one is listed on the status page.'
+    ]
+  },
   '1.0.20': {
     headline: 'English as a second language, a launcher that steps aside while you play, and more than 130 bugs fixed.',
     changes: [

@@ -34,6 +34,41 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.21',
+    date: '2026-10-01',
+    headline: 'Ein Logo-Intro beim Start, ein Launcher, der auch bei großen Modpacks flüssig bleibt, und 60 Fehler behoben.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Beim Start spielt jetzt kurz das Logo von Launch Gabi ab, bevor sich der Launcher öffnet. Wer das nicht möchte, schaltet es unter Einstellungen, Start ab.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Bei großen Modpacks konnte der Launcher nach einigen Minuten hängen und sich neu laden, wenn Minecraft sehr viele Log-Zeilen schrieb. Das Log bleibt jetzt auch bei Tausenden Zeilen pro Sekunde flüssig und zeigt die Meldungen lesbar statt als rohes XML.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Sicherungen ab 2 GB, etwa von großen Welten, ließen sich nicht wiederherstellen. Das geht jetzt, auch mit Sicherungen, die schon vorher angelegt wurden. „Automatisch sichern“ wirkt außerdem endlich nach jeder Spielsitzung.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mit „Launcher minimieren“ beendete das Schließen des Launchers ein laufendes Spiel sofort, ohne dass es noch speichern konnte. Das Schließen blendet den Launcher jetzt nur aus, bis das Spiel endet.'
+      },
+      {
+        kind: 'improved',
+        text: 'Derselbe Mod von Modrinth und von CurseForge wird jetzt vor dem Start erkannt, statt dass Minecraft einfach nicht startet. CurseForge-Modpacks behalten beim Import die Herkunft ihrer Mods und legen Resourcepacks und Shader in die richtigen Ordner, und der Export als Modpack nimmt auch Ordner wie kubejs und defaultconfigs mit.'
+      },
+      {
+        kind: 'improved',
+        text: 'Mehrere Installationen gleichzeitig bremsen sich nicht mehr gegenseitig aus: Die Einstellung für gleichzeitige Downloads gilt jetzt für den ganzen Launcher, und „Abbrechen“ greift sofort.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Dutzende weitere Fehler sind behoben, etwa fehlende Spielzeit nach einem Neustart des Launchers, die falsche Java-Version für Minecraft 26, unverständliche Meldungen ohne Internet oder hinter einer WLAN-Anmeldeseite und leere Profilbilder. Alle stehen einzeln auf der Statusseite.'
+      }
+    ]
+  },
+  {
     version: '1.0.20',
     date: '2026-09-29',
     headline: 'Englisch als zweite Sprache, ein Launcher, der beim Spielen zur Seite tritt, und über 130 Fehler behoben.',
