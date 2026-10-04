@@ -10,7 +10,7 @@ import type {
   SearchResultItem
 } from '@shared/types'
 import { refreshInstances, toast, toastError, useStore } from '../lib/store'
-import { formatNumber, formatRelative, plainText } from '../lib/format'
+import { formatNumber, formatRelative, plainText, releaseTypeLabel } from '../lib/format'
 import { clickable } from '../lib/a11y'
 import { EmptyState, Modal, Segmented } from '../components/ui'
 import { WorldPickerModal } from './WorldPickerModal'
@@ -825,7 +825,7 @@ function ProjectModal({
                               : 'danger'
                         }`}
                       >
-                        {version.releaseType}
+                        {releaseTypeLabel(version.releaseType)}
                       </span>
                       <span className="hint">{formatRelative(new Date(version.releasedAt).getTime())}</span>
                     </div>

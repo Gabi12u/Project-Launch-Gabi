@@ -924,7 +924,18 @@ function ContentTab({
         </button>
       </div>
 
-      {items.length === 0 ? (
+      {items.length === 0 && search.trim() ? (
+        <EmptyState
+          icon={<IconPackage size={26} />}
+          title={tr('Nichts gefunden', 'Nothing found')}
+          message={tr(`Nichts passt zu „${search.trim()}“.`, `Nothing matches "${search.trim()}".`)}
+          action={
+            <button className="btn" onClick={() => setSearch('')}>
+              {tr('Filter zurücksetzen', 'Reset filter')}
+            </button>
+          }
+        />
+      ) : items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
           title={tr('Nichts installiert', 'Nothing installed')}
@@ -995,7 +1006,7 @@ function ContentTab({
 
       <Confirm
         open={confirmUpdate !== null}
-        title={tr('Mod aktualisieren', 'Update mod')}
+        title={confirmUpdate ? tr(`„${confirmUpdate.name}“ aktualisieren?`, `Update "${confirmUpdate.name}"?`) : ''}
         message={
           confirmUpdate && (
             <>
@@ -1022,8 +1033,8 @@ function ContentTab({
         danger
         confirmLabel={tr('Entfernen', 'Remove')}
         message={tr(
-          'Die Datei wird dabei endgültig gelöscht. Wenn du den Mod nur vorübergehend nicht willst, schalte ihn stattdessen aus.',
-          'The file will be deleted permanently. If you only want to do without the mod for a while, turn it off instead.'
+          'Die Datei wird dabei endgültig gelöscht. Brauchst du es nur vorübergehend nicht, schalte es stattdessen aus.',
+          'The file will be deleted permanently. If you only want to do without it for a while, turn it off instead.'
         )}
         onConfirm={() => (confirmRemove ? runRemove(confirmRemove) : Promise.resolve())}
         onCancel={() => setConfirmRemove(null)}
@@ -1473,6 +1484,8 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         // front of what already streamed in, minus what it repeats.
         const cutoff = logClearedAt.get(instanceId) ?? 0
         history = history.filter((line) => line.time > cutoff)
+        // Queued lines into the state first, so the merge below sees them.
+        batcher.flushNow()
         setLines((streamed) => {
           const seen = new Set(history.map((line) => `${line.time}|${line.text}`))
           const fresh = streamed.filter((line) => !seen.has(`${line.time}|${line.text}`))
@@ -1541,7 +1554,12 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
         <button
           className="btn sm"
-          onClick={() => void navigator.clipboard.writeText(lines.map((l) => l.text).join('\n'))}
+          onClick={() =>
+            void navigator.clipboard
+              .writeText(lines.map((l) => l.text).join('\n'))
+              .then(() => toast('success', tr('Log kopiert', 'Log copied'), tr(`${lines.length} Zeilen`, `${lines.length} lines`)))
+              .catch((err: unknown) => toastError(err, tr('Kopieren fehlgeschlagen', 'Copying failed')))
+          }
         >
           {tr('Log kopieren', 'Copy log')}
         </button>

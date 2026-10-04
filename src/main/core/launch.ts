@@ -912,11 +912,21 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
                 `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
                 `Minecraft exited with code ${code}.${hint} You can find the log in the instance tab.`
               ),
-              { route: `/instances/${instanceId}?tab=logs` }
+              // Stays until clicked away: the launcher is often hidden while
+              // the game runs, and the notice was gone by the time it showed.
+              { route: `/instances/${instanceId}?tab=logs`, timeout: 0 }
             )
           })()
         } else if (getSettings().notifyOnGameExit) {
-          notify('info', tr(`${instance.name} beendet`, `${instance.name} closed`), tr(`Spielzeit: ${minutes} Minuten`, `Play time: ${minutes} minutes`))
+          // "1 Minuten" and "0 Minuten" read as broken, and two hours as
+          // "120 Minuten" are hard to take in at a glance.
+          const played =
+            minutes < 1
+              ? tr('unter einer Minute', 'less than a minute')
+              : minutes < 60
+                ? tr(`${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`, `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`)
+                : tr(`${Math.floor(minutes / 60)} Std. ${minutes % 60} Min.`, `${Math.floor(minutes / 60)} h ${minutes % 60} min`)
+          notify('info', tr(`${instance.name} beendet`, `${instance.name} closed`), tr(`Spielzeit: ${played}`, `Play time: ${played}`))
         }
       }
 

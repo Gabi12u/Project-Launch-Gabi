@@ -3452,6 +3452,70 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'brach auf mehrere Zeilen um.',
     state: 'fixing',
     since: '2026-10-01'
+  },
+  {
+    id: 'neoforge-installer-bei-jedem-start',
+    title: 'NeoForge-Instanzen richteten NeoForge vor jedem Start neu ein',
+    detail:
+      'Bei NeoForge für Minecraft 1.20.2 und neuer erkannte der Launcher die bereits installierte ' +
+      'NeoForge-Version nicht und ließ den Installer vor jedem Start, jeder Reparatur und jeder ' +
+      'Prüfung vor dem Start erneut laufen. Der Start dauerte dadurch deutlich länger, klappte ohne ' +
+      'Internet gar nicht und konnte ein zweites laufendes NeoForge-Spiel stören.',
+    state: 'fixing',
+    since: '2026-10-02'
+  },
+  {
+    id: 'forge-mods-gleicher-name-doppelt',
+    title: 'Zwei verschiedene Forge-Mods mit gleichem Namen galten als doppelt installiert',
+    detail:
+      'Seit 1.0.21 liest die Prüfung vor dem Start die Mod-ID aus den Dateien. Bei Forge und NeoForge ' +
+      'las sie dabei auch die Angaben zu Abhängigkeiten mit. Zwei verschiedene Mods mit gleichem Namen ' +
+      'galten dadurch als derselbe Mod, das Spiel ließ sich nicht starten, und „Ältere Datei ' +
+      'entfernen“ hätte einen der beiden gelöscht.',
+    state: 'fixing',
+    since: '2026-10-02'
+  },
+  {
+    id: 'update-sicherungen-mitgeloescht',
+    title: 'Sicherungen vor Mod-Updates wurden zusammen mit den automatischen Sicherungen gelöscht',
+    detail:
+      'Seit 1.0.21 zählen Sicherungen vor Mod-Updates zum selben Limit wie die automatischen ' +
+      'Sicherungen nach jeder Spielsitzung. Beim ersten neuen Sichern wurden dadurch ältere ' +
+      'Sicherungen vor Mod-Updates gelöscht, und nach einigen Spielsitzungen auch die neueste davon.',
+    state: 'fixing',
+    since: '2026-10-02'
+  },
+  {
+    id: 'alte-anmeldung-abgemeldet',
+    title: 'Konten aus sehr alten Versionen konnten nach einem Update abgemeldet werden',
+    detail:
+      'Wer mit Version 1.0.13 oder älter angemeldet war und direkt auf eine neuere Version ' +
+      'aktualisiert hat, konnte beim nächsten Spielstart abgemeldet werden. Die Anmeldung wurde mit ' +
+      'der neuen Anwendung von Launch Gabi erneuert, obwohl sie noch zur alten gehörte.',
+    state: 'fixing',
+    since: '2026-10-02'
+  },
+  {
+    id: 'texte-unuebersetzt-falsch',
+    title: 'Einige Beschriftungen standen auf Englisch oder waren falsch formuliert',
+    detail:
+      'Versionsarten wie „snapshot“, „release“ oder „beta“ wurden unübersetzt angezeigt, nach einem ' +
+      'Spiel hieß es „Spielzeit: 1 Minuten“, und bei einem Filter ohne Suchbegriff stand „Für „“ gibt ' +
+      'es keine passende Instanz“.',
+    state: 'fixing',
+    since: '2026-10-02'
+  },
+  {
+    id: 'bedienung-kleine-fehler',
+    title: 'Kleinere Bedienfehler: Meldungen verschwanden zu schnell, Löschen ohne Rückfrage, irreführende Hinweise',
+    detail:
+      'Wichtige Fehlermeldungen, etwa nach einem Absturz des Spiels, verschwanden nach wenigen ' +
+      'Sekunden. „Alle löschen“ bei den Fehlerberichten fragte nicht nach. Eine Suche ohne Treffer bei ' +
+      'den installierten Inhalten hieß „Nichts installiert“, Kopieren des Logs gab keine Rückmeldung, ' +
+      'eine neue Sicherung landete trotz Filter bei der ersten Instanz, Enter bestätigte keine ' +
+      'Rückfrage, und ein einzelnes Mod-Update ließ die Mod-Übersicht an den Anfang springen.',
+    state: 'fixing',
+    since: '2026-10-02'
   }
 ]
 

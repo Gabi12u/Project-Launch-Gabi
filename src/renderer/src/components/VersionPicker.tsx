@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { ContentItem, LoaderId, ProjectVersion } from '@shared/types'
 import { Modal } from './ui'
 import { IconCheck, IconDownload } from './Icons'
-import { formatBytes, formatRelative } from '../lib/format'
+import { formatBytes, formatRelative, releaseTypeLabel } from '../lib/format'
 import { toast, toastError } from '../lib/store'
 import { tr } from '@shared/i18n'
 
@@ -147,7 +147,7 @@ export function VersionPicker({
                       <div className="row gap-8">
                         <span className="content-name truncate">{version.versionNumber}</span>
                         {version.releaseType !== 'release' && (
-                          <span className="badge warn">{version.releaseType}</span>
+                          <span className="badge warn">{releaseTypeLabel(version.releaseType)}</span>
                         )}
                         {active && <span className="badge ok">{tr('Installiert', 'Installed')}</span>}
                         {!compatible && <span className="badge danger">{tr('Passt nicht', 'Does not fit')}</span>}

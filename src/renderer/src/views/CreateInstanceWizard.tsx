@@ -3,7 +3,7 @@ import type { LoaderId, LoaderVersion, MinecraftVersion } from '@shared/types'
 import { ACCENT_CHOICES, ICON_CHOICES, LOADERS } from '@shared/defaults'
 import { navigate, refreshInstances, toast, toastError, useStore } from '../lib/store'
 import { useMemorySliderMax } from '../lib/hooks'
-import { formatDate, formatMemory, pluralise } from '../lib/format'
+import { formatDate, formatMemory, pluralise, releaseTypeLabel } from '../lib/format'
 import { accentName } from '../lib/accents'
 import { Modal } from '../components/ui'
 import { IconCheck, IconSearch, IconSparkle,
@@ -29,9 +29,13 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
 
   useEffect(() => {
     let cancelled = false
-    void window.gabi.app.info().then((info) => {
-      if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
-    })
+    void window.gabi.app
+      .info()
+      .then((info) => {
+        if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
+      })
+      // Without the real RAM size the slider keeps its fallback ceiling.
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }
@@ -353,7 +357,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 >
                   <span className="row gap-8">
                     <span style={{ fontWeight: 650, fontSize: 13.5 }}>{version.id}</span>
-                    {version.type !== 'release' && <span className="badge">{version.type}</span>}
+                    {version.type !== 'release' && <span className="badge">{releaseTypeLabel(version.type)}</span>}
                   </span>
                   <span className="hint">{formatDate(version.releaseTime)}</span>
                 </button>
@@ -469,7 +473,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 {selectedLoaderVersions.map((version) => (
                   <option key={version.version} value={version.version}>
                     {version.version}
-                    {version.recommended ? tr(' · empfohlen', ' · recommended') : version.stable ? tr(' · stabil', ' · stable') : ' · beta'}
+                    {version.recommended ? tr(' · empfohlen', ' · recommended') : version.stable ? tr(' · stabil', ' · stable') : tr(' · Beta', ' · beta')}
                   </option>
                 ))}
               </select>

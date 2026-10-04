@@ -24,13 +24,15 @@ const gameLogInstanceId = params.get('gameLog')
 // failure during loading blanked it the same way.
 const root = (
   <StrictMode>
-    <ErrorBoundary variant="app">
-      {gameLogInstanceId ? (
+    {gameLogInstanceId ? (
+      <ErrorBoundary variant="logWindow">
         <GameLogWindow instanceId={gameLogInstanceId} instanceName={params.get('name') ?? gameLogInstanceId} />
-      ) : (
+      </ErrorBoundary>
+    ) : (
+      <ErrorBoundary variant="app">
         <App />
-      )}
-    </ErrorBoundary>
+      </ErrorBoundary>
+    )}
   </StrictMode>
 )
 

@@ -1,6 +1,7 @@
 import { safeStorage } from 'electron'
 import { randomUUID, createHash } from 'node:crypto'
 import type { Account, DeviceCodePrompt } from '@shared/types'
+import { LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import { EVENTS } from '@shared/ipc'
 import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
@@ -872,18 +873,39 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // last changed (or before "Einstellungen zurücksetzen" put it back to the
   // default) would otherwise send a perfectly valid token to the wrong place
   // and fail every time with nothing but an unexplained HTTP 400.
-  const clientId = account.issuerClientId ?? getSettings().microsoftClientId
-  let token: TokenResponse
-  try {
-    token = await fetchJson<TokenResponse>(
-      endpointsFor(clientId).token,
+  let clientId = account.issuerClientId ?? getSettings().microsoftClientId
+  const requestToken = (id: string): Promise<TokenResponse> =>
+    fetchJson<TokenResponse>(
+      endpointsFor(id).token,
       form({
-        client_id: clientId,
+        client_id: id,
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
         scope: SCOPE
       })
     )
+  let token: TokenResponse
+  try {
+    try {
+      token = await requestToken(clientId)
+    } catch (firstErr) {
+      // An account without `issuerClientId` was signed in before 1.0.14, when
+      // the official launcher's id was the only one in use. The settings have
+      // moved on to our own registration since, and the two reject each
+      // other's tokens, so a user updating straight from such a version was
+      // signed out. One retry under the old id keeps that sign-in.
+      if (
+        account.issuerClientId ||
+        clientId === LEGACY_MICROSOFT_CLIENT_ID ||
+        !(firstErr instanceof HttpError) ||
+        firstErr.status >= 500
+      ) {
+        throw firstErr
+      }
+      token = await requestToken(LEGACY_MICROSOFT_CLIENT_ID)
+      clientId = LEGACY_MICROSOFT_CLIENT_ID
+      logger.info(`Anmeldung von ${account.username} unter der alten Anwendungs-ID erneuert`)
+    }
   } catch (err) {
     // Microsoft's raw answer (long, English, full of trace ids) used to reach
     // the launch status as it was.

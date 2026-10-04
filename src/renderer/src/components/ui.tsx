@@ -5,8 +5,7 @@ import {
   useState,
   type JSX,
   type MouseEvent,
-  type ReactNode
-} from 'react'
+  type ReactNode, useId } from 'react'
 import { createPortal } from 'react-dom'
 import { IconCheck, IconX } from './Icons'
 import { tr } from '@shared/i18n'
@@ -109,6 +108,7 @@ export function Modal({
 }: ModalProps): JSX.Element | null {
   const isTop = useOverlayId(open)
   const dialogRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
 
   // Moves focus into the dialog when it opens and back to whatever had it
   // before once it closes. Keyboard and screen reader users otherwise stayed
@@ -150,11 +150,12 @@ export function Modal({
         className={`modal ${width === 'normal' ? '' : width}`}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
       >
         <div className="modal-head">
           <div className="col gap-4">
-            <div className="card-title">{title}</div>
+            <div className="card-title" id={titleId}>{title}</div>
             {subtitle && <div className="hint">{subtitle}</div>}
           </div>
           <button className="btn ghost icon sm" onClick={onClose} disabled={busy} aria-label={tr('Schließen', 'Close')}>
@@ -213,10 +214,12 @@ export function Confirm({
       busy={busy}
       footer={
         <>
-          <button className="btn ghost" onClick={onCancel} disabled={busy}>
+          {/* Focus starts on a button, so Enter answers the dialog: on the
+              safe choice for anything destructive, on confirm otherwise. */}
+          <button className="btn ghost" onClick={onCancel} disabled={busy} autoFocus={danger}>
             {cancelLabel}
           </button>
-          <button className={`btn ${danger ? 'danger' : 'primary'}`} onClick={run} disabled={busy}>
+          <button className={`btn ${danger ? 'danger' : 'primary'}`} onClick={run} disabled={busy} autoFocus={!danger}>
             {busy && <span className="spinner" />}
             {confirmLabel}
           </button>

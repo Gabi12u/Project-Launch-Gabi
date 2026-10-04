@@ -44,7 +44,7 @@ export function logLineKey(line: LogLine): number {
 export function createLineBatcher(
   apply: (lines: LogLine[]) => void,
   delayMs = 250
-): { push: (lines: LogLine[]) => void; dispose: () => void } {
+): { push: (lines: LogLine[]) => void; flushNow: () => void; dispose: () => void } {
   let queued: LogLine[] = []
   let timer: ReturnType<typeof setTimeout> | null = null
   let lastFlush = 0
@@ -67,6 +67,15 @@ export function createLineBatcher(
       const wait = delayMs - (Date.now() - lastFlush)
       if (wait <= 0) flush()
       else timer = setTimeout(flush, wait)
+    },
+    /**
+     * Hands over what is queued right now. Called before the history merge:
+     * lines still waiting here were not in the state the merge compares
+     * against, so they arrived again afterwards and showed twice.
+     */
+    flushNow() {
+      if (timer) clearTimeout(timer)
+      flush()
     },
     dispose() {
       if (timer) clearTimeout(timer)

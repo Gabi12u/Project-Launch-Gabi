@@ -47,6 +47,8 @@ export function GameLogWindow({
         // The subscription below is already live by the time this resolves,
         // so lines can arrive while the history is still in flight. Replacing
         // the array outright would drop them.
+        // Queued lines into the state first, so the merge below sees them.
+        batcher.flushNow()
         setLines((streamed) => {
           // A multiset, not a Set: two genuinely identical lines (same time and
           // text) can both be real output, and a plain Set would drop the

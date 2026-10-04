@@ -778,7 +778,7 @@
      several times a second under a flooding game, laying out the ones nobody
      can see was most of the work. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 17px;
+  contain-intrinsic-size: auto 21px;
 }
 
 .log-time {

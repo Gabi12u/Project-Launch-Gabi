@@ -251,7 +251,9 @@ export function promptToast(
 
 export function pushNotification(notification: AppNotification): void {
   setState((current) => ({ toasts: appendToast(current.toasts, notification) }))
-  const timeout = notification.timeout ?? 6500
+  // Errors stay longer: they usually say what to do next, and 6.5 seconds
+  // were gone before most people had read them.
+  const timeout = notification.timeout ?? (notification.kind === 'error' ? 12000 : 6500)
   if (timeout > 0) setTimeout(() => dismissToast(notification.id), timeout)
 }
 

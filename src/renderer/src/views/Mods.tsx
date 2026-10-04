@@ -331,7 +331,9 @@ export function ModsView(): JSX.Element {
             </button>
           </div>
 
-          {loading ? (
+          {/* Skeletons only for the first load. Each single update reloads the
+              list, and swapping it for skeletons lost the scroll position. */}
+          {loading && rows.length === 0 ? (
             <div className="col gap-8">
               {Array.from({ length: 6 }, (_, i) => (
                 <div key={i} className="skeleton" style={{ height: 68 }} />

@@ -12,7 +12,7 @@ interface Props {
    * else as the last resort and only offers a full reload, since at that
    * point the surrounding chrome itself is what broke.
    */
-  variant: 'view' | 'app'
+  variant: 'view' | 'app' | 'logWindow'
   /** Clears a caught error whenever this changes, typically the route. */
   resetKey?: string
 }
@@ -100,7 +100,18 @@ export class ErrorBoundary extends Component<Props, State> {
           {error.message}
         </p>
         <div className="row gap-8">
-          {full ? (
+          {this.props.variant === 'logWindow' ? (
+            // The log window has no frame of its own; its title bar with the
+            // close button is part of what just failed to render.
+            <>
+              <button className="btn" onClick={() => window.location.reload()}>
+                <IconRefresh size={14} /> {tr('Neu laden', 'Reload')}
+              </button>
+              <button className="btn primary" onClick={() => window.gabi.window.close()}>
+                {tr('Fenster schließen', 'Close window')}
+              </button>
+            </>
+          ) : full ? (
             <button className="btn primary" onClick={() => window.location.reload()}>
               <IconRefresh size={14} /> {tr('Launcher neu laden', 'Reload launcher')}
             </button>

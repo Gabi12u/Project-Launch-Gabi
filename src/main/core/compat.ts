@@ -124,8 +124,32 @@ async function declaredModIds(instanceId: string, item: ContentItem, loader: Loa
     for (const entry of ['META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
       const text = await readEntryText(file, entry)
       if (!text) continue
-      for (const match of text.matchAll(/^\s*modId\s*=\s*["']([^"']+)["']/gm)) ids.push(match[1])
+      ids.push(...modsTomlIds(text))
     }
+  }
+  return ids
+}
+
+/**
+ * The mod ids a mods.toml declares, from its `[[mods]]` tables only.
+ *
+ * Every `[[dependencies.<mod>]]` table carries a `modId` line as well, naming
+ * what the mod needs ("minecraft", "forge", "neoforge"). Read along with the
+ * rest, those made two unrelated mods of the same name share an id, so they
+ * counted as one mod installed twice and the launch was blocked.
+ */
+function modsTomlIds(text: string): string[] {
+  const ids: string[] = []
+  let inMods = false
+  for (const line of text.split(/\r?\n/)) {
+    const header = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line)
+    if (header) {
+      inMods = header[1] === 'mods'
+      continue
+    }
+    if (!inMods) continue
+    const id = /^\s*modId\s*=\s*["']([^"']+)["']/.exec(line)
+    if (id) ids.push(id[1])
   }
   return ids
 }

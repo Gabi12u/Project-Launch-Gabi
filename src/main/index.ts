@@ -424,7 +424,10 @@ function bootstrap(): void {
           tr(
             `Nach einem Absturz ließ sich eine Wiederherstellung von „${name}“ nicht vollständig zurücknehmen. Die gesicherten Dateien liegen noch in ${staging}.`,
             `After a crash, a restore of "${name}" could not be fully undone. The saved files are still in ${staging}.`
-          )
+          ),
+          // Names the folder the user has to rescue files from; it must not
+          // disappear before they had a chance to note it.
+          { timeout: 0 }
         )
       }
 

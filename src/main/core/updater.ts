@@ -243,7 +243,9 @@ export function initUpdater(): void {
     notify(
       'success',
       tr(`Update auf ${info.version} bereit`, `Update to ${info.version} ready`),
-      tr('Die neue Version wird beim nächsten Start installiert. Jetzt neu starten?', 'The new version is installed on the next start. Restart now?'),
+      // It asked "Jetzt neu starten?" with no button to answer; clicking leads
+      // to the update settings, where the restart is.
+      tr('Die neue Version wird beim nächsten Start installiert. Klicke hier, um sofort neu zu starten.', 'The new version is installed on the next start. Click here to restart right away.'),
       // No timeout. This announced itself once, faded after a few seconds, and
       // never came back: the periodic check skips itself while an update is
       // already waiting, so someone who was not looking at that moment only

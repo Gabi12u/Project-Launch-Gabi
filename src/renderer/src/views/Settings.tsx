@@ -1111,8 +1111,8 @@ function RecordingPanel(): JSX.Element {
         <ul className="hint bullet-list">
           <li>
             {tr(
-              'Das Launcher-Fenster muss offen bleiben. Steht bei der Instanz das Verhalten auf Schließen, kann nicht aufgenommen werden.',
-              'The launcher window has to stay open. If the instance is set to close the launcher, recording is not possible.'
+              'Der Launcher muss laufen, solange du aufnimmst. Wird er beendet, endet auch die Aufnahme.',
+              'The launcher has to keep running while you record. If it is quit, the recording ends too.'
             )}
           </li>
           <li>
@@ -1199,6 +1199,7 @@ function ReportsPanel(): JSX.Element {
   const [reports, setReports] = useState<ErrorReport[] | null>(null)
   const [configured, setConfigured] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   const load = async (): Promise<void> => {
     const [list, status] = await Promise.all([
@@ -1311,18 +1312,35 @@ function ReportsPanel(): JSX.Element {
           <button
             className="btn ghost danger"
             disabled={!reports || reports.length === 0}
-            onClick={() => {
-              void window.gabi.reports
-                .clear()
-                .then(load)
-                .then(() => toast('success', tr('Fehlerberichte gelöscht', 'Error reports deleted')))
-                .catch((err: unknown) => toastError(err, tr('Löschen fehlgeschlagen', 'Deleting failed')))
-            }}
+            // Asked first, like every other deletion in the launcher: these
+            // reports are gone for good once cleared.
+            onClick={() => setConfirmClear(true)}
           >
             <IconTrash size={14} />
             {tr('Alle löschen', 'Delete all')}
           </button>
         </div>
+        <Confirm
+          open={confirmClear}
+          danger
+          title={tr('Alle Fehlerberichte löschen?', 'Delete all error reports?')}
+          confirmLabel={tr('Alle löschen', 'Delete all')}
+          message={tr(
+            'Die gespeicherten Fehlerberichte werden endgültig entfernt.',
+            'The saved error reports are removed for good.'
+          )}
+          onConfirm={async () => {
+            setConfirmClear(false)
+            try {
+              await window.gabi.reports.clear()
+              await load()
+              toast('success', tr('Fehlerberichte gelöscht', 'Error reports deleted'))
+            } catch (err) {
+              toastError(err, tr('Löschen fehlgeschlagen', 'Deleting failed'))
+            }
+          }}
+          onCancel={() => setConfirmClear(false)}
+        />
       </section>
     </>
   )

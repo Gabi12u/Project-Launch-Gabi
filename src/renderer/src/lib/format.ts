@@ -140,6 +140,30 @@ export function greeting(): string {
   return tr('Guten Abend', 'Good evening')
 }
 
+/**
+ * A version's or a release's type as a label. These came straight from the
+ * APIs ("snapshot", "old_beta", "release") and stood in English in the German
+ * interface.
+ */
+export function releaseTypeLabel(type: string): string {
+  switch (type) {
+    case 'release':
+      return tr('Stabil', 'Release')
+    case 'beta':
+      return 'Beta'
+    case 'alpha':
+      return 'Alpha'
+    case 'snapshot':
+      return 'Snapshot'
+    case 'old_beta':
+      return tr('Alte Beta', 'Old beta')
+    case 'old_alpha':
+      return tr('Alte Alpha', 'Old alpha')
+    default:
+      return type
+  }
+}
+
 export function pluralise(count: number, one: string, many: string): string {
   return count === 1 ? one : many
 }

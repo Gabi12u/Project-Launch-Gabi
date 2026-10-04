@@ -163,7 +163,11 @@ export function InstancesView(): JSX.Element {
         <EmptyState
           icon={<IconSearch size={26} />}
           title={tr('Nichts gefunden', 'Nothing found')}
-          message={tr(`Für „${search}“ gibt es keine passende Instanz.`, `There is no matching instance for "${search}".`)}
+          message={
+            search.trim()
+              ? tr(`Für „${search}“ gibt es keine passende Instanz.`, `There is no matching instance for "${search}".`)
+              : tr('Für diesen Filter gibt es keine Instanz.', 'No instance matches this filter.')
+          }
           action={
             <button className="btn" onClick={() => { setSearch(''); setLoader('all') }}>
               {tr('Filter zurücksetzen', 'Reset filter')}

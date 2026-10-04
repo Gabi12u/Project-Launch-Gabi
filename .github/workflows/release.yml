@@ -130,6 +130,14 @@ jobs:
           # the Actions tab targets the same release a tag push would.
           TAG="v$(node -p "require('./package.json').version")"
 
+          # Plain X.Y.Z only. A "-beta" suffix sorts above the final release
+          # in the "latest" check below and would have reached every user
+          # through the updater without being marked as a prerelease.
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG ist keine einfache Version der Form X.Y.Z"
+            exit 1
+          fi
+
           # A pushed tag that does not match package.json would publish the
           # installers under a different version than they report.
           if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$TAG" ]; then

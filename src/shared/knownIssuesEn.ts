@@ -2177,6 +2177,52 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'At the normal window size the Install button sat next to the text of the result cards and left ' +
       'the name hardly any room. Names and authors ended after a few letters, and the date wrapped ' +
       'over several lines.'
+  },
+  'neoforge-installer-bei-jedem-start': {
+    title: 'NeoForge instances set up NeoForge again before every start',
+    detail:
+      'For NeoForge on Minecraft 1.20.2 and newer the launcher did not recognise the NeoForge version ' +
+      'that was already installed and ran the installer again before every start, every repair and ' +
+      'every pre-launch check. Starting took much longer, did not work at all without internet and ' +
+      'could disturb a second NeoForge game that was running.'
+  },
+  'forge-mods-gleicher-name-doppelt': {
+    title: 'Two different Forge mods with the same name counted as installed twice',
+    detail:
+      'Since 1.0.21 the pre-launch check reads the mod ID from the files. For Forge and NeoForge it ' +
+      'also read the dependency entries. Two different mods with the same name therefore counted as ' +
+      'the same mod, the game could not be started, and "Remove older file" would have deleted one of ' +
+      'them.'
+  },
+  'update-sicherungen-mitgeloescht': {
+    title: 'Backups before mod updates were deleted along with the automatic backups',
+    detail:
+      'Since 1.0.21 backups taken before mod updates count towards the same limit as the automatic ' +
+      'backups after every play session. The first new backup therefore deleted older backups taken ' +
+      'before mod updates, and after a few play sessions the newest one as well.'
+  },
+  'alte-anmeldung-abgemeldet': {
+    title: 'Accounts from very old versions could be signed out after an update',
+    detail:
+      'Anyone signed in with version 1.0.13 or older who updated straight to a newer version could be ' +
+      'signed out at the next game start. The sign-in was renewed with the new Launch Gabi ' +
+      'application, although it still belonged to the old one.'
+  },
+  'texte-unuebersetzt-falsch': {
+    title: 'Some labels showed in English or were worded wrongly',
+    detail:
+      'Version types such as "snapshot", "release" or "beta" were shown untranslated, after a game it ' +
+      'said "Play time: 1 minutes", and with a filter but no search term it said "There is no matching ' +
+      'instance for """.'
+  },
+  'bedienung-kleine-fehler': {
+    title: 'Minor usability faults: notices vanished too fast, deleting without asking, misleading hints',
+    detail:
+      'Important error notices, for example after the game crashed, vanished after a few seconds. ' +
+      '"Delete all" for error reports did not ask first. A search without results among installed ' +
+      'content said "Nothing installed", copying the log gave no feedback, a new backup went to the ' +
+      'first instance despite a filter, Enter did not confirm a question, and a single mod update made ' +
+      'the mod overview jump back to the top.'
   }
 }
 

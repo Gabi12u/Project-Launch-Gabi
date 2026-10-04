@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { DEFAULT_INSTANCE_SETTINGS } from '@shared/defaults'
@@ -528,10 +528,26 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
     // resolves a needle before calling this, so the check never actually
     // applied. A resolved loader build number is not guaranteed unique across
     // Minecraft versions, which is what this line is meant to guard against.
-    return lower.includes(instance.mcVersion.toLowerCase())
+    if (lower.includes(instance.mcVersion.toLowerCase())) return true
+    // Modern NeoForge names its version "neoforge-21.1.172", with no Minecraft
+    // version in it at all. Requiring one meant an installed NeoForge was
+    // never found, and the whole installer ran again before every start,
+    // repair and pre-launch check. The version file says which Minecraft
+    // version it belongs to; it is only written once an install completed.
+    return inheritsFrom(dir, name) === instance.mcVersion
   })
 
   return candidates.sort((a, b) => b.length - a.length)[0] ?? null
+}
+
+/** The `inheritsFrom` of an installed version, or null if it cannot be read. */
+function inheritsFrom(versionsDir: string, versionId: string): string | null {
+  try {
+    const json = JSON.parse(readFileSync(join(versionsDir, versionId, `${versionId}.json`), 'utf8')) as { inheritsFrom?: unknown }
+    return typeof json.inheritsFrom === 'string' ? json.inheritsFrom : null
+  } catch {
+    return null
+  }
 }
 
 /* ------------------------------------------------------------------ *

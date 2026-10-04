@@ -32,9 +32,13 @@ export function Onboarding(): JSX.Element {
 
   useEffect(() => {
     let cancelled = false
-    void window.gabi.app.info().then((info) => {
-      if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
-    })
+    void window.gabi.app
+      .info()
+      .then((info) => {
+        if (!cancelled && info.systemMemoryMb) setMemoryKnown(true)
+      })
+      // Without the real RAM size the slider keeps its fallback ceiling.
+      .catch(() => undefined)
     return () => {
       cancelled = true
     }

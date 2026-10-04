@@ -425,10 +425,14 @@ function pruneAutomatic(instanceId: string): void {
   const entries = readIndex(instanceId)
   // Backups taken before mod updates are just as automatic from the user's
   // side, and were never cleaned up at all, piling up with every update run.
-  const automatic = entries
-    .filter((e) => e.reason === 'automatic' || e.reason === 'pre-update')
-    .sort((a, b) => b.createdAt - a.createdAt)
-  const excess = automatic.slice(keep).filter((e) => !inUse.has(e.id))
+  // Each kind keeps its own count, though: sharing one let the backups taken
+  // after every play session push out the one meant for undoing a bad mod
+  // update within a handful of sessions.
+  const newestFirst = (reason: BackupEntry['reason']): BackupEntry[] =>
+    entries.filter((e) => e.reason === reason).sort((a, b) => b.createdAt - a.createdAt)
+  const excess = [...newestFirst('automatic').slice(keep), ...newestFirst('pre-update').slice(keep)].filter(
+    (e) => !inUse.has(e.id)
+  )
 
   if (excess.length === 0) return
 

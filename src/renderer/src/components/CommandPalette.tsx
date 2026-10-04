@@ -204,6 +204,12 @@ export function CommandPalette(): JSX.Element | null {
     if (!paletteOpen) return
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Tab' && isTop() && paletteRef.current) trapTab(event, paletteRef.current)
+      // Escape was only heard by the input, so after a Tab or a click on a
+      // result row it did nothing. The input still handles its own.
+      else if (event.key === 'Escape' && isTop() && event.target !== inputRef.current) {
+        event.preventDefault()
+        close()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -89,7 +89,7 @@ export function BackupsView(): JSX.Element {
           <button
             className="btn primary"
             disabled={instances.length === 0}
-            onClick={() => setCreateFor(instances[0]?.id ?? null)}
+            onClick={() => setCreateFor(filter !== 'all' ? filter : (instances[0]?.id ?? null))}
           >
             <IconSave size={16} />
             {tr('Sicherung erstellen', 'Create backup')}
@@ -131,7 +131,7 @@ export function BackupsView(): JSX.Element {
           )}
           action={
             instances.length > 0 ? (
-              <button className="btn primary" onClick={() => setCreateFor(instances[0].id)}>
+              <button className="btn primary" onClick={() => setCreateFor(filter !== 'all' ? filter : instances[0].id)}>
                 <IconSave size={16} />
                 {tr('Erste Sicherung erstellen', 'Create first backup')}
               </button>
