@@ -25,7 +25,7 @@ export function writeJsonAtomic(file: string, data: unknown): void {
     // every other account on that machine. Windows has no equivalent
     // permission bit, so this is a no-op there, not a regression.
     writeFileSync(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 })
-    renameSync(tmp, file)
+    renameWithRetry(tmp, file)
   } catch (err) {
     try {
       if (existsSync(tmp)) unlinkSync(tmp)
@@ -36,7 +36,39 @@ export function writeJsonAtomic(file: string, data: unknown): void {
   }
 }
 
-/** Blocks the main thread briefly; only used between a few read retries. */
+/**
+ * Replaces `file` with `tmp`, waiting out a short lock.
+ *
+ * On Windows a virus scanner or a sync client like OneDrive opens a freshly
+ * written file for a moment, and a rename onto it fails with EPERM, EBUSY or
+ * EACCES until it lets go. Giving up on the first try aborted saving an
+ * instance or the settings with that raw error. Five tries over most of a
+ * second cover the usual hold; a lock that lasts longer is a real problem
+ * and is reported as one.
+ */
+function renameWithRetry(tmp: string, file: string): void {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(tmp, file)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code
+      const locked = code === 'EPERM' || code === 'EBUSY' || code === 'EACCES'
+      if (!locked) throw err
+      if (attempt >= 4) {
+        throw new Error(
+          tr(
+            `${basename(file)} konnte nicht gespeichert werden, weil ein anderes Programm die Datei festhält (zum Beispiel ein Virenscanner oder OneDrive). Versuche es gleich noch einmal.`,
+            `${basename(file)} could not be saved because another program is holding the file (a virus scanner or OneDrive, for example). Try again in a moment.`
+          )
+        )
+      }
+      sleepSync(50 * 2 ** attempt)
+    }
+  }
+}
+
+/** Blocks the main thread briefly; only used between a few read and rename retries. */
 function sleepSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 }

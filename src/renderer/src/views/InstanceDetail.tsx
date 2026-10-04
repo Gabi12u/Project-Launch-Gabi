@@ -360,7 +360,7 @@ export function InstanceDetailView({
                 </span>
                 {status.progress !== null && status.phase !== 'running' && (
                   <div style={{ width: '100%' }}>
-                    <ProgressBar value={status.progress} />
+                    <ProgressBar value={status.progress} label={status.detail} />
                   </div>
                 )}
               </div>
@@ -435,10 +435,12 @@ export function InstanceDetailView({
       </div>
 
       {/* --- Tabs ---------------------------------------------------- */}
-      <div className="tabs">
+      <div className="tabs" role="tablist">
         {TABS.map((entry) => (
           <button
             key={entry.id}
+            role="tab"
+            aria-selected={tab === entry.id}
             className={`tab ${tab === entry.id ? 'active' : ''}`}
             onClick={() => {
               // Leaving the settings tab unmounts the panel below, which would
@@ -619,7 +621,7 @@ function OverviewTab({
                   ? tr('verwaltet', 'managed')
                   : tr('System', 'system')
                 : checkFailed && !preflight
-                  ? tr('Neu prüfen oben rechts', 'Use Check again above')
+                  ? tr('Neu prüfen oben rechts', 'Use Check again at the top right')
                   : tr('bei Bedarf', 'when needed')
             }
           />
@@ -731,7 +733,7 @@ type ContentSortKey = 'name' | 'added' | 'provider'
 const CONTENT_SORT_OPTIONS: { value: ContentSortKey; label: string }[] = [
   { value: 'name', label: 'Name' },
   { value: 'added', label: tr('Zuletzt hinzugefügt', 'Recently added') },
-  { value: 'provider', label: tr('Anbieter', 'Source') }
+  { value: 'provider', label: tr('Anbieter', 'Provider') }
 ]
 
 function ContentTab({
@@ -1034,7 +1036,7 @@ function ContentTab({
         confirmLabel={tr('Entfernen', 'Remove')}
         message={tr(
           'Die Datei wird dabei endgültig gelöscht. Brauchst du es nur vorübergehend nicht, schalte es stattdessen aus.',
-          'The file will be deleted permanently. If you only want to do without it for a while, turn it off instead.'
+          'The file will be deleted permanently. If you only want it out of the way for now, turn it off instead.'
         )}
         onConfirm={() => (confirmRemove ? runRemove(confirmRemove) : Promise.resolve())}
         onCancel={() => setConfirmRemove(null)}

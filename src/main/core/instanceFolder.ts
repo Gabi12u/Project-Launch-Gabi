@@ -963,7 +963,10 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
   if (gameDir && counts.mods > 0 && detected?.loader === 'vanilla') {
     findings.push({
       level: 'warn',
-      title: tr(`${counts.mods} Mods gefunden, aber kein Mod-Loader erkannt`, `${counts.mods} mods found, but no mod loader recognized`),
+      title: tr(
+        `${counts.mods} ${counts.mods === 1 ? 'Mod' : 'Mods'} gefunden, aber kein Mod-Loader erkannt`,
+        `${counts.mods} ${counts.mods === 1 ? 'mod' : 'mods'} found, but no mod loader recognized`
+      ),
       detail: tr('Ohne Loader startet Minecraft die Mods nicht. Der Loader lässt sich nachträglich setzen.', 'Without a loader Minecraft does not load the mods. The loader can be set afterwards.')
     })
   }
@@ -972,7 +975,7 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
     findings.push({
       level: 'blocker',
       title: tr('In diesem Ordner wurden keine Mods, Welten oder Konfigurationen gefunden', 'No mods, worlds or configs were found in this folder'),
-      detail: tr('Es gäbe nichts zu übernehmen.', 'There would be nothing to take over.')
+      detail: tr('Es gäbe nichts zu übernehmen.', 'There would be nothing to import.')
     })
   }
 
@@ -1137,28 +1140,28 @@ async function copyGameFiles(
 // Getters, since this module loads before the language is set.
 const FLAVOUR_LABELS: Record<SourceFlavour, string> = {
   get prism() {
-    return tr('Aus Prism/MultiMC übernommen', 'Taken over from Prism/MultiMC')
+    return tr('Aus Prism/MultiMC übernommen', 'Imported from Prism/MultiMC')
   },
   get launchgabi() {
-    return tr('Aus einem Launch-Gabi-Ordner übernommen', 'Taken over from a Launch Gabi folder')
+    return tr('Aus einem Launch-Gabi-Ordner übernommen', 'Imported from a Launch Gabi folder')
   },
   get curseforge() {
-    return tr('Aus der CurseForge-App übernommen', 'Taken over from the CurseForge app')
+    return tr('Aus der CurseForge-App übernommen', 'Imported from the CurseForge app')
   },
   get gdlauncher() {
-    return tr('Aus GDLauncher übernommen', 'Taken over from GDLauncher')
+    return tr('Aus GDLauncher übernommen', 'Imported from GDLauncher')
   },
   get 'modrinth-app'() {
-    return tr('Aus der Modrinth-App übernommen', 'Taken over from the Modrinth App')
+    return tr('Aus der Modrinth-App übernommen', 'Imported from the Modrinth App')
   },
   get lunar() {
-    return tr('Aus Lunar Client übernommen', 'Taken over from Lunar Client')
+    return tr('Aus Lunar Client übernommen', 'Imported from Lunar Client')
   },
   get feather() {
-    return tr('Aus Feather Client übernommen', 'Taken over from Feather Client')
+    return tr('Aus Feather Client übernommen', 'Imported from Feather Client')
   },
   get minecraft() {
-    return tr('Aus einem Minecraft-Ordner übernommen', 'Taken over from a Minecraft folder')
+    return tr('Aus einem Minecraft-Ordner übernommen', 'Imported from a Minecraft folder')
   },
 }
 

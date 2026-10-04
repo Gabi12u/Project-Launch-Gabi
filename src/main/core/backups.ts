@@ -815,7 +815,10 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
             // lock, and the public entry point would wait on itself forever.
             await createBackupUnlocked(instanceId, {
               name: tr('Automatisch vor Wiederherstellung', 'Automatic, before restore'),
-              reason: 'automatic',
+              // Its own kind, outside the automatic cleanup: as one of the
+              // backups after every play session it was deleted within a few
+              // sessions, and the restore could no longer be undone.
+              reason: 'pre-restore',
               includes
             })
           } catch (err) {

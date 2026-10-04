@@ -331,7 +331,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit, retries = 3)
         throw new Error(
           tr(
             `${hostOf(url)} hat keine lesbare Antwort geschickt. Falls du in einem WLAN mit Anmeldeseite bist, etwa im Hotel oder in der Schule, melde dich dort zuerst an.`,
-            `${hostOf(url)} did not send a readable answer. If you are on a Wi-Fi with a sign-in page, for example in a hotel or at school, sign in there first.`
+            `${hostOf(url)} did not send a readable response. If you are on a Wi-Fi network with a sign-in page, for example in a hotel or at school, sign in there first.`
           ),
           { cause: parseErr }
         )

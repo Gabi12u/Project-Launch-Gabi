@@ -19,6 +19,7 @@ import {
 } from '../paths'
 import { getSettings } from '../store'
 import { log } from '../logger'
+import { renamePackSelection } from './packSelection'
 import { notify } from '../events'
 import { Task, withTask } from '../tasks'
 import { downloadFile, HttpError, sha1File } from './net'
@@ -213,7 +214,7 @@ async function installContentOnce(
     const all = await getVersions(provider, projectId)
     version = all.find((v) => v.versionId === options.versionId) ?? null
   } else {
-    version = await bestVersionFor(provider, projectId, instance.mcVersion, instance.loader)
+    version = await bestVersionFor(provider, projectId, instance.mcVersion, instance.loader, type)
   }
 
   if (!version) {
@@ -414,7 +415,7 @@ async function installContentOnce(
           tr(`${project.name}: Abhängigkeit fehlt`, `${project.name}: dependency missing`),
           tr(
             'Eine benötigte Erweiterung ist beim Anbieter nicht mehr erhältlich. Ohne sie startet das Spiel unter Umständen nicht.',
-            'A required add-on is no longer available from the provider. The game may not start without it.'
+            'A required dependency is no longer available from the provider. The game may not start without it.'
           )
         )
         continue
@@ -459,7 +460,7 @@ async function installContentOnce(
           tr(`${project.name}: Abhängigkeit fehlt`, `${project.name}: dependency missing`),
           tr(
             'Eine benötigte Erweiterung konnte nicht geladen werden. Ohne sie startet das Spiel unter Umständen nicht.',
-            'A required add-on could not be downloaded. The game may not start without it.'
+            'A required dependency could not be downloaded. The game may not start without it.'
           )
         )
       }
@@ -657,7 +658,8 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
         item.provider as 'modrinth' | 'curseforge',
         item.projectId as string,
         instance.mcVersion,
-        instance.loader
+        instance.loader,
+        item.type
       )
 
       if (candidate && isNewer(candidate, item)) {
@@ -746,7 +748,7 @@ async function installNewDependencies(instanceId: string, item: ContentItem): Pr
         tr(`${item.name}: Abhängigkeit fehlt`, `${item.name}: dependency missing`),
         tr(
           'Eine benötigte Erweiterung konnte nicht geladen werden. Ohne sie startet das Spiel unter Umständen nicht.',
-          'A required add-on could not be downloaded. The game may not start without it.'
+          'A required dependency could not be downloaded. The game may not start without it.'
         )
       )
     }
@@ -791,7 +793,25 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   // toggled meanwhile. Working from the snapshot taken before it would undo
   // that toggle and delete a file that has since been renamed.
   const current = getInstance(instanceId).content.find((c) => c.id === contentId)
-  if (!current) return null
+
+  // The new file is in place before the record says so. If a later step
+  // throws, it has to go again, or the next folder scan finds two versions
+  // of the same mod and the game refuses to start. Never the old file
+  // itself, which an update with an unchanged name has just overwritten.
+  const discardStaged = (path: string): void => {
+    const old = item.fileName.endsWith('.disabled') ? item.fileName.slice(0, -'.disabled'.length) : item.fileName
+    if (samePath(path, contentPath(dir, old)) || samePath(path, contentPath(dir, `${old}.disabled`))) return
+    try {
+      rmSync(path, { force: true })
+    } catch (err) {
+      logger.warn(`Neue Datei ${path} nach fehlgeschlagenem Update nicht entfernt:`, err)
+    }
+  }
+
+  if (!current) {
+    discardStaged(downloadPath)
+    return null
+  }
 
   const next: ContentItem = {
     ...current,
@@ -819,7 +839,12 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   // trusts the disk and flips the record back to enabled on its own.
   const destination = contentPath(dir, next.fileName)
   if (!samePath(downloadPath, destination)) {
-    renameSync(downloadPath, destination)
+    try {
+      renameSync(downloadPath, destination)
+    } catch (err) {
+      discardStaged(downloadPath)
+      throw err
+    }
   }
 
   const oldPath = contentPath(dir, current.fileName)
@@ -871,7 +896,19 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   const content = getInstance(instanceId)
     .content.filter((c) => c.id === contentId || c.fileName !== next.fileName || c.type !== next.type)
     .map((c) => (c.id === contentId ? next : c))
-  persist({ ...getInstance(instanceId), content })
+  try {
+    persist({ ...getInstance(instanceId), content })
+  } catch (err) {
+    discardStaged(destination)
+    throw err
+  }
+
+  // The game selects resource packs and shaders by file name; a new name
+  // switched off the pack the player had on. Only an active pack can be
+  // selected, so a disabled one has nothing to carry over.
+  if (current.enabled && (next.type === 'resourcepack' || next.type === 'shaderpack')) {
+    renamePackSelection(instanceId, next.type, current.fileName, next.fileName)
+  }
 
   if (stale) removeStaleFile(stale)
 
@@ -1001,19 +1038,36 @@ async function updateAllOnce(instanceId: string): Promise<number> {
 
     const pending = getInstance(instanceId).content.filter((c) => c.update)
     let done = 0
+    const failed: { name: string; reason: string }[] = []
 
     for (const item of pending) {
       task.throwIfCancelled()
-      task.update(tr(`${item.name} wird aktualisiert…`, `Updating ${item.name}…`), done / Math.max(pending.length, 1))
+      task.update(tr(`${item.name} wird aktualisiert…`, `Updating ${item.name}…`), (done + failed.length) / Math.max(pending.length, 1))
       try {
         await applyUpdate(instanceId, item.id)
         done++
       } catch (err) {
         logger.error(`Update für ${item.name} fehlgeschlagen:`, err)
+        failed.push({ name: item.name, reason: err instanceof Error ? err.message : String(err) })
       }
     }
 
-    task.update(tr(`${done} ${done === 1 ? 'Mod' : 'Mods'} aktualisiert`, `${done} ${done === 1 ? 'mod' : 'mods'} updated`), 1)
+    // Failures used to go to the log only; the user saw "N aktualisiert"
+    // and was left to guess why some entries still showed an update.
+    if (failed.length > 0) {
+      const names = failed.slice(0, 3).map((f) => f.name).join(', ') + (failed.length > 3 ? tr(' und weitere', ' and more') : '')
+      notify(
+        'error',
+        tr(
+          `${failed.length} ${failed.length === 1 ? 'Update fehlgeschlagen' : 'Updates fehlgeschlagen'}`,
+          `${failed.length} ${failed.length === 1 ? 'update failed' : 'updates failed'}`
+        ),
+        tr(`${names}. Grund: ${failed[0].reason}`, `${names}. Reason: ${failed[0].reason}`),
+        { route: `/instances/${instanceId}?tab=content` }
+      )
+    }
+
+    task.update(tr(`${done} ${done === 1 ? 'Eintrag' : 'Einträge'} aktualisiert`, `${done} ${done === 1 ? 'item' : 'items'} updated`), 1)
     return done
   })
 }
@@ -1062,7 +1116,8 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
         fix.provider,
         fix.projectId,
         instance.mcVersion,
-        instance.loader
+        instance.loader,
+        item.type
       )
       if (!candidate) {
         throw new Error(

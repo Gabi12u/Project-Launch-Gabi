@@ -185,7 +185,7 @@ export function TaskDock(): JSX.Element | null {
             </div>
 
             {task.state === 'running' ? (
-              <ProgressBar value={task.progress} />
+              <ProgressBar value={task.progress} label={task.title} />
             ) : task.state === 'failed' ? (
               <div className="badge danger">{tr('Fehlgeschlagen', 'Failed')}</div>
             ) : task.state === 'cancelled' ? (

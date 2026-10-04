@@ -84,10 +84,10 @@ function announceInsecureStorage(): void {
   if (insecureStorageAnnounced) return
   insecureStorageAnnounced = true
 
-  const title = tr('Anmeldetoken unverschlüsselt gespeichert', 'Login token stored unencrypted')
+  const title = tr('Anmeldetoken unverschlüsselt gespeichert', 'Sign-in token stored unencrypted')
   const message = tr(
     'Dieses Gerät bietet keine Verschlüsselung für gespeicherte Daten an, das Microsoft-Anmeldetoken liegt deshalb als Klartext vor. Mehr dazu in den Einstellungen unter Accounts.',
-    'This device offers no encryption for stored data, so the Microsoft login token is being kept as plain text. See the account settings for more.'
+    'This device offers no encryption for stored data, so the Microsoft sign-in token is being kept as plain text. See the account settings for more.'
   )
 
   notify('warning', title, message, { route: '/settings?section=accounts' })

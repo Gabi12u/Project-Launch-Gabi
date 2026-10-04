@@ -488,7 +488,7 @@ export interface BackupEntry {
   createdAt: number
   size: number
   /** What triggered the backup. */
-  reason: 'manual' | 'automatic' | 'pre-update' | 'pre-repair'
+  reason: 'manual' | 'automatic' | 'pre-update' | 'pre-repair' | 'pre-restore'
   /** Which folders were captured. */
   includes: string[]
 }

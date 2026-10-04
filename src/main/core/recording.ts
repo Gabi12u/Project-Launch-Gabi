@@ -783,8 +783,26 @@ export function deleteRecording(instanceId: string, file: string): void {
   if (session && resolve(session.file) === target) {
     throw new Error(tr('Diese Aufnahme läuft gerade. Beende sie zuerst.', 'This recording is running right now. Stop it first.'))
   }
+  // A stop still writing its file out has no session any more, but the file
+  // is open, and the sidecar written after it would come back as an orphan.
+  if (finalising > 0) {
+    throw new Error(tr('Eine Aufnahme wird gerade gespeichert. Versuche es gleich noch einmal.', 'A recording is being saved right now. Try again in a moment.'))
+  }
 
-  rmSync(target, { force: true })
+  try {
+    rmSync(target, { force: true })
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code
+    if (code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') {
+      throw new Error(
+        tr(
+          'Die Aufnahme ist gerade in einem anderen Programm geöffnet, etwa in einem Videoplayer. Schließe es und versuche es erneut.',
+          'The recording is open in another program, such as a video player. Close it and try again.'
+        )
+      )
+    }
+    throw err
+  }
   rmSync(`${target}.json`, { force: true })
   rmSync(target.replace(/\.webm$/i, '.jpg'), { force: true })
   logger.info(`Aufnahme gelöscht: ${target}`)

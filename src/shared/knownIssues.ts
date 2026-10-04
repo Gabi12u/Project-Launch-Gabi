@@ -3516,6 +3516,107 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Rückfrage, und ein einzelnes Mod-Update ließ die Mod-Übersicht an den Anfang springen.',
     state: 'fixing',
     since: '2026-10-02'
+  },
+  {
+    id: 'modrinth-pakete-ohne-version',
+    title: 'Resourcepacks, Shader und Data Packs von Modrinth ließen sich in Instanzen mit Mod Loader nicht installieren',
+    detail:
+      'In einer Instanz mit Fabric, Forge, NeoForge oder Quilt fand „Installieren“ für Resourcepacks, ' +
+      'Shader und Data Packs von Modrinth keine passende Version, weil der Launcher dort nach dem Mod ' +
+      'Loader filterte. Nur die Auswahl einer bestimmten Version im Projektfenster funktionierte. ' +
+      'Updates wurden für solche Inhalte nie angezeigt.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'update-pack-abgewaehlt',
+    title: 'Nach dem Update eines Resourcepacks oder Shaders war er im Spiel nicht mehr ausgewählt',
+    detail:
+      'Ein Update ersetzt die Datei, und der neue Dateiname enthält meist die neue Versionsnummer. ' +
+      'Minecraft und Iris fanden den gewählten Pack danach nicht mehr und schalteten ihn ohne Hinweis ' +
+      'ab.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'alle-aktualisieren-fehler-verschwiegen',
+    title: '„Alle aktualisieren“ verschwieg fehlgeschlagene Updates',
+    detail:
+      'Schlugen einzelne Updates fehl, etwa wegen einer gesperrten Datei oder eines Netzwerkfehlers, ' +
+      'meldete der Launcher nur die Zahl der erfolgreichen. Welche fehlschlugen und warum, stand ' +
+      'nirgends.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'sicherheitskopie-vor-wiederherstellung-geloescht',
+    title: 'Die Sicherheitskopie vor einer Wiederherstellung wurde nach einigen Spielsitzungen gelöscht',
+    detail:
+      'Vor dem Einspielen einer Sicherung legt der Launcher eine Kopie des aktuellen Stands an. Sie ' +
+      'zählte zu den automatischen Sicherungen und wurde nach einigen Spielsitzungen aufgeräumt. ' +
+      'Danach ließ sich die Wiederherstellung nicht mehr rückgängig machen.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'screenshots-volle-groesse',
+    title: 'Der Reiter Aufnahmen lud Screenshots in voller Größe',
+    detail:
+      'Für die Vorschau schickte der Launcher bis zu 40 Screenshots in voller Auflösung an die ' +
+      'Oberfläche. Bei großen Bildern brauchte der Reiter lange und belegte Hunderte Megabyte ' +
+      'Arbeitsspeicher.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'speichern-gesperrt-rohfehler',
+    title: 'Ein kurz gesperrter Ordner konnte das Speichern mit einem rohen Fehler abbrechen',
+    detail:
+      'Hielt ein Virenscanner oder OneDrive eine Datei des Launchers einen Moment fest, brach das ' +
+      'Speichern einer Instanz oder der Einstellungen sofort mit einer technischen Meldung wie „EPERM“ ' +
+      'ab, statt es kurz erneut zu versuchen.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'welten-liste-abweichend',
+    title: 'Der Reiter Welten zeigte Ordner ohne Welt und ließ verknüpfte Welten weg',
+    detail:
+      'Jeder Ordner in „saves“ erschien als Welt, auch einer ohne Spielstand darin. Eine Welt, die als ' +
+      'Verknüpfung in „saves“ liegt, fehlte dagegen, obwohl Minecraft sie anzeigt. Dasselbe galt für ' +
+      'die Auswahl der Welten bei Data Packs.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'aufnahme-loeschen-rohfehler',
+    title: 'Eine geöffnete Aufnahme ließ sich nicht löschen und meldete nur einen technischen Fehler',
+    detail:
+      'War eine Aufnahme gerade in einem anderen Programm offen, etwa in einem Videoplayer, scheiterte ' +
+      '„Löschen“ mit einer Meldung wie „EBUSY“, ohne zu sagen, woran es lag.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'texte-mehrzahl-englisch',
+    title: 'Zahlen mit falscher Mehrzahl und holprige englische Texte',
+    detail:
+      'Bei genau einem Eintrag hieß es zum Beispiel „1 Dateien in Ordnung“ oder „1 Hinweise zur ' +
+      'Kompatibilität“. In der englischen Oberfläche klangen einige Texte wie wörtlich übersetzt, etwa ' +
+      '„taken over“ statt „imported“, und die Rückfrage vor einem eigenen Java-Pfad sprach von einem ' +
+      'Befehl.',
+    state: 'fixing',
+    since: '2026-10-04'
+  },
+  {
+    id: 'screenreader-seite-reiter-fortschritt',
+    title: 'Screenreader erfuhren nicht, welche Seite und welcher Reiter gewählt ist',
+    detail:
+      'Die aktuelle Seite in der Seitenleiste, der gewählte Reiter einer Instanz und der Fortschritt ' +
+      'von Downloads waren nur farblich erkennbar. Einige Auswahl- und Suchfelder hatten keinen Namen, ' +
+      'und der Fokusrahmen in Eingabefeldern war auf dunklem Hintergrund kaum zu sehen.',
+    state: 'fixing',
+    since: '2026-10-04'
   }
 ]
 

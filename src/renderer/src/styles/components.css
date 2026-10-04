@@ -701,7 +701,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--accent-soft);
   background: rgba(0, 0, 0, 0.36);
 }
 
@@ -1363,4 +1363,17 @@
   width: 16px;
   flex: none;
   opacity: 0.75;
+}
+
+/* Read by screen readers, invisible on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

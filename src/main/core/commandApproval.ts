@@ -29,23 +29,27 @@ function kindText(kind: CommandKind): { title: string; detail: (name: string, va
   const texts = {
     wrapper: {
       title: tr('Wrapper-Befehl erlauben', 'Allow wrapper command'),
-      verb: [tr('beim Start als Wrapper-Befehl ausführen', 'run as a wrapper command on launch'), 'run as a wrapper command on launch']
+      intro: (name: string) =>
+        tr(`Die Instanz „${name}“ möchte beim Start diesen Befehl als Wrapper ausführen:`, `The instance "${name}" wants to run this command as a wrapper on launch:`)
     },
     preLaunch: {
       title: tr('Pre-Launch-Befehl erlauben', 'Allow pre-launch command'),
-      verb: [tr('vor dem Start ausführen', 'run before launch'), 'run before launch']
+      intro: (name: string) =>
+        tr(`Die Instanz „${name}“ möchte vor dem Start diesen Befehl ausführen:`, `The instance "${name}" wants to run this command before launch:`)
     },
     javaPath: {
       title: tr('Java-Pfad erlauben', 'Allow Java path'),
-      verb: [tr('zum Starten als Java verwenden', 'use as Java for launching'), 'use as Java for launching']
+      intro: (name: string) =>
+        tr(`Die Instanz „${name}“ möchte diesen Pfad als Java verwenden:`, `The instance "${name}" wants to use this path as Java:`)
     }
   }[kind]
   return {
     title: texts.title,
     detail: (name, value) =>
+      `${texts.intro(name)}\n\n${value}\n\n` +
       tr(
-        `Die Instanz „${name}“ möchte folgenden Befehl ${texts.verb[0]}:\n\n${value}\n\nErlaube das nur, wenn du diesen Befehl oder Pfad selbst eingerichtet hast.`,
-        `The instance "${name}" wants to ${texts.verb[1]}:\n\n${value}\n\nOnly allow this if you set up this command or path yourself.`
+        'Erlaube das nur, wenn du diesen Befehl oder Pfad selbst eingerichtet hast.',
+        'Only allow this if you set up this command or path yourself.'
       )
   }
 }

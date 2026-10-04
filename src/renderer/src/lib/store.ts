@@ -223,7 +223,7 @@ export function toast(
   kind: AppNotification['kind'],
   title: string,
   message?: string,
-  timeout = 5200
+  timeout = kind === 'error' ? 12000 : 5200
 ): void {
   const item: AppNotification = { id: `t${++toastCounter}`, kind, title, message, timeout }
   setState((current) => ({ toasts: appendToast(current.toasts, item) }))
@@ -264,19 +264,38 @@ export function dismissToast(id: string): void {
 /** Reports a rejected IPC call without every call site repeating the try/catch. */
 export function toastError(error: unknown, fallback = tr('Es ist ein Fehler aufgetreten', 'An error occurred')): void {
   const message = error instanceof Error ? error.message : String(error)
-  toast('error', fallback, message, 9000)
+  toast('error', fallback, message, 12000)
 }
 
 /* ------------------------------------------------------------------ *
  * Data refreshers
  * ------------------------------------------------------------------ */
 
-export async function refreshInstances(): Promise<void> {
-  try {
-    setState({ instances: await window.gabi.instances.list() })
-  } catch (err) {
-    toastError(err, tr('Instanzen konnten nicht geladen werden', 'Instances could not be loaded'))
+// Coalesced: while one request runs, any number of further calls collapse
+// into a single follow-up. An "Update all" or an import sends a burst of
+// change events, and each used to fetch the whole list again. A caller that
+// arrives mid-request still waits for the follow-up, so it sees its own change.
+let instancesInFlight: Promise<void> | null = null
+let instancesAgain = false
+
+export function refreshInstances(): Promise<void> {
+  if (instancesInFlight) {
+    instancesAgain = true
+    return instancesInFlight
   }
+  instancesInFlight = (async () => {
+    try {
+      do {
+        instancesAgain = false
+        setState({ instances: await window.gabi.instances.list() })
+      } while (instancesAgain)
+    } catch (err) {
+      toastError(err, tr('Instanzen konnten nicht geladen werden', 'Instances could not be loaded'))
+    } finally {
+      instancesInFlight = null
+    }
+  })()
+  return instancesInFlight
 }
 
 export async function refreshAccounts(): Promise<void> {

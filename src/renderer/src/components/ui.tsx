@@ -109,13 +109,21 @@ export function Modal({
   const isTop = useOverlayId(open)
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
+  // Captured while rendering the opening, before anything inside can take
+  // focus. A Confirm button with autoFocus is focused during the commit,
+  // so reading activeElement in the effect below found that button, and
+  // focus was never given back to whatever opened the dialog.
+  const opener = useRef<HTMLElement | null>(null)
+  const wasOpen = useRef(false)
+  if (open && !wasOpen.current) opener.current = document.activeElement as HTMLElement | null
+  wasOpen.current = open
 
   // Moves focus into the dialog when it opens and back to whatever had it
   // before once it closes. Keyboard and screen reader users otherwise stayed
   // on the button behind the overlay, with no sign a dialog had opened.
   useEffect(() => {
     if (!open) return
-    const previous = document.activeElement as HTMLElement | null
+    const previous = opener.current
     const id = requestAnimationFrame(() => {
       const dialog = dialogRef.current
       if (dialog && !dialog.contains(document.activeElement)) dialog.focus()
@@ -303,6 +311,7 @@ export function Segmented<T extends string>({
         <button
           key={option.value}
           className={value === option.value ? 'active' : ''}
+          aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
         >
           {option.label}
@@ -314,14 +323,24 @@ export function Segmented<T extends string>({
 
 export function ProgressBar({
   value,
-  indeterminate
+  indeterminate,
+  label
 }: {
   value: number | null
   indeterminate?: boolean
+  /** What is in progress, read out by screen readers with the value. */
+  label?: string
 }): JSX.Element {
   const isIndeterminate = indeterminate || value === null
   return (
-    <div className="progress">
+    <div
+      className="progress"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={isIndeterminate ? undefined : Math.round((value ?? 0) * 100)}
+    >
       <div
         className={`progress-fill ${isIndeterminate ? 'indeterminate' : ''}`}
         style={{ width: isIndeterminate ? '100%' : `${Math.round((value ?? 0) * 100)}%` }}

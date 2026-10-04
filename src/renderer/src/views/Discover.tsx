@@ -90,6 +90,7 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
             <select
               className="select"
               style={{ width: 240 }}
+              aria-label={tr('Ziel-Instanz', 'Target instance')}
               value={target}
               onChange={(event) => setTarget(event.target.value)}
             >

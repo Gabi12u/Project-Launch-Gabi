@@ -10,7 +10,7 @@ import type {
   SearchResultItem
 } from '@shared/types'
 import { refreshInstances, toast, toastError, useStore } from '../lib/store'
-import { formatNumber, formatRelative, plainText, releaseTypeLabel } from '../lib/format'
+import { LOADER_LABELS, formatNumber, formatRelative, plainText, releaseTypeLabel } from '../lib/format'
 import { clickable } from '../lib/a11y'
 import { EmptyState, Modal, Segmented } from '../components/ui'
 import { WorldPickerModal } from './WorldPickerModal'
@@ -311,6 +311,7 @@ export function ContentBrowser({
           <IconSearch size={16} />
           <input
             className="input"
+            aria-label={tr(`${TYPE_LABELS[type]} durchsuchen`, `Search ${TYPE_LABELS[type].toLowerCase()}`)}
             placeholder={tr(`${TYPE_LABELS[type]} durchsuchen…`, `Search ${TYPE_LABELS[type].toLowerCase()}…`)}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -350,8 +351,8 @@ export function ContentBrowser({
             style={{ cursor: 'pointer' }}
           >
             {useVersionFilter ? <IconCheck size={11} /> : null}
-            {tr('Nur passend für', 'Only for')} {mcVersion}
-            {loader && loader !== 'vanilla' ? ` · ${loader}` : ''}
+            {tr('Nur passend für Minecraft', 'Only for Minecraft')} {mcVersion}
+            {loader && loader !== 'vanilla' ? ` · ${LOADER_LABELS[loader]}` : ''}
           </button>
         )}
 

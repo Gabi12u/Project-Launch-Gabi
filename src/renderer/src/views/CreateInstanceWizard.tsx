@@ -372,7 +372,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
           <p className="hint">
             {tr(
               `Der Mod Loader entscheidet, welche Mods du installieren kannst. Ohne Loader läuft Minecraft unverändert. Ausgegraute Loader gibt es für ${mcVersion} noch nicht.`,
-              `The mod loader decides which mods you can install. Without a loader Minecraft runs unchanged. Greyed out loaders are not available for ${mcVersion} yet.`
+              `The mod loader decides which mods you can install. Without a loader Minecraft runs unchanged. Grayed-out loaders are not available for ${mcVersion} yet.`
             )}
           </p>
 
@@ -478,7 +478,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 ))}
               </select>
               <span className="hint">
-                {tr('Im Zweifel die empfohlene Version nehmen, sie ist am besten getestet.', 'If in doubt, take the recommended version, it is the best tested.')}
+                {tr('Im Zweifel die empfohlene Version nehmen, sie ist am besten getestet.', 'If in doubt, pick the recommended version. It is the best tested.')}
               </span>
             </div>
           )}
@@ -522,7 +522,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">
-                {tr('Für Vanilla reichen 2-4 GB, für große Modpacks eher 6-8 GB.', '2-4 GB is enough for vanilla, large modpacks rather need 6-8 GB.')}
+                {tr('Für Vanilla reichen 2-4 GB, für große Modpacks eher 6-8 GB.', '2-4 GB is enough for vanilla; large modpacks usually need 6-8 GB.')}
               </span>
             </div>
           </div>

@@ -95,7 +95,7 @@ export function Onboarding(): JSX.Element {
               <p style={{ color: 'var(--text-2)', lineHeight: 1.7, fontSize: 14 }}>
                 {tr(
                   'Launch Gabi verwaltet beliebig viele voneinander getrennte Minecraft-Installationen. Jede davon hat ihre eigene Version, ihre eigenen Mods und ihre eigenen Welten, nichts kommt sich in die Quere.',
-                  'Launch Gabi manages as many separate Minecraft installations as you like. Each has its own version, its own mods and its own worlds, nothing gets in the way of anything else.'
+                  'Launch Gabi manages as many separate Minecraft installations as you like. Each has its own version, its own mods and its own worlds, so nothing interferes with anything else.'
                 )}
               </p>
               <p style={{ color: 'var(--text-3)', lineHeight: 1.7, fontSize: 13.5 }}>

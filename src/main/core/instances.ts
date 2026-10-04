@@ -106,7 +106,7 @@ export function loadInstances(force = false): Instance[] {
             tr('Instanz nicht geladen', 'Instance not loaded'),
             tr(
               `Die Instanz „${entry}“ war beim Start gesperrt und fehlt deshalb in der Liste. Nach einem Neustart des Launchers ist sie wieder da.`,
-              `The instance "${entry}" was locked at startup and is therefore missing from the list. After restarting the launcher it is back.`
+              `The instance "${entry}" was locked at startup and is therefore missing from the list. It will be back after the launcher restarts.`
             )
           )
           continue
@@ -521,7 +521,9 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
   const candidates = readdirSync(dir).filter((name) => {
     const lower = name.toLowerCase()
     if (!lower.includes(instance.loader)) return false
-    if (needle && !lower.includes(needle.toLowerCase())) return false
+    // As a whole build number, not a substring: "21.1.17" also sits inside
+    // "neoforge-21.1.172", and the longer id won the sort below.
+    if (needle && !containsBuild(lower, needle.toLowerCase())) return false
     // Always required, needle or not. `|| Boolean(needle)` used to stand here,
     // which is true whenever a needle is given, so the mcVersion check was
     // skipped in exactly the case that matters: `resolveVersionId` always
@@ -538,6 +540,19 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
   })
 
   return candidates.sort((a, b) => b.length - a.length)[0] ?? null
+}
+
+/** True when `build` appears in `name` with no digit or dot right before or after it. */
+function containsBuild(name: string, build: string): boolean {
+  let from = 0
+  for (;;) {
+    const at = name.indexOf(build, from)
+    if (at === -1) return false
+    const before = at === 0 ? '' : name[at - 1]
+    const after = name[at + build.length] ?? ''
+    if (!/[0-9.]/.test(before) && !/[0-9.]/.test(after)) return true
+    from = at + 1
+  }
 }
 
 /** The `inheritsFrom` of an installed version, or null if it cannot be read. */
@@ -810,7 +825,7 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
       tr('Verknüpfte Ordner nicht kopiert', 'Linked folders not copied'),
       tr(
         `${shown} ${one ? 'zeigt' : 'zeigen'} auf einen Ort außerhalb der Instanz und ${one ? 'wurde' : 'wurden'} nicht in ${name} übernommen.`,
-        `${shown} ${one ? 'points' : 'point'} to a place outside the instance and ${one ? 'was' : 'were'} not taken over into ${name}.`
+        `${shown} ${one ? 'points' : 'point'} to a place outside the instance and ${one ? 'was' : 'were'} not copied into ${name}.`
       )
     )
   }
@@ -925,21 +940,24 @@ export async function listWorlds(id: string): Promise<WorldInfo[]> {
   const dir = paths.saves(id)
   if (!existsSync(dir)) return []
 
+  // The same rule Minecraft's own world list uses: a folder, links followed,
+  // with a level.dat or level.dat_old in it. Any folder used to count, so a
+  // stray one showed up as a world, while a world linked into saves from
+  // somewhere else was missing although the game lists it.
   const worlds: WorldInfo[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
     const folder = join(dir, entry.name)
     let lastPlayed = 0
     try {
-      lastPlayed = statSync(join(folder, 'level.dat')).mtimeMs
+      if (!statSync(folder).isDirectory()) continue
+      const data = [join(folder, 'level.dat'), join(folder, 'level.dat_old')].find((f) => existsSync(f))
+      if (!data) continue
+      lastPlayed = statSync(data).mtimeMs
     } catch {
-      try {
-        lastPlayed = statSync(folder).mtimeMs
-      } catch {
-        // A world that vanished between listing and stat is simply skipped
-        // rather than taking the whole list down with it.
-        continue
-      }
+      // A world that vanished between listing and stat, or a broken link, is
+      // simply skipped rather than taking the whole list down with it.
+      continue
     }
     worlds.push({ name: entry.name, folder, sizeBytes: await folderSize(folder), lastPlayed })
   }

@@ -335,7 +335,7 @@ export async function startCapture(request: RecordingRequest): Promise<void> {
         void stopCapture(true).then(() =>
           window.gabi.recording.failed(
             current.sessionId,
-            tr('Das Spielfenster liefert kein Bild. Spiele im Fenstermodus oder randlosen Vollbild, dann klappt die Aufnahme.', 'The game window delivers no picture. Play in windowed or borderless fullscreen mode, then recording works.')
+            tr('Das Spielfenster liefert kein Bild. Spiele im Fenstermodus oder randlosen Vollbild, dann klappt die Aufnahme.', 'The game window does not provide an image. Play in windowed or borderless fullscreen mode and recording will work.')
           )
         )
         return

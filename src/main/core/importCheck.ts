@@ -103,7 +103,7 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
       add(
         'warn',
         tr('Es gibt keinen mods-Ordner', 'There is no mods folder'),
-        tr('Der Loader ist eingerichtet, aber es wurden keine Mods übernommen.', 'The loader is set up, but no mods were taken over.')
+        tr('Der Loader ist eingerichtet, aber es wurden keine Mods übernommen.', 'The loader is set up, but no mods were imported.')
       )
     }
   }
@@ -114,12 +114,14 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
     const fresh = getInstance(instanceId)
     const mods = fresh.content.filter((item) => item.type === 'mod')
     if (mods.length > 0) {
-      add('ok', tr(`${mods.length} Mods erfasst`, `${mods.length} mods registered`))
+      add('ok', tr(`${mods.length} ${mods.length === 1 ? 'Mod' : 'Mods'} erfasst`, `${mods.length} ${mods.length === 1 ? 'mod' : 'mods'} registered`))
       const missing = mods.filter((item) => !existsSync(join(paths.mods(instanceId), item.fileName)))
       if (missing.length > 0) {
         add(
           'warn',
-          tr(`${missing.length} eingetragene Mods liegen nicht im Ordner`, `${missing.length} registered mods are not in the folder`),
+          missing.length === 1
+            ? tr('1 eingetragener Mod liegt nicht im Ordner', '1 registered mod is not in the folder')
+            : tr(`${missing.length} eingetragene Mods liegen nicht im Ordner`, `${missing.length} registered mods are not in the folder`),
           missing
             .slice(0, 5)
             .map((item) => item.name)
@@ -141,14 +143,18 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
     if (errors.length > 5) {
       add(
         'blocker',
-        tr(`${errors.length - 5} weitere Probleme`, `${errors.length - 5} more problems`),
+        errors.length === 6
+          ? tr('1 weiteres Problem', '1 more problem')
+          : tr(`${errors.length - 5} weitere Probleme`, `${errors.length - 5} more problems`),
         tr('Vollständig unter "Kompatibilität" bei der Instanz.', 'Listed in full under "Compatibility" in the instance.')
       )
     }
     if (warnings.length > 0) {
       add(
         'warn',
-        tr(`${warnings.length} Hinweise zur Kompatibilität`, `${warnings.length} compatibility notes`),
+        warnings.length === 1
+          ? tr('1 Hinweis zur Kompatibilität', '1 compatibility note')
+          : tr(`${warnings.length} Hinweise zur Kompatibilität`, `${warnings.length} compatibility notes`),
         tr('Kein Hindernis für den Start, nachzulesen bei der Instanz.', 'Nothing that blocks the start, see the instance for details.')
       )
     }

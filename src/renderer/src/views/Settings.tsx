@@ -189,7 +189,7 @@ function UpdatePanel(): JSX.Element {
           // showing them as-is left stray "#" and "-" characters on screen.
           // The changelog tab already renders the same information properly.
           <p className="hint mt-8">
-            {tr('Was neu ist, steht unter', 'Details are under')}{' '}
+            {tr('Was neu ist, steht unter', "You can read what's new under")}{' '}
             <button
               className="link"
               style={{ background: 'none', padding: 0 }}
@@ -1024,7 +1024,7 @@ function RecordingPanel(): JSX.Element {
           <span className="hint">
             {tr(
               'Die Taste gilt systemweit, aber nur solange eine Instanz läuft. Danach ist sie wieder frei für andere Programme.',
-              'The key works system wide, but only while an instance is running. Afterwards it is free for other programs again.'
+              'The key works system-wide, but only while an instance is running. Afterwards it is free for other programs again.'
             )}
           </span>
         </div>
@@ -1060,7 +1060,7 @@ function RecordingPanel(): JSX.Element {
           label={tr('Ton mit aufnehmen', 'Record sound')}
           hint={tr(
             'Nimmt auf, was aus den Lautsprechern kommt. Klappt nicht auf jedem System, dann läuft die Aufnahme ohne Ton weiter.',
-            'Records what comes out of your speakers. This does not work on every system, then the recording continues without sound.'
+            'Records what comes out of your speakers. This does not work on every system; in that case the recording continues without sound.'
           )}
           checked={settings.recordingAudio}
           onChange={(value) => void saveSettings({ recordingAudio: value })}
@@ -1068,7 +1068,10 @@ function RecordingPanel(): JSX.Element {
 
         <div className="field mt-16">
           <label className="label" htmlFor="st-aufnahmedauer">
-            {tr(`Höchstdauer: ${recordingMaxMinutes} Minuten`, `Maximum length: ${recordingMaxMinutes} minutes`)}
+            {tr(
+              `Höchstdauer: ${recordingMaxMinutes} ${recordingMaxMinutes === 1 ? 'Minute' : 'Minuten'}`,
+              `Maximum length: ${recordingMaxMinutes} ${recordingMaxMinutes === 1 ? 'minute' : 'minutes'}`
+            )}
           </label>
           <input
             id="st-aufnahmedauer"
@@ -1118,7 +1121,7 @@ function RecordingPanel(): JSX.Element {
           <li>
             {tr(
               'Im echten Vollbild liefert Minecraft manchmal kein Bild. Der randlose Fenstermodus funktioniert immer.',
-              'In exclusive fullscreen Minecraft sometimes delivers no picture. Borderless window mode always works.'
+              'In exclusive fullscreen Minecraft sometimes does not provide an image. Borderless window mode always works.'
             )}
           </li>
           <li>

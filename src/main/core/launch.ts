@@ -910,7 +910,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
               tr(`${instance.name} ist abgestürzt`, `${instance.name} crashed`),
               tr(
                 `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
-                `Minecraft exited with code ${code}.${hint} You can find the log in the instance tab.`
+                `Minecraft exited with code ${code}.${hint} You can find the log in the instance's Log tab.`
               ),
               // Stays until clicked away: the launcher is often hidden while
               // the game runs, and the notice was gone by the time it showed.

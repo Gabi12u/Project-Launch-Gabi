@@ -842,7 +842,10 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     if (clientOnly > 0) {
       findings.push({
         level: 'warn',
-        title: tr(`${clientOnly} Dateien sind nur für Server gedacht`, `${clientOnly} files are meant for servers only`),
+        title:
+          clientOnly === 1
+            ? tr('1 Datei ist nur für Server gedacht', '1 file is meant for servers only')
+            : tr(`${clientOnly} Dateien sind nur für Server gedacht`, `${clientOnly} files are meant for servers only`),
         detail: tr('Sie werden beim Import übersprungen, so wie es das Modpack vorsieht.', 'They are skipped during import, as the modpack intends.')
       })
     }
@@ -931,7 +934,10 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
     if (listed > 0) {
       findings.push({
         level: 'warn',
-        title: tr(`${listed} Mods werden beim Import einzeln von CurseForge geladen`, `${listed} mods are downloaded one by one from CurseForge during import`),
+        title:
+          listed === 1
+            ? tr('1 Mod wird beim Import von CurseForge geladen', '1 mod is downloaded from CurseForge during import')
+            : tr(`${listed} Mods werden beim Import einzeln von CurseForge geladen`, `${listed} mods are downloaded one by one from CurseForge during import`),
         detail: tr(
           'CurseForge-Modpacks enthalten die Mods nicht selbst, sondern nur eine Liste. Für den Import wird ein CurseForge-Schlüssel in den Einstellungen und eine Internetverbindung gebraucht.',
           'CurseForge modpacks do not contain the mods themselves, only a list. Importing needs a CurseForge key in the settings and an internet connection.'

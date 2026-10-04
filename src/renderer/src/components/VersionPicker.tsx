@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react'
 import type { ContentItem, LoaderId, ProjectVersion } from '@shared/types'
 import { Modal } from './ui'
 import { IconCheck, IconDownload } from './Icons'
-import { formatBytes, formatRelative, releaseTypeLabel } from '../lib/format'
+import { LOADER_LABELS, formatBytes, formatRelative, releaseTypeLabel } from '../lib/format'
 import { toast, toastError } from '../lib/store'
 import { tr } from '@shared/i18n'
 
@@ -123,8 +123,8 @@ export function VersionPicker({
               onChange={(event) => setOnlyCompatible(event.target.checked)}
             />
             <span style={{ fontSize: 13 }}>
-              {tr('Nur passende zu Minecraft', 'Only matching Minecraft')} {mcVersion}
-              {loader !== 'vanilla' ? tr(` und ${loader}`, ` and ${loader}`) : ''}
+              {tr('Nur passende zu Minecraft', 'Only versions matching Minecraft')} {mcVersion}
+              {loader !== 'vanilla' ? tr(` und ${LOADER_LABELS[loader]}`, ` and ${LOADER_LABELS[loader]}`) : ''}
               {hiddenCount > 0 && onlyCompatible ? tr(` (${hiddenCount} ausgeblendet)`, ` (${hiddenCount} hidden)`) : ''}
             </span>
           </label>

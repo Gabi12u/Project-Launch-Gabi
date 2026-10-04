@@ -418,11 +418,17 @@ function preferNativeQuilt(versions: ProjectVersion[], loader: LoaderId): Projec
 export async function bestVersionFor(
   projectId: string,
   gameVersion: string,
-  loader: LoaderId
+  loader: LoaderId,
+  type: ContentType = 'mod'
 ): Promise<ProjectVersion | null> {
   const all = await getVersions(projectId)
 
+  // Only mods are tied to a mod loader. Resource packs list "minecraft",
+  // shaders "iris" or "optifine" and data packs "datapack" as their loader,
+  // so the filter found nothing for them in any modded instance, and
+  // "Installieren" failed while updates never showed up.
   const loaderOk = (v: ProjectVersion): boolean =>
+    type !== 'mod' ||
     loader === 'vanilla' ||
     v.loaders.length === 0 ||
     v.loaders.includes(loader) ||

@@ -303,6 +303,7 @@ export function ModsView(): JSX.Element {
               <IconSearch size={16} />
               <input
                 className="input"
+                aria-label={tr('Mods durchsuchen', 'Search mods')}
                 placeholder={tr('Mods durchsuchen…', 'Search mods…')}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -312,6 +313,7 @@ export function ModsView(): JSX.Element {
             <select
               className="select"
               style={{ width: 220 }}
+              aria-label={tr('Nach Instanz filtern', 'Filter by instance')}
               value={instanceFilter}
               onChange={(event) => setInstanceFilter(event.target.value)}
             >
@@ -345,7 +347,7 @@ export function ModsView(): JSX.Element {
               title={tr('Noch keine Mods installiert', 'No mods installed yet')}
               message={tr(
                 'Hier sammeln sich alle Mods, Resourcepacks und Shader aus deinen Instanzen. Such dir unter „Entdecken“ etwas aus, Launch Gabi installiert Abhängigkeiten automatisch mit.',
-                'All mods, resource packs and shaders from your instances gather here. Pick something under "Discover", Launch Gabi automatically installs dependencies as well.'
+                'All mods, resource packs and shaders from your instances gather here. Pick something under "Discover". Launch Gabi installs dependencies automatically.'
               )}
               action={
                 <button className="btn primary" onClick={() => navigate('/discover')}>

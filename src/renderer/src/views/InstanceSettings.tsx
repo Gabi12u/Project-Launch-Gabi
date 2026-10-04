@@ -403,7 +403,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
           <div className="field">
             <label className="label" id="is-java-version">{tr('Java-Version', 'Java version')}</label>
             <div role="group" aria-labelledby="is-java-version" className="row gap-8">
-              <select className="select" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
+              <select className="select" aria-labelledby="is-java-version" value={javaPath} onChange={(e) => setJavaPath(e.target.value)}>
                 <option value="">{tr('Automatisch verwalten (empfohlen)', 'Manage automatically (recommended)')}</option>
                 {/* Covers a path from a runtime that was since removed or never
                     detected; without this the select would silently jump to

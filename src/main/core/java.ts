@@ -705,12 +705,14 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
       // and the real integrity check happens by hand right below.
       await downloadFile({ url: metadata.url, path: archive, size: metadata.size }, (delta) => {
         received += delta
+        // The size is known from Adoptium's metadata, so the bar can show a
+        // real share instead of only running back and forth.
         task?.update(
           tr(
-            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} MB geladen`,
-            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} MB downloaded`
+            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} von ${formatNumber(metadata.size / 1024 / 1024, 0)} MB geladen`,
+            `Java ${major} · ${formatNumber(received / 1024 / 1024, 1)} of ${formatNumber(metadata.size / 1024 / 1024, 0)} MB downloaded`
           ),
-          null
+          Math.min(1, received / metadata.size)
         )
       }, 3, task?.signal)
     } catch (err) {
@@ -977,7 +979,7 @@ export async function resolveJava(options: {
           ` Aktiviere die automatische Java-Verwaltung in den Einstellungen oder installiere Java ${major}.`,
         `This version needs Java ${major}.` +
           (closest
-            ? ` Only Java ${preferred.map((r) => r.major).join(', ')} was found, which does not run it.`
+            ? ` Only Java ${preferred.map((r) => r.major).join(', ')} was found, which cannot run it.`
             : ' No Java installation was found.') +
           ` Turn on automatic Java management in the settings or install Java ${major}.`
       )

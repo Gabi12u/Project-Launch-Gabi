@@ -243,7 +243,7 @@ async function runRepair(
         tr('Ordnerstruktur', 'Folder structure'),
         missingFolders.length > 0 ? 'repaired' : 'ok',
         missingFolders.length > 0
-          ? tr(`${missingFolders.length} Ordner neu angelegt`, `${missingFolders.length} folders created`)
+          ? tr(`${missingFolders.length} Ordner neu angelegt`, `${missingFolders.length} ${missingFolders.length === 1 ? 'folder' : 'folders'} created`)
           : tr('Vollständig', 'Complete')
       )
     } catch (err) {
@@ -440,8 +440,8 @@ async function runRepair(
             broken > 0 || versionJsonRebuilt ? 'repaired' : 'ok',
             rebuiltNote +
               (broken > 0
-                ? tr(`${broken} von ${items.length} Dateien erneuert`, `${broken} of ${items.length} files replaced`)
-                : tr(`${items.length} Dateien in Ordnung`, `${items.length} files OK`))
+                ? tr(`${broken} von ${items.length} ${items.length === 1 ? 'Datei' : 'Dateien'} erneuert`, `${broken} of ${items.length} ${items.length === 1 ? 'file' : 'files'} replaced`)
+                : tr(`${items.length} ${items.length === 1 ? 'Datei' : 'Dateien'} in Ordnung`, `${items.length} ${items.length === 1 ? 'file' : 'files'} OK`))
           )
         } catch (err) {
           // Reported, not thrown: assets, mods and Java can still be checked and
@@ -553,7 +553,10 @@ async function runRepair(
       const current = getInstance(instanceId)
       const survivors = [...current.content]
       contentCount = current.content.length
-      repairLog(instanceId, 'check', tr(`Analysiere ${contentCount} installierte Mods`, `Analyzing ${contentCount} installed mods`))
+      repairLog(instanceId, 'check', tr(
+          `Analysiere ${contentCount} ${contentCount === 1 ? 'installierten Mod' : 'installierte Mods'}`,
+          `Analyzing ${contentCount} installed ${contentCount === 1 ? 'mod' : 'mods'}`
+        ))
       // What the list looked like before the downloads below, which take
       // seconds to minutes. Used at the end to tell our own changes apart from
       // someone else's.
@@ -822,8 +825,8 @@ async function runRepair(
           : changed || unresolved
             ? parts.join(', ')
             : outdated > 0
-              ? tr(`${contentCount} Dateien in Ordnung, ${parts[parts.length - 1]}`, `${contentCount} files OK, ${parts[parts.length - 1]}`)
-              : tr(`${contentCount} Dateien in Ordnung`, `${contentCount} files OK`)
+              ? tr(`${contentCount} ${contentCount === 1 ? 'Datei' : 'Dateien'} in Ordnung, ${parts[parts.length - 1]}`, `${contentCount} ${contentCount === 1 ? 'file' : 'files'} OK, ${parts[parts.length - 1]}`)
+              : tr(`${contentCount} ${contentCount === 1 ? 'Datei' : 'Dateien'} in Ordnung`, `${contentCount} ${contentCount === 1 ? 'file' : 'files'} OK`)
       )
     }
 

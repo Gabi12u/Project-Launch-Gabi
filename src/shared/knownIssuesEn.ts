@@ -1208,7 +1208,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'closed both at once and cancelled the sign-in. From 1.0.20 Escape only closes quick search.'
   },
   'zahlen-mit-punkt': {
-    title: 'Sizes showed a point instead of a comma',
+    title: 'In the German interface, sizes showed a point instead of a comma',
     detail:
       'File and memory sizes appeared as "1.5 GB" instead of the German "1,5 GB". From 1.0.20 they use German ' +
       'notation.'
@@ -1587,7 +1587,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'far and looked like a normal instance. Worlds or mods in it could be incomplete.'
   },
   'meldung-hinzufuegen-ohne-umlaut': {
-    title: 'An error message spelled a German word without its umlaut',
+    title: 'In the German interface, an error message spelled a word without its umlaut',
     detail:
       'Trying to add files to an instance while the game was running showed a message with a ' +
       'misspelled German word.'
@@ -2209,7 +2209,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'application, although it still belonged to the old one.'
   },
   'texte-unuebersetzt-falsch': {
-    title: 'Some labels showed in English or were worded wrongly',
+    title: 'In the German interface, some labels showed in English or were worded wrongly',
     detail:
       'Version types such as "snapshot", "release" or "beta" were shown untranslated, after a game it ' +
       'said "Play time: 1 minutes", and with a filter but no search term it said "There is no matching ' +
@@ -2223,6 +2223,74 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'content said "Nothing installed", copying the log gave no feedback, a new backup went to the ' +
       'first instance despite a filter, Enter did not confirm a question, and a single mod update made ' +
       'the mod overview jump back to the top.'
+  },
+  'modrinth-pakete-ohne-version': {
+    title: 'Resource packs, shaders and data packs from Modrinth could not be installed in instances with a mod loader',
+    detail:
+      'In an instance with Fabric, Forge, NeoForge or Quilt, "Install" found no fitting version for ' +
+      'resource packs, shaders and data packs from Modrinth, because the launcher filtered them by mod ' +
+      'loader. Only picking a specific version in the project window worked. Updates were never shown ' +
+      'for such content.'
+  },
+  'update-pack-abgewaehlt': {
+    title: 'After updating a resource pack or shader it was no longer selected in the game',
+    detail:
+      'An update replaces the file, and the new file name usually contains the new version number. ' +
+      'Minecraft and Iris no longer found the selected pack afterwards and turned it off without a ' +
+      'hint.'
+  },
+  'alle-aktualisieren-fehler-verschwiegen': {
+    title: '"Update all" kept failed updates quiet',
+    detail:
+      'If single updates failed, for example because of a locked file or a network error, the launcher ' +
+      'only reported the number of successful ones. Which ones failed and why was shown nowhere.'
+  },
+  'sicherheitskopie-vor-wiederherstellung-geloescht': {
+    title: 'The safety copy before a restore was deleted after a few play sessions',
+    detail:
+      'Before restoring a backup the launcher saves a copy of the current state. It counted as an ' +
+      'automatic backup and was cleaned up after a few play sessions. After that the restore could no ' +
+      'longer be undone.'
+  },
+  'screenshots-volle-groesse': {
+    title: 'The Recordings tab loaded screenshots at full size',
+    detail:
+      'For the preview the launcher sent up to 40 screenshots at full resolution to the interface. ' +
+      'With large pictures the tab took a long time and used hundreds of megabytes of memory.'
+  },
+  'speichern-gesperrt-rohfehler': {
+    title: 'A briefly locked folder could stop saving with a raw error',
+    detail:
+      'If a virus scanner or OneDrive held one of the launcher\'s files for a moment, saving an ' +
+      'instance or the settings stopped at once with a technical message such as "EPERM" instead of ' +
+      'retrying briefly.'
+  },
+  'welten-liste-abweichend': {
+    title: 'The Worlds tab showed folders without a world and left out linked worlds',
+    detail:
+      'Every folder in "saves" appeared as a world, even one with no save in it. A world placed in ' +
+      '"saves" as a link was missing instead, although Minecraft shows it. The same applied to ' +
+      'choosing worlds for data packs.'
+  },
+  'aufnahme-loeschen-rohfehler': {
+    title: 'An open recording could not be deleted and only reported a technical error',
+    detail:
+      'If a recording was open in another program, such as a video player, "Delete" failed with a ' +
+      'message like "EBUSY" without saying why.'
+  },
+  'texte-mehrzahl-englisch': {
+    title: 'Counts with the wrong plural and clumsy English texts',
+    detail:
+      'With exactly one item it said, for example, "1 files OK" or "1 compatibility notes". In the ' +
+      'English interface some texts read like literal translations, such as "taken over" instead of ' +
+      '"imported", and the question before using a custom Java path called it a command.'
+  },
+  'screenreader-seite-reiter-fortschritt': {
+    title: 'Screen readers were not told which page and tab are selected',
+    detail:
+      'The current page in the sidebar, the selected tab of an instance and the progress of downloads ' +
+      'were only shown by color. Some selection and search fields had no name, and the focus ring in ' +
+      'input fields was hard to see on dark backgrounds.'
   }
 }
 

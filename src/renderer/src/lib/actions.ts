@@ -157,7 +157,7 @@ export async function importInstanceFolder(): Promise<void> {
       tr('Import gestartet', 'Import started'),
       tr(
         `${instance.name} wird übernommen. Welten, Mods und Einstellungen werden kopiert.`,
-        `Taking over ${instance.name}. Worlds, mods and settings are being copied.`
+        `Importing ${instance.name}. Worlds, mods and settings are being copied.`
       )
     )
     await refreshInstances()

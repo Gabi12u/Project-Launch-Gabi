@@ -63,7 +63,7 @@ export function Sidebar(): JSX.Element {
 
   return (
     <>
-      <nav className="sidebar">
+      <nav className="sidebar" aria-label={tr('Hauptnavigation', 'Main navigation')}>
         <div className="brand">
           <div className="brand-logo">
             <Logo size={32} />
@@ -90,6 +90,7 @@ export function Sidebar(): JSX.Element {
             <button
               key={entry.id}
               data-active={section === entry.id}
+              aria-current={section === entry.id ? 'page' : undefined}
               className={`nav-item ${section === entry.id ? 'active' : ''}`}
               onClick={() => navigate(entry.route)}
             >
@@ -103,6 +104,7 @@ export function Sidebar(): JSX.Element {
 
           <button
             data-active={section === 'settings'}
+            aria-current={section === 'settings' ? 'page' : undefined}
             className={`nav-item ${section === 'settings' ? 'active' : ''}`}
             onClick={() => navigate(updateReady ? '/settings?section=updates' : '/settings')}
             title={updateReady ? tr(`Update auf ${updateReady} wartet auf einen Neustart`, `Update to ${updateReady} is waiting for a restart`) : undefined}
@@ -112,7 +114,11 @@ export function Sidebar(): JSX.Element {
             {/* A waiting update announced itself once, in a toast that faded
                 after a few seconds, and nowhere else. This is the standing
                 reminder for everyone who was not looking at that moment. */}
-            {updateReady ? <span className="nav-dot" aria-label={tr('Update bereit', 'Update ready')} /> : null}
+            {updateReady ? (
+              <span className="nav-dot">
+                <span className="sr-only">{tr('Update bereit', 'Update ready')}</span>
+              </span>
+            ) : null}
           </button>
         </div>
 

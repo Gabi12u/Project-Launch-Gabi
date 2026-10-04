@@ -10,7 +10,8 @@ const REASON_LABELS: Record<BackupEntry['reason'], string> = {
   manual: tr('Manuell', 'Manual'),
   automatic: tr('Automatisch', 'Automatic'),
   'pre-update': tr('Vor Mod-Update', 'Before mod update'),
-  'pre-repair': tr('Vor Reparatur', 'Before repair')
+  'pre-repair': tr('Vor Reparatur', 'Before repair'),
+  'pre-restore': tr('Vor Wiederherstellung', 'Before restore')
 }
 
 const FOLDER_LABELS: Record<string, string> = {
@@ -102,6 +103,7 @@ export function BackupsView(): JSX.Element {
           <select
             className="select"
             style={{ width: 260 }}
+            aria-label={tr('Nach Instanz filtern', 'Filter by instance')}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
           >

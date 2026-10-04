@@ -141,7 +141,16 @@ async function declaredModIds(instanceId: string, item: ContentItem, loader: Loa
 function modsTomlIds(text: string): string[] {
   const ids: string[] = []
   let inMods = false
+  let inString = false
   for (const line of text.split(/\r?\n/)) {
+    // A description in ''' or """ can hold lines that look like a table
+    // header; read as one, it ended the [[mods]] table early.
+    const quotes = (line.match(/'''|"""/g) ?? []).length
+    if (inString) {
+      if (quotes % 2 === 1) inString = false
+      continue
+    }
+    if (quotes % 2 === 1) inString = true
     const header = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line)
     if (header) {
       inMods = header[1] === 'mods'
@@ -221,10 +230,10 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `version-${mod.id}`,
         severity,
-        title: tr(`${mod.name} ist nicht für ${instance.mcVersion} freigegeben`, `${mod.name} is not released for ${instance.mcVersion}`),
+        title: tr(`${mod.name} ist nicht für ${instance.mcVersion} freigegeben`, `${mod.name} is not marked as compatible with ${instance.mcVersion}`),
         detail: tr(
           `Unterstützt laut Angaben: ${mod.gameVersions.slice(0, 6).join(', ') || 'unbekannt'}. Das kann funktionieren, kann aber auch zu Abstürzen führen.`,
-          `Supported according to its info: ${mod.gameVersions.slice(0, 6).join(', ') || 'unknown'}. It may work, but it can also cause crashes.`
+          `Listed as supporting: ${mod.gameVersions.slice(0, 6).join(', ') || 'unknown'}. It may work, but it can also cause crashes.`
         ),
         contentId: mod.id,
         fix:

@@ -118,11 +118,12 @@ export async function bestVersionFor(
   provider: 'modrinth' | 'curseforge',
   projectId: string,
   gameVersion: string,
-  loader: LoaderId
+  loader: LoaderId,
+  type: ContentType = 'mod'
 ): Promise<ProjectVersion | null> {
   return provider === 'modrinth'
-    ? modrinth.bestVersionFor(projectId, gameVersion, loader)
-    : curseforge.bestVersionFor(projectId, gameVersion, loader)
+    ? modrinth.bestVersionFor(projectId, gameVersion, loader, type)
+    : curseforge.bestVersionFor(projectId, gameVersion, loader, type)
 }
 
 export async function getCategories(

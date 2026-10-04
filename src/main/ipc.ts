@@ -1,7 +1,7 @@
-import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, app, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { basename, extname, resolve, sep } from 'node:path'
+import { basename, resolve, sep } from 'node:path'
 import { totalmem } from 'node:os'
 import { IPC, EVENTS} from '@shared/ipc'
 import type {
@@ -187,6 +187,25 @@ function openLauncherPath(target: string): Promise<string> {
     if (message) throw new Error(tr(`Ordner konnte nicht geöffnet werden: ${message}`, `Folder could not be opened: ${message}`))
     return ''
   })
+}
+
+/** A small JPEG of a screenshot as a data URL, or null if it cannot be read. */
+async function screenshotPreview(file: string): Promise<string | null> {
+  const size = { width: 480, height: 270 }
+  let image: Electron.NativeImage | null = null
+  try {
+    // The system's own thumbnailer is fast and never decodes the full
+    // picture. Only Windows and macOS have one.
+    image = await nativeImage.createThumbnailFromPath(file, size)
+  } catch {
+    image = null
+  }
+  if (!image || image.isEmpty()) {
+    const full = nativeImage.createFromBuffer(await readFile(file).catch(() => Buffer.alloc(0)))
+    image = full.isEmpty() ? null : full.resize({ width: size.width, quality: 'good' })
+  }
+  if (!image || image.isEmpty()) return null
+  return `data:image/jpeg;base64,${image.toJPEG(80).toString('base64')}`
 }
 
 /**
@@ -555,21 +574,11 @@ export function registerIpc(): void {
 
   handle(IPC.instanceScreenshots, async (id: string) => {
     const shots = await listScreenshots(id)
-    // Inline the images so the renderer needs no file:// access.
-    return Promise.all(
-      shots.map(async (shot) => {
-        try {
-          const buffer = await readFile(shot.file)
-          const mime = extname(shot.file).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg'
-          return {
-            ...shot,
-            dataUrl: `data:${mime};base64,${buffer.toString('base64')}`
-          }
-        } catch {
-          return { ...shot, dataUrl: null }
-        }
-      })
-    )
+    // Inline the images so the renderer needs no file:// access. As small
+    // previews: the full pictures, up to 40 of them at several megabytes
+    // each, made the tab slow and cost hundreds of megabytes. A click opens
+    // the original file in the system's own viewer anyway.
+    return Promise.all(shots.map(async (shot) => ({ ...shot, dataUrl: await screenshotPreview(shot.file) })))
   })
 
   /* ---------------------------------------------------------------- *

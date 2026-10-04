@@ -90,7 +90,7 @@ export function InstancesView(): JSX.Element {
           <button
             className="btn"
             onClick={() => void importInstanceFolder()}
-            title={tr('Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen', 'Take over an existing instance from Prism, MultiMC or a .minecraft folder')}
+            title={tr('Eine vorhandene Instanz aus Prism, MultiMC oder einen .minecraft-Ordner übernehmen', 'Import an existing instance from Prism, MultiMC or a .minecraft folder')}
           >
             <IconFolder size={16} />
             {tr('Ordner', 'Folder')}
