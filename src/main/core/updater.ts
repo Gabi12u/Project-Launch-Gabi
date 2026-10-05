@@ -32,6 +32,8 @@ const startedAt = Date.now()
 
 let status: UpdateStatus = { state: 'idle', currentVersion: app.getVersion() }
 let timer: NodeJS.Timeout | null = null
+/** The version last announced as available, so a periodic check does not repeat it. */
+let announcedAvailable: string | null = null
 let checking = false
 
 function setStatus(patch: Partial<UpdateStatus>): void {
@@ -91,7 +93,13 @@ export function announceUpdate(): void {
   if (previous !== version) {
     // Written before the notification rather than after, so a crash while the
     // window paints cannot turn this into a message that returns every start.
-    saveSettings({ lastRunVersion: version })
+    try {
+      saveSettings({ lastRunVersion: version })
+    } catch (err) {
+      // A locked settings file; announced once it can be written again.
+      logger.warn('Zuletzt gestartete Version nicht gespeichert:', err)
+      return
+    }
   }
   if (!previous || previous === version) return
   if (!isNewer(version, previous)) {
@@ -159,6 +167,17 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-available', (info) => {
     logger.info(`Update verfügbar: ${info.version}`)
+    // With automatic downloads off this used to change only the status in
+    // the settings, so an update was found and announced nowhere.
+    if (!autoUpdater.autoDownload && announcedAvailable !== info.version) {
+      announcedAvailable = info.version
+      notify(
+        'info',
+        tr(`Update auf ${info.version} verfügbar`, `Update to ${info.version} available`),
+        tr('Klicke hier, um es in den Einstellungen herunterzuladen.', 'Click here to download it in the settings.'),
+        { route: '/settings?section=updates' }
+      )
+    }
     setStatus({
       state: autoUpdater.autoDownload ? 'downloading' : 'available',
       version: info.version,
@@ -245,7 +264,9 @@ export function initUpdater(): void {
       tr(`Update auf ${info.version} bereit`, `Update to ${info.version} ready`),
       // It asked "Jetzt neu starten?" with no button to answer; clicking leads
       // to the update settings, where the restart is.
-      tr('Die neue Version wird beim nächsten Start installiert. Klicke hier, um sofort neu zu starten.', 'The new version is installed on the next start. Click here to restart right away.'),
+      getSettings().autoInstallUpdates !== false
+        ? tr('Die neue Version wird beim nächsten Start installiert. Klicke hier, um sofort neu zu starten.', 'The new version is installed on the next start. Click here to restart right away.')
+        : tr('Klicke hier und starte neu, um die neue Version zu installieren.', 'Click here and restart to install the new version.'),
       // No timeout. This announced itself once, faded after a few seconds, and
       // never came back: the periodic check skips itself while an update is
       // already waiting, so someone who was not looking at that moment only
@@ -264,12 +285,19 @@ export function initUpdater(): void {
   // The check itself is one small request and runs off the main path, so it
   // never delays the window. A pending update from last session resolves inside
   // it almost immediately, which is what makes the start-up install quick.
-  if (settings.autoUpdate !== false || settings.autoInstallUpdates !== false) {
-    void checkForUpdates(false)
-    timer = setInterval(() => void checkForUpdates(false), CHECK_INTERVAL_MS)
-    // Nothing should keep the process alive just to poll for updates.
-    timer.unref?.()
+  const wanted = (): boolean => {
+    const current = getSettings()
+    return current.autoUpdate !== false || current.autoInstallUpdates !== false
   }
+  if (wanted()) void checkForUpdates(false)
+  // Always running, and asking the settings on every tick: switching
+  // automatic updates on during a session used to do nothing until the
+  // next start, because the timer was only ever created at boot.
+  timer = setInterval(() => {
+    if (wanted()) void checkForUpdates(false)
+  }, CHECK_INTERVAL_MS)
+  // Nothing should keep the process alive just to poll for updates.
+  timer.unref?.()
 }
 
 export function disposeUpdater(): void {

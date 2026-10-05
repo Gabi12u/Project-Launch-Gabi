@@ -58,10 +58,10 @@ export function HomeView(): JSX.Element {
   }, [statsKey])
 
   useEffect(() => {
-    if (!featured?.appearance.background) {
-      setHeroBg(null)
-      return
-    }
+    // Cleared first: a background that fails to resolve for the new instance
+    // left the previous one's picture behind it.
+    setHeroBg(null)
+    if (!featured?.appearance.background) return
     let cancelled = false
     void window.gabi.instances
       .get(featured.id)

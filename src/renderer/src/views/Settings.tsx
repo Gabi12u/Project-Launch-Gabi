@@ -178,8 +178,8 @@ function UpdatePanel(): JSX.Element {
         {status?.error && (
           <p className="hint mt-8">
             {tr(
-              'Der Update-Server war nicht erreichbar. Prüfe deine Internetverbindung und versuche es später erneut.',
-              'The update server could not be reached. Check your internet connection and try again later.'
+              'Das Update ließ sich gerade nicht prüfen oder laden. Versuche es später erneut. Klappt es dauerhaft nicht, lade die neue Version von launchgabi.com.',
+              'The update could not be checked or downloaded right now. Try again later. If it keeps failing, download the new version from launchgabi.com.'
             )}
           </p>
         )}
@@ -331,10 +331,13 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
     void window.gabi.java.list().then(setRuntimes).catch(() => undefined)
   }, [])
 
+  // Separate: saving one field reset the other's unsaved draft.
   useEffect(() => {
     setApiKey(settings.curseForgeApiKey)
+  }, [settings.curseForgeApiKey])
+  useEffect(() => {
     setClientId(settings.microsoftClientId)
-  }, [settings.curseForgeApiKey, settings.microsoftClientId])
+  }, [settings.microsoftClientId])
 
   /** Runs after the confirm dialog, once the user actually wants to switch. */
   const changeDataDirectory = async (): Promise<void> => {
@@ -774,7 +777,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               <div className="row gap-8 mt-12">
                 <input
                   className="input"
-                  placeholder={tr('Azure-Client-ID', 'Azure client ID')}
+                  placeholder={tr('Anwendungs-ID', 'Application ID')}
                   aria-label={tr('Microsoft-Anwendungs-ID', 'Microsoft application ID')}
                   value={clientId}
                   onChange={(event) => setClientId(event.target.value)}
@@ -855,7 +858,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
           {section === 'advanced' && (
             <>
               <section className="setting-group">
-                <h3>{tr('Protokolle', 'Logs')}</h3>
+                <h3>{tr('Logs', 'Logs')}</h3>
                 <p className="hint">
                   {tr('Bei Problemen findest du hier die Launcher-Logs. Sie enthalten keine Zugangsdaten.', 'If something goes wrong, you can find the launcher logs here. They contain no credentials.')}
                 </p>

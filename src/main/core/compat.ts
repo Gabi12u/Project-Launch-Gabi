@@ -192,10 +192,10 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       // Blocking the launch made a harmless leftover file (a mod kept after
       // switching back to vanilla) render the instance unplayable.
       severity: 'warning',
-      title: tr('Diese Instanz hat keinen Mod Loader', 'This instance has no mod loader'),
+      title: tr('Diese Instanz hat keinen Mod-Loader', 'This instance has no mod loader'),
       detail: tr(
         (enabled.length === 1 ? 'In der Instanz liegt 1 Mod, ' : `In der Instanz liegen ${enabled.length} Mods, `) +
-          'aber es ist kein Mod Loader installiert. Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.',
+          'aber es ist kein Mod-Loader installiert. Ohne Fabric, Forge, NeoForge oder Quilt werden die Mods beim Start einfach ignoriert.',
         (enabled.length === 1 ? 'The instance contains 1 mod, ' : `The instance contains ${enabled.length} mods, `) +
           'but no mod loader is installed. Without Fabric, Forge, NeoForge or Quilt the mods are simply ignored on start.'
       )
@@ -216,7 +216,7 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
       issues.push({
         id: `loader-${mod.id}`,
         severity: 'error',
-        title: tr(`${mod.name} passt nicht zum Mod Loader`, `${mod.name} does not fit the mod loader`),
+        title: tr(`${mod.name} passt nicht zum Mod-Loader`, `${mod.name} does not fit the mod loader`),
         detail: tr(
           `${mod.name} ist für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ${instance.loader}. Der Start würde fehlschlagen.`,
           `${mod.name} is built for ${mod.loaders.join(', ')}, but this instance uses ${instance.loader}. The launch would fail.`
@@ -442,12 +442,12 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         title: tr('Shader ohne Shader-Mod', 'Shaders without a shader mod'),
         detail: shaderMod
           ? tr(
-              `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. Installiere ${shaderMod.name}.`,
-              `${shaders.length} shader packs are installed, but no mod that can load them. Install ${shaderMod.name}.`
+              `Du hast ${shaders.length} Shader installiert, aber keinen Mod, der ${shaders.length === 1 ? 'ihn' : 'sie'} laden kann. Installiere ${shaderMod.name}.`,
+              `${shaders.length} ${shaders.length === 1 ? 'shader is' : 'shaders are'} installed, but no mod that can load ${shaders.length === 1 ? 'it' : 'them'}. Install ${shaderMod.name}.`
             )
           : tr(
-              `Es sind ${shaders.length} Shaderpacks installiert, aber kein Mod, der sie laden kann. Dafür braucht es einen Mod Loader (zum Beispiel Fabric) und Iris.`,
-              `${shaders.length} shader packs are installed, but no mod that can load them. That needs a mod loader (for example Fabric) and Iris.`
+              `Du hast ${shaders.length} Shader installiert, aber keinen Mod, der ${shaders.length === 1 ? 'ihn' : 'sie'} laden kann. Dafür braucht es einen Mod-Loader (zum Beispiel Fabric) und Iris.`,
+              `${shaders.length} ${shaders.length === 1 ? 'shader is' : 'shaders are'} installed, but no mod that can load ${shaders.length === 1 ? 'it' : 'them'}. That needs a mod loader (for example Fabric) and Iris.`
             ),
         fix: shaderMod
           ? {

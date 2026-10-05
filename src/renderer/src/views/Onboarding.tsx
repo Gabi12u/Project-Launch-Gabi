@@ -100,7 +100,7 @@ export function Onboarding(): JSX.Element {
               </p>
               <p style={{ color: 'var(--text-3)', lineHeight: 1.7, fontSize: 13.5 }}>
                 {tr(
-                  'Um Java, Mod Loader und Abhängigkeiten musst du dich nicht kümmern. Das erledigt der Launcher im Hintergrund.',
+                  'Um Java, Mod-Loader und Abhängigkeiten musst du dich nicht kümmern. Das erledigt der Launcher im Hintergrund.',
                   'You do not have to worry about Java, mod loaders and dependencies. The launcher takes care of that in the background.'
                 )}
               </p>

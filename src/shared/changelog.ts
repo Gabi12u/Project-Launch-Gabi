@@ -83,7 +83,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         kind: 'new',
-        text: 'Datapacks wirken jetzt in Welten: Beim Installieren fragt der Launcher, in welche Welten sie sollen, und in der Instanz lassen sie sich nachträglich zuordnen.'
+        text: 'Data Packs wirken jetzt in Welten: Beim Installieren fragt der Launcher, in welche Welten sie sollen, und in der Instanz lassen sie sich nachträglich zuordnen.'
       },
       {
         kind: 'improved',
@@ -238,7 +238,7 @@ export const CHANGELOG: ChangelogRelease[] = [
     changes: [
       {
         kind: 'new',
-        text: 'Eigene Startseite (Beta): tauscht den Hintergrund im Minecraft-Hauptmenü gegen einen von Launch Gabi, über ein Ressourcenpaket, ohne das Spiel selbst zu verändern. Funktioniert mit jeder Minecraft-Version und egal ob Vanilla oder mit Mods. Einschaltbar unter Einstellungen, Darstellung, oder direkt über den Hinweis beim ersten Start nach diesem Update.'
+        text: 'Eigene Startseite (Beta): tauscht den Hintergrund im Minecraft-Hauptmenü gegen einen von Launch Gabi, über ein Resourcepack, ohne das Spiel selbst zu verändern. Funktioniert mit jeder Minecraft-Version und egal ob Vanilla oder mit Mods. Einschaltbar unter Einstellungen, Darstellung, oder direkt über den Hinweis beim ersten Start nach diesem Update.'
       }
     ]
   },

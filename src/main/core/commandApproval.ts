@@ -44,7 +44,7 @@ function kindText(kind: CommandKind): { title: string; detail: (name: string, va
         tr(`Die Instanz „${name}“ möchte beim Start diesen Befehl als Wrapper ausführen:`, `The instance "${name}" wants to run this command as a wrapper on launch:`)
     },
     preLaunch: {
-      title: tr('Pre-Launch-Befehl erlauben', 'Allow pre-launch command'),
+      title: tr('Befehl vor dem Start erlauben', 'Allow pre-launch command'),
       intro: (name: string) =>
         tr(`Die Instanz „${name}“ möchte vor dem Start diesen Befehl ausführen:`, `The instance "${name}" wants to run this command before launch:`)
     },

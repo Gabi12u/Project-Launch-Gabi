@@ -142,7 +142,7 @@ export function CommandPalette(): JSX.Element | null {
       },
       {
         id: 'go-backups',
-        label: tr('Backups', 'Backups'),
+        label: tr('Sicherungen', 'Backups'),
         group: tr('Navigation', 'Navigation'),
         icon: <IconSave size={16} />,
         keywords: 'sicherung wiederherstellen',

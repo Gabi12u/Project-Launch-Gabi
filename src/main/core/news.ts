@@ -26,7 +26,9 @@ interface MojangNews {
 
 export async function getNews(limit = 12): Promise<NewsItem[]> {
   try {
-    const feed = await fetchJsonCached<MojangNews>(NEWS_URL, 'mojang-news', 60 * 60 * 1000)
+    const feed = await fetchJsonCached<MojangNews>(NEWS_URL, 'mojang-news', 60 * 60 * 1000, (data) =>
+      Array.isArray((data as Partial<MojangNews> | null)?.entries)
+    )
 
     return feed.entries.slice(0, limit).map((entry) => ({
       id: entry.id,

@@ -205,6 +205,12 @@ export function ContentBrowser({
 
         // Ignore responses from superseded requests.
         if (id !== requestId.current) return
+        // Moved on only once the page arrived. Set before the request, a
+        // failed page skipped twenty results on the next try.
+        if (append) setOffset(nextOffset)
+        if (append && result.errors.length > 0 && result.items.length === 0) {
+          toast('error', tr('Weitere Ergebnisse konnten nicht geladen werden', 'More results could not be loaded'), result.errors[0].message)
+        }
 
         setResponse((current) => {
           if (!append || !current) return result
@@ -217,7 +223,8 @@ export function ContentBrowser({
           // Nothing new came back. `total` can overcount in the same Quilt
           // case, so it alone never reliably signals the end; an empty page
           // of new results does.
-          if (additions.length === 0) setExhausted(true)
+          // A page that failed is not the end of the results.
+          if (additions.length === 0 && result.errors.length === 0) setExhausted(true)
           const combined = [...current.items, ...additions]
           // Each page arrives pre-sorted across providers on its own; once a
           // second page is appended, the whole accumulated list needs the
@@ -303,6 +310,13 @@ export function ContentBrowser({
   // active, could not even be queried without a key.
   const emptyDueToMissingKey =
     missingKey && providers.length === 1 && providers[0] === 'curseforge' && !settings.curseForgeApiKey
+
+  // Providers that did not answer. An empty list then means "could not ask",
+  // not "nothing there", and a full one may be missing a source.
+  const failedSources = (response?.errors ?? []).filter(
+    (e) => !(e.provider === 'curseforge' && e.message.includes('API') && !settings.curseForgeApiKey)
+  )
+  const sourceName = (provider: string): string => (provider === 'curseforge' ? 'CurseForge' : 'Modrinth')
 
   return (
     <div className="col gap-16">
@@ -428,6 +442,20 @@ export function ContentBrowser({
             <div key={i} className="skeleton" style={{ height: 96 }} />
           ))}
         </div>
+      ) : response && response.items.length === 0 && failedSources.length > 0 ? (
+        <EmptyState
+          icon={<IconPackage size={26} />}
+          title={tr('Suche fehlgeschlagen', 'Search failed')}
+          message={tr(
+            `${failedSources.map((e) => sourceName(e.provider)).join(' und ')} hat gerade nicht geantwortet: ${failedSources[0].message}`,
+            `${failedSources.map((e) => sourceName(e.provider)).join(' and ')} did not answer right now: ${failedSources[0].message}`
+          )}
+          action={
+            <button className="btn" onClick={() => void search(0, false)}>
+              {tr('Erneut versuchen', 'Try again')}
+            </button>
+          }
+        />
       ) : response && response.items.length === 0 ? (
         <EmptyState
           icon={<IconPackage size={26} />}
@@ -448,6 +476,14 @@ export function ContentBrowser({
         />
       ) : (
         <>
+          {failedSources.length > 0 && (
+            <p className="hint">
+              {tr(
+                `${failedSources.map((e) => sourceName(e.provider)).join(' und ')} hat gerade nicht geantwortet, die Ergebnisse sind unvollständig.`,
+                `${failedSources.map((e) => sourceName(e.provider)).join(' and ')} did not answer right now, the results are incomplete.`
+              )}
+            </p>
+          )}
           <div className="discover-grid stagger">
             {response?.items.map((item) => (
               <ProjectCard
@@ -472,11 +508,7 @@ export function ContentBrowser({
             <button
               className="btn block"
               disabled={loading}
-              onClick={() => {
-                const next = offset + 20
-                setOffset(next)
-                void search(next, true)
-              }}
+              onClick={() => void search(offset + 20, true)}
             >
               {loading ? <span className="spinner" /> : null}
               {tr('Mehr laden', 'Load more')}
@@ -618,6 +650,10 @@ function ProjectModal({
   // Looked up separately from `installedProjectIds` (which only carries ids)
   // so the modal can show which version is already in place.
   const [installedItem, setInstalledItem] = useState<ContentItem | null>(null)
+  // Why the project could not be loaded. Without it the dialog said "no
+  // matching version", as if the mod simply had none.
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!instanceId) {
@@ -640,7 +676,9 @@ function ProjectModal({
     return () => {
       current = false
     }
-  }, [instanceId, item.provider, item.projectId])
+    // Looked up again once an install finishes, or the dialog kept showing
+    // the old version and offered to install the same one again.
+  }, [instanceId, item.provider, item.projectId, installing])
 
   useEffect(() => {
     // Guarded like the other async lookups in this app: closing the dialog
@@ -648,6 +686,7 @@ function ProjectModal({
     // component that is already gone.
     let current = true
     setLoading(true)
+    setLoadError(null)
     void window.gabi.providers
       .project(item.provider, item.projectId)
       .then((details) => {
@@ -656,7 +695,7 @@ function ProjectModal({
         setVersions(details.versions)
       })
       .catch((err) => {
-        if (current) toastError(err, tr('Projekt konnte nicht geladen werden', 'Project could not be loaded'))
+        if (current) setLoadError(err instanceof Error ? err.message : String(err))
       })
       .finally(() => {
         if (current) setLoading(false)
@@ -664,7 +703,7 @@ function ProjectModal({
     return () => {
       current = false
     }
-  }, [item.provider, item.projectId])
+  }, [item.provider, item.projectId, reloadKey])
 
   // Deliberately the same rules the rest of the app applies, not stricter.
   // Demanding an exact game-version match hid a mod published only for
@@ -781,7 +820,20 @@ function ProjectModal({
               )}
             </div>
 
-            {shown.length === 0 ? (
+            {loadError ? (
+              <div className="issue warning">
+                <div className="issue-icon">
+                  <IconWarning size={16} />
+                </div>
+                <div className="grow">
+                  <div className="issue-title">{tr('Projekt konnte nicht geladen werden', 'Project could not be loaded')}</div>
+                  <div className="issue-detail">{loadError}</div>
+                </div>
+                <button className="btn sm" onClick={() => setReloadKey((key) => key + 1)}>
+                  {tr('Erneut versuchen', 'Try again')}
+                </button>
+              </div>
+            ) : shown.length === 0 ? (
               <div className="issue warning">
                 <div className="issue-icon">
                   <IconWarning size={16} />

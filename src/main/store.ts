@@ -260,9 +260,43 @@ export function takeInstanceBehaviourMigration(): LaunchBehaviour | null {
   return from
 }
 
+/**
+ * Set when the settings file was locked at startup. The launcher then runs
+ * on the defaults for now, and nothing may write them back over the real
+ * file: that wiped a custom data folder, keys and every other choice the
+ * moment the first ordinary save came along, a few seconds after start.
+ */
+let settingsUnreadable = false
+
+/** Reads the settings file, waiting a little longer for a lock than other reads do. */
+function readSettingsFile(): JsonReadResult<Partial<LauncherSettings>> {
+  let result = readJsonResult<Partial<LauncherSettings>>(settingsFile(), true)
+  // Startup is the one place a short wait costs nothing visible, and this
+  // file decides where every instance lives.
+  for (let attempt = 0; attempt < 6 && !result.ok && result.reason === 'unreadable'; attempt++) {
+    sleepSync(250)
+    result = readJsonResult<Partial<LauncherSettings>>(settingsFile(), true)
+  }
+  return result
+}
+
 export function getSettings(): LauncherSettings {
   if (!settings) {
-    const raw = readJson<Partial<LauncherSettings>>(settingsFile(), {}, true)
+    const result = readSettingsFile()
+    settingsUnreadable = !result.ok && result.reason === 'unreadable'
+    if (settingsUnreadable) {
+      logger.error('launcher.json ist gesperrt, der Launcher läuft vorerst mit den Voreinstellungen')
+      notify(
+        'error',
+        tr('Einstellungen gesperrt', 'Settings locked'),
+        tr(
+          'Ein anderes Programm hält die Einstellungsdatei fest, zum Beispiel ein Virenscanner oder OneDrive. Der Launcher nutzt vorerst die Voreinstellungen und ändert an deinen Einstellungen nichts. Starte ihn gleich neu.',
+          'Another program is holding the settings file, such as a virus scanner or OneDrive. The launcher uses the defaults for now and changes nothing in your settings. Restart it in a moment.'
+        ),
+        { timeout: 0 }
+      )
+    }
+    const raw = result.ok ? result.value : {}
     // A file containing `null`, an array or a bare string parses fine but would
     // produce a settings object with no usable fields.
     const stored = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
@@ -324,6 +358,20 @@ function assertDirectoryUsable(dir: string): void {
 }
 
 export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings {
+  if (settingsUnreadable) {
+    // Read again: only once the real file is back may anything be written.
+    const again = readJsonResult<Partial<LauncherSettings>>(settingsFile(), true)
+    if (!again.ok && again.reason === 'unreadable') {
+      throw new Error(
+        tr(
+          'Die Einstellungsdatei ist gerade gesperrt. Starte den Launcher neu und versuche es dann noch einmal.',
+          'The settings file is locked right now. Restart the launcher and then try again.'
+        )
+      )
+    }
+    settingsUnreadable = false
+    settings = null
+  }
   const current = getSettings()
   const next = sanitize({ ...current, ...patch })
 
@@ -354,10 +402,22 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
 }
 
 export function resetSettings(): LauncherSettings {
-  const { dataDirectory, language } = getSettings()
+  if (settingsUnreadable) saveSettings({})
+  const { dataDirectory, language, onboarded, crashReports, customStartScreen, curseForgeApiKey } = getSettings()
   // The language is kept like the data folder: switching it needs a restart,
   // and a reset offers none, so it would silently flip on the next start.
-  const next = { ...DEFAULT_LAUNCHER_SETTINGS, dataDirectory, language }
+  // The first-run setup, the answers to its consent questions and the
+  // CurseForge key are not preferences: resetting them sent the user
+  // through the whole setup again and deleted a key they had to look up.
+  const next = {
+    ...DEFAULT_LAUNCHER_SETTINGS,
+    dataDirectory,
+    language,
+    onboarded,
+    crashReports,
+    customStartScreen,
+    curseForgeApiKey
+  }
   // Same ordering as saveSettings, and for the same reason.
   writeJsonAtomic(settingsFile(), next)
   settings = next

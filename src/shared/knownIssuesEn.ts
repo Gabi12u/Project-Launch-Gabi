@@ -2413,6 +2413,115 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'Error reports hide the name of the user folder. If a path appeared in the report in a ' +
       'particular technical notation with doubled backslashes, the name stayed visible.'
+  },
+  'einstellungen-gesperrt-zurueckgesetzt': {
+    title: 'A briefly locked settings file could reset all settings',
+    detail:
+      'If a virus scanner or OneDrive held the settings file at startup, the launcher ran on the ' +
+      'defaults and wrote them into the file shortly after. A custom data folder, the CurseForge key ' +
+      'and all other settings were then gone, and the instances seemed to have vanished.'
+  },
+  'zuruecksetzen-ersteinrichtung': {
+    title: '"Reset settings" restarted the first-run setup and deleted the CurseForge key',
+    detail:
+      'After a reset, the first-run setup appeared again, the questions about error reports and the ' +
+      'custom start screen came back, and an entered CurseForge key was deleted. The dialog had only ' +
+      'said that the settings return to their defaults.'
+  },
+  'wichtige-hinweise-verdraengt': {
+    title: 'Notices meant to stay could be pushed out by newer ones',
+    detail:
+      'Some notices are meant to stay, for example after the game crashed or when an update is ready. ' +
+      'When several notices arrived at once, they still disappeared.'
+  },
+  'launcher-update-hinweise': {
+    title: 'Notices about launcher updates were missing or misleading',
+    detail:
+      'Without automatic download, a found update was announced nowhere. Turning on automatic updates ' +
+      'only took effect after a restart. The notice "installed on the next start" also appeared when ' +
+      'automatic installation was off, and every error said "update server not reachable".'
+  },
+  'minimiert-unsichtbar': {
+    title: '"Start minimized" made the launcher invisible',
+    detail:
+      'With this setting the launcher started without any window and without a taskbar entry. The only ' +
+      'way back was starting it a second time.'
+  },
+  'datenordner-nicht-erreichbar': {
+    title: 'An unreachable data folder looked like an empty launcher',
+    detail:
+      'If the data folder was on an unplugged drive or a disconnected network share, the launcher ' +
+      'simply showed no instances, without any hint at the reason.'
+  },
+  'einrichtung-anzeige-haengt': {
+    title: 'After creating an instance, "Setting up" stayed on screen',
+    detail:
+      'The page of a new instance kept showing "Setting up" after setup had finished, and Play, ' +
+      'Duplicate, Delete and Repair stayed locked until the page was left and opened again.'
+  },
+  'log-reiter-springt': {
+    title: 'The Log tab kept jumping to the bottom while reading',
+    detail:
+      'Anyone scrolling up in the log to read something was put back at the end with every new line. ' +
+      'Also, two identical lines in quick succession were merged into one.'
+  },
+  'aufgaben-fertig-wiederholt': {
+    title: 'Finished tasks kept reappearing in the task area',
+    detail:
+      'While one task was still running after another had finished, the finished task flashed up again ' +
+      'every few seconds, for up to 20 seconds.'
+  },
+  'mods-uebersicht-veraltet': {
+    title: 'The mod overview showed outdated locks and emptied on a single error',
+    detail:
+      'The update buttons followed the state from when the overview was opened, not whether a game is ' +
+      'running right now. With duplicated instances the spinner showed in both rows, and a single ' +
+      'instance that could not be loaded made the whole list look empty.'
+  },
+  'kleinere-anzeigefehler-oktober': {
+    title: 'Smaller display errors in search, updates and the settings',
+    detail:
+      '"Load more" skipped results after an error. The project window showed the old version after an ' +
+      'install. With two updates at once, one spinner disappeared too early. On Home the background ' +
+      'picture of another instance could stay. An unsaved CurseForge key was lost when saving the ' +
+      'application ID. "Back up" and "Export" could be triggered twice.'
+  },
+  'suche-fehler-wie-leer': {
+    title: 'A failed search looked like "Nothing found"',
+    detail:
+      'If Modrinth or CurseForge did not answer, the search showed "Nothing found", and a project that ' +
+      'could not be loaded said "No matching version". Both sounded as if the content did not exist.'
+  },
+  'netzwerkfehler-englisch': {
+    title: 'Without a connection, technical English messages such as "fetch failed" appeared',
+    detail:
+      'Without an internet connection, or with a server answering too slowly, search, installation and ' +
+      'the update check only showed "fetch failed" or "This operation was aborted".'
+  },
+  'updatepruefung-offline': {
+    title: 'Without internet the update check took very long and then reported no updates',
+    detail:
+      'The check tried every mod several times on its own. With many mods this took minutes, and in ' +
+      'the end it said there were no updates, instead of that they could not be checked.'
+  },
+  'curseforge-schluessel-abgelehnt': {
+    title: 'A wrong CurseForge key only showed "HTTP 403" with an address',
+    detail:
+      'If CurseForge rejected the entered key, a technical message with a long address appeared, ' +
+      'without a hint that the key is the problem.'
+  },
+  'modpack-vorabversion': {
+    title: 'A modpack straight from the search could install a pre-release and could not be cancelled',
+    detail:
+      'Without a chosen version the launcher took the newest file, even if it was an alpha or beta. ' +
+      '"Cancel" did not stop the modpack download.'
+  },
+  'deutsche-texte-uneinheitlich': {
+    title: 'Inconsistent terms and small language errors in German texts',
+    detail:
+      'In the German interface, the same thing had different names in different places, and some ' +
+      'messages referred to buttons or tabs that are named differently. With exactly one line, second ' +
+      'or file, the plural was used.'
   }
 }
 

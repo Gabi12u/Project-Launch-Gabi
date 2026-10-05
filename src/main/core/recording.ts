@@ -639,9 +639,9 @@ async function finishRecordingInner(
       ? tr('Aufnahme gespeichert, möglicherweise unvollständig', 'Recording saved, possibly incomplete')
       : tr('Aufnahme gespeichert', 'Recording saved'),
     tr(
-      `${seconds} Sekunden, ${mb} MB. Zu finden im Reiter Aufnahmen.` +
+      `${seconds} ${seconds === 1 ? 'Sekunde' : 'Sekunden'}, ${mb} MB. Zu finden im Reiter Aufnahmen.` +
         (incomplete ? ' Das Ende ließ sich nicht mehr abwarten, die letzten Sekunden können fehlen.' : ''),
-      `${seconds} seconds, ${mb} MB. You can find it in the Recordings tab.` +
+      `${seconds} ${seconds === 1 ? 'second' : 'seconds'}, ${mb} MB. You can find it in the Recordings tab.` +
         (incomplete ? ' The end could not be waited for, the last seconds may be missing.' : '')
     ),
     { route: `/instances/${current.instanceId}?tab=recordings` }

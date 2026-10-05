@@ -43,11 +43,16 @@ export function ModsView(): JSX.Element {
   // Same question the instance page asks: a stray click here quietly replaced
   // a version someone may have picked on purpose.
   const [confirmRow, setConfirmRow] = useState<Row | null>(null)
+  // A duplicated instance keeps its content ids, so the id alone is shared.
+  const rowKey = (row: Row): string => `${row.instance.id}:${row.item.id}`
+  // The instance as it is now. The row holds the state from when the list
+  // was loaded, so a game started since then did not lock the buttons.
+  const live = (row: Row): InstanceSummary => instances.find((i) => i.id === row.instance.id) ?? row.instance
 
   const runRowUpdate = async (row: Row): Promise<void> => {
     // Guards against a double click landing twice before the first render.
-    if (updating.has(row.item.id)) return
-    setUpdating((current) => new Set(current).add(row.item.id))
+    if (updating.has(rowKey(row))) return
+    setUpdating((current) => new Set(current).add(rowKey(row)))
     try {
       await window.gabi.content.update(row.instance.id, row.item.id)
       toast('success', tr(`${row.item.name} aktualisiert`, `${row.item.name} updated`))
@@ -58,7 +63,7 @@ export function ModsView(): JSX.Element {
     } finally {
       setUpdating((current) => {
         const next = new Set(current)
-        next.delete(row.item.id)
+        next.delete(rowKey(row))
         return next
       })
     }
@@ -80,13 +85,24 @@ export function ModsView(): JSX.Element {
     setLoading(true)
     try {
       const collected: Row[] = []
+      const failed: string[] = []
       for (const instance of getState().instances) {
-        const detail = await window.gabi.instances.get(instance.id)
-        for (const item of detail.content) {
-          collected.push({ instance, item })
+        // One instance that cannot be read must not empty the whole list.
+        try {
+          const detail = await window.gabi.instances.get(instance.id)
+          for (const item of detail.content) {
+            collected.push({ instance, item })
+          }
+        } catch {
+          failed.push(instance.name)
         }
       }
-      if (request === requestId.current) setRows(collected)
+      if (request === requestId.current) {
+        setRows(collected)
+        if (failed.length > 0) {
+          toast('warning', tr('Nicht alle Instanzen geladen', 'Not all instances loaded'), failed.join(', '))
+        }
+      }
     } catch (err) {
       if (request === requestId.current) toastError(err, tr('Mods konnten nicht geladen werden', 'Mods could not be loaded'))
     } finally {
@@ -419,11 +435,11 @@ export function ModsView(): JSX.Element {
                     {row.item.update && (
                       <button
                         className="btn sm primary"
-                        disabled={updating.has(row.item.id) || blockedReason(row.instance) !== null}
-                        title={blockedReason(row.instance) ?? undefined}
+                        disabled={updating.has(rowKey(row)) || blockedReason(live(row)) !== null}
+                        title={blockedReason(live(row)) ?? undefined}
                         onClick={() => setConfirmRow(row)}
                       >
-                        {updating.has(row.item.id) ? <span className="spinner" /> : <IconDownload size={13} />}
+                        {updating.has(rowKey(row)) ? <span className="spinner" /> : <IconDownload size={13} />}
                         {tr('Update', 'Update')}
                       </button>
                     )}

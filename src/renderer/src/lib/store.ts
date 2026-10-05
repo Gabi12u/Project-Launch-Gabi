@@ -206,8 +206,11 @@ function appendToast(current: LocalToast[], item: LocalToast): LocalToast[] {
   const withNew = [...current, item]
   if (withNew.length <= 4) return withNew
 
-  const pinned = withNew.filter((t) => t.actions && t.actions.length > 0)
-  const plain = withNew.filter((t) => !t.actions || t.actions.length === 0)
+  // Pinned: a card waiting on an answer, and one the sender asked to stay
+  // (timeout 0), such as a crash or a restore that needs attention.
+  const isPinned = (t: LocalToast): boolean => Boolean(t.actions && t.actions.length > 0) || t.timeout === 0
+  const pinned = withNew.filter(isPinned)
+  const plain = withNew.filter((t) => !isPinned(t))
   const room = 4 - pinned.length
   // `slice(-0)` behaves like `slice(0)` in JS (returns everything), so a
   // room of exactly 0 has to be handled separately rather than falling

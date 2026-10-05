@@ -38,7 +38,7 @@ export function Sidebar(): JSX.Element {
     { id: 'instances', label: tr('Instanzen', 'Instances'), icon: <IconGrid />, route: '/instances' },
     { id: 'mods', label: tr('Mods', 'Mods'), icon: <IconPackage />, route: '/mods', badge: updateCount },
     { id: 'discover', label: tr('Entdecken', 'Discover'), icon: <IconCompass />, route: '/discover' },
-    { id: 'backups', label: tr('Backups', 'Backups'), icon: <IconSave />, route: '/backups' }
+    { id: 'backups', label: tr('Sicherungen', 'Backups'), icon: <IconSave />, route: '/backups' }
   ]
 
   /* --- Sliding active pill ----------------------------------------- */

@@ -435,7 +435,8 @@ export async function getCategories(type: ContentType | 'modpack'): Promise<stri
     const categories = await fetchJsonCached<{ name: string; project_type: string }[]>(
       `${API}/tag/category`,
       'modrinth-categories',
-      24 * 60 * 60 * 1000
+      24 * 60 * 60 * 1000,
+      Array.isArray
     )
     const wanted = PROJECT_TYPE[type]
     return categories

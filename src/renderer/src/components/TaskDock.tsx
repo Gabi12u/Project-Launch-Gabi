@@ -20,6 +20,8 @@ export function TaskDock(): JSX.Element | null {
   // to end the lingering. A finished task never left the dock again, for the
   // rest of the session.
   const scheduled = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  // Finished tasks that already had their moment, see the effect below.
+  const lingered = useRef(new Set<string>())
 
   // Rough "time left" for long downloads, guessed from how fast progress moved
   // recently. Kept as a plain ref (time, fraction) history per task rather than
@@ -67,9 +69,16 @@ export function TaskDock(): JSX.Element | null {
   }, [tasks])
 
   useEffect(() => {
+    // Forgotten only once the task is gone from the list. Dropping the id
+    // when its timer ran out made the next change of any other task count
+    // it as freshly finished, and it flashed up again every few seconds.
+    for (const id of lingered.current) {
+      if (!tasks.some((t) => t.id === id)) lingered.current.delete(id)
+    }
     const finished = tasks.filter((t) => t.state === 'done' || t.state === 'cancelled')
-    const fresh = finished.filter((t) => !scheduled.current.has(t.id))
+    const fresh = finished.filter((t) => !lingered.current.has(t.id))
     if (fresh.length === 0) return
+    fresh.forEach((t) => lingered.current.add(t.id))
 
     setLingering((current) => {
       const next = new Set(current)

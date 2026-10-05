@@ -71,7 +71,7 @@ export function BackupsView(): JSX.Element {
     <div className="col gap-24">
       <header className="row-between wrap">
         <div>
-          <h1 className="page-title">{tr('Backups', 'Backups')}</h1>
+          <h1 className="page-title">{tr('Sicherungen', 'Backups')}</h1>
           <p className="page-sub">
             {backups.length > 0
               ? tr(

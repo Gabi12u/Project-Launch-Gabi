@@ -633,6 +633,9 @@ function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
   return new Date(candidate.releasedAt).getTime() > current.installedAt - 24 * 60 * 60 * 1000
 }
 
+/** Thrown when an update check stopped because there was no connection at all. */
+export class UpdateCheckOfflineError extends Error {}
+
 export async function checkUpdates(instanceId: string, task?: Task): Promise<Instance> {
   await syncContentWithDisk(instanceId)
   const instance = getInstance(instanceId)
@@ -643,9 +646,14 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
 
   const updated: ContentItem[] = []
   let index = 0
+  // Without a connection every mod failed on its own, each after several
+  // retries, which for a large pack took minutes and then reported "no
+  // updates". A few failures in a row without any answer end the check.
+  let unanswered = 0
+  let gaveUp = false
 
   for (const item of instance.content) {
-    if (!managed.includes(item)) {
+    if (!managed.includes(item) || gaveUp) {
       updated.push(item)
       continue
     }
@@ -679,9 +687,12 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
       } else {
         updated.push({ ...item, update: null })
       }
+      unanswered = 0
     } catch (err) {
       logger.warn(`Update-Prüfung für ${item.name} fehlgeschlagen:`, err)
       updated.push(item)
+      if (err instanceof HttpError) unanswered = 0
+      else if (++unanswered >= 3) gaveUp = true
     }
   }
 
@@ -704,6 +715,14 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
   const result = persist({ ...current, content: merged })
   const count = merged.filter((c) => c.update).length
   logger.info(`${count} Updates für ${current.name} gefunden`)
+  if (gaveUp) {
+    throw new UpdateCheckOfflineError(
+      tr(
+        'Die Updates konnten nicht vollständig geprüft werden, weil keine Verbindung zu Modrinth oder CurseForge besteht. Prüfe deine Internetverbindung.',
+        'Updates could not be fully checked because there is no connection to Modrinth or CurseForge. Check your internet connection.'
+      )
+    )
+  }
   return result
 }
 

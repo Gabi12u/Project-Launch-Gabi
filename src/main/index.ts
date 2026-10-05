@@ -2,7 +2,7 @@ import { BrowserWindow, app, dialog, nativeTheme, shell } from 'electron'
 import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
-import { ensureRootLayout } from './paths'
+import { ensureRootLayout, paths } from './paths'
 import { getSettings, saveSettings, takeInstanceBehaviourMigration } from './store'
 import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
@@ -13,7 +13,7 @@ import { adoptRunningFromDisk, onAdoptedEnded, ownRunningCount, pruneAdopted, ru
 import { cleanTempFiles } from './core/repair'
 import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
-import { checkUpdates } from './core/content'
+import { UpdateCheckOfflineError, checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
 import {
@@ -174,7 +174,11 @@ function createWindow(): BrowserWindow {
   setMainWindow(window)
 
   window.on('ready-to-show', () => {
-    if (!getSettings().startMinimized) window.show()
+    // Minimized into the taskbar rather than never shown: a window that was
+    // never shown has no taskbar entry, and the launcher was then only
+    // reachable by starting it a second time.
+    if (getSettings().startMinimized) window.minimize()
+    else window.show()
     // A window can also appear long after startup, for instance when the dock
     // icon is clicked on macOS. Any deep link waiting since then is delivered
     // here rather than only by the one-shot timer during boot.
@@ -338,6 +342,17 @@ function bootstrap(): void {
       ensureRootLayout()
     } catch (err) {
       logger.error('Datenverzeichnis konnte nicht angelegt werden:', err)
+      // Without this an unplugged drive or a lost network share looked like
+      // a launcher with no instances at all.
+      notify(
+        'error',
+        tr('Datenordner nicht erreichbar', 'Data folder not reachable'),
+        tr(
+          `Der Datenordner ${paths.root()} ist nicht erreichbar. Ist das Laufwerk angeschlossen? Bis dahin fehlen deine Instanzen hier.`,
+          `The data folder ${paths.root()} is not reachable. Is the drive connected? Until then your instances are missing here.`
+        ),
+        { timeout: 0 }
+      )
     }
 
     // Before instances are loaded or a window exists, so a restore the
@@ -655,6 +670,8 @@ async function runStartupChecks(): Promise<void> {
       total += updated.content.filter((c) => c.update).length
     } catch (err) {
       logger.debug(`Update-Prüfung für ${instance.name} übersprungen:`, err)
+      // No connection: every further instance would only wait for the same.
+      if (err instanceof UpdateCheckOfflineError) break
     }
   }
 

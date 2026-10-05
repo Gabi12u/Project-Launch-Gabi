@@ -481,7 +481,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
   // with nothing pointing at the manifest as the cause.
   if (!primary?.id) {
     throw new Error(
-      tr('Das CurseForge-Modpack nennt keinen Mod Loader (manifest.json unvollständig) und wurde nicht importiert.', 'The CurseForge modpack names no mod loader (manifest.json is incomplete) and was not imported.')
+      tr('Das CurseForge-Modpack nennt keinen Mod-Loader (manifest.json unvollständig) und wurde nicht importiert.', 'The CurseForge modpack names no mod loader (manifest.json is incomplete) and was not imported.')
     )
   }
 
@@ -535,8 +535,12 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       )
       task.update(
         tr(
-          `Achtung: ${fileIds.length - resolved.length} Mods konnten nicht aufgelöst werden`,
-          `Warning: ${fileIds.length - resolved.length} mods could not be resolved`
+          fileIds.length - resolved.length === 1
+            ? 'Achtung: 1 Mod wurde bei CurseForge nicht gefunden'
+            : `Achtung: ${fileIds.length - resolved.length} Mods wurden bei CurseForge nicht gefunden`,
+          fileIds.length - resolved.length === 1
+            ? 'Warning: 1 mod was not found on CurseForge'
+            : `Warning: ${fileIds.length - resolved.length} mods were not found on CurseForge`
         ),
         null
       )
@@ -846,7 +850,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
           clientOnly === 1
             ? tr('1 Datei ist nur für Server gedacht', '1 file is meant for servers only')
             : tr(`${clientOnly} Dateien sind nur für Server gedacht`, `${clientOnly} files are meant for servers only`),
-        detail: tr('Sie werden beim Import übersprungen, so wie es das Modpack vorsieht.', 'They are skipped during import, as the modpack intends.')
+        detail: tr('Das wird beim Import übersprungen, so wie es das Modpack vorsieht.', 'This is skipped during import, as the modpack intends.')
       })
     }
 
@@ -1220,7 +1224,11 @@ export async function installModpackFromProvider(
   const project = await getProject(provider, projectId)
   const versions = await getVersions(provider, projectId)
 
-  const version = versionId ? versions.find((v) => v.versionId === versionId) : versions[0]
+  // Without a chosen version the newest stable release, not simply the
+  // newest file, which can be an alpha or a beta.
+  const version = versionId
+    ? versions.find((v) => v.versionId === versionId)
+    : (versions.find((v) => v.releaseType === 'release') ?? versions[0])
   if (!version) throw new Error(tr(`Für ${project.name} wurde keine Version gefunden.`, `No version was found for ${project.name}.`))
 
   // `fileName` comes from the provider, so it is reduced to a bare name before
@@ -1240,7 +1248,8 @@ export async function installModpackFromProvider(
         )
       },
       3,
-      undefined
+      // "Abbrechen" used to reach nothing: the download ran to the end.
+      task.signal
     )
   })
 

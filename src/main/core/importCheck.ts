@@ -146,7 +146,7 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
         errors.length === 6
           ? tr('1 weiteres Problem', '1 more problem')
           : tr(`${errors.length - 5} weitere Probleme`, `${errors.length - 5} more problems`),
-        tr('Vollständig unter "Kompatibilität" bei der Instanz.', 'Listed in full under "Compatibility" in the instance.')
+        tr('Vollständig bei der Instanz unter „Mod-Kompatibilität“.', 'Listed in full on the instance under "Mod compatibility".')
       )
     }
     if (warnings.length > 0) {

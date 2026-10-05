@@ -163,7 +163,7 @@ export function GameLogWindow({
               className="btn sm"
               onClick={() => void navigator.clipboard.writeText(lines.map((line) => line.text).join('\n'))}
             >
-              {tr('Protokoll kopieren', 'Copy log')}
+              {tr('Log kopieren', 'Copy log')}
             </button>
             {/* Only once the game process exists: before that, stopping has
                 nothing to act on and the button did nothing at all. */}

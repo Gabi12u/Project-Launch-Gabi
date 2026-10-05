@@ -80,7 +80,7 @@ export async function listFabricLikeVersions(
   // button), but only if this actually throws instead of swallowing the
   // failure here. Left as a bare empty list, that distinction had nothing to
   // work with: every network drop looked identical to a real absence.
-  const entries = await fetchJsonCached<MetaLoaderEntry[]>(url, `${loader}-loader-${mcVersion}`, 30 * 60 * 1000)
+  const entries = await fetchJsonCached<MetaLoaderEntry[]>(url, `${loader}-loader-${mcVersion}`, 30 * 60 * 1000, Array.isArray)
 
   // `fetchJsonCached` casts without checking, so a 200 carrying anything other
   // than the expected array (a maintenance page, a CDN error body, a future

@@ -783,7 +783,7 @@ export function detectInstanceFolder(sourceDir: string): DetectedInstance {
 
   if (!guessed) {
     throw new Error(
-      tr('Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Das passiert, wenn der Ordner weder einen "versions"-Unterordner noch eine gespeicherte Welt enthält. Lege die Instanz von Hand an und kopiere die Dateien anschließend über "Ordner öffnen" hinein.', 'The Minecraft version of this folder could not be determined. This happens when the folder has neither a "versions" subfolder nor a saved world. Create the instance by hand and then copy the files in via "Open folder".')
+      tr('Die Minecraft-Version dieses Ordners konnte nicht ermittelt werden. Das passiert, wenn der Ordner weder einen "versions"-Unterordner noch eine gespeicherte Welt enthält. Lege die Instanz von Hand an und kopiere die Dateien anschließend über „Ordner“ bei der Instanz hinein.', 'The Minecraft version of this folder could not be determined. This happens when the folder has neither a "versions" subfolder nor a saved world. Create the instance by hand and then copy the files in via "Folder" on the instance.')
     )
   }
 
@@ -1214,7 +1214,7 @@ export async function importInstanceFolder(
     const { files: copied, skippedLinks } = await copyGameFiles(
       detected.gameDir,
       target,
-      (n) => task.update(tr(`${n} Dateien kopiert…`, `${n} files copied…`), null),
+      (n) => task.update(tr(`Dateien kopiert: ${n}…`, `Files copied: ${n}…`), null),
       () => task.throwIfCancelled()
     )
     logger.info(

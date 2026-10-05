@@ -148,7 +148,7 @@ export function InstancesView(): JSX.Element {
             icon={<IconCube size={28} />}
             title={tr('Noch keine Instanzen', 'No instances yet')}
             message={tr(
-              'Erstelle eine Instanz mit der Minecraft-Version und dem Mod Loader deiner Wahl. Launch Gabi richtet alles Weitere automatisch ein.',
+              'Erstelle eine Instanz mit der Minecraft-Version und dem Mod-Loader deiner Wahl. Launch Gabi richtet alles Weitere automatisch ein.',
               'Create an instance with the Minecraft version and mod loader of your choice. Launch Gabi sets up everything else automatically.'
             )}
             action={

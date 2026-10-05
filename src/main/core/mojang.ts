@@ -203,7 +203,8 @@ export async function getVersionManifest(forceRefresh = false): Promise<VersionM
   return fetchJsonCached<VersionManifestJson>(
     VERSION_MANIFEST,
     'version_manifest_v2',
-    forceRefresh ? 0 : 60 * 60 * 1000
+    forceRefresh ? 0 : 60 * 60 * 1000,
+    (data) => Array.isArray((data as Partial<VersionManifestJson> | null)?.versions)
   )
 }
 
@@ -234,13 +235,13 @@ export async function loadVersionJson(
   if (seen.has(versionId)) {
     throw new Error(
       tr(
-        `Zirkuläre inheritsFrom-Kette in der Versionsdefinition: ${[...seen, versionId].join(' -> ')}`,
+        `Die Versionsbeschreibung verweist im Kreis auf sich selbst: ${[...seen, versionId].join(' -> ')}`,
         `Circular inheritsFrom chain in the version definition: ${[...seen, versionId].join(' -> ')}`
       )
     )
   }
   if (seen.size > 16) {
-    throw new Error(tr(`inheritsFrom-Kette ist zu tief verschachtelt (${[...seen].join(' -> ')})`, `inheritsFrom chain is nested too deeply (${[...seen].join(' -> ')})`))
+    throw new Error(tr(`Die Versionsbeschreibung ist zu tief verschachtelt (${[...seen].join(' -> ')})`, `inheritsFrom chain is nested too deeply (${[...seen].join(' -> ')})`))
   }
 
   const file = join(paths.version(versionId), `${versionId}.json`)

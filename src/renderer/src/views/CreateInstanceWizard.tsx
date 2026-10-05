@@ -19,6 +19,9 @@ interface Props {
 
 export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const { settings } = useStore()
+  // Read when the wizard opens, without making a settings change reset it.
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   const memoryMax = useMemorySliderMax()
   // useMemorySliderMax answers instantly with a generous fallback ceiling
   // while the real installed RAM is still being fetched. Clamping against
@@ -84,10 +87,12 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
     setLoaderVersion('')
     setName('')
     setIcon(ICON_CHOICES[Math.floor(Math.random() * 10)])
-    setAccent(settings.accentColor)
-    setMemory(settings.defaultMemoryMb)
+    setAccent(settingsRef.current.accentColor)
+    setMemory(settingsRef.current.defaultMemoryMb)
     setGroup('')
-  }, [open, settings.accentColor, settings.defaultMemoryMb])
+    // Only on opening. A settings save landing while the wizard was open
+    // (a debounced slider) threw it back to the first step, name cleared.
+  }, [open])
 
   /* --- Minecraft versions ----------------------------------------- */
   useEffect(() => {
@@ -243,7 +248,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
     }
   }
 
-  const steps = [tr('Version', 'Version'), tr('Mod Loader', 'Mod loader'), tr('Details', 'Details')]
+  const steps = [tr('Version', 'Version'), tr('Mod-Loader', 'Mod loader'), tr('Details', 'Details')]
 
   return (
     <Modal
@@ -371,7 +376,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
         <div className="col gap-16">
           <p className="hint">
             {tr(
-              `Der Mod Loader entscheidet, welche Mods du installieren kannst. Ohne Loader läuft Minecraft unverändert. Ausgegraute Loader gibt es für ${mcVersion} noch nicht.`,
+              `Der Mod-Loader entscheidet, welche Mods du installieren kannst. Ohne Loader läuft Minecraft unverändert. Ausgegraute Loader gibt es für ${mcVersion} noch nicht.`,
               `The mod loader decides which mods you can install. Without a loader Minecraft runs unchanged. Grayed-out loaders are not available for ${mcVersion} yet.`
             )}
           </p>

@@ -737,7 +737,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // 9. Spawn -------------------------------------------------------
     if (userText(instance.settings.preLaunchCommand).trim()) {
       await ensureApproved(instanceId, instance.name, 'preLaunch', instance.settings.preLaunchCommand)
-      task.update(tr('Pre-Launch-Befehl läuft…', 'Running pre-launch command…'), null)
+      task.update(tr('Befehl vor dem Start läuft…', 'Running pre-launch command…'), null)
       await runPreLaunch(instance, gameDir, task)
     }
 
@@ -940,7 +940,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
               'error',
               tr(`${instance.name} ist abgestürzt`, `${instance.name} crashed`),
               tr(
-                `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du im Instanz-Tab.`,
+                `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
                 `Minecraft exited with code ${code}.${hint} You can find the log in the instance's Log tab.`
               ),
               // Stays until clicked away: the launcher is often hidden while
@@ -1177,7 +1177,7 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
         reject(
           new Error(
             tr(
-              `Pre-Launch-Befehl lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`,
+              `Der Befehl vor dem Start lief länger als ${PRE_LAUNCH_TIMEOUT_MS / 60_000} Minuten und wurde beendet.`,
               `Pre-launch command ran longer than ${PRE_LAUNCH_TIMEOUT_MS / 60_000} minutes and was stopped.`
             )
           )
@@ -1198,7 +1198,7 @@ async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promis
       settle(() => {
         if (task.cancelled) return reject(new TaskCancelledError())
         if (code === 0) return resolve()
-        reject(new Error(tr(`Pre-Launch-Befehl endete mit Code ${code}`, `Pre-launch command exited with code ${code}`)))
+        reject(new Error(tr(`Der Befehl vor dem Start endete mit Code ${code}`, `Pre-launch command exited with code ${code}`)))
       })
     )
   })

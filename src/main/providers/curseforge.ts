@@ -7,7 +7,7 @@ import type {
   SearchQuery,
   SearchResultItem
 } from '@shared/types'
-import { fetchJson } from '../core/net'
+import { fetchJson as fetchJsonRaw, HttpError } from '../core/net'
 import { getSettings } from '../store'
 import { log } from '../logger'
 import { tr } from '@shared/i18n'
@@ -15,6 +15,28 @@ import { tr } from '@shared/i18n'
 const logger = log('curseforge')
 
 const API = 'https://api.curseforge.com/v1'
+
+/**
+ * The API calls, with a rejected key named as such. CurseForge answers a
+ * wrong or revoked key with 401 or 403, which reached the user as a bare
+ * "HTTP 403" followed by the whole request address.
+ */
+async function fetchJson<T>(url: string, init?: RequestInit, retries?: number): Promise<T> {
+  try {
+    return await fetchJsonRaw<T>(url, init, retries)
+  } catch (err) {
+    if (err instanceof HttpError && (err.status === 401 || err.status === 403) && url.startsWith(API)) {
+      throw new Error(
+        tr(
+          'CurseForge hat den API-Schlüssel abgelehnt. Prüfe ihn in den Einstellungen unter Inhalte.',
+          'CurseForge rejected the API key. Check it in the settings under Content.'
+        ),
+        { cause: err }
+      )
+    }
+    throw err
+  }
+}
 const GAME_ID = 432
 /**
  * Both the search endpoint and the per-mod file list at `/mods/{id}/files`
@@ -248,7 +270,8 @@ function mapFile(file: CfFile): ProjectVersion {
     projectId: String(file.modId),
     name: file.displayName,
     versionNumber: file.displayName,
-    releaseType: RELEASE_TYPE[file.releaseType] ?? 'release',
+    // An unknown, future value is not taken for a stable release.
+    releaseType: RELEASE_TYPE[file.releaseType] ?? 'beta',
     gameVersions: games,
     loaders,
     downloadUrl: file.downloadUrl ?? fallbackDownloadUrl(file),

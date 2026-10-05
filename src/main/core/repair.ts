@@ -252,7 +252,7 @@ async function runRepair(
     }
 
     // 2. Mod loader ---------------------------------------------------
-    task.update(tr('Mod Loader wird geprüft…', 'Checking mod loader…'), 0.08)
+    task.update(tr('Mod-Loader wird geprüft…', 'Checking mod loader…'), 0.08)
     repairLog(
       instanceId,
       'check',
@@ -268,12 +268,12 @@ async function runRepair(
 
       if (!existsSync(versionFile) && instance.loader !== 'vanilla') {
         repairLog(instanceId, 'warning', tr(`${instance.loader}-Profil fehlt oder ist unvollständig`, `${instance.loader} profile is missing or incomplete`))
-        task.update(tr('Mod Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.1)
+        task.update(tr('Mod-Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.1)
         repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
         versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
-        step(tr('Mod Loader', 'Mod loader'), 'repaired', tr(`${instance.loader} neu installiert`, `${instance.loader} reinstalled`))
+        step(tr('Mod-Loader', 'Mod loader'), 'repaired', tr(`${instance.loader} neu installiert`, `${instance.loader} reinstalled`))
       } else {
-        step(tr('Mod Loader', 'Mod loader'), 'ok', instance.loader === 'vanilla' ? 'Vanilla' : tr(`${instance.loader} vorhanden`, `${instance.loader} present`))
+        step(tr('Mod-Loader', 'Mod loader'), 'ok', instance.loader === 'vanilla' ? 'Vanilla' : tr(`${instance.loader} vorhanden`, `${instance.loader} present`))
       }
     } catch (err) {
       // Reported and returned, not rethrown. Throwing here discarded the whole
@@ -281,9 +281,9 @@ async function runRepair(
       // a bare error toast instead of "folder layout fine, loader broken".
       // Everything below needs a resolved version, so this is the end of the
       // line either way. A cancellation is the one exception: it must end the
-      // whole task as cancelled, not as a failed "Mod Loader" step.
+      // whole task as cancelled, not as a failed "Mod-Loader" step.
       rethrowIfCancelled(err)
-      step(tr('Mod Loader', 'Mod loader'), 'failed', err instanceof Error ? err.message : String(err))
+      step(tr('Mod-Loader', 'Mod loader'), 'failed', err instanceof Error ? err.message : String(err))
       return report
     }
 
@@ -808,7 +808,7 @@ async function runRepair(
         ...(outdated > 0
           ? [
               tr(
-                `${outdated} ${outdated === 1 ? 'veraltete Mod' : 'veraltete Mods'} gefunden`,
+                `${outdated} ${outdated === 1 ? 'veralteter Mod' : 'veraltete Mods'} gefunden`,
                 `${outdated} ${outdated === 1 ? 'outdated mod' : 'outdated mods'} found`
               )
             ]

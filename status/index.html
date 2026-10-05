@@ -3586,6 +3586,125 @@ footer .grow { flex: 1; }
       "detail": "In Fehlerberichten wird der Name des Benutzerordners unkenntlich gemacht. Stand ein Pfad in einer bestimmten technischen Schreibweise mit doppelten Schrägstrichen im Bericht, blieb der Name stehen.",
       "state": "fixing",
       "since": "2026-10-05"
+    },
+    {
+      "id": "einstellungen-gesperrt-zurueckgesetzt",
+      "title": "Eine kurz gesperrte Einstellungsdatei konnte alle Einstellungen zurücksetzen",
+      "detail": "Hielt ein Virenscanner oder OneDrive die Einstellungsdatei beim Start fest, lief der Launcher mit den Voreinstellungen und schrieb sie kurz darauf in die Datei. Ein eigener Datenordner, der CurseForge-Schlüssel und alle anderen Einstellungen waren danach weg, und die Instanzen schienen verschwunden.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "zuruecksetzen-ersteinrichtung",
+      "title": "„Einstellungen zurücksetzen“ startete die Ersteinrichtung neu und löschte den CurseForge-Schlüssel",
+      "detail": "Nach dem Zurücksetzen erschien die Ersteinrichtung wieder, die Fragen zu Fehlerberichten und zur eigenen Startseite kamen erneut, und ein eingetragener CurseForge-Schlüssel war gelöscht. Der Dialog hatte nur gesagt, dass die Einstellungen zur Voreinstellung zurückkehren.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "wichtige-hinweise-verdraengt",
+      "title": "Hinweise, die stehen bleiben sollten, konnten von neueren verdrängt werden",
+      "detail": "Manche Hinweise bleiben absichtlich stehen, etwa nach einem Absturz des Spiels oder wenn ein Update bereitliegt. Kamen mehrere Hinweise gleichzeitig, verschwanden sie trotzdem.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "launcher-update-hinweise",
+      "title": "Hinweise zu Launcher-Updates fehlten oder waren irreführend",
+      "detail": "Ohne automatischen Download wurde ein gefundenes Update nirgends angekündigt. Das Einschalten der automatischen Updates wirkte erst nach einem Neustart. Der Hinweis „wird beim nächsten Start installiert“ erschien auch, wenn das automatische Installieren aus war, und jeder Fehler hieß „Update-Server nicht erreichbar“.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "minimiert-unsichtbar",
+      "title": "„Minimiert starten“ machte den Launcher unsichtbar",
+      "detail": "Mit dieser Einstellung startete der Launcher ganz ohne Fenster und ohne Eintrag in der Taskleiste. Zurück kam man nur durch einen zweiten Start.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "datenordner-nicht-erreichbar",
+      "title": "Ein nicht erreichbarer Datenordner sah aus wie ein leerer Launcher",
+      "detail": "Lag der Datenordner auf einem abgezogenen Laufwerk oder einer getrennten Netzwerkfreigabe, zeigte der Launcher einfach keine Instanzen, ohne einen Hinweis auf den Grund.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "einrichtung-anzeige-haengt",
+      "title": "Nach dem Erstellen einer Instanz blieb „Wird eingerichtet“ stehen",
+      "detail": "Die Seite einer neuen Instanz zeigte auch nach fertiger Einrichtung weiter „Wird eingerichtet“, und Spielen, Duplizieren, Löschen und Reparieren blieben gesperrt, bis man die Seite verließ und wieder öffnete.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "log-reiter-springt",
+      "title": "Der Reiter Log sprang beim Lesen immer wieder nach unten",
+      "detail": "Wer im Log nach oben scrollte, um etwas zu lesen, wurde bei jeder neuen Zeile wieder ans Ende gesetzt. Außerdem fielen zwei gleiche Zeilen kurz hintereinander zu einer zusammen.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "aufgaben-fertig-wiederholt",
+      "title": "Fertige Aufgaben tauchten im Aufgabenbereich immer wieder auf",
+      "detail": "Lief eine Aufgabe weiter, während eine andere fertig war, blinkte die fertige Aufgabe alle paar Sekunden erneut auf, bis zu 20 Sekunden lang.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "mods-uebersicht-veraltet",
+      "title": "Die Mod-Übersicht zeigte veraltete Sperren und leerte sich bei einem einzigen Fehler",
+      "detail": "Die Knöpfe zum Aktualisieren richteten sich nach dem Stand beim Öffnen der Übersicht, nicht danach, ob ein Spiel gerade läuft. Bei duplizierten Instanzen drehte sich die Anzeige in beiden Zeilen, und eine einzige nicht ladbare Instanz ließ die ganze Liste leer erscheinen.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "kleinere-anzeigefehler-oktober",
+      "title": "Kleinere Anzeigefehler beim Suchen, Aktualisieren und in den Einstellungen",
+      "detail": "„Mehr laden“ übersprang nach einem Fehler Ergebnisse. Das Projektfenster zeigte nach einer Installation die alte Version. Bei zwei Updates gleichzeitig verschwand eine Anzeige zu früh. Auf Home konnte das Hintergrundbild einer anderen Instanz stehen bleiben. Ein ungespeicherter CurseForge-Schlüssel ging beim Speichern der Anwendungs-ID verloren. „Sichern“ und „Exportieren“ ließen sich doppelt auslösen.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "suche-fehler-wie-leer",
+      "title": "Eine fehlgeschlagene Suche sah aus wie „Nichts gefunden“",
+      "detail": "Antwortete Modrinth oder CurseForge nicht, zeigte die Suche „Nichts gefunden“, und ein Projekt, das sich nicht laden ließ, hieß „Keine passende Version“. Beides klang, als gäbe es den Inhalt nicht.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "netzwerkfehler-englisch",
+      "title": "Ohne Verbindung erschienen technische englische Meldungen wie „fetch failed“",
+      "detail": "Fehlte die Internetverbindung oder antwortete ein Server zu langsam, zeigten Suche, Installation und Update-Prüfung nur „fetch failed“ oder „This operation was aborted“.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "updatepruefung-offline",
+      "title": "Ohne Internet dauerte die Update-Prüfung sehr lange und meldete dann keine Updates",
+      "detail": "Die Prüfung versuchte jeden Mod einzeln mehrmals. Bei vielen Mods dauerte das Minuten, und am Ende hieß es, es gebe keine Updates, statt dass sie nicht prüfbar waren.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "curseforge-schluessel-abgelehnt",
+      "title": "Ein falscher CurseForge-Schlüssel zeigte nur „HTTP 403“ mit einer Adresse",
+      "detail": "Lehnte CurseForge den eingetragenen Schlüssel ab, erschien eine technische Meldung mit einer langen Adresse, ohne Hinweis, dass der Schlüssel das Problem ist.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "modpack-vorabversion",
+      "title": "Ein Modpack direkt aus der Suche konnte eine Vorabversion installieren und ließ sich nicht abbrechen",
+      "detail": "Ohne ausgewählte Version nahm der Launcher die neueste Datei, auch wenn sie eine Alpha oder Beta war. „Abbrechen“ stoppte den Download des Modpacks nicht.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "deutsche-texte-uneinheitlich",
+      "title": "Uneinheitliche Begriffe und kleine Sprachfehler in deutschen Texten",
+      "detail": "Dasselbe hieß an verschiedenen Stellen anders, etwa „Backups“ und „Sicherungen“, „Mod Loader“ und „Mod-Loader“, „Pre-Launch-Befehl“ und „Befehl vor dem Start“ oder „Protokoll“ und „Log“. Einige Meldungen verwiesen auf Knöpfe oder Reiter, die anders heißen, und bei genau einer Zeile, Sekunde oder Datei stand die Mehrzahl.",
+      "state": "fixing",
+      "since": "2026-10-05"
     }
   ];
   var ISSUE_LABEL = {
@@ -6134,6 +6253,125 @@ footer .grow { flex: 1; }
       "id": "fehlerbericht-pfad-doppelt",
       "title": "Error reports could contain the name of the Windows user folder",
       "detail": "Error reports hide the name of the user folder. If a path appeared in the report in a particular technical notation with doubled backslashes, the name stayed visible.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "einstellungen-gesperrt-zurueckgesetzt",
+      "title": "A briefly locked settings file could reset all settings",
+      "detail": "If a virus scanner or OneDrive held the settings file at startup, the launcher ran on the defaults and wrote them into the file shortly after. A custom data folder, the CurseForge key and all other settings were then gone, and the instances seemed to have vanished.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "zuruecksetzen-ersteinrichtung",
+      "title": "\"Reset settings\" restarted the first-run setup and deleted the CurseForge key",
+      "detail": "After a reset, the first-run setup appeared again, the questions about error reports and the custom start screen came back, and an entered CurseForge key was deleted. The dialog had only said that the settings return to their defaults.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "wichtige-hinweise-verdraengt",
+      "title": "Notices meant to stay could be pushed out by newer ones",
+      "detail": "Some notices are meant to stay, for example after the game crashed or when an update is ready. When several notices arrived at once, they still disappeared.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "launcher-update-hinweise",
+      "title": "Notices about launcher updates were missing or misleading",
+      "detail": "Without automatic download, a found update was announced nowhere. Turning on automatic updates only took effect after a restart. The notice \"installed on the next start\" also appeared when automatic installation was off, and every error said \"update server not reachable\".",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "minimiert-unsichtbar",
+      "title": "\"Start minimized\" made the launcher invisible",
+      "detail": "With this setting the launcher started without any window and without a taskbar entry. The only way back was starting it a second time.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "datenordner-nicht-erreichbar",
+      "title": "An unreachable data folder looked like an empty launcher",
+      "detail": "If the data folder was on an unplugged drive or a disconnected network share, the launcher simply showed no instances, without any hint at the reason.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "einrichtung-anzeige-haengt",
+      "title": "After creating an instance, \"Setting up\" stayed on screen",
+      "detail": "The page of a new instance kept showing \"Setting up\" after setup had finished, and Play, Duplicate, Delete and Repair stayed locked until the page was left and opened again.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "log-reiter-springt",
+      "title": "The Log tab kept jumping to the bottom while reading",
+      "detail": "Anyone scrolling up in the log to read something was put back at the end with every new line. Also, two identical lines in quick succession were merged into one.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "aufgaben-fertig-wiederholt",
+      "title": "Finished tasks kept reappearing in the task area",
+      "detail": "While one task was still running after another had finished, the finished task flashed up again every few seconds, for up to 20 seconds.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "mods-uebersicht-veraltet",
+      "title": "The mod overview showed outdated locks and emptied on a single error",
+      "detail": "The update buttons followed the state from when the overview was opened, not whether a game is running right now. With duplicated instances the spinner showed in both rows, and a single instance that could not be loaded made the whole list look empty.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "kleinere-anzeigefehler-oktober",
+      "title": "Smaller display errors in search, updates and the settings",
+      "detail": "\"Load more\" skipped results after an error. The project window showed the old version after an install. With two updates at once, one spinner disappeared too early. On Home the background picture of another instance could stay. An unsaved CurseForge key was lost when saving the application ID. \"Back up\" and \"Export\" could be triggered twice.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "suche-fehler-wie-leer",
+      "title": "A failed search looked like \"Nothing found\"",
+      "detail": "If Modrinth or CurseForge did not answer, the search showed \"Nothing found\", and a project that could not be loaded said \"No matching version\". Both sounded as if the content did not exist.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "netzwerkfehler-englisch",
+      "title": "Without a connection, technical English messages such as \"fetch failed\" appeared",
+      "detail": "Without an internet connection, or with a server answering too slowly, search, installation and the update check only showed \"fetch failed\" or \"This operation was aborted\".",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "updatepruefung-offline",
+      "title": "Without internet the update check took very long and then reported no updates",
+      "detail": "The check tried every mod several times on its own. With many mods this took minutes, and in the end it said there were no updates, instead of that they could not be checked.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "curseforge-schluessel-abgelehnt",
+      "title": "A wrong CurseForge key only showed \"HTTP 403\" with an address",
+      "detail": "If CurseForge rejected the entered key, a technical message with a long address appeared, without a hint that the key is the problem.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "modpack-vorabversion",
+      "title": "A modpack straight from the search could install a pre-release and could not be cancelled",
+      "detail": "Without a chosen version the launcher took the newest file, even if it was an alpha or beta. \"Cancel\" did not stop the modpack download.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "deutsche-texte-uneinheitlich",
+      "title": "Inconsistent terms and small language errors in German texts",
+      "detail": "In the German interface, the same thing had different names in different places, and some messages referred to buttons or tabs that are named differently. With exactly one line, second or file, the plural was used.",
       "state": "fixing",
       "since": "2026-10-05"
     }

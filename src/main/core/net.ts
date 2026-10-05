@@ -291,7 +291,36 @@ export async function httpRequest(
       await sleep(retryDelayMs(err, attempt), external)
     }
   }
-  throw lastError
+  throw describeNetworkError(lastError, url)
+}
+
+/**
+ * Turns the engine's bare "fetch failed" and timeout errors into a sentence a
+ * player can act on. These reached search, installs and update checks as
+ * they were, in English and without a hint.
+ */
+function describeNetworkError(err: unknown, url: string): unknown {
+  if (err instanceof HttpError || err instanceof TaskCancelledError) return err
+  const name = (err as Error | undefined)?.name
+  if (name === 'TimeoutError' || name === 'AbortError') {
+    return new Error(
+      tr(
+        `${hostOf(url)} hat zu lange nicht geantwortet. Prüfe deine Internetverbindung und versuche es erneut.`,
+        `${hostOf(url)} took too long to answer. Check your internet connection and try again.`
+      ),
+      { cause: err }
+    )
+  }
+  if (err instanceof TypeError) {
+    return new Error(
+      tr(
+        `Keine Verbindung zu ${hostOf(url)}. Prüfe deine Internetverbindung und versuche es erneut.`,
+        `No connection to ${hostOf(url)}. Check your internet connection and try again.`
+      ),
+      { cause: err }
+    )
+  }
+  return err
 }
 
 /** The host of a URL for a message, or the URL itself when it does not parse. */
@@ -387,13 +416,20 @@ interface CacheEnvelope<T> {
 export async function fetchJsonCached<T>(
   url: string,
   cacheKey: string,
-  maxAgeMs: number
+  maxAgeMs: number,
+  /**
+   * Checks the shape. Without it any parseable 200 (a maintenance notice, an
+   * error object) went into the cache and was served until it expired, so a
+   * short hiccup on the server's side broke a list for up to a day.
+   */
+  validate?: (data: unknown) => boolean
 ): Promise<T> {
   const file = join(paths.meta(), `${cacheKey}.json`)
+  const usable = (data: unknown): boolean => !validate || validate(data)
   try {
     const raw = await readFile(file, 'utf8')
     const cached = JSON.parse(raw) as CacheEnvelope<T>
-    if (Date.now() - cached.fetchedAt < maxAgeMs) return cached.data
+    if (Date.now() - cached.fetchedAt < maxAgeMs && usable(cached.data)) return cached.data
   } catch {
     // no usable cache
   }
@@ -401,12 +437,17 @@ export async function fetchJsonCached<T>(
   let data: T
   try {
     data = await fetchJson<T>(url)
+    if (!usable(data)) {
+      throw new Error(tr(`${hostOf(url)} hat eine unerwartete Antwort geschickt.`, `${hostOf(url)} sent an unexpected response.`))
+    }
   } catch (err) {
     // Stale data beats no data when the network is down.
     try {
       const raw = await readFile(file, 'utf8')
+      const stale = (JSON.parse(raw) as CacheEnvelope<T>).data
+      if (!usable(stale)) throw err
       logger.warn(`Nutze veralteten Cache für ${cacheKey}:`, err)
-      return (JSON.parse(raw) as CacheEnvelope<T>).data
+      return stale
     } catch {
       throw err
     }

@@ -57,7 +57,7 @@ export function UpdateGate(): JSX.Element | null {
       open
       title={tr('Mods sind veraltet', 'Mods are outdated')}
       subtitle={tr(
-        `${instanceName} hat ${count} ${pluralise(count, 'veraltete Mod', 'veraltete Mods')}.`,
+        `${instanceName} hat ${count} ${pluralise(count, 'veralteten Mod', 'veraltete Mods')}.`,
         `${instanceName} has ${count} ${pluralise(count, 'outdated mod', 'outdated mods')}.`
       )}
       onClose={close}
@@ -69,7 +69,7 @@ export function UpdateGate(): JSX.Element | null {
           </button>
           <button className="btn primary" onClick={updateThenPlay} disabled={updating}>
             {updating ? <span className="spinner" /> : <IconDownload size={14} />}
-            {tr('Jetzt updaten', 'Update now')}
+            {tr('Jetzt aktualisieren', 'Update now')}
           </button>
         </>
       }
@@ -77,7 +77,7 @@ export function UpdateGate(): JSX.Element | null {
       <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-2)' }}>
         <p style={{ margin: 0 }}>
           {tr(
-            `Es gibt neuere Versionen für ${count} ${pluralise(count, 'Mod', 'Mods')} dieser Instanz. Du kannst jetzt aktualisieren, oder mit den bisherigen Versionen weiterspielen und später updaten.`,
+            `Es gibt neuere Versionen für ${count} ${pluralise(count, 'Mod', 'Mods')} dieser Instanz. Du kannst jetzt aktualisieren oder mit den bisherigen Versionen weiterspielen und später aktualisieren.`,
             `There are newer versions for ${count} ${pluralise(count, 'mod', 'mods')} of this instance. You can update now, or keep playing with the current versions and update later.`
           )}
         </p>

@@ -201,6 +201,22 @@ export function InstanceDetailView({
     void runChecks()
   }, [load, runChecks])
 
+  // The detail is only fetched on demand; change events refresh the summary
+  // list. When setup finishes the summary says so, and the page follows.
+  // It kept "Wird eingerichtet" and every locked button until reopened.
+  const summaryInstalling = Boolean(summary?.installing)
+  const wasInstalling = useRef(summaryInstalling)
+  useEffect(() => {
+    if (wasInstalling.current && !summaryInstalling) {
+      void load()
+      void runChecks()
+    }
+    wasInstalling.current = summaryInstalling
+  }, [summaryInstalling, load, runChecks])
+
+  const [exporting, setExporting] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
+
   const repair = async (): Promise<void> => {
     setRepairing(true)
     try {
@@ -400,28 +416,38 @@ export function InstanceDetailView({
         </button>
         <button
           className="btn sm"
+          disabled={exporting}
           onClick={async () => {
+            // A double click opened two save dialogs and ran two exports.
+            setExporting(true)
             try {
-              await window.gabi.modpacks.export(instanceId)
+              const file = await window.gabi.modpacks.export(instanceId)
+              if (file) toast('success', tr('Modpack exportiert', 'Modpack exported'), file)
             } catch (err) {
               toastError(err, tr('Export fehlgeschlagen', 'Export failed'))
+            } finally {
+              setExporting(false)
             }
           }}
         >
-          <IconUpload size={14} /> {tr('Als Modpack exportieren', 'Export as modpack')}
+          {exporting ? <span className="spinner" /> : <IconUpload size={14} />} {tr('Als Modpack exportieren', 'Export as modpack')}
         </button>
         <button
           className="btn sm"
+          disabled={backingUp}
           onClick={async () => {
+            setBackingUp(true)
             try {
               await window.gabi.backups.create(instanceId, { includes: ['saves', 'config'] })
               toast('success', tr('Sicherung erstellt', 'Backup created'), tr('Welten und Konfiguration wurden gesichert.', 'Worlds and config were backed up.'))
             } catch (err) {
               toastError(err, tr('Sicherung fehlgeschlagen', 'Backup failed'))
+            } finally {
+              setBackingUp(false)
             }
           }}
         >
-          <IconSave size={14} /> {tr('Sichern', 'Back up')}
+          {backingUp ? <span className="spinner" /> : <IconSave size={14} />} {tr('Sichern', 'Back up')}
         </button>
         <div className="grow" />
         <button
@@ -749,7 +775,9 @@ function ContentTab({
   const [type, setType] = useState<ContentType>('mod')
   const [search, setSearch] = useState('')
   const [checking, setChecking] = useState(false)
-  const [updating, setUpdating] = useState<string | null>(null)
+  // A set: with a single id, a second update overwrote the first, whose
+  // spinner then vanished while it was still running.
+  const [updating, setUpdating] = useState<ReadonlySet<string>>(() => new Set())
   const menu = useContextMenu<ContentItem>()
   const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
   const [confirmUpdate, setConfirmUpdate] = useState<ContentItem | null>(null)
@@ -822,7 +850,8 @@ function ContentTab({
   // itself did not, and a wrong click there quietly replaced a version the
   // user may have picked on purpose.
   const runUpdate = async (item: ContentItem): Promise<void> => {
-    setUpdating(item.id)
+    if (updating.has(item.id)) return
+    setUpdating((current) => new Set(current).add(item.id))
     try {
       await window.gabi.content.update(instance.id, item.id)
       toast('success', tr(`${item.name} aktualisiert`, `${item.name} updated`))
@@ -830,7 +859,11 @@ function ContentTab({
     } catch (err) {
       toastError(err, tr('Update fehlgeschlagen', 'Update failed'))
     } finally {
-      setUpdating(null)
+      setUpdating((current) => {
+        const next = new Set(current)
+        next.delete(item.id)
+        return next
+      })
     }
   }
 
@@ -942,7 +975,7 @@ function ContentTab({
           icon={<IconPackage size={26} />}
           title={tr('Nichts installiert', 'Nothing installed')}
           message={tr(
-            `Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Tab „Inhalte finden“, um welche zu installieren.`,
+            `Hier landen alle ${CONTENT_TABS.find((t) => t.id === type)?.label} dieser Instanz. Nutze den Reiter „Inhalte finden“, um welche zu installieren.`,
             `Everything under ${CONTENT_TABS.find((t) => t.id === type)?.label} in this instance shows up here. Use the "Find content" tab to install some.`
           )}
         />
@@ -954,7 +987,7 @@ function ContentTab({
               item={item}
               instanceId={instance.id}
               blockedReason={blockedReason}
-              updating={updating === item.id}
+              updating={updating.has(item.id)}
               onContextMenu={(event) => menu.onContextMenu(event, item)}
               onUpdate={() => setConfirmUpdate(item)}
               onEditWorlds={() => setWorldsFor(item)}
@@ -1035,7 +1068,7 @@ function ContentTab({
         danger
         confirmLabel={tr('Entfernen', 'Remove')}
         message={tr(
-          'Die Datei wird dabei endgültig gelöscht. Brauchst du es nur vorübergehend nicht, schalte es stattdessen aus.',
+          'Die Datei wird dabei endgültig gelöscht. Brauchst du sie nur vorübergehend nicht, schalte sie stattdessen aus.',
           'The file will be deleted permanently. If you only want it out of the way for now, turn it off instead.'
         )}
         onConfirm={() => (confirmRemove ? runRemove(confirmRemove) : Promise.resolve())}
@@ -1489,8 +1522,20 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         // Queued lines into the state first, so the merge below sees them.
         batcher.flushNow()
         setLines((streamed) => {
-          const seen = new Set(history.map((line) => `${line.time}|${line.text}`))
-          const fresh = streamed.filter((line) => !seen.has(`${line.time}|${line.text}`))
+          // A multiset, as in GameLogWindow: two genuinely identical lines can
+          // both be real output, and a plain Set dropped the second one.
+          const counts = new Map<string, number>()
+          for (const line of history) {
+            const key = `${line.time}|${line.text}`
+            counts.set(key, (counts.get(key) ?? 0) + 1)
+          }
+          const fresh = streamed.filter((line) => {
+            const key = `${line.time}|${line.text}`
+            const remaining = counts.get(key) ?? 0
+            if (remaining <= 0) return true
+            counts.set(key, remaining - 1)
+            return false
+          })
           return [...history, ...fresh].slice(-1200)
         })
       })
@@ -1518,8 +1563,17 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
     }
   }, [instanceId])
 
+  // Whether the reader is at the bottom. Scrolled up to read, the view used
+  // to be pulled back down by every new batch of lines.
+  const nearBottomRef = useRef(true)
+  const handleLogScroll = (): void => {
+    const box = boxRef.current
+    if (!box) return
+    nearBottomRef.current = box.scrollHeight - box.scrollTop - box.clientHeight < 40
+  }
+
   useEffect(() => {
-    if (autoScroll && boxRef.current) {
+    if (autoScroll && nearBottomRef.current && boxRef.current) {
       boxRef.current.scrollTop = boxRef.current.scrollHeight
     }
   }, [lines, autoScroll])
@@ -1547,7 +1601,11 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
 
         <button
           className={`btn sm ${autoScroll ? 'primary' : ''}`}
-          onClick={() => setAutoScroll((value) => !value)}
+          onClick={() => {
+            // Turning it on means "follow from here", wherever the view is.
+            if (!autoScroll) nearBottomRef.current = true
+            setAutoScroll((value) => !value)
+          }}
         >
           Auto-Scroll
         </button>
@@ -1559,7 +1617,7 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
           onClick={() =>
             void navigator.clipboard
               .writeText(lines.map((l) => l.text).join('\n'))
-              .then(() => toast('success', tr('Log kopiert', 'Log copied'), tr(`${lines.length} Zeilen`, `${lines.length} lines`)))
+              .then(() => toast('success', tr('Log kopiert', 'Log copied'), tr(`${lines.length} ${lines.length === 1 ? 'Zeile' : 'Zeilen'}`, `${lines.length} ${lines.length === 1 ? 'line' : 'lines'}`)))
               .catch((err: unknown) => toastError(err, tr('Kopieren fehlgeschlagen', 'Copying failed')))
           }
         >
@@ -1576,7 +1634,7 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         </button>
       </div>
 
-      <div className="log-view" ref={boxRef}>
+      <div className="log-view" ref={boxRef} onScroll={handleLogScroll}>
         {shown.length === 0 ? (
           <div className="muted" style={{ padding: 12 }}>
             {tr('Noch keine Ausgabe. Starte die Instanz, um das Live-Log zu sehen.', 'No output yet. Start the instance to see the live log.')}
@@ -1590,8 +1648,8 @@ function LogsTab({ instanceId }: { instanceId: string }): JSX.Element {
         <IconTerminal size={14} style={{ color: 'var(--text-4)' }} />
         <span className="hint">
           {tr(
-            `${lines.length} Zeilen im Puffer. Das vollständige Log liegt im Instanzordner unter logs/latest.log.`,
-            `${lines.length} lines in the buffer. The full log is in the instance folder under logs/latest.log.`
+            `${lines.length} ${lines.length === 1 ? 'Zeile' : 'Zeilen'} im Puffer. Das vollständige Log liegt im Instanzordner unter logs/latest.log.`,
+            `${lines.length} ${lines.length === 1 ? 'line' : 'lines'} in the buffer. The full log is in the instance folder under logs/latest.log.`
           )}
         </span>
       </div>
