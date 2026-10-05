@@ -3705,6 +3705,20 @@ footer .grow { flex: 1; }
       "detail": "Dasselbe hieß an verschiedenen Stellen anders, etwa „Backups“ und „Sicherungen“, „Mod Loader“ und „Mod-Loader“, „Pre-Launch-Befehl“ und „Befehl vor dem Start“ oder „Protokoll“ und „Log“. Einige Meldungen verwiesen auf Knöpfe oder Reiter, die anders heißen, und bei genau einer Zeile, Sekunde oder Datei stand die Mehrzahl.",
       "state": "fixing",
       "since": "2026-10-05"
+    },
+    {
+      "id": "automatische-sicherung-still",
+      "title": "Eine fehlgeschlagene automatische Sicherung nach dem Spielen blieb unbemerkt",
+      "detail": "Nach jeder Spielsitzung sichert der Launcher die Welten, wenn das eingeschaltet ist. Schlug das fehl, etwa weil das Spiel die Dateien noch kurz festhielt, stand das nur im Log. Man ging davon aus, gesichert zu sein.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "sicherungsliste-beschaedigt",
+      "title": "War die Liste der Sicherungen beschädigt, verschwanden alle bisherigen Sicherungen aus der Ansicht",
+      "detail": "Die Sicherungen selbst bleiben im Ordner der Instanz erhalten, tauchen aber im Launcher nicht mehr auf und lassen sich dort nicht wiederherstellen. Das passiert nur, wenn die Liste selbst beschädigt wird, etwa bei einem Festplattenfehler.",
+      "state": "investigating",
+      "since": "2026-10-05"
     }
   ];
   var ISSUE_LABEL = {
@@ -6373,6 +6387,20 @@ footer .grow { flex: 1; }
       "title": "Inconsistent terms and small language errors in German texts",
       "detail": "In the German interface, the same thing had different names in different places, and some messages referred to buttons or tabs that are named differently. With exactly one line, second or file, the plural was used.",
       "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "automatische-sicherung-still",
+      "title": "A failed automatic backup after playing went unnoticed",
+      "detail": "After every play session the launcher backs up the worlds when this is turned on. If that failed, for example because the game still held the files for a moment, it was only written to the log. You assumed you were backed up.",
+      "state": "fixing",
+      "since": "2026-10-05"
+    },
+    {
+      "id": "sicherungsliste-beschaedigt",
+      "title": "If the list of backups was damaged, all earlier backups disappeared from view",
+      "detail": "The backups themselves stay in the instance's folder, but no longer show up in the launcher and cannot be restored there. This only happens when the list itself gets damaged, for example by a disk fault.",
+      "state": "investigating",
       "since": "2026-10-05"
     }
   ];

@@ -2522,6 +2522,20 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'In the German interface, the same thing had different names in different places, and some ' +
       'messages referred to buttons or tabs that are named differently. With exactly one line, second ' +
       'or file, the plural was used.'
+  },
+  'automatische-sicherung-still': {
+    title: 'A failed automatic backup after playing went unnoticed',
+    detail:
+      'After every play session the launcher backs up the worlds when this is turned on. If that ' +
+      'failed, for example because the game still held the files for a moment, it was only written to ' +
+      'the log. You assumed you were backed up.'
+  },
+  'sicherungsliste-beschaedigt': {
+    title: 'If the list of backups was damaged, all earlier backups disappeared from view',
+    detail:
+      'The backups themselves stay in the instance\'s folder, but no longer show up in the launcher and ' +
+      'cannot be restored there. This only happens when the list itself gets damaged, for example by a ' +
+      'disk fault.'
   }
 }
 

@@ -890,9 +890,29 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // but nothing ever acted on it. Runs in the background and only logs a
       // failure; the keep count in the settings trims the old ones.
       if (getSettings().automaticBackups && existsSync(paths.saves(instanceId))) {
-        void createBackup(instanceId, { reason: 'automatic', includes: ['saves'] }).catch((err: unknown) => {
-          logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen:`, err)
-        })
+        const backUp = (): Promise<unknown> => createBackup(instanceId, { reason: 'automatic', includes: ['saves'] })
+        void backUp()
+          .catch(async (first: unknown) => {
+            // Right after the game quits its world files can still be held for
+            // a moment, so one more try a little later.
+            logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen, neuer Versuch:`, first)
+            await new Promise((resolve) => setTimeout(resolve, 5000))
+            return backUp()
+          })
+          .catch((err: unknown) => {
+            logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen:`, err)
+            // Said, not only logged: the player otherwise believes the last
+            // session is backed up when it is not.
+            notify(
+              'warning',
+              tr('Automatische Sicherung fehlgeschlagen', 'Automatic backup failed'),
+              tr(
+                `Die Welten von ${instance.name} wurden nach dieser Sitzung nicht gesichert. ${err instanceof Error ? err.message : String(err)}`,
+                `The worlds of ${instance.name} were not backed up after this session. ${err instanceof Error ? err.message : String(err)}`
+              ),
+              { route: '/backups' }
+            )
+          })
       }
 
       pushLog({

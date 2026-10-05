@@ -3970,6 +3970,26 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Zeile, Sekunde oder Datei stand die Mehrzahl.',
     state: 'fixing',
     since: '2026-10-05'
+  },
+  {
+    id: 'automatische-sicherung-still',
+    title: 'Eine fehlgeschlagene automatische Sicherung nach dem Spielen blieb unbemerkt',
+    detail:
+      'Nach jeder Spielsitzung sichert der Launcher die Welten, wenn das eingeschaltet ist. Schlug das ' +
+      'fehl, etwa weil das Spiel die Dateien noch kurz festhielt, stand das nur im Log. Man ging davon ' +
+      'aus, gesichert zu sein.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'sicherungsliste-beschaedigt',
+    title: 'War die Liste der Sicherungen beschädigt, verschwanden alle bisherigen Sicherungen aus der Ansicht',
+    detail:
+      'Die Sicherungen selbst bleiben im Ordner der Instanz erhalten, tauchen aber im Launcher nicht ' +
+      'mehr auf und lassen sich dort nicht wiederherstellen. Das passiert nur, wenn die Liste selbst ' +
+      'beschädigt wird, etwa bei einem Festplattenfehler.',
+    state: 'investigating',
+    since: '2026-10-05'
   }
 ]
 
