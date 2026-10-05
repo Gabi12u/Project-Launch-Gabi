@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, rmSync, statSync } from 'node:fs'
 import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MinecraftVersion } from '@shared/types'
@@ -245,10 +245,31 @@ export async function loadVersionJson(
 
   const file = join(paths.version(versionId), `${versionId}.json`)
 
-  let json: VersionJson
+  let json: VersionJson | null = null
   if (existsSync(file)) {
-    json = JSON.parse(await readFile(file, 'utf8')) as VersionJson
-  } else {
+    try {
+      json = JSON.parse(await readFile(file, 'utf8')) as VersionJson
+    } catch (err) {
+      if (!(err instanceof SyntaxError)) throw err
+      // Truncated or emptied (a full disk, a crash mid-write, a scanner's
+      // quarantine). This reached the user as "Unexpected end of JSON input".
+      // A plain Minecraft version is simply fetched again below; a loader's
+      // file needs the repair, which installs the loader again.
+      const manifest = await getVersionManifest().catch(() => null)
+      if (!manifest?.versions.some((v) => v.id === versionId)) {
+        throw new Error(
+          tr(
+            `Die Versionsdatei ${versionId} ist beschädigt. Öffne die Instanz und klicke auf „Reparieren“.`,
+            `The version file ${versionId} is damaged. Open the instance and click "Repair".`
+          ),
+          { cause: err }
+        )
+      }
+      logger.warn(`Versionsdatei ${versionId} beschädigt, wird neu geladen`)
+      rmSync(file, { force: true })
+    }
+  }
+  if (!json) {
     const manifest = await getVersionManifest()
     const entry = manifest.versions.find((v) => v.id === versionId)
     if (!entry) throw new Error(tr(`Minecraft-Version ${versionId} ist unbekannt`, `Minecraft version ${versionId} is unknown`))

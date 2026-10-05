@@ -189,8 +189,27 @@ function openLauncherPath(target: string): Promise<string> {
   })
 }
 
+/**
+ * Previews already made, by file and modification time. Without this every
+ * visit to the tab decoded every picture again, which without a system
+ * thumbnailer (Linux) means full decodes on the main thread.
+ */
+const previewCache = new Map<string, string | null>()
+
 /** A small JPEG of a screenshot as a data URL, or null if it cannot be read. */
-async function screenshotPreview(file: string): Promise<string | null> {
+async function screenshotPreview(file: string, takenAt: number): Promise<string | null> {
+  const key = `${file}|${takenAt}`
+  if (previewCache.has(key)) return previewCache.get(key) ?? null
+  const preview = await makeScreenshotPreview(file)
+  previewCache.set(key, preview)
+  if (previewCache.size > 400) {
+    const oldest = previewCache.keys().next().value
+    if (oldest !== undefined) previewCache.delete(oldest)
+  }
+  return preview
+}
+
+async function makeScreenshotPreview(file: string): Promise<string | null> {
   const size = { width: 480, height: 270 }
   let image: Electron.NativeImage | null = null
   try {
@@ -578,7 +597,7 @@ export function registerIpc(): void {
     // previews: the full pictures, up to 40 of them at several megabytes
     // each, made the tab slow and cost hundreds of megabytes. A click opens
     // the original file in the system's own viewer anyway.
-    return Promise.all(shots.map(async (shot) => ({ ...shot, dataUrl: await screenshotPreview(shot.file) })))
+    return Promise.all(shots.map(async (shot) => ({ ...shot, dataUrl: await screenshotPreview(shot.file, shot.takenAt) })))
   })
 
   /* ---------------------------------------------------------------- *

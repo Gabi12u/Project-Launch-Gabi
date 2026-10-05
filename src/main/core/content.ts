@@ -1052,6 +1052,17 @@ async function updateAllOnce(instanceId: string): Promise<number> {
       }
     }
 
+    // Nothing went through: an error rather than a success toast saying
+    // "0 updated", and the caller must not go on to launch as if it worked.
+    if (failed.length > 0 && done === 0) {
+      throw new Error(
+        tr(
+          `Kein Update ließ sich installieren. ${failed[0].name}: ${failed[0].reason}`,
+          `No update could be installed. ${failed[0].name}: ${failed[0].reason}`
+        )
+      )
+    }
+
     // Failures used to go to the log only; the user saw "N aktualisiert"
     // and was left to guess why some entries still showed an update.
     if (failed.length > 0) {

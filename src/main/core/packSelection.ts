@@ -26,7 +26,10 @@ export function renamePackSelection(instanceId: string, type: ContentType, oldNa
         try {
           const packs: unknown = JSON.parse(line.slice(key.length))
           if (!Array.isArray(packs)) return line
-          const renamed = packs.map((p) => (p === `file/${oldName}` ? `file/${newName}` : p))
+          // Minecraft before 1.13 lists the bare file name, without "file/".
+          const renamed = packs.map((p) =>
+            p === `file/${oldName}` ? `file/${newName}` : p === oldName ? newName : p
+          )
           return `${key}${JSON.stringify(renamed)}`
         } catch {
           // Left as it is: an unreadable line is not this function's to repair.
@@ -41,9 +44,40 @@ export function renamePackSelection(instanceId: string, type: ContentType, oldNa
       join(gameDir, 'config', 'oculus.properties'),
       join(gameDir, 'optionsshaders.txt')
     ]) {
-      editLines(file, (line) => (line === `shaderPack=${oldName}` ? `shaderPack=${newName}` : line))
+      editLines(file, (line) => {
+        if (!line.startsWith('shaderPack=')) return line
+        const raw = line.slice('shaderPack='.length)
+        if (raw === oldName) return `shaderPack=${newName}`
+        // Written through Java's Properties, which escapes umlauts as \uXXXX
+        // and a few characters such as "#" or ":" with a backslash. A pack
+        // named that way never equalled the plain file name above.
+        if (unescapeProperty(raw) === oldName) return `shaderPack=${escapeProperty(newName)}`
+        return line
+      })
     }
   }
+}
+
+/** Reverses the escaping `java.util.Properties` applies to a value. */
+function unescapeProperty(value: string): string {
+  return value.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (_, seq: string) => {
+    if (seq.length === 5) return String.fromCharCode(parseInt(seq.slice(1), 16))
+    return { t: '\t', n: '\n', r: '\r', f: '\f' }[seq] ?? seq
+  })
+}
+
+/** Escapes a value the way `java.util.Properties.store` writes it. */
+function escapeProperty(value: string): string {
+  let out = ''
+  for (const [i, ch] of [...value].entries()) {
+    const code = ch.charCodeAt(0)
+    if (ch === '\\' || ch === '=' || ch === ':' || ch === '#' || ch === '!') out += `\\${ch}`
+    else if (ch === ' ' && i === 0) out += '\\ '
+    else if (code < 0x20 || code > 0x7e) {
+      for (const unit of ch.split('')) out += `\\u${unit.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`
+    } else out += ch
+  }
+  return out
 }
 
 /** Rewrites a text file line by line, keeping its line endings, and only if something changed. */

@@ -1,7 +1,7 @@
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ContentItem } from '@shared/types'
-import { ensureInstanceLayout, paths } from '../paths'
+import { contentDir, ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
 import { readdir, stat } from 'node:fs/promises'
 import { log } from '../logger'
@@ -928,7 +928,21 @@ const TEMP_MIN_AGE_MS = 30 * 60 * 1000
 
 export async function cleanTempFiles(instanceId?: string): Promise<number> {
   const roots = [paths.libraries(), paths.assets(), paths.versions(), paths.cache()]
-  if (instanceId) roots.unshift(paths.gameDir(instanceId))
+  // For the instance only the folders the launcher downloads into, and only
+  // their top level. The whole game folder used to be walked, worlds and mod
+  // settings included, where a ".tmp" file is as likely to belong to a world
+  // or a mod as to an interrupted download.
+  const shallow = new Set<string>()
+  if (instanceId) {
+    const own = [
+      paths.mods(instanceId),
+      paths.resourcePacks(instanceId),
+      paths.shaderPacks(instanceId),
+      contentDir(instanceId, 'datapack')
+    ]
+    for (const dir of own) shallow.add(dir)
+    roots.unshift(...own)
+  }
   const cutoff = Date.now() - TEMP_MIN_AGE_MS
 
   let removed = 0
@@ -947,7 +961,7 @@ export async function cleanTempFiles(instanceId?: string): Promise<number> {
       for (const entry of entries) {
         const full = join(dir, entry.name)
         if (entry.isDirectory()) {
-          stack.push(full)
+          if (!shallow.has(dir)) stack.push(full)
           continue
         }
         if (entry.name.endsWith('.part') || entry.name.endsWith('.tmp')) {

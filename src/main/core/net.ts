@@ -193,6 +193,13 @@ function isPrivateAddress(hostname: string): boolean {
   return false
 }
 
+/** The request without the headers that identify the user to one server. */
+function withoutCredentials(init: RequestInit): RequestInit {
+  const headers = new Headers(init.headers)
+  for (const name of ['authorization', 'x-api-key', 'cookie', 'proxy-authorization']) headers.delete(name)
+  return { ...init, headers }
+}
+
 /**
  * `fetch` with `redirect: 'follow'` (the default) hands back only the final
  * response, with no way to see or reject an intermediate hop. A download or
@@ -204,18 +211,32 @@ function isPrivateAddress(hostname: string): boolean {
  */
 async function fetchFollowingSafeRedirects(url: string, init: RequestInit): Promise<Response> {
   let current = url
+  let hopInit = init
+  let previous: URL | null = null
   for (let hop = 0; hop <= 5; hop++) {
     const parsed = new URL(current)
     if (isPrivateAddress(parsed.hostname)) {
       throw new Error(tr(`Adresse "${parsed.hostname}" ist eine lokale/interne Adresse und wird abgelehnt.`, `Address "${parsed.hostname}" is a local/internal address and is rejected.`))
     }
+    // Never from an encrypted address to an unencrypted one: everything
+    // fetched after such a hop could be changed on the way.
+    if (previous?.protocol === 'https:' && parsed.protocol !== 'https:') {
+      throw new Error(
+        tr(`${previous.hostname} leitet auf eine unverschlüsselte Adresse um, abgelehnt.`, `${previous.hostname} redirects to an unencrypted address, rejected.`)
+      )
+    }
 
-    const res = await fetch(current, { ...init, redirect: 'manual' })
+    const res = await fetch(current, { ...hopInit, redirect: 'manual' })
     const isRedirect = res.status >= 300 && res.status < 400
     const location = res.headers.get('location')
     if (!isRedirect || !location) return res
 
-    current = new URL(location, current).toString()
+    const next = new URL(location, current)
+    // The CurseForge key and a Minecraft sign-in are meant for the server
+    // they were sent to. A redirect elsewhere used to carry them along.
+    if (next.origin !== parsed.origin) hopInit = withoutCredentials(hopInit)
+    previous = parsed
+    current = next.toString()
   }
   throw new Error(tr(`Zu viele Umleitungen für ${url}.`, `Too many redirects for ${url}.`))
 }

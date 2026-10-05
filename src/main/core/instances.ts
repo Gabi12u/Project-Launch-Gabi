@@ -488,7 +488,7 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
 }
 
 /** The version id the launcher should start (loader id, or the MC version). */
-export async function resolveVersionId(instance: Instance): Promise<string> {
+export async function resolveVersionId(instance: Instance, install = true): Promise<string> {
   if (instance.loader === 'vanilla') return instance.mcVersion
 
   const loaderVersion =
@@ -504,6 +504,10 @@ export async function resolveVersionId(instance: Instance): Promise<string> {
       // installer wrote instead of guessing.
       const found = findInstalledLoaderVersionId(instance, loaderVersion)
       if (found) return found
+      // The pre-launch check only looks. It used to run the whole installer
+      // in the background just from opening the instance page, with nothing
+      // shown and nothing to cancel.
+      if (!install) throw new Error(tr('Der Mod-Loader ist noch nicht installiert.', 'The mod loader is not installed yet.'))
       return installLoader(instance.loader, instance.mcVersion, loaderVersion)
     }
   }
@@ -1262,7 +1266,18 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       const nextName = enabled ? bare : `${bare}.disabled`
 
       if (existsSync(currentPath) && nextName !== item.fileName) {
-        renameSync(currentPath, contentPath(dir, nextName))
+        const target = contentPath(dir, nextName)
+        // A second file under the target name (copied in by hand, or left by
+        // an earlier failed update) was overwritten without a word on Windows.
+        if (existsSync(target)) {
+          throw new Error(
+            tr(
+              `Im Ordner liegt schon eine Datei namens ${nextName}. Entferne sie zuerst, dann klappt das ${enabled ? 'Einschalten' : 'Ausschalten'}.`,
+              `There is already a file named ${nextName} in the folder. Remove it first, then turning it ${enabled ? 'on' : 'off'} works.`
+            )
+          )
+        }
+        renameSync(currentPath, target)
       }
 
       // Minecraft has no ".disabled" convention for a datapack sitting inside
@@ -1272,11 +1287,16 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       // A world deleted since it was assigned is dropped from the list rather
       // than recreated as an empty folder by the copy below.
       const liveWorlds = item.worlds?.filter((world) => worldExists(id, world))
+      let keptWorlds = liveWorlds
       if (item.type === 'datapack' && liveWorlds && liveWorlds.length > 0) {
         if (enabled) {
           const source = contentPath(dir, bare)
           const failed = liveWorlds.filter((world) => !copyDatapackIntoWorld(id, world, source, bare))
           if (failed.length > 0) {
+            // Not remembered for those worlds. The file found there is not
+            // ours, and a later disable, removal or update would otherwise
+            // delete it as if it were.
+            keptWorlds = liveWorlds.filter((world) => !failed.includes(world))
             notify(
               'warning',
               tr(`${item.name}: nicht in alle Welten kopiert`, `${item.name}: not copied into all worlds`),
@@ -1292,7 +1312,7 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       }
 
       const content = instance.content.map((c) =>
-        c.id === contentId ? { ...c, fileName: nextName, enabled, ...(liveWorlds ? { worlds: liveWorlds } : {}) } : c
+        c.id === contentId ? { ...c, fileName: nextName, enabled, ...(keptWorlds ? { worlds: keptWorlds } : {}) } : c
       )
       return persist({ ...instance, content })
     })

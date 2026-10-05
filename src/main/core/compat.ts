@@ -141,16 +141,18 @@ async function declaredModIds(instanceId: string, item: ContentItem, loader: Loa
 function modsTomlIds(text: string): string[] {
   const ids: string[] = []
   let inMods = false
-  let inString = false
+  // The delimiter that opened a multi-line string, if one is open. Only the
+  // same one closes it: a """ inside a ''' string is just text.
+  let open: string | null = null
   for (const line of text.split(/\r?\n/)) {
     // A description in ''' or """ can hold lines that look like a table
     // header; read as one, it ended the [[mods]] table early.
-    const quotes = (line.match(/'''|"""/g) ?? []).length
-    if (inString) {
-      if (quotes % 2 === 1) inString = false
-      continue
+    const startedInString = open !== null
+    for (const match of line.matchAll(/'''|"""/g)) {
+      if (open === null) open = match[0]
+      else if (match[0] === open) open = null
     }
-    if (quotes % 2 === 1) inString = true
+    if (startedInString) continue
     const header = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line)
     if (header) {
       inMods = header[1] === 'mods'

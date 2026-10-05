@@ -2330,6 +2330,89 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'When renewing the sign-in, the launcher also fetches the current skin. The display in the ' +
       'launcher only learned about it at the next start of the program.'
+  },
+  'natives-zweite-instanz': {
+    title: 'A second instance of the same version up to 1.16 would not start while the first was running',
+    detail:
+      'With two instances on the same Minecraft version up to and including 1.16, starting the second ' +
+      'one tried to overwrite files the running game was using. Windows refuses that, and the launch ' +
+      'stopped with a technical message.'
+  },
+  'reparatur-tmp-in-welten': {
+    title: 'Repair also deleted .tmp and .part files in worlds and settings',
+    detail:
+      'When cleaning up old download leftovers, the repair searched the whole game folder of an ' +
+      'instance, worlds and mod settings included, and deleted every older file ending in .tmp or ' +
+      '.part there, even if it belonged to a world or a mod.'
+  },
+  'sicherung-ueber-1gb-datei': {
+    title: 'Backups containing a single file over 1 GB could not be restored',
+    detail:
+      'If a world contained a single very large file, such as the Distant Horizons database, the ' +
+      'backup could be created but not restored. This only showed when it was needed.'
+  },
+  'export-fehlende-dateien': {
+    title: 'Exporting as a modpack left out locked files without a hint',
+    detail:
+      'If another program held a file during the export, or a link was in the folder, it was missing ' +
+      'from the finished modpack. The launcher still reported a successful export.'
+  },
+  'datapack-fremde-datei': {
+    title: 'A data pack could delete your own file with the same name in a world',
+    detail:
+      'If a world already held a different file with the same name as a data pack from the launcher, ' +
+      'the launcher still remembered the world. Turning the data pack off, removing or updating it ' +
+      'later then deleted that other file.'
+  },
+  'ausschalten-ueberschreibt': {
+    title: 'Turning a mod off could overwrite a disabled file with the same name',
+    detail:
+      'If a mod and a disabled file with the same name (ending in .disabled) were in the folder, ' +
+      'turning the mod off overwrote the existing file without asking.'
+  },
+  'stopp-ohne-speichern': {
+    title: '"Stop" ended Minecraft on Windows at once, without saving the world',
+    detail:
+      'On Windows, "Stop" forced the game to end immediately. Minecraft got no chance to save the ' +
+      'world, and progress since the last automatic save could be lost.'
+  },
+  'versionsdatei-beschaedigt': {
+    title: 'A damaged version file only gave a confusing message at launch',
+    detail:
+      'If the description file of a Minecraft version was damaged, for example after a crash or with a ' +
+      'full disk, the launch only showed "Unexpected end of JSON input". The launcher did not download ' +
+      'the file again and did not say that "Repair" helps.'
+  },
+  'vorschau-installiert-loader': {
+    title: 'Opening a Forge or NeoForge instance could install the loader without notice',
+    detail:
+      'If the installed loader of a Forge or NeoForge instance was missing, just opening its page ' +
+      'started the installation in the background, with nothing shown and no way to cancel.'
+  },
+  'sicherungen-vor-reparatur': {
+    title: 'Backups made before a repair were never cleaned up',
+    detail:
+      'Before every repair the launcher creates a backup. Unlike the automatic backups, these were ' +
+      'never cleaned up and took more and more disk space over time.'
+  },
+  'fremde-instanz-argumente': {
+    title: 'Java arguments and environment variables of a foreign instance ran without asking',
+    detail:
+      'Commands before launch, wrappers and custom Java paths ask before they first run. Java ' +
+      'arguments that load extra program code, and environment variables, did not. An instance taken ' +
+      'over from someone else could thereby run its own code at launch.'
+  },
+  'umleitung-schluessel': {
+    title: 'On a redirect, access keys could go to a different server',
+    detail:
+      'If a server redirected a request to a different address, the launcher sent the CurseForge key ' +
+      'or the Minecraft sign-in along, and a redirect to an unencrypted address was followed as well.'
+  },
+  'fehlerbericht-pfad-doppelt': {
+    title: 'Error reports could contain the name of the Windows user folder',
+    detail:
+      'Error reports hide the name of the user folder. If a path appeared in the report in a ' +
+      'particular technical notation with doubled backslashes, the name stayed visible.'
   }
 }
 

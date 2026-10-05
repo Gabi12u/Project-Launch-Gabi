@@ -27,7 +27,7 @@ import {
 } from './mojang'
 import { extractNatives } from './archive'
 import { is32BitJava, requiredJavaMajor, resolveJava } from './java'
-import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath } from './commandApproval'
+import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath, jvmArgsLoadCode } from './commandApproval'
 import {
   getInstance,
   markPlayed,
@@ -180,7 +180,9 @@ async function prepareNatives(
     const claimedByOthers = (nativesClaims.get(versionId) ?? 1) > 1
     const versionInUse = claimedByOthers || activeVersionIds().includes(versionId)
     if (!versionInUse) {
-      rmSync(nativesDir, { recursive: true, force: true })
+      // Retried: right after a game quits, a scanner or Explorer can still
+      // hold one of its libraries for a moment.
+      rmSync(nativesDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
     }
     mkdirSync(nativesDir, { recursive: true })
     for (const library of libraries) {
@@ -232,7 +234,7 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
   await syncContentWithDisk(instanceId)
   const instance = getInstance(instanceId)
 
-  const versionId = await resolveVersionId(instance).catch(() => instance.mcVersion)
+  const versionId = await resolveVersionId(instance, false).catch(() => instance.mcVersion)
   let versionJson: VersionJson | null = null
   try {
     versionJson = await loadVersionJson(versionId)
@@ -682,6 +684,12 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       }
     }
 
+    // Arguments that load code of their own ask first, as a wrapper does.
+    // An instance folder taken over from someone else could otherwise run
+    // its own Java agent on the very first click on Play.
+    if (jvmArgsLoadCode(userText(instance.settings.jvmArgs))) {
+      await ensureApproved(instanceId, instance.name, 'jvmArgs', instance.settings.jvmArgs)
+    }
     jvmArgs.push(...splitUserArgs(instance.settings.jvmArgs))
 
     const gameArgs = versionJson.arguments?.game
@@ -733,6 +741,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       await runPreLaunch(instance, gameDir, task)
     }
 
+    // Same reason: JAVA_TOOL_OPTIONS or PATH can bring in code just as well.
+    if (userText(instance.settings.envVars).trim()) {
+      await ensureApproved(instanceId, instance.name, 'envVars', instance.settings.envVars)
+    }
     const env = { ...process.env, ...parseEnv(instance.settings.envVars) }
 
     // `java.exe` is a console binary, so Windows opens a console window next to
@@ -1277,9 +1289,10 @@ export function stopInstance(instanceId: string, immediate = false): void {
   if (stopping.has(instanceId) && !immediate) return
   stopping.add(instanceId)
   // A game that survives every attempt must not lock the stop button forever.
+  // Long enough to cover the polite request below and its escalation.
   setTimeout(() => {
     if (getRunning(instanceId)?.process === game.process) stopping.delete(instanceId)
-  }, 10_000).unref()
+  }, 30_000).unref()
 
   logger.info(`Beende Instanz ${instanceId} (PID ${game.process.pid})`)
   pushLog({
@@ -1292,7 +1305,7 @@ export function stopInstance(instanceId: string, immediate = false): void {
 
   stopRequested.add(instanceId)
 
-  if (process.platform === 'win32' && game.process.pid) {
+  const forceWindows = (): void => {
     // Minecraft spawns child processes; /T takes the whole tree down.
     const killer = spawn('taskkill', ['/pid', String(game.process.pid), '/f', '/t'], {
       windowsHide: true
@@ -1339,6 +1352,28 @@ export function stopInstance(instanceId: string, immediate = false): void {
         })
       }, 5000)
     })
+  }
+
+  if (process.platform === 'win32' && game.process.pid) {
+    if (immediate) {
+      forceWindows()
+      return
+    }
+    // Asked first, the way the window's own close button asks: taskkill
+    // without /f closes the game window, and Minecraft then saves the world
+    // and quits on its own. Forcing it at once, as this used to, gave the
+    // game no chance to save, and progress since the last autosave was gone.
+    // Only a game still there after a generous wait is forced.
+    const asker = spawn('taskkill', ['/pid', String(game.process.pid), '/t'], { windowsHide: true })
+    asker.on('error', (err) => {
+      logger.warn(`Höfliches Beenden von ${instanceId} nicht möglich, wird erzwungen:`, err)
+      forceWindows()
+    })
+    setTimeout(() => {
+      if (getRunning(instanceId)?.process !== game.process) return
+      logger.info(`${instanceId} hat sich nach der Bitte nicht beendet, wird erzwungen`)
+      forceWindows()
+    }, 20_000).unref()
   } else if (immediate) {
     game.process.kill('SIGKILL')
   } else {

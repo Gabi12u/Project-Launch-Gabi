@@ -19,7 +19,18 @@ const logger = log('commandApproval')
  * without either already being approved, or the user clicking "Erlauben" on
  * a dialog naming the instance and showing the exact value.
  */
-export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath'
+export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'envVars'
+
+/**
+ * JVM options that load or run code of their own. Ordinary tuning (memory,
+ * garbage collector) never asks; these can start a program as surely as a
+ * wrapper command can.
+ */
+const CODE_LOADING_JVM_ARG = /(^|\s)(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-Djava\.system\.class\.loader|@)/i
+
+export function jvmArgsLoadCode(value: string): boolean {
+  return CODE_LOADING_JVM_ARG.test(value)
+}
 
 /** Executables an explicit `javaPath` may point at, matched case-insensitively. */
 const JAVA_EXECUTABLE_NAMES = ['java', 'javaw', 'java.exe', 'javaw.exe']
@@ -36,6 +47,19 @@ function kindText(kind: CommandKind): { title: string; detail: (name: string, va
       title: tr('Pre-Launch-Befehl erlauben', 'Allow pre-launch command'),
       intro: (name: string) =>
         tr(`Die Instanz „${name}“ möchte vor dem Start diesen Befehl ausführen:`, `The instance "${name}" wants to run this command before launch:`)
+    },
+    jvmArgs: {
+      title: tr('Java-Argumente erlauben', 'Allow Java arguments'),
+      intro: (name: string) =>
+        tr(
+          `Die Instanz „${name}“ möchte Java mit diesen Argumenten starten. Sie können zusätzlichen Programmcode laden:`,
+          `The instance "${name}" wants to start Java with these arguments. They can load additional program code:`
+        )
+    },
+    envVars: {
+      title: tr('Umgebungsvariablen erlauben', 'Allow environment variables'),
+      intro: (name: string) =>
+        tr(`Die Instanz „${name}“ möchte beim Start diese Umgebungsvariablen setzen:`, `The instance "${name}" wants to set these environment variables on launch:`)
     },
     javaPath: {
       title: tr('Java-Pfad erlauben', 'Allow Java path'),

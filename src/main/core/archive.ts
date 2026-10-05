@@ -203,10 +203,17 @@ export async function extractAllSlowly(
   const zip = await openZipStreaming(archivePath)
   try {
     const allEntries = await readZipEntries(zip, archivePath)
-    assertReasonableArchive(
-      allEntries.map((entry) => ({ header: { size: entry.uncompressedSize } })),
-      archivePath
-    )
+    // Only the entry count is capped here. This path streams every entry to
+    // disk, and the reader stops at one that inflates beyond its declared
+    // size, so memory is never at stake. The size limits the in-memory paths
+    // need made a backup with one file over 1 GB (a Distant Horizons
+    // database, for one) impossible to restore after it had been created
+    // without complaint.
+    if (allEntries.length > MAX_ARCHIVE_ENTRIES) {
+      throw new Error(
+        tr(`${archivePath} enthält mehr als ${MAX_ARCHIVE_ENTRIES} Einträge, abgelehnt.`, `${archivePath} contains more than ${MAX_ARCHIVE_ENTRIES} entries, rejected.`)
+      )
+    }
     const entries = includeRoots
       ? allEntries.filter((entry) => includeRoots.has(entry.fileName.split('/')[0]))
       : allEntries
@@ -226,7 +233,6 @@ export async function extractAllSlowly(
       if (entry.fileName.endsWith('/')) {
         mkdirSync(target, { recursive: true })
       } else {
-        assertReasonableSize({ header: { size: entry.uncompressedSize }, entryName: entry.fileName })
         mkdirSync(dirname(target), { recursive: true })
         await pipeline(await zip.openReadStreamPromise(entry), createWriteStream(target))
         try {
@@ -363,7 +369,23 @@ export function extractNatives(jarPath: string, targetDir: string, excludes: str
 
     assertReasonableSize(entry)
     const dest = join(targetDir, basename(name))
-    writeFileSync(dest, entry.getData())
+    const data = entry.getData()
+    // A second instance of the same version extracts into the folder the
+    // first one's game has loaded these libraries from, and Windows refuses
+    // to overwrite a library in use. The file there is the same one, so it
+    // is left alone instead of failing the launch.
+    try {
+      if (statSync(dest).size === data.length) continue
+    } catch {
+      // not there yet
+    }
+    try {
+      writeFileSync(dest, data)
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code
+      if ((code === 'EBUSY' || code === 'EPERM' || code === 'EACCES') && existsSync(dest)) continue
+      throw err
+    }
   }
 }
 

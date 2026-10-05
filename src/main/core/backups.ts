@@ -102,6 +102,9 @@ function sanitizeIncludes(includes: readonly string[]): string[] {
   return includes.filter((key) => BACKUP_TARGET_KEYS.has(key))
 }
 
+/** How many safety copies from before a repair or a restore are kept per kind. */
+const SAFETY_COPIES_KEPT = 5
+
 function indexFile(instanceId: string): string {
   return join(paths.instanceBackups(instanceId), 'backups.json')
 }
@@ -430,9 +433,14 @@ function pruneAutomatic(instanceId: string): void {
   // update within a handful of sessions.
   const newestFirst = (reason: BackupEntry['reason']): BackupEntry[] =>
     entries.filter((e) => e.reason === reason).sort((a, b) => b.createdAt - a.createdAt)
-  const excess = [...newestFirst('automatic').slice(keep), ...newestFirst('pre-update').slice(keep)].filter(
-    (e) => !inUse.has(e.id)
-  )
+  const excess = [
+    ...newestFirst('automatic').slice(keep),
+    ...newestFirst('pre-update').slice(keep),
+    // Taken before a repair or a restore. These were never cleaned up and
+    // piled up for good; the most recent few are all an undo ever needs.
+    ...newestFirst('pre-repair').slice(SAFETY_COPIES_KEPT),
+    ...newestFirst('pre-restore').slice(SAFETY_COPIES_KEPT)
+  ].filter((e) => !inUse.has(e.id))
 
   if (excess.length === 0) return
 

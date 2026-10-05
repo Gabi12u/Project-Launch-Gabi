@@ -283,19 +283,24 @@ export function refreshInstances(): Promise<void> {
     instancesAgain = true
     return instancesInFlight
   }
-  instancesInFlight = (async () => {
-    try {
-      do {
-        instancesAgain = false
+  const run = (async () => {
+    do {
+      instancesAgain = false
+      try {
         setState({ instances: await window.gabi.instances.list() })
-      } while (instancesAgain)
-    } catch (err) {
-      toastError(err, tr('Instanzen konnten nicht geladen werden', 'Instances could not be loaded'))
-    } finally {
-      instancesInFlight = null
-    }
+      } catch (err) {
+        // A caller that arrived meanwhile still gets its own attempt.
+        toastError(err, tr('Instanzen konnten nicht geladen werden', 'Instances could not be loaded'))
+      }
+    } while (instancesAgain)
   })()
-  return instancesInFlight
+  instancesInFlight = run
+  // Cleared only once settled, and only if it is still this run: clearing
+  // inside the body could happen before the assignment above.
+  void run.finally(() => {
+    if (instancesInFlight === run) instancesInFlight = null
+  })
+  return run
 }
 
 export async function refreshAccounts(): Promise<void> {

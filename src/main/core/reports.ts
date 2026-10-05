@@ -62,6 +62,8 @@ const MAX_PER_SESSION = 5
 const MAX_MESSAGE = 1800
 
 let sentThisSession = 0
+/** The panel's own budget, see `send`. */
+let panelThisSession = 0
 
 /** Fingerprints already reported, so the same fault is not sent twice. */
 const seen = new Set<string>()
@@ -125,7 +127,9 @@ export function scrub(text: string): string {
   // called. Case-insensitive on the folder name itself: tools that write
   // paths in their own case (installers, robocopy) produced `C:\USERS\...`,
   // which this used to walk straight past.
-  out = out.replace(/([A-Za-z]:\\Users\\)[^\\\r\n"']+/gi, '$1<Nutzer>')
+  // One or two backslashes: a path from JSON.stringify or an inspected
+  // object has them doubled, and the folder name went through untouched.
+  out = out.replace(/([A-Za-z]:\\{1,2}Users\\{1,2})[^\\\r\n"']+/gi, '$1<Nutzer>')
   out = out.replace(/(\/Users\/)[^/\r\n"']+/gi, '$1<Nutzer>')
   out = out.replace(/(\/home\/)[^/\r\n"']+/g, '$1<Nutzer>')
 
@@ -406,7 +410,13 @@ async function send(report: ErrorReport): Promise<void> {
 
   // Das Panel bekommt denselben Bericht. Getrennt vom Webhook, damit
   // ein Ausfall der einen Seite die andere nicht mitnimmt.
-  void sendToPanel(report)
+  // Counted on the way out, apart from the webhook: that counter only moves
+  // when a post to Discord succeeded, so without a webhook, or with a
+  // failing one, the panel had no limit at all.
+  if (panelThisSession < MAX_PER_SESSION) {
+    panelThisSession++
+    void sendToPanel(report)
+  }
 
   // Ein Bau kann das Panel kennen und den Webhook nicht. Ohne diese
   // Zeile ginge die Anfrage an eine leere Adresse und verbrauchte einen

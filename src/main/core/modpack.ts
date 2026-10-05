@@ -1160,11 +1160,17 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
       .filter((item) => files.some((f) => basename(f.path) === item.fileName))
       .map((item) => `${overrideFolderFor(item.type)}/${item.fileName}`)
 
+    const skipped: string[] = []
+    const skippedLinks: string[] = []
     await zipFolder(
       gameDir,
       options.targetFile,
       {
         include: overrideFolders,
+        // Reported below. Without these a locked file or a link was simply
+        // missing from the pack while the export still said it worked.
+        onSkip: (file) => skipped.push(file),
+        onSkipLink: (file) => skippedLinks.push(file),
         exclude: excluded,
         prefix: 'overrides',
         extraFiles: [{ name: 'modrinth.index.json', content: JSON.stringify(index, null, 2) }],
@@ -1174,6 +1180,26 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
       },
       (done, total) => task.update(tr(`${done} / ${total} Dateien`, `${done} / ${total} files`), 0.4 + (done / Math.max(total, 1)) * 0.6)
     )
+
+    if (skipped.length > 0) {
+      const list = skipped.slice(0, 3).join(', ') + (skipped.length > 3 ? tr(' und weitere', ' and more') : '')
+      notify(
+        'warning',
+        tr('Export unvollständig', 'Export incomplete'),
+        tr(
+          `${skipped.length === 1 ? '1 Datei konnte' : `${skipped.length} Dateien konnten`} nicht gelesen werden und ${skipped.length === 1 ? 'fehlt' : 'fehlen'} im Modpack: ${list}. Schließe das Spiel und Programme, die sie offen halten, und exportiere erneut.`,
+          `${skipped.length === 1 ? '1 file' : `${skipped.length} files`} could not be read and ${skipped.length === 1 ? 'is' : 'are'} missing from the modpack: ${list}. Close the game and programs that keep them open, and export again.`
+        )
+      )
+    }
+    if (skippedLinks.length > 0) {
+      const list = skippedLinks.slice(0, 3).join(', ') + (skippedLinks.length > 3 ? tr(' und weitere', ' and more') : '')
+      notify(
+        'info',
+        tr('Verknüpfungen nicht exportiert', 'Links not exported'),
+        tr(`Verknüpfungen lassen sich nicht in ein Modpack packen und fehlen darin: ${list}.`, `Links cannot be packed into a modpack and are missing from it: ${list}.`)
+      )
+    }
 
     const size = statSync(options.targetFile).size
     logger.info(

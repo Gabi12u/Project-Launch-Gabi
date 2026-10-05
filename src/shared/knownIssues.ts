@@ -3678,6 +3678,132 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'erfuhr davon aber erst beim nächsten Programmstart.',
     state: 'fixing',
     since: '2026-10-05'
+  },
+  {
+    id: 'natives-zweite-instanz',
+    title: 'Eine zweite Instanz derselben Version bis 1.16 startete nicht, solange die erste lief',
+    detail:
+      'Liefen zwei Instanzen mit derselben Minecraft-Version bis einschließlich 1.16, versuchte der ' +
+      'Start der zweiten, Dateien zu überschreiben, die das laufende Spiel gerade benutzt. Windows ' +
+      'verweigert das, und der Start brach mit einer technischen Meldung ab.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'reparatur-tmp-in-welten',
+    title: 'Reparieren löschte auch .tmp- und .part-Dateien in Welten und Einstellungen',
+    detail:
+      'Beim Aufräumen alter Download-Reste durchsuchte die Reparatur den ganzen Spielordner einer ' +
+      'Instanz, auch Welten und Mod-Einstellungen, und löschte dort jede ältere Datei mit der Endung ' +
+      '.tmp oder .part, auch wenn sie zu einer Welt oder einem Mod gehörte.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'sicherung-ueber-1gb-datei',
+    title: 'Sicherungen mit einer einzelnen Datei über 1 GB ließen sich nicht wiederherstellen',
+    detail:
+      'Enthielt eine Welt eine einzelne sehr große Datei, etwa die Datenbank von Distant Horizons, ' +
+      'ließ sich die Sicherung zwar anlegen, aber nicht wiederherstellen. Das zeigte sich erst, wenn ' +
+      'man sie brauchte.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'export-fehlende-dateien',
+    title: 'Beim Export als Modpack fehlten gesperrte Dateien ohne Hinweis',
+    detail:
+      'Hielt ein anderes Programm beim Export eine Datei fest, oder lag eine Verknüpfung im Ordner, ' +
+      'fehlte sie im fertigen Modpack. Der Launcher meldete trotzdem einen erfolgreichen Export.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'datapack-fremde-datei',
+    title: 'Ein Data Pack konnte eine eigene, gleichnamige Datei in einer Welt löschen',
+    detail:
+      'Lag in einer Welt schon eine andere Datei mit demselben Namen wie ein Data Pack aus dem ' +
+      'Launcher, merkte sich der Launcher die Welt trotzdem. Beim späteren Ausschalten, Entfernen oder ' +
+      'Aktualisieren des Data Packs löschte er dann die fremde Datei.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'ausschalten-ueberschreibt',
+    title: 'Ausschalten eines Mods konnte eine gleichnamige ausgeschaltete Datei überschreiben',
+    detail:
+      'Lagen ein Mod und eine ausgeschaltete Datei mit demselben Namen (Endung .disabled) im Ordner, ' +
+      'überschrieb das Ausschalten die vorhandene Datei ohne Nachfrage.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'stopp-ohne-speichern',
+    title: '„Stopp“ beendete Minecraft unter Windows sofort, ohne die Welt zu speichern',
+    detail:
+      'Unter Windows erzwang „Stopp“ das Ende des Spiels sofort. Minecraft bekam keine Gelegenheit, ' +
+      'die Welt zu speichern, und Fortschritt seit dem letzten automatischen Speichern konnte verloren ' +
+      'gehen.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'versionsdatei-beschaedigt',
+    title: 'Eine beschädigte Versionsdatei brachte beim Start nur eine unverständliche Meldung',
+    detail:
+      'War die Beschreibungsdatei einer Minecraft-Version beschädigt, etwa nach einem Absturz oder bei ' +
+      'voller Festplatte, erschien beim Start nur „Unexpected end of JSON input“. Der Launcher lud die ' +
+      'Datei nicht neu und sagte auch nicht, dass „Reparieren“ hilft.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'vorschau-installiert-loader',
+    title: 'Das Öffnen einer Forge- oder NeoForge-Instanz konnte den Loader unbemerkt installieren',
+    detail:
+      'Fehlte der installierte Loader einer Forge- oder NeoForge-Instanz, startete schon das Öffnen ' +
+      'ihrer Seite die Installation im Hintergrund, ohne Anzeige und ohne Möglichkeit zum Abbrechen.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'sicherungen-vor-reparatur',
+    title: 'Sicherungen vor einer Reparatur wurden nie aufgeräumt',
+    detail:
+      'Vor jeder Reparatur legt der Launcher eine Sicherung an. Anders als die automatischen ' +
+      'Sicherungen wurden diese nie aufgeräumt und belegten mit der Zeit immer mehr Speicherplatz.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'fremde-instanz-argumente',
+    title: 'Java-Argumente und Umgebungsvariablen einer fremden Instanz liefen ohne Rückfrage',
+    detail:
+      'Befehle vor dem Start, Wrapper und eigene Java-Pfade fragen vor dem ersten Ausführen nach. ' +
+      'Java-Argumente, die zusätzlichen Programmcode laden, und Umgebungsvariablen taten das nicht. ' +
+      'Eine von jemand anderem übernommene Instanz konnte damit beim Start eigenen Code ausführen.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'umleitung-schluessel',
+    title: 'Bei einer Umleitung konnten Zugangsschlüssel an einen anderen Server gehen',
+    detail:
+      'Leitete ein Server eine Anfrage an eine andere Adresse weiter, schickte der Launcher den ' +
+      'CurseForge-Schlüssel oder die Minecraft-Anmeldung dorthin mit, und auch eine Weiterleitung auf ' +
+      'eine unverschlüsselte Adresse wurde befolgt.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'fehlerbericht-pfad-doppelt',
+    title: 'Fehlerberichte konnten den Namen des Windows-Benutzerordners enthalten',
+    detail:
+      'In Fehlerberichten wird der Name des Benutzerordners unkenntlich gemacht. Stand ein Pfad in ' +
+      'einer bestimmten technischen Schreibweise mit doppelten Schrägstrichen im Bericht, blieb der ' +
+      'Name stehen.',
+    state: 'fixing',
+    since: '2026-10-05'
   }
 ]
 
