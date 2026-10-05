@@ -7,7 +7,7 @@ import type {
   UpdateStatus
 } from '@shared/types'
 import type { AppInfo, ErrorReport } from '@shared/api'
-import { ACCENT_CHOICES } from '@shared/defaults'
+import { ACCENT_CHOICES, DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import { accentName } from '../lib/accents'
 import { changeKindLabel, changelogLocalized } from '@shared/changelogEn'
 import { navigate, refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
@@ -767,14 +767,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
               <h3>{tr('Microsoft-Anmeldung', 'Microsoft sign-in')}</h3>
               <p className="hint">
                 {tr(
-                  'Launch Gabi meldet sich über den Geräte-Code-Ablauf an, dein Passwort wird nie im Launcher eingegeben. Voreingestellt ist die Anwendungs-ID des offiziellen Minecraft-Launchers, die über',
-                  'Launch Gabi signs in with the device code flow, your password is never entered in the launcher. The default is the application ID of the official Minecraft Launcher, which runs through'
-                )}{' '}
-                <span className="mono">login.live.com</span>
-                {tr(' läuft.', '.')}{' '}
-                {tr(
-                  'Trägst du hier stattdessen eine eigene Azure-Anwendungs-ID im GUID-Format ein, wechselt Launch Gabi automatisch auf den Azure-AD-Ablauf.',
-                  'If you enter your own Azure application ID in GUID format here instead, Launch Gabi switches to the Azure AD flow automatically.'
+                  'Launch Gabi meldet sich mit einem Code an, den du im Browser bestätigst. Dein Passwort wird nie im Launcher eingegeben. Voreingestellt ist die eigene Anwendungs-ID von Launch Gabi. Eine andere brauchst du nur, wenn du eine eigene, von Mojang freigegebene Azure-Anwendung hast. Leerst du das Feld, gilt wieder die voreingestellte.',
+                  "Launch Gabi signs in with a code that you confirm in your browser. Your password is never entered in the launcher. The default is Launch Gabi's own application ID. You only need a different one if you have your own Azure application approved by Mojang. If you clear the field, the default applies again."
                 )}
               </p>
               <div className="row gap-8 mt-12">
@@ -787,7 +781,32 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 />
                 <button
                   className="btn primary"
-                  onClick={() => void saveSettings({ microsoftClientId: clientId })}
+                  onClick={() => {
+                    // Checked here so a typo is named at once instead of
+                    // surfacing later as an unexplained sign-in error.
+                    const id = clientId.trim()
+                    const guid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                    if (id && !guid.test(id) && id !== LEGACY_MICROSOFT_CLIENT_ID) {
+                      toast(
+                        'error',
+                        tr('Keine gültige Anwendungs-ID', 'Not a valid application ID'),
+                        tr(
+                          'Eine Azure-Anwendungs-ID sieht so aus: 1234abcd-12ab-34cd-56ef-1234567890ab. Leer lassen für die voreingestellte.',
+                          'An Azure application ID looks like this: 1234abcd-12ab-34cd-56ef-1234567890ab. Leave it empty for the default.'
+                        )
+                      )
+                      return
+                    }
+                    void saveSettings({ microsoftClientId: id }).then((ok) => {
+                      if (!ok) return
+                      setClientId(id || DEFAULT_LAUNCHER_SETTINGS.microsoftClientId)
+                      toast(
+                        'success',
+                        tr('Anwendungs-ID gespeichert', 'Application ID saved'),
+                        tr('Sie gilt ab der nächsten Anmeldung.', 'It applies from the next sign-in.')
+                      )
+                    })
+                  }}
                 >
                   {tr('Speichern', 'Save')}
                 </button>

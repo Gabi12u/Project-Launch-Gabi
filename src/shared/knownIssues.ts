@@ -3617,6 +3617,67 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'und der Fokusrahmen in Eingabefeldern war auf dunklem Hintergrund kaum zu sehen.',
     state: 'fixing',
     since: '2026-10-04'
+  },
+  {
+    id: 'accounts-datei-gesperrt',
+    title: 'Eine kurz gesperrte Account-Datei konnte alle gespeicherten Accounts löschen',
+    detail:
+      'Hielt ein Virenscanner oder OneDrive die Datei mit den Accounts gerade fest, las der Launcher ' +
+      'sie als leer. Wurde in diesem Moment etwas gespeichert, etwa ein neues Offline-Profil, ein ' +
+      'Wechsel des Accounts oder eine erneuerte Anmeldung, waren alle anderen Accounts weg und mussten ' +
+      'neu angemeldet werden.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'start-ohne-internet-abgelaufen',
+    title: 'Ohne Internet ließ sich das Spiel nach Ablauf der Anmeldung gar nicht starten',
+    detail:
+      'Die Anmeldung bei Minecraft gilt etwa einen Tag. War sie abgelaufen und keine Verbindung zu ' +
+      'Microsoft möglich, brach der Start ab, obwohl man im Einzelspieler auch ohne Internet spielen ' +
+      'kann.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'anmeldung-serverfehler-abbruch',
+    title: 'Ein einzelner Serverfehler bei Microsoft brach die Anmeldung ab',
+    detail:
+      'Antwortete Microsoft während der Anmeldung mit dem Code ein einziges Mal mit einem ' +
+      'Serverfehler, war die ganze Anmeldung verloren, und es erschien nur eine technische Meldung wie ' +
+      '„HTTP 503“.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'anwendungs-id-feld',
+    title: 'Ein geleertes Feld für die Anwendungs-ID machte die Anmeldung unmöglich',
+    detail:
+      'Wer das Feld für die eigene Microsoft-Anwendungs-ID leerte, wie es ein Hinweis empfahl, konnte ' +
+      'sich danach nicht mehr anmelden. Ein Leerzeichen am Ende einer eingefügten ID führte zu einem ' +
+      'unverständlichen Fehler, und der Text in den Einstellungen beschrieb noch die alte ' +
+      'Voreinstellung.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'xbox-sperre-hinweis',
+    title: 'Gesperrte oder eingeschränkte Xbox-Konten bekamen einen falschen Hinweis',
+    detail:
+      'War ein Konto von Xbox gesperrt, durch den Jugendschutz für Online-Spiele eingeschränkt oder ' +
+      'hatte es die Nutzungsbedingungen von Xbox noch nicht angenommen, hieß es nur, man solle sich ' +
+      'auf xbox.com anmelden. Das half in keinem dieser Fälle.',
+    state: 'fixing',
+    since: '2026-10-05'
+  },
+  {
+    id: 'skin-anzeige-verzoegert',
+    title: 'Ein neuer Skin erschien im Launcher erst nach einem Neustart',
+    detail:
+      'Beim Erneuern der Anmeldung holt der Launcher auch den aktuellen Skin. Die Anzeige im Launcher ' +
+      'erfuhr davon aber erst beim nächsten Programmstart.',
+    state: 'fixing',
+    since: '2026-10-05'
   }
 ]
 

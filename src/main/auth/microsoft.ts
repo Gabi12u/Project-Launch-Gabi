@@ -1,7 +1,7 @@
 import { safeStorage } from 'electron'
 import { randomUUID, createHash } from 'node:crypto'
 import type { Account, DeviceCodePrompt } from '@shared/types'
-import { LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
+import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import { EVENTS } from '@shared/ipc'
 import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
@@ -145,6 +145,11 @@ function decryptOrEmpty(value: string, secure: boolean | undefined): string {
   } catch {
     return ''
   }
+}
+
+/** The stored Minecraft session as it is, expired or not, or '' if there is none. */
+export function storedAccessToken(account: StoredAccount): string {
+  return account.accessToken ? decryptOrEmpty(account.accessToken, accessSecureOf(account)) : ''
 }
 
 /* ------------------------------------------------------------------ *
@@ -378,6 +383,7 @@ async function pollForToken(
   let interval = Math.max(device.interval, 1) * 1000
   let unreadableErrors = 0
   let networkErrors = 0
+  let serverErrors = 0
   let polls = 0
 
   /**
@@ -487,6 +493,20 @@ async function pollForToken(
         interval += 5000
         continue
       }
+      // A server error is Microsoft's own hiccup, like a dropped connection
+      // above. One 503 used to end a sign-in the user was still typing the
+      // code for, with nothing but "HTTP 503" to show for it.
+      if (err.status >= 500) {
+        serverErrors++
+        logger.warn(`Anmeldeabfrage mit Serverfehler ${err.status} (${serverErrors}. Mal, nach ${since()})`)
+        if (serverErrors < 6) continue
+        throw new Error(
+          tr(
+            'Der Anmeldedienst von Microsoft antwortet gerade nicht. Versuche es gleich noch einmal.',
+            'Microsoft\'s sign-in service is not responding right now. Try again in a moment.'
+          ) + technicalSuffix(err.status, err.code)
+        )
+      }
       // A 400 with no readable code keeps the loop going, as it always did.
       //
       // A stricter version of this stood here for one release: it gave up
@@ -545,6 +565,12 @@ function describeXboxFailure(err: HttpError): string | null {
     case 2148916236:
     case 2148916237:
       return tr('Dieser Account benötigt eine Altersverifikation. Führe sie einmal auf xbox.com durch und versuche es danach erneut.', 'This account needs age verification. Complete it once on xbox.com and then try again.')
+    case 2148916227:
+      return tr('Dieser Microsoft-Account wurde von Xbox gesperrt und kann für Minecraft nicht verwendet werden.', 'This Microsoft account was banned by Xbox and cannot be used for Minecraft.')
+    case 2148916229:
+      return tr('Für diesen Account ist das Online-Spielen durch den Jugendschutz gesperrt. Ein Erwachsener der Microsoft-Familie muss es in den Xbox-Familieneinstellungen erlauben.', 'Online play is blocked for this account by parental controls. An adult in the Microsoft family has to allow it in the Xbox family settings.')
+    case 2148916234:
+      return tr('Dieser Account hat die Nutzungsbedingungen von Xbox noch nicht angenommen. Melde dich einmal auf xbox.com an, nimm sie dort an, und versuche es danach erneut.', 'This account has not accepted the Xbox terms of use yet. Sign in once on xbox.com, accept them there, and then try again.')
     case 2148916238:
       return tr('Dieser Account gehört zu einem Kind und muss einer Microsoft-Familie zugeordnet sein. Ein Erwachsener der Familie muss es in den Xbox-Familieneinstellungen freigeben, danach ist die Anmeldung möglich.', 'This account belongs to a child and has to be part of a Microsoft family. An adult in the family has to allow it in the Xbox family settings, then signing in works.')
     default:
@@ -630,10 +656,14 @@ async function xstsAuthorize(xblToken: string): Promise<{ token: string; uhs: st
  * gesperrt. Deshalb haengt die Antwort daran, welche ID im Spiel ist.
  */
 export function explainMinecraftForbidden(clientId: string): string {
-  if (GUID.test(clientId.trim())) {
-    return tr('Microsoft hat die Anmeldung angenommen, aber Minecraft lässt diese Anwendung nicht an seine Schnittstelle. Eine eigene Anwendungs-ID muss dafür einmalig von Mojang freigegeben werden. Das Formular dafür ist https://aka.ms/mce-reviewappid, dort wird die ID eingetragen. Bis die Freigabe da ist, hilft nur, die ID in den Einstellungen wieder zu leeren.', 'Microsoft accepted the sign-in, but Minecraft does not let this application use its interface. A custom application ID has to be approved once by Mojang for that. The form for it is https://aka.ms/mce-reviewappid, where the ID is entered. Until it is approved, the only fix is to clear the ID in the settings again.')
+  const id = clientId.trim()
+  if (id === DEFAULT_LAUNCHER_SETTINGS.microsoftClientId) {
+    return tr('Microsoft hat die Anmeldung angenommen, aber Minecraft lässt die Anmeldung über Launch Gabi gerade nicht zu. Das liegt nicht an deinem Account. Versuche es später noch einmal und schau auf status.launchgabi.com nach, ob das Problem bekannt ist.', 'Microsoft accepted the sign-in, but Minecraft does not allow signing in through Launch Gabi right now. This is not caused by your account. Try again later and check status.launchgabi.com to see whether the problem is known.')
   }
-  return tr('Minecraft hat die Anmeldung abgelehnt. Die mitgelieferte Anwendungs-ID gehört dem offiziellen Launcher und wird von Microsoft zunehmend nur noch dort akzeptiert. Eine eigene, von Mojang freigegebene ID lässt sich in den Einstellungen unter Accounts eintragen.', 'Minecraft rejected the sign-in. The included application ID belongs to the official launcher and Microsoft increasingly only accepts it there. A custom ID approved by Mojang can be entered in the settings under Accounts.')
+  if (GUID.test(id)) {
+    return tr('Microsoft hat die Anmeldung angenommen, aber Minecraft lässt diese Anwendung nicht an seine Schnittstelle. Eine eigene Anwendungs-ID muss dafür einmalig von Mojang freigegeben werden. Das Formular dafür ist https://aka.ms/mce-reviewappid, dort wird die ID eingetragen. Bis die Freigabe da ist, leere das Feld in den Einstellungen unter Accounts, dann gilt wieder die ID von Launch Gabi.', 'Microsoft accepted the sign-in, but Minecraft does not let this application use its interface. A custom application ID has to be approved once by Mojang for that. The form for it is https://aka.ms/mce-reviewappid, where the ID is entered. Until it is approved, clear the field in the settings under Accounts, then Launch Gabi\'s own ID applies again.')
+  }
+  return tr('Minecraft hat die Anmeldung abgelehnt. Die alte Anwendungs-ID des offiziellen Launchers wird von Microsoft zunehmend nur noch dort akzeptiert. Leere das Feld in den Einstellungen unter Accounts, falls du sie dort eingetragen hast, und melde dich danach neu an.', 'Minecraft rejected the sign-in. Microsoft increasingly only accepts the old application ID of the official launcher there. Clear the field in the settings under Accounts if you entered it there, and then sign in again.')
 }
 
 /**
@@ -817,6 +847,13 @@ function formatUuid(raw: string): string {
  */
 const refreshing = new Map<string, Promise<string>>()
 
+/**
+ * The sign-in could not be renewed because Microsoft was out of reach, not
+ * because it ended. The launch then still starts, for singleplayer, with
+ * the stored session.
+ */
+export class SignInUnavailableError extends Error {}
+
 /** Returns a valid Minecraft access token, refreshing it when needed. */
 export async function getValidAccessToken(accountId: string): Promise<string> {
   const accounts = readAccounts()
@@ -874,16 +911,30 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // default) would otherwise send a perfectly valid token to the wrong place
   // and fail every time with nothing but an unexplained HTTP 400.
   let clientId = account.issuerClientId ?? getSettings().microsoftClientId
-  const requestToken = (id: string): Promise<TokenResponse> =>
-    fetchJson<TokenResponse>(
-      endpointsFor(id).token,
-      form({
-        client_id: id,
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        scope: SCOPE
-      })
-    )
+  // Retried only when Microsoft answered with a server error or a rate
+  // limit, never after a timeout or a dropped connection. The request may
+  // have arrived and rotated the token, and repeating it with the old one
+  // then ended in "please sign in again" for a session that was fine.
+  const requestToken = async (id: string): Promise<TokenResponse> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fetchJson<TokenResponse>(
+          endpointsFor(id).token,
+          form({
+            client_id: id,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            scope: SCOPE
+          }),
+          0
+        )
+      } catch (err) {
+        const answered = err instanceof HttpError && (err.status >= 500 || err.status === 429)
+        if (!answered || attempt >= 2) throw err
+        await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)))
+      }
+    }
+  }
   let token: TokenResponse
   try {
     try {
@@ -898,11 +949,21 @@ async function refreshAccessToken(accountId: string): Promise<string> {
         account.issuerClientId ||
         clientId === LEGACY_MICROSOFT_CLIENT_ID ||
         !(firstErr instanceof HttpError) ||
-        firstErr.status >= 500
+        firstErr.status >= 500 ||
+        firstErr.status === 408 ||
+        firstErr.status === 429
       ) {
         throw firstErr
       }
-      token = await requestToken(LEGACY_MICROSOFT_CLIENT_ID)
+      try {
+        token = await requestToken(LEGACY_MICROSOFT_CLIENT_ID)
+      } catch (legacyErr) {
+        // The other system rejecting a token it never issued says nothing
+        // about this sign-in. The first answer is the one that counts, so a
+        // plain expiry still reads as "sign in again" rather than as an
+        // outage on Microsoft's side.
+        throw legacyErr instanceof HttpError && legacyErr.status < 500 ? firstErr : legacyErr
+      }
       clientId = LEGACY_MICROSOFT_CLIENT_ID
       logger.info(`Anmeldung von ${account.username} unter der alten Anwendungs-ID erneuert`)
     }
@@ -932,7 +993,7 @@ async function refreshAccessToken(accountId: string): Promise<string> {
       )
     }
     if (err instanceof HttpError) {
-      throw new Error(
+      throw new SignInUnavailableError(
         tr(
           'Der Anmeldedienst von Microsoft antwortet gerade nicht. Versuche es gleich noch einmal.',
           'Microsoft\'s sign-in service is not responding right now. Try again in a moment.'
@@ -940,7 +1001,7 @@ async function refreshAccessToken(accountId: string): Promise<string> {
         { cause: err }
       )
     }
-    throw new Error(
+    throw new SignInUnavailableError(
       tr(
         'Die Anmeldung konnte nicht erneuert werden, weil keine Verbindung zu Microsoft besteht. Prüfe deine Internetverbindung.',
         'The sign-in could not be renewed because there is no connection to Microsoft. Check your internet connection.'
@@ -960,20 +1021,24 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // usual and simply confirms the same value.
   if (token.refresh_token) {
     const rotatedEnc = encrypt(token.refresh_token)
-    const beforeChain = readAccounts()
-    if (beforeChain.some((a) => a.id === accountId)) {
-      writeAccounts(
-        beforeChain.map((a) =>
-          a.id === accountId
-            ? {
-                ...a,
-                refreshToken: rotatedEnc.value,
-                refreshSecure: rotatedEnc.secure,
-                issuerClientId: a.issuerClientId ?? clientId
-              }
-            : a
-        )
+    try {
+      await updateAccounts((beforeChain) =>
+        beforeChain.some((a) => a.id === accountId)
+          ? beforeChain.map((a) =>
+              a.id === accountId
+                ? {
+                    ...a,
+                    refreshToken: rotatedEnc.value,
+                    refreshSecure: rotatedEnc.secure,
+                    issuerClientId: a.issuerClientId ?? clientId
+                  }
+                : a
+            )
+          : null
       )
+    } catch (err) {
+      // The final write below tries again with the same token.
+      logger.warn(`Neuer Refresh-Token von ${account.username} noch nicht gespeichert:`, err)
     }
   }
 
@@ -1015,10 +1080,10 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   // writeAccounts overwrites the whole file: anything the user did meanwhile
   // (removing an account, adding an offline profile, switching the active one)
   // would otherwise be silently rolled back.
-  const latest = readAccounts()
-  if (latest.some((a) => a.id === accountId)) {
-    writeAccounts(
-      latest.map((a) =>
+  const written = await updateAccounts((latest) =>
+    !latest.some((a) => a.id === accountId)
+      ? null
+      : latest.map((a) =>
         a.id === accountId
           ? {
               ...a,
@@ -1043,7 +1108,10 @@ async function refreshAccessToken(accountId: string): Promise<string> {
             }
           : a
       )
-    )
+  )
+  if (written) {
+    // The renderer otherwise kept the old skin until the next start.
+    emit(EVENTS.accountsChanged, written.map(toPublicAccount))
   } else {
     // Removed while we were refreshing. Handing back the token lets the
     // operation that asked for it finish, but the account stays deleted.
@@ -1051,6 +1119,29 @@ async function refreshAccessToken(accountId: string): Promise<string> {
   }
 
   return mc.access_token
+}
+
+/**
+ * Applies a change to the stored accounts, waiting out a short lock.
+ *
+ * Used where giving up would cost something that cannot be fetched again:
+ * Microsoft may already have rotated the refresh token, so the new one has
+ * to land on disk even if a virus scanner holds the file for a few seconds.
+ * `mutate` returns null to write nothing. Returns what was written.
+ */
+async function updateAccounts(
+  mutate: (accounts: StoredAccount[]) => StoredAccount[] | null
+): Promise<StoredAccount[] | null> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const next = mutate(readAccounts())
+      if (next) writeAccounts(next)
+      return next
+    } catch (err) {
+      if (attempt >= 5) throw err
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)))
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ *

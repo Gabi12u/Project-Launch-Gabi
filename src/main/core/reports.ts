@@ -4,7 +4,7 @@ import { userInfo } from 'node:os'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { getSettings, readAccounts } from '../store'
+import { accountsSnapshot, getSettings } from '../store'
 import { log } from '../logger'
 
 const logger = log('reports')
@@ -198,7 +198,9 @@ export function scrub(text: string): string {
   // Minecraft usernames sit entirely inside `[A-Za-z0-9_]`, so plain `\b`
   // matches them correctly regardless; `boundary()` is used anyway so a
   // future non-Latin display name is not a second copy of the same gap.
-  for (const account of readAccounts()) {
+  // The snapshot, not a fresh read: a locked accounts file must neither
+  // fail the report nor let the names through unscrubbed.
+  for (const account of accountsSnapshot()) {
     if (account.username && account.username.length >= 3) {
       out = out.replace(new RegExp(boundary(account.username), 'gu'), '<Spieler>')
     }

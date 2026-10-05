@@ -39,7 +39,7 @@ import {
 } from './instances'
 import { checkCompatibility } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
-import { getActiveAccount, getValidAccessToken, toPublicAccount } from '../auth/microsoft'
+import { SignInUnavailableError, getActiveAccount, getValidAccessToken, storedAccessToken, toPublicAccount } from '../auth/microsoft'
 import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount } from './running'
 import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
@@ -433,7 +433,26 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     let userType = 'legacy'
     if (stored.type === 'microsoft') {
       task.update(tr('Anmeldung wird geprüft…', 'Checking sign-in…'), null)
-      accessToken = await getValidAccessToken(stored.id)
+      try {
+        accessToken = await getValidAccessToken(stored.id)
+      } catch (err) {
+        // Out of reach is not signed out. The Minecraft session lasts about a
+        // day, and without this a player on a train could not even open a
+        // singleplayer world once it had run out. The stored session goes
+        // in as it is: singleplayer never checks it, servers and Realms will
+        // refuse it until the next renewal works.
+        if (!(err instanceof SignInUnavailableError)) throw err
+        logger.warn('Anmeldung nicht erneuerbar, Start mit der gespeicherten Sitzung:', err)
+        accessToken = storedAccessToken(stored) || '0'
+        notify(
+          'warning',
+          tr('Ohne Verbindung zu Microsoft gestartet', 'Started without a connection to Microsoft'),
+          tr(
+            'Die Anmeldung ließ sich gerade nicht erneuern. Einzelspieler funktioniert, Server und Realms erst wieder, wenn eine Verbindung zu Microsoft besteht.',
+            'The sign-in could not be renewed right now. Singleplayer works, servers and Realms only once Microsoft can be reached again.'
+          )
+        )
+      }
       userType = 'msa'
       xuid = stored.uuid.replace(/-/g, '')
     }

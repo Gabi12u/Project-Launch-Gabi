@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import type { Account, LauncherSettings, LaunchBehaviour } from '@shared/types'
@@ -200,7 +200,10 @@ function sanitize(input: LauncherSettings): LauncherSettings {
   next.accentColor = textOr(next.accentColor, fallback.accentColor)
   next.curseForgeApiKey = textOr(next.curseForgeApiKey, fallback.curseForgeApiKey)
   // The move off the old official client id happens in getSettings.
-  next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId)
+  // Trimmed, and an empty field means the default. A trailing space from
+  // pasting picked the wrong sign-in system, and an empty value left no way
+  // to sign in at all, although a hint told users to clear the field.
+  next.microsoftClientId = textOr(next.microsoftClientId, fallback.microsoftClientId).trim() || fallback.microsoftClientId
   // Not merely cosmetic: registering the hotkey calls `.trim()` on this, so a
   // number in the file threw before a game could ever start.
   next.recordingHotkey = textOr(next.recordingHotkey, fallback.recordingHotkey).trim() || fallback.recordingHotkey
@@ -423,8 +426,25 @@ function accountsFile(): string {
  */
 let accountDropNotified = false
 
+/** The accounts as last read or written, for callers that must not fail. */
+let lastAccounts: StoredAccount[] = []
+
 export function readAccounts(): StoredAccount[] {
-  const stored = readJson<StoredAccount[]>(accountsFile(), [], true)
+  const result = readJsonResult<StoredAccount[]>(accountsFile(), true)
+  // Never "no accounts" for a file that is merely locked. Every caller writes
+  // its result back over the whole file, so an empty list here deleted every
+  // account the moment a virus scanner or OneDrive held the file during a
+  // save. Throwing stops that write; a missing or corrupt file still reads
+  // as empty, the corrupt one having been set aside first.
+  if (!result.ok && result.reason === 'unreadable') {
+    throw new Error(
+      tr(
+        'Die Datei mit den Accounts ist gerade von einem anderen Programm gesperrt, zum Beispiel einem Virenscanner oder OneDrive. Versuche es gleich noch einmal.',
+        'The file with the accounts is locked by another program right now, such as a virus scanner or OneDrive. Try again in a moment.'
+      )
+    )
+  }
+  const stored = result.ok ? result.value : []
   // A hand-edited or truncated file can parse as valid JSON of the wrong shape;
   // every caller iterates the result, so anything but an array must not escape.
   if (!Array.isArray(stored)) {
@@ -453,18 +473,41 @@ export function readAccounts(): StoredAccount[] {
     logger.warn(`accounts.json: ${dropped} unvollständige Konten übersprungen`)
     if (!accountDropNotified) {
       accountDropNotified = true
+      // The next save writes only the usable entries, so the dropped ones
+      // would be gone for good. Copied aside once first, best effort.
+      try {
+        copyFileSync(accountsFile(), `${accountsFile()}.damaged-${Date.now()}`)
+      } catch (err) {
+        logger.warn('Kopie der beschädigten accounts.json nicht angelegt:', err)
+      }
       notify(
         'warning',
         tr('Account beschädigt', 'Account damaged'),
         dropped === 1
-          ? tr('Ein gespeicherter Account war beschädigt und wurde entfernt.', 'A saved account was damaged and has been removed.')
-          : tr(`${dropped} gespeicherte Accounts waren beschädigt und wurden entfernt.`, `${dropped} saved accounts were damaged and have been removed.`)
+          ? tr('Ein gespeicherter Account war beschädigt und wurde entfernt. Eine Kopie der alten Datei liegt im Launcher-Ordner.', 'A saved account was damaged and has been removed. A copy of the old file is in the launcher folder.')
+          : tr(`${dropped} gespeicherte Accounts waren beschädigt und wurden entfernt. Eine Kopie der alten Datei liegt im Launcher-Ordner.`, `${dropped} saved accounts were damaged and have been removed. A copy of the old file is in the launcher folder.`)
       )
     }
   }
+  lastAccounts = usable
   return usable
 }
 
 export function writeAccounts(accounts: StoredAccount[]): void {
   writeJsonAtomic(accountsFile(), accounts)
+  lastAccounts = accounts
+}
+
+/**
+ * The accounts, or the last known ones while the file is locked.
+ *
+ * For callers that only look, never write, and must not fail on a lock:
+ * the report scrubber still has to know the player names to hide them.
+ */
+export function accountsSnapshot(): StoredAccount[] {
+  try {
+    return readAccounts()
+  } catch {
+    return lastAccounts
+  }
 }

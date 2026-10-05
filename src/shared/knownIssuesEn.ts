@@ -2291,6 +2291,45 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'The current page in the sidebar, the selected tab of an instance and the progress of downloads ' +
       'were only shown by color. Some selection and search fields had no name, and the focus ring in ' +
       'input fields was hard to see on dark backgrounds.'
+  },
+  'accounts-datei-gesperrt': {
+    title: 'A briefly locked accounts file could delete all saved accounts',
+    detail:
+      'If a virus scanner or OneDrive was holding the file with the accounts, the launcher read it as ' +
+      'empty. If something was saved at that moment, such as a new offline profile, switching accounts ' +
+      'or a renewed sign-in, all other accounts were gone and had to be signed in again.'
+  },
+  'start-ohne-internet-abgelaufen': {
+    title: 'Without internet the game would not start at all once the sign-in had expired',
+    detail:
+      'The Minecraft sign-in is valid for about a day. Once it had expired and Microsoft could not be ' +
+      'reached, the launch stopped, although singleplayer works without internet.'
+  },
+  'anmeldung-serverfehler-abbruch': {
+    title: 'A single server error at Microsoft aborted the sign-in',
+    detail:
+      'If Microsoft answered with a server error just once during the sign-in with the code, the whole ' +
+      'sign-in was lost and only a technical message such as "HTTP 503" appeared.'
+  },
+  'anwendungs-id-feld': {
+    title: 'A cleared application ID field made signing in impossible',
+    detail:
+      'Clearing the field for a custom Microsoft application ID, as a hint suggested, made signing in ' +
+      'impossible afterwards. A space at the end of a pasted ID led to a confusing error, and the text ' +
+      'in the settings still described the old default.'
+  },
+  'xbox-sperre-hinweis': {
+    title: 'Banned or restricted Xbox accounts got a wrong hint',
+    detail:
+      'If an account was banned by Xbox, restricted from online play by parental controls, or had not ' +
+      'yet accepted the Xbox terms of use, the hint only said to sign in on xbox.com. That helped in ' +
+      'none of these cases.'
+  },
+  'skin-anzeige-verzoegert': {
+    title: 'A new skin only showed in the launcher after a restart',
+    detail:
+      'When renewing the sign-in, the launcher also fetches the current skin. The display in the ' +
+      'launcher only learned about it at the next start of the program.'
   }
 }
 
