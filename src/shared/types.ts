@@ -94,6 +94,12 @@ export interface ContentItem {
   pageUrl?: string
   sha1?: string
   size?: number
+  /**
+   * Mod ids the jar declares in its own metadata (fabric.mod.json,
+   * quilt.mod.json, mods.toml). Undefined until the folder scan has read it,
+   * empty for a jar that declares none.
+   */
+  modIds?: string[]
   /** Disabled content keeps a `.disabled` suffix on disk. */
   enabled: boolean
   gameVersions: string[]
@@ -378,7 +384,7 @@ export interface CompatibilityIssue {
   contentId?: string
   /** Set when the issue can be resolved without user input. */
   fix?: {
-    kind: 'install-dependency' | 'disable-content' | 'remove-content' | 'update-content'
+    kind: 'install-dependency' | 'enable-content' | 'disable-content' | 'remove-content' | 'update-content'
     label: string
     /** Payload interpreted by the fixer in the main process. */
     projectId?: string

@@ -9,6 +9,7 @@ import type {
 } from '@shared/types'
 import { fetchJson, fetchJsonCached } from '../core/net'
 import { log } from '../logger'
+import { gameVersionMatches, sameVersionLine } from '../core/gameVersions'
 
 const logger = log('modrinth')
 const API = 'https://api.modrinth.com/v2'
@@ -409,10 +410,15 @@ export async function bestVersionFor(
     return exact.find((v) => v.releaseType === 'release') ?? exact[0]
   }
 
-  // Same major.minor line, e.g. 1.21.x
-  const line = gameVersion.split('.').slice(0, 2).join('.')
+  // A release the project was not tagged for, but that is the same game for
+  // it: a hotfix such as 1.20.1 for 1.20. Any 1.20.x used to count, so a
+  // 1.20.1 instance got a 1.20.6 build that does not load there. Resource
+  // packs and shaders rarely break between patch releases and keep the
+  // wider rule.
+  const close = (g: string): boolean =>
+    type === 'resourcepack' || type === 'shaderpack' ? sameVersionLine(gameVersion, g) : gameVersionMatches(gameVersion, g)
   const nearby = preferNativeQuilt(
-    all.filter((v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))),
+    all.filter((v) => loaderOk(v) && v.gameVersions.some(close)),
     loader
   )
   if (nearby.length > 0) return nearby.find((v) => v.releaseType === 'release') ?? nearby[0]

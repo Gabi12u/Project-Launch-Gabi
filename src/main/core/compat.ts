@@ -1,7 +1,8 @@
 import type { CompatibilityIssue, CompatibilityReport, ContentItem, Instance, LoaderId } from '@shared/types'
 import { join } from 'node:path'
 import { getInstance, syncContentWithDisk } from './instances'
-import { readEntryJson, readEntryText } from './archive'
+import { readJarMetadata } from './modMetadata'
+import { gameVersionMatches } from './gameVersions'
 import { paths } from '../paths'
 import { modrinth, curseforge } from '../providers'
 import { log } from '../logger'
@@ -10,7 +11,7 @@ import { tr } from '@shared/i18n'
 const logger = log('compat')
 
 /** Cheap in-memory cache so repeated checks do not hammer the APIs. */
-const nameCache = new Map<string, string>()
+const nameCache = new Map<string, { name: string; slug: string }>()
 /** Bounded so a long session browsing many mods cannot grow it without end. */
 const NAME_CACHE_MAX = 500
 
@@ -19,7 +20,10 @@ export function flattenName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
-async function projectName(provider: 'modrinth' | 'curseforge', projectId: string): Promise<string> {
+async function projectInfo(
+  provider: 'modrinth' | 'curseforge',
+  projectId: string
+): Promise<{ name: string; slug: string }> {
   const key = `${provider}:${projectId}`
   const cached = nameCache.get(key)
   if (cached !== undefined) {
@@ -45,30 +49,39 @@ async function projectName(provider: 'modrinth' | 'curseforge', projectId: strin
       const oldest = nameCache.keys().next().value
       if (oldest !== undefined) nameCache.delete(oldest)
     }
-    nameCache.set(key, project.name)
-    return project.name
+    const info = { name: project.name, slug: project.slug ?? '' }
+    nameCache.set(key, info)
+    return info
   } catch {
-    return projectId
+    return { name: projectId, slug: '' }
   }
 }
 
-/** Mods declaring one of these loaders are Fabric-compatible in a Quilt instance. */
-function loaderCompatible(instance: Instance, item: ContentItem): boolean {
-  if (item.loaders.length === 0) return true
-  if (instance.loader === 'vanilla') return false
-  if (item.loaders.includes(instance.loader)) return true
-  // Quilt runs Fabric mods.
-  if (instance.loader === 'quilt' && item.loaders.includes('fabric')) return true
-  return false
+/**
+ * Whether a mod's declared loaders fit the instance. Quilt runs Fabric mods.
+ * NeoForge began as a fork of Forge 1.20.1, and its 1.20.1 builds still load
+ * most Forge mods for that version; those were blocked outright as not
+ * fitting, while most of them run.
+ */
+function loaderFit(instance: Instance, loaders: string[]): 'fits' | 'forge-on-neoforge' | 'no' {
+  if (loaders.length === 0) return 'fits'
+  if (instance.loader === 'vanilla') return 'no'
+  if (loaders.includes(instance.loader)) return 'fits'
+  if (instance.loader === 'quilt' && loaders.includes('fabric')) return 'fits'
+  if (instance.loader === 'neoforge' && instance.mcVersion === '1.20.1' && loaders.includes('forge')) {
+    return 'forge-on-neoforge'
+  }
+  return 'no'
 }
 
+/**
+ * Exact, or a hotfix of the same release (see gameVersions.ts). Any version
+ * of the same line used to count, so a 1.20.6 build in a 1.20.1 instance
+ * passed without a word.
+ */
 function versionCompatible(instance: Instance, item: ContentItem): boolean {
   if (item.gameVersions.length === 0) return true
-  if (item.gameVersions.includes(instance.mcVersion)) return true
-
-  // Accept the same minor line: a 1.21 mod usually runs on 1.21.1.
-  const line = instance.mcVersion.split('.').slice(0, 2).join('.')
-  return item.gameVersions.some((v) => v === line || v.startsWith(`${line}.`))
+  return item.gameVersions.some((v) => gameVersionMatches(instance.mcVersion, v))
 }
 
 /** Modrinth project ids for Iris and Oculus, the two shader loaders distributed there. */
@@ -105,64 +118,24 @@ function isShaderLoader(item: ContentItem): boolean {
   return false
 }
 
-/**
- * The mod ids a jar declares to the instance's loader, read from the jar's own
- * metadata. This is exactly what a loader refuses to start over when two jars
- * share one, whatever their file names or download sources say.
- */
-async function declaredModIds(instanceId: string, item: ContentItem, loader: LoaderId): Promise<string[]> {
-  const file = join(paths.mods(instanceId), item.fileName)
-  const ids: string[] = []
-  if (loader === 'fabric' || loader === 'quilt') {
-    if (loader === 'quilt') {
-      const quilt = await readEntryJson<{ quilt_loader?: { id?: unknown } }>(file, 'quilt.mod.json')
-      if (typeof quilt?.quilt_loader?.id === 'string') ids.push(quilt.quilt_loader.id)
-    }
-    const fabric = await readEntryJson<{ id?: unknown }>(file, 'fabric.mod.json')
-    if (typeof fabric?.id === 'string') ids.push(fabric.id)
-  } else if (loader === 'forge' || loader === 'neoforge') {
-    for (const entry of ['META-INF/neoforge.mods.toml', 'META-INF/mods.toml']) {
-      const text = await readEntryText(file, entry)
-      if (!text) continue
-      ids.push(...modsTomlIds(text))
+/** The launch-blocking issue for one mod installed more than once, oldest first. */
+function duplicateIssue(id: string, duplicates: ContentItem[]): CompatibilityIssue {
+  return {
+    id,
+    severity: 'error',
+    title: tr(`${duplicates[0].name} ist doppelt installiert`, `${duplicates[0].name} is installed twice`),
+    detail:
+      tr(
+        `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: `,
+        `There are ${duplicates.length} files of the same mod in the folder: `
+      ) + duplicates.map((d) => d.fileName).join(', '),
+    contentId: duplicates[0].id,
+    fix: {
+      kind: 'remove-content',
+      label: tr('Ältere Datei entfernen', 'Remove older file'),
+      contentId: duplicates[0].id
     }
   }
-  return ids
-}
-
-/**
- * The mod ids a mods.toml declares, from its `[[mods]]` tables only.
- *
- * Every `[[dependencies.<mod>]]` table carries a `modId` line as well, naming
- * what the mod needs ("minecraft", "forge", "neoforge"). Read along with the
- * rest, those made two unrelated mods of the same name share an id, so they
- * counted as one mod installed twice and the launch was blocked.
- */
-function modsTomlIds(text: string): string[] {
-  const ids: string[] = []
-  let inMods = false
-  // The delimiter that opened a multi-line string, if one is open. Only the
-  // same one closes it: a """ inside a ''' string is just text.
-  let open: string | null = null
-  for (const line of text.split(/\r?\n/)) {
-    // A description in ''' or """ can hold lines that look like a table
-    // header; read as one, it ended the [[mods]] table early.
-    const startedInString = open !== null
-    for (const match of line.matchAll(/'''|"""/g)) {
-      if (open === null) open = match[0]
-      else if (match[0] === open) open = null
-    }
-    if (startedInString) continue
-    const header = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/.exec(line)
-    if (header) {
-      inMods = header[1] === 'mods'
-      continue
-    }
-    if (!inMods) continue
-    const id = /^\s*modId\s*=\s*["']([^"']+)["']/.exec(line)
-    if (id) ids.push(id[1])
-  }
-  return ids
 }
 
 /**
@@ -176,6 +149,17 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
 
   const mods = instance.content.filter((c) => c.type === 'mod')
   const enabled = mods.filter((c) => c.enabled)
+
+  // The ids each jar declares. The folder scan above records them once per
+  // jar; read here only for a record it could not fill in yet.
+  const idsByMod = new Map<string, string[]>()
+  for (const mod of enabled) {
+    const ids = mod.modIds ?? (await readJarMetadata(join(paths.mods(instanceId), mod.fileName)))?.ids ?? []
+    idsByMod.set(mod.id, ids)
+  }
+  // Flattened like the names, so a declared "fabric-api" meets the slug
+  // "fabric-api" and the name "Fabric API" alike.
+  const installedModIds = new Set(enabled.flatMap((c) => (idsByMod.get(c.id) ?? []).map(flattenName)))
 
   // Project ids of everything currently installed and enabled.
   const installedProjects = new Set(
@@ -212,14 +196,36 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
 
   for (const mod of loaderActive ? enabled : []) {
     // 2. Loader mismatch --------------------------------------------
-    if (instance.loader !== 'vanilla' && !loaderCompatible(instance, mod)) {
+    const fit = loaderFit(instance, mod.loaders)
+    if (fit === 'no') {
+      // A hand-dropped jar's loaders come from its own metadata files. They
+      // say what it was built for, a strong hint, but not a promise that the
+      // loader refuses it, so it does not block the start.
+      const local = mod.provider === 'local'
       issues.push({
         id: `loader-${mod.id}`,
-        severity: 'error',
+        severity: local ? 'warning' : 'error',
         title: tr(`${mod.name} passt nicht zum Mod-Loader`, `${mod.name} does not fit the mod loader`),
+        detail: local
+          ? tr(
+              `${mod.name} ist laut seinen eigenen Angaben für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ${instance.loader}. Wahrscheinlich wird er nicht geladen.`,
+              `According to its own metadata ${mod.name} is built for ${mod.loaders.join(', ')}, but this instance uses ${instance.loader}. It will probably not be loaded.`
+            )
+          : tr(
+              `${mod.name} ist für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ${instance.loader}. Der Start würde fehlschlagen.`,
+              `${mod.name} is built for ${mod.loaders.join(', ')}, but this instance uses ${instance.loader}. The launch would fail.`
+            ),
+        contentId: mod.id,
+        fix: { kind: 'disable-content', label: tr('Mod deaktivieren', 'Disable mod'), contentId: mod.id }
+      })
+    } else if (fit === 'forge-on-neoforge') {
+      issues.push({
+        id: `loader-${mod.id}`,
+        severity: 'warning',
+        title: tr(`${mod.name} ist für Forge gebaut`, `${mod.name} is built for Forge`),
         detail: tr(
-          `${mod.name} ist für ${mod.loaders.join(', ')} gebaut, diese Instanz nutzt aber ${instance.loader}. Der Start würde fehlschlagen.`,
-          `${mod.name} is built for ${mod.loaders.join(', ')}, but this instance uses ${instance.loader}. The launch would fail.`
+          `NeoForge für 1.20.1 lädt die meisten Forge-Mods dieser Version, aber nicht alle. Stürzt das Spiel beim Start ab, deaktiviere ${mod.name} als Erstes.`,
+          `NeoForge for 1.20.1 loads most Forge mods of that version, but not all of them. If the game crashes on start, disable ${mod.name} first.`
         ),
         contentId: mod.id,
         fix: { kind: 'disable-content', label: tr('Mod deaktivieren', 'Disable mod'), contentId: mod.id }
@@ -267,7 +273,7 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         if (installedProjects.has(key)) continue
 
         const provider = mod.provider === 'curseforge' ? 'curseforge' : 'modrinth'
-        const name = await projectName(provider, dependency.projectId)
+        const { name, slug } = await projectInfo(provider, dependency.projectId)
 
         // A dependency id always lives in the requiring mod's own namespace,
         // and CurseForge's numeric ids never coincide with Modrinth's base62
@@ -277,6 +283,37 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         // CurseForge-mod case. It can only silence a false alarm, never raise
         // a new one.
         if (name && installedNames.has(flattenName(name))) continue
+        // A hand-dropped jar carries no project id, and when it was recorded
+        // before its metadata was read, not even the right name. The id it
+        // declares usually is the project's slug: "fabric-api" for Fabric API.
+        if (slug && installedModIds.has(flattenName(slug))) continue
+
+        // Installed, but switched off. Downloading it again kept it switched
+        // off, so the old fix reported success and the same error came back.
+        const switchedOff = mods.find(
+          (c) =>
+            !c.enabled &&
+            ((c.provider === mod.provider && c.projectId === dependency.projectId) ||
+              (name !== '' && flattenName(c.name) === flattenName(name)))
+        )
+        if (switchedOff) {
+          issues.push({
+            id: `dep-${mod.id}-${dependency.projectId}`,
+            severity: 'error',
+            title: tr(`${mod.name} benötigt ${name}`, `${mod.name} requires ${name}`),
+            detail: tr(
+              `${name} ist installiert, aber ausgeschaltet. Ohne diese Abhängigkeit startet das Spiel nicht.`,
+              `${name} is installed but switched off. The game does not start without this dependency.`
+            ),
+            contentId: mod.id,
+            fix: {
+              kind: 'enable-content',
+              label: tr(`${name} einschalten`, `Switch on ${name}`),
+              contentId: switchedOff.id
+            }
+          })
+          continue
+        }
 
         issues.push({
           id: `dep-${mod.id}-${dependency.projectId}`,
@@ -302,7 +339,13 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         // separate namespaces, so an unscoped match could pair two entirely
         // unrelated mods into a launch-blocking conflict.
         const conflicting = enabled.find(
-          (c) => c.projectId === dependency.projectId && c.provider === mod.provider
+          (c) =>
+            c.projectId === dependency.projectId &&
+            c.provider === mod.provider &&
+            // Some mods are incompatible with one version of another mod only
+            // and name that version. Ignoring it blocked the start with every
+            // version of that mod, including the ones that work.
+            (!dependency.versionId || c.versionId === dependency.versionId)
         )
         if (!conflicting) continue
 
@@ -332,6 +375,31 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   // Modrinth and once from CurseForge (disjoint id namespaces, so the ids
   // never match), and two copies of a manually dropped-in jar, which carry no
   // project id at all and were skipped outright.
+  //
+  // The ids the jars themselves declare come first: they are exactly what the
+  // loader refuses to start over. By name alone, a hand-dropped
+  // "sodium-fabric-0.6.0.jar" next to Sodium from Modrinth was never seen,
+  // since the file had been recorded under its file name.
+  const reported = new Set<string>()
+  const byModId = new Map<string, ContentItem[]>()
+  for (const mod of loaderActive ? enabled : []) {
+    // Only jars this loader reads. The Forge build of a mod lying next to its
+    // Fabric build shares the id, but Fabric never loads it, and the fix
+    // below would delete whichever of the two is older.
+    if (loaderFit(instance, mod.loaders) === 'no') continue
+    for (const modId of new Set(idsByMod.get(mod.id) ?? [])) {
+      const list = byModId.get(modId) ?? []
+      list.push(mod)
+      byModId.set(modId, list)
+    }
+  }
+  for (const [modId, list] of byModId) {
+    if (list.length < 2 || list.every((mod) => reported.has(mod.id))) continue
+    const duplicates = [...list].sort((a, b) => a.installedAt - b.installedAt)
+    issues.push(duplicateIssue(`duplicate-id-${modId}`, duplicates))
+    for (const mod of duplicates) reported.add(mod.id)
+  }
+
   const byProject = new Map<string, ContentItem[]>()
   for (const mod of loaderActive ? enabled : []) {
     const key = flattenName(mod.name)
@@ -353,6 +421,7 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   }
   for (const [key, unsorted] of byProject) {
     if (unsorted.length < 2) continue
+    if (unsorted.every((mod) => reported.has(mod.id))) continue
     // Sorted once, up front: `contentId` (which entry the UI highlights) and
     // `fix.contentId` (which entry "Fix" actually deletes) used to be built
     // from the array in two different states, before and after an in-place
@@ -362,35 +431,13 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     // A mixed group (three files, only two of them provably the same mod) is
     // treated as a name-only match throughout, rather than guessing which
     // pair the user meant.
-    let certain = duplicates.every((mod) => sameMod(mod, duplicates[0]))
-
-    // The same mod from Modrinth and from CurseForge carries neither a shared
-    // project id nor the same file hash, so it stayed a mere warning, which
-    // the Play button never shows, and the loader then refused to start over
-    // the duplicate mod id. The id the jars themselves declare settles it.
-    if (!certain) {
-      const idSets = await Promise.all(duplicates.map((mod) => declaredModIds(instanceId, mod, instance.loader)))
-      const [first, ...rest] = idSets
-      certain = first.length > 0 && first.some((id) => rest.every((ids) => ids.includes(id)))
-    }
+    // The same mod from Modrinth and from CurseForge shares neither a project
+    // id nor a file hash; the declared ids above already settled that case,
+    // so what is left here is proven by id or hash, or stays a warning.
+    const certain = duplicates.every((mod) => sameMod(mod, duplicates[0]))
 
     if (certain) {
-      issues.push({
-        id: `duplicate-${key}`,
-        severity: 'error',
-        title: tr(`${duplicates[0].name} ist doppelt installiert`, `${duplicates[0].name} is installed twice`),
-        detail:
-          tr(
-            `Es liegen ${duplicates.length} Dateien desselben Mods im Ordner: `,
-            `There are ${duplicates.length} files of the same mod in the folder: `
-          ) + duplicates.map((d) => d.fileName).join(', '),
-        contentId: duplicates[0].id,
-        fix: {
-          kind: 'remove-content',
-          label: tr('Ältere Datei entfernen', 'Remove older file'),
-          contentId: duplicates[0].id
-        }
-      })
+      issues.push(duplicateIssue(`duplicate-${key}`, duplicates))
     } else {
       // Hand-placed jars carry neither a project id nor a hash, so two copies
       // of the same mod can never be proven identical. The fix is still

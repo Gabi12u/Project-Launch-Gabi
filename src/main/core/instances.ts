@@ -30,7 +30,7 @@ import { TaskCancelledError, withTask } from '../tasks'
 import { sha1File } from './net'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
-import { readEntryJson } from './archive'
+import { readJarMetadata, type JarMetadata } from './modMetadata'
 import { isRunning, isStarting } from './running'
 import { assertNotCopying, isContentBusy, isCopying, markCopying, unmarkCopying, withContentLock, withItemLock } from './contentLock'
 import { isArchiving, isRestoring } from './restoreLock'
@@ -1072,6 +1072,26 @@ export function removeContentRecord(id: string, contentId: string): Instance {
 }
 
 /** True when two content lists describe the same files in the same state. */
+/** The display name a file gets when nothing better is known about it. */
+function nameFromFile(fileName: string): string {
+  const bare = fileName.endsWith('.disabled') ? fileName.slice(0, -'.disabled'.length) : fileName
+  return bare.replace(/\.(jar|zip)$/i, '').replace(/[-_]/g, ' ')
+}
+
+/**
+ * Fills a mod record in from its jar's own metadata. Every record gets the
+ * declared ids; a hand-dropped one also gets the loaders, and the real name
+ * and version where it still only had the ones made from its file name.
+ */
+function withJarMetadata(item: ContentItem, meta: JarMetadata): ContentItem {
+  const next: ContentItem = { ...item, modIds: meta.ids }
+  if (item.provider !== 'local') return next
+  if (item.loaders.length === 0) next.loaders = meta.loaders
+  if (meta.name && item.name === nameFromFile(item.fileName)) next.name = meta.name
+  if (meta.version && !item.version) next.version = meta.version
+  return next
+}
+
 function sameContent(a: ContentItem[], b: ContentItem[]): boolean {
   if (a.length !== b.length) return false
 
@@ -1213,12 +1233,12 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
         if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue
         throw err
       }
-      result.push({
+      const registered: ContentItem = {
         id: randomUUID(),
         type: folder.type,
         provider: 'local',
         fileName,
-        name: bare.replace(/\.(jar|zip)$/i, '').replace(/[-_]/g, ' '),
+        name: nameFromFile(fileName),
         version: '',
         enabled,
         gameVersions: [],
@@ -1226,8 +1246,26 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
         dependencies: [],
         size: stats.size,
         installedAt: stats.mtimeMs
-      })
+      }
+      // A jar dropped in by hand used to be recorded with a name made from
+      // its file name and nothing else, so the compatibility check could not
+      // match it against anything. Its own metadata says what it is.
+      const meta = folder.type === 'mod' ? await readJarMetadata(join(folder.dir, fileName)) : null
+      result.push(meta ? withJarMetadata(registered, meta) : registered)
     }
+  }
+
+  // Records from before the ids were kept, and records whose jar an update
+  // replaced, are read once here. A jar that cannot be read right now stays
+  // unread and is tried again on the next scan.
+  let filledIn = false
+  for (let i = 0; i < result.length; i++) {
+    const item = result[i]
+    if (item.type !== 'mod' || item.modIds !== undefined) continue
+    const meta = await readJarMetadata(join(paths.mods(id), item.fileName))
+    if (!meta) continue
+    result[i] = withJarMetadata(item, meta)
+    filledIn = true
   }
 
   // The scan above awaits (hashing a renamed file), so an install, an update
@@ -1253,7 +1291,9 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
     for (const world of gone.worlds) removeDatapackFromWorld(id, world, bareExact(gone.fileName))
   }
 
-  if (sameContent(instance.content, result)) return fresh
+  // `sameContent` only compares what decides the files; ids read just now
+  // are a change worth keeping on their own.
+  if (!filledIn && sameContent(instance.content, result)) return fresh
   return persist({ ...fresh, content: result })
 
   async function findRenamedRecord(
@@ -1411,27 +1451,6 @@ export function markPlayed(id: string): void {
 
 export async function instanceDiskUsage(id: string): Promise<number> {
   return folderSize(paths.instance(id))
-}
-
-export async function readModMetadata(jarFile: string): Promise<{ name?: string; version?: string } | null> {
-  try {
-    const fabric = await readEntryJson<{ name?: string; version?: string; id?: string }>(
-      jarFile,
-      'fabric.mod.json'
-    )
-    if (fabric) return { name: fabric.name ?? fabric.id, version: fabric.version }
-
-    const quilt = await readEntryJson<{ quilt_loader?: { metadata?: { name?: string }; version?: string } }>(
-      jarFile,
-      'quilt.mod.json'
-    )
-    if (quilt?.quilt_loader) {
-      return { name: quilt.quilt_loader.metadata?.name, version: quilt.quilt_loader.version }
-    }
-  } catch {
-    // not a mod we can read
-  }
-  return null
 }
 
 export async function readInstanceLog(id: string, lines = 400): Promise<string[]> {

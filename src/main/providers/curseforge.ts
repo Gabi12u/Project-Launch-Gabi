@@ -10,6 +10,7 @@ import type {
 import { fetchJson as fetchJsonRaw, HttpError } from '../core/net'
 import { getSettings } from '../store'
 import { log } from '../logger'
+import { gameVersionMatches, sameVersionLine } from '../core/gameVersions'
 import { tr } from '@shared/i18n'
 
 const logger = log('curseforge')
@@ -463,9 +464,12 @@ export async function bestVersionFor(
   )
   if (exact.length > 0) return exact.find((v) => v.releaseType === 'release') ?? exact[0]
 
-  const line = gameVersion.split('.').slice(0, 2).join('.')
+  // The same rule as the Modrinth provider: a hotfix of the same release for
+  // mods and data packs, the whole line only for resource packs and shaders.
+  const close = (g: string): boolean =>
+    type === 'resourcepack' || type === 'shaderpack' ? sameVersionLine(gameVersion, g) : gameVersionMatches(gameVersion, g)
   const nearby = preferNativeQuilt(
-    all.filter((v) => loaderOk(v) && v.gameVersions.some((g) => g === line || g.startsWith(`${line}.`))),
+    all.filter((v) => loaderOk(v) && v.gameVersions.some(close)),
     loader
   )
   return (nearby.find((v) => v.releaseType === 'release') ?? nearby[0]) ?? null

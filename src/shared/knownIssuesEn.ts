@@ -2634,6 +2634,61 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'settings and other included files were missing after the import, although the preview had still ' +
       'counted them. On top of that a file from another folder with the same name could receive the ' +
       'details of a mod.'
+  },
+  'duplikat-handabgelegt-unerkannt': {
+    title: 'A mod placed by hand was not recognised as a duplicate',
+    detail:
+      'If a mod from the search and the same mod file placed by hand were both in the mods folder, the ' +
+      'compatibility check saw no conflict, because the file was only recorded under its file name. It ' +
+      'said the game could start, and the mod loader then stopped the start over the duplicate mod.'
+  },
+  'abhaengigkeit-handabgelegt-fehlt': {
+    title: 'A dependency placed by hand counted as missing',
+    detail:
+      'If a required dependency such as Fabric API was in the mods folder as a file placed by hand, ' +
+      'the check still reported it as missing and blocked the start. The fix button then installed a ' +
+      'second copy, which really did stop the game from starting.'
+  },
+  'falsche-unterversion-installiert': {
+    title: 'Mods for a different patch version were installed without a word',
+    detail:
+      'If there was no mod version for an instance\'s Minecraft version, the launcher took any one from ' +
+      'the same line, for example one for 1.20.6 in an instance with 1.20.1. Such mods mostly do not ' +
+      'load, and the compatibility check still called them compatible. The same applied to ' +
+      'dependencies, updates and "Find matching version".'
+  },
+  'abhaengigkeit-ausgeschaltet-unbehebbar': {
+    title: 'A dependency that was switched off could not be fixed with the button',
+    detail:
+      'If a required dependency was installed but switched off, the fix button downloaded it again and ' +
+      'left it switched off. It reported success, and the same error came straight back.'
+  },
+  'handabgelegt-falscher-loader-unerkannt': {
+    title: 'Mods placed by hand for a different mod loader were not recognised',
+    detail:
+      'A file placed into the mods folder by hand was recorded without any details about mod loader ' +
+      'and version. A Forge mod in a Fabric instance therefore went unnoticed by the compatibility ' +
+      'check, and the list showed just the file name instead of the mod\'s name.'
+  },
+  'unvertraeglich-nur-eine-version': {
+    title: 'An incompatibility with one version of a mod blocked every start',
+    detail:
+      'Some mods are incompatible with one specific version of another mod only. The check treated ' +
+      'that as if every version were affected, and blocked the start even with versions that work ' +
+      'fine.'
+  },
+  'forge-mods-neoforge-1201-blockiert': {
+    title: 'Forge mods in a NeoForge instance for 1.20.1 blocked the start',
+    detail:
+      'NeoForge for Minecraft 1.20.1 loads most Forge mods of that version. The check still called ' +
+      'them unsuitable and did not let the game start.'
+  },
+  'datenpaket-von-hand-geloescht': {
+    title: 'A data pack placed by hand could be deleted by the launcher',
+    detail:
+      'If the same data pack had already been placed in a world by hand and was then assigned to that ' +
+      'world in the launcher, the launcher took the existing file for its own. Switching the pack off ' +
+      'or removing it then deleted that file too.'
   }
 }
 

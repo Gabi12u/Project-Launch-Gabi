@@ -278,19 +278,32 @@ export function copyDatapackIntoWorld(
   sourceFile: string,
   fileName: string
 ): boolean {
+  return placeDatapackInWorld(instanceId, world, sourceFile, fileName) !== 'failed'
+}
+
+/**
+ * Like `copyDatapackIntoWorld`, but tells a fresh copy apart from an
+ * identical file that was already sitting there.
+ */
+export function placeDatapackInWorld(
+  instanceId: string,
+  world: string,
+  sourceFile: string,
+  fileName: string
+): 'copied' | 'present' | 'failed' {
   try {
     // The recursive mkdir below would otherwise recreate a world deleted in
     // Explorer as an empty folder holding nothing but this datapack, which
     // then showed up in the world list for good.
-    if (!worldExists(instanceId, world)) return false
+    if (!worldExists(instanceId, world)) return 'failed'
     const dir = worldDatapacksDir(instanceId, world)
     const target = contentPath(dir, fileName)
-    if (existsSync(target)) return readFileSync(target).equals(readFileSync(sourceFile))
+    if (existsSync(target)) return readFileSync(target).equals(readFileSync(sourceFile)) ? 'present' : 'failed'
     mkdirSync(dir, { recursive: true })
     copyFileSync(sourceFile, target)
-    return true
+    return 'copied'
   } catch {
-    return false
+    return 'failed'
   }
 }
 

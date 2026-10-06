@@ -4133,6 +4133,87 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'aus einem anderen Ordner mit gleichem Namen die Angaben eines Mods erhalten.',
     state: 'fixing',
     since: '2026-10-06'
+  },
+  {
+    id: 'duplikat-handabgelegt-unerkannt',
+    title: 'Ein von Hand abgelegter Mod wurde nicht als doppelt erkannt',
+    detail:
+      'Lag ein Mod aus der Suche und dieselbe Mod-Datei von Hand im Mod-Ordner, sah die ' +
+      'Kompatibilitätsprüfung keinen Konflikt, weil die Datei nur unter ihrem Dateinamen erfasst war. ' +
+      'Sie meldete „Start möglich“, und der Mod-Loader brach den Start dann wegen des doppelten Mods ' +
+      'ab.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'abhaengigkeit-handabgelegt-fehlt',
+    title: 'Eine von Hand abgelegte Abhängigkeit galt als fehlend',
+    detail:
+      'Lag eine benötigte Abhängigkeit wie Fabric API als von Hand abgelegte Datei im Mod-Ordner, ' +
+      'meldete die Prüfung sie trotzdem als fehlend und blockierte den Start. Der Knopf zum Beheben ' +
+      'installierte dann eine zweite Kopie, die den Start erst recht verhinderte.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'falsche-unterversion-installiert',
+    title: 'Mods für eine andere Unterversion wurden ohne Hinweis installiert',
+    detail:
+      'Gab es für die Minecraft-Version einer Instanz keine passende Mod-Version, nahm der Launcher ' +
+      'eine beliebige aus derselben Reihe, zum Beispiel eine für 1.20.6 in einer Instanz mit 1.20.1. ' +
+      'Solche Mods laden meist nicht, und die Kompatibilitätsprüfung nannte sie trotzdem passend. ' +
+      'Dasselbe galt für Abhängigkeiten, Updates und „Passende Version suchen“.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'abhaengigkeit-ausgeschaltet-unbehebbar',
+    title: 'Eine ausgeschaltete Abhängigkeit ließ sich nicht per Knopf beheben',
+    detail:
+      'War eine benötigte Abhängigkeit installiert, aber ausgeschaltet, lud der Knopf zum Beheben sie ' +
+      'neu herunter und ließ sie ausgeschaltet. Er meldete Erfolg, und derselbe Fehler kam sofort ' +
+      'wieder.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'handabgelegt-falscher-loader-unerkannt',
+    title: 'Von Hand abgelegte Mods für einen anderen Mod-Loader wurden nicht erkannt',
+    detail:
+      'Eine von Hand in den Mod-Ordner gelegte Datei wurde ohne jede Angabe zu Mod-Loader und Version ' +
+      'erfasst. Ein Forge-Mod in einer Fabric-Instanz fiel der Kompatibilitätsprüfung deshalb nicht ' +
+      'auf, und in der Liste stand nur der Dateiname statt des Mod-Namens.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'unvertraeglich-nur-eine-version',
+    title: 'Eine Unverträglichkeit mit nur einer Version eines Mods blockierte jeden Start',
+    detail:
+      'Manche Mods vertragen sich nur mit einer bestimmten Version eines anderen Mods nicht. Die ' +
+      'Prüfung behandelte das, als wäre jede Version betroffen, und blockierte den Start auch mit ' +
+      'Versionen, die einwandfrei funktionieren.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'forge-mods-neoforge-1201-blockiert',
+    title: 'Forge-Mods in einer NeoForge-Instanz für 1.20.1 blockierten den Start',
+    detail:
+      'NeoForge für Minecraft 1.20.1 lädt die meisten Forge-Mods dieser Version. Die Prüfung nannte ' +
+      'sie trotzdem unpassend und ließ das Spiel nicht starten.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'datenpaket-von-hand-geloescht',
+    title: 'Ein von Hand abgelegtes Datenpaket konnte vom Launcher gelöscht werden',
+    detail:
+      'Lag dasselbe Datenpaket schon von Hand in einer Welt und ordnete man es im Launcher dieser Welt ' +
+      'zu, hielt der Launcher die vorhandene Datei für seine eigene. Beim Ausschalten oder Entfernen ' +
+      'des Pakets löschte er sie dann mit.',
+    state: 'fixing',
+    since: '2026-10-06'
   }
 ]
 

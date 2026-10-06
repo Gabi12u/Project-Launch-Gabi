@@ -21,6 +21,8 @@ import {
   utimesSync,
   writeFileSync
 } from 'node:fs'
+import { open as openFile } from 'node:fs/promises'
+import { inflateRawSync } from 'node:zlib'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import { safeJoin } from '../paths'
 import { log } from '../logger'
@@ -135,10 +137,95 @@ export async function readEntryJson<T>(archivePath: string, entryName: string): 
   const text = await readEntryText(archivePath, entryName)
   if (text === null) return null
   try {
-    return JSON.parse(text) as T
+    // A byte order mark is legal at the start of a UTF-8 file and some
+    // editors write one, but `JSON.parse` rejects it outright.
+    return JSON.parse(text.replace(/^﻿/, '')) as T
   } catch {
     return null
   }
+}
+
+/** Thrown inside `readSmallEntries` to hand an unusual archive to adm-zip. */
+class NeedsFullRead extends Error {}
+
+/**
+ * A few small entries of an archive, read through its central directory: the
+ * end record, the directory itself, then only the entries asked for.
+ *
+ * `readEntryText` hands the path to adm-zip, which reads the whole file into
+ * memory first, and yauzl reads the directory a few bytes per call. Either is
+ * fine for one archive, but the compatibility check wants the metadata of
+ * every jar in a modpack, and that meant hundreds of megabytes read, or
+ * hundreds of thousands of tiny reads. Anything unusual (zip64, data in front
+ * of the archive, an unknown compression) goes the adm-zip way instead, so
+ * this never finds less than `readEntryText` would.
+ */
+export async function readSmallEntries(archivePath: string, names: readonly string[]): Promise<Map<string, string>> {
+  const wanted = new Set(names)
+  const found = new Map<string, string>()
+  const handle = await openFile(archivePath, 'r')
+  try {
+    const { size } = await handle.stat()
+    const tailLength = Math.min(size, 22 + 0xffff)
+    const tail = Buffer.alloc(tailLength)
+    await handle.read(tail, 0, tailLength, size - tailLength)
+    let end = -1
+    for (let i = tailLength - 22; i >= 0; i--) {
+      if (tail.readUInt32LE(i) === 0x06054b50) {
+        end = i
+        break
+      }
+    }
+    if (end < 0) throw new NeedsFullRead()
+    const count = tail.readUInt16LE(end + 10)
+    const dirSize = tail.readUInt32LE(end + 12)
+    const dirOffset = tail.readUInt32LE(end + 16)
+    if (count === 0xffff || dirSize === 0xffffffff || dirOffset === 0xffffffff || dirOffset + dirSize > size) {
+      throw new NeedsFullRead()
+    }
+
+    const dir = Buffer.alloc(dirSize)
+    await handle.read(dir, 0, dirSize, dirOffset)
+    let pos = 0
+    for (let n = 0; n < count && found.size < wanted.size; n++) {
+      if (pos + 46 > dir.length || dir.readUInt32LE(pos) !== 0x02014b50) throw new NeedsFullRead()
+      const method = dir.readUInt16LE(pos + 10)
+      const compressed = dir.readUInt32LE(pos + 20)
+      const uncompressed = dir.readUInt32LE(pos + 24)
+      const nameLength = dir.readUInt16LE(pos + 28)
+      const extraLength = dir.readUInt16LE(pos + 30)
+      const commentLength = dir.readUInt16LE(pos + 32)
+      const localOffset = dir.readUInt32LE(pos + 42)
+      const name = dir.toString('utf8', pos + 46, pos + 46 + nameLength)
+      pos += 46 + nameLength + extraLength + commentLength
+
+      if (!wanted.has(name) || found.has(name)) continue
+      if (compressed > MAX_METADATA_SIZE || uncompressed > MAX_METADATA_SIZE) continue
+      if (method !== 0 && method !== 8) throw new NeedsFullRead()
+
+      const header = Buffer.alloc(30)
+      await handle.read(header, 0, 30, localOffset)
+      if (header.readUInt32LE(0) !== 0x04034b50) throw new NeedsFullRead()
+      const dataStart = localOffset + 30 + header.readUInt16LE(26) + header.readUInt16LE(28)
+      const data = Buffer.alloc(compressed)
+      const { bytesRead } = await handle.read(data, 0, compressed, dataStart)
+      if (bytesRead < compressed) throw new NeedsFullRead()
+      const content = method === 0 ? data : inflateRawSync(data, { maxOutputLength: MAX_METADATA_SIZE })
+      found.set(name, content.toString('utf8'))
+    }
+    return found
+  } catch (err) {
+    if (!(err instanceof NeedsFullRead)) logger.debug(`Schnelles Lesen von ${archivePath} fehlgeschlagen, lese vollständig:`, err)
+  } finally {
+    await handle.close()
+  }
+
+  const slow = new Map<string, string>()
+  for (const name of names) {
+    const text = await readEntryText(archivePath, name)
+    if (text !== null) slow.set(name, text)
+  }
+  return slow
 }
 
 /**

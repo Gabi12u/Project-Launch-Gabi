@@ -14,6 +14,7 @@ import {
   contentFileName,
   contentPath,
   copyDatapackIntoWorld,
+  placeDatapackInWorld,
   worldExists,
   removeDatapackFromWorld
 } from '../paths'
@@ -191,8 +192,15 @@ async function installContentOnce(
   // across providers, the way compat.ts already does for its warning.
   if (options.asDependency) {
     const wantedName = flattenName(project.name)
+    // Or by the id a hand-dropped jar declares, which usually is the
+    // project's slug: "fabric-api" for Fabric API.
+    const wantedSlug = flattenName(project.slug ?? '')
     const twin = instance.content.find(
-      (c) => c.type === type && c.provider !== provider && wantedName !== '' && flattenName(c.name) === wantedName
+      (c) =>
+        c.type === type &&
+        c.provider !== provider &&
+        ((wantedName !== '' && flattenName(c.name) === wantedName) ||
+          (wantedSlug !== '' && (c.modIds ?? []).some((modId) => flattenName(modId) === wantedSlug)))
     )
     if (twin) {
       logger.info(`Abhängigkeit ${project.name} ist schon von ${twin.provider} installiert, übersprungen`)
@@ -850,7 +858,9 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     size: item.update.size,
     installedAt: Date.now(),
     releasedAt: item.update.releasedAt,
-    update: null
+    update: null,
+    // Read again from the new jar by the next folder scan.
+    modIds: undefined
   }
 
   // The file downloaded above always sits under its bare name. If the mod is
@@ -1009,11 +1019,29 @@ async function setDatapackWorldsOnce(
     for (const world of previous) {
       if (!next.includes(world)) removeDatapackFromWorld(instanceId, world, bare)
     }
-    const failed = next.filter(
-      (world) => !previous.includes(world) && !copyDatapackIntoWorld(instanceId, world, source, bare)
-    )
-    next = next.filter((world) => !failed.includes(world))
+    const failed: string[] = []
+    const alreadyThere: string[] = []
+    for (const world of next) {
+      if (previous.includes(world)) continue
+      const placed = placeDatapackInWorld(instanceId, world, source, bare)
+      if (placed === 'failed') failed.push(world)
+      // The same file already sitting there was put there by hand. Recording
+      // the world made it the launcher's, and switching the pack off or
+      // removing it later deleted the user's own copy.
+      else if (placed === 'present') alreadyThere.push(world)
+    }
+    next = next.filter((world) => !failed.includes(world) && !alreadyThere.includes(world))
     warnWorldCopyFailed(item.name, failed)
+    if (alreadyThere.length > 0) {
+      notify(
+        'info',
+        tr(`${item.name}: liegt schon in der Welt`, `${item.name}: already in the world`),
+        tr(
+          `In ${alreadyThere.map((w) => `„${w}“`).join(', ')} liegt dieses Data Pack schon. Der Launcher lässt die vorhandene Datei, wie sie ist, und verwaltet sie nicht, damit er sie später nicht löscht.`,
+          `This data pack is already in ${alreadyThere.map((w) => `"${w}"`).join(', ')}. The launcher leaves the existing file as it is and does not manage it, so it never deletes it later.`
+        )
+      )
+    }
   }
   // If disabled, no copies exist to add or remove; the assignment is only
   // recorded and takes effect once the datapack is enabled again.
@@ -1119,12 +1147,27 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
   switch (fix.kind) {
     case 'install-dependency': {
       if (!fix.projectId || !fix.provider) return
+      // Already there but switched off: a second download kept it switched
+      // off, the fix reported success, and the same error came back.
+      const switchedOff = getInstance(instanceId).content.find(
+        (c) => !c.enabled && c.provider === fix.provider && c.projectId === fix.projectId
+      )
+      if (switchedOff) {
+        await toggleContent(instanceId, switchedOff.id, true)
+        return
+      }
       await installContent({
         instanceId,
         provider: fix.provider,
         projectId: fix.projectId,
         type: 'mod'
       })
+      return
+    }
+
+    case 'enable-content': {
+      if (!fix.contentId) return
+      await toggleContent(instanceId, fix.contentId, true)
       return
     }
 
