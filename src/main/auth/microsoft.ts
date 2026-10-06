@@ -440,6 +440,7 @@ async function pollForToken(
         )
       }
       networkErrors = 0
+      if (err.status < 500) serverErrors = 0
 
       // Until the user finishes in the browser, both systems answer with an
       // error code rather than a token.

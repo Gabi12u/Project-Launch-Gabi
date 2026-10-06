@@ -42,9 +42,9 @@ export function writeJsonAtomic(file: string, data: unknown): void {
  * On Windows a virus scanner or a sync client like OneDrive opens a freshly
  * written file for a moment, and a rename onto it fails with EPERM, EBUSY or
  * EACCES until it lets go. Giving up on the first try aborted saving an
- * instance or the settings with that raw error. Three tries over a short
- * moment cover the usual hold; this runs on the main thread, so it must not
- * wait long, and a lock that lasts longer is reported as one.
+ * instance or the settings with that raw error. Four tries over about a third
+ * of a second cover the usual hold; this runs on the main thread, so it must
+ * not wait long, and a lock that lasts longer is reported as one.
  */
 function renameWithRetry(tmp: string, file: string): void {
   for (let attempt = 0; ; attempt++) {
@@ -55,7 +55,7 @@ function renameWithRetry(tmp: string, file: string): void {
       const code = (err as NodeJS.ErrnoException)?.code
       const locked = code === 'EPERM' || code === 'EBUSY' || code === 'EACCES'
       if (!locked) throw err
-      if (attempt >= 2) {
+      if (attempt >= 3) {
         throw new Error(
           tr(
             `${basename(file)} konnte nicht gespeichert werden, weil ein anderes Programm die Datei festhält (zum Beispiel ein Virenscanner oder OneDrive). Versuche es gleich noch einmal.`,
@@ -280,23 +280,22 @@ function readSettingsFile(): JsonReadResult<Partial<LauncherSettings>> {
   return result
 }
 
+/** Whether the settings file was locked at startup and is not written to yet. */
+export function isSettingsUnreadable(): boolean {
+  return settingsUnreadable
+}
+
 export function getSettings(): LauncherSettings {
   if (!settings) {
     const result = readSettingsFile()
     settingsUnreadable = !result.ok && result.reason === 'unreadable'
     if (settingsUnreadable) {
       logger.error('launcher.json ist gesperrt, der Launcher läuft vorerst mit den Voreinstellungen')
-      notify(
-        'error',
-        tr('Einstellungen gesperrt', 'Settings locked'),
-        tr(
-          'Ein anderes Programm hält die Einstellungsdatei fest, zum Beispiel ein Virenscanner oder OneDrive. Der Launcher nutzt vorerst die Voreinstellungen und ändert an deinen Einstellungen nichts. Starte ihn gleich neu.',
-          'Another program is holding the settings file, such as a virus scanner or OneDrive. The launcher uses the defaults for now and changes nothing in your settings. Restart it in a moment.'
-        ),
-        { timeout: 0 }
-      )
     }
-    const raw = result.ok ? result.value : {}
+    // Locked rather than new: whoever has a settings file has been through
+    // the first-run setup, which would otherwise start over and then fail to
+    // save. The notice itself comes from index.ts, once the language is set.
+    const raw = result.ok ? result.value : settingsUnreadable ? { onboarded: true } : {}
     // A file containing `null`, an array or a bare string parses fine but would
     // produce a settings object with no usable fields.
     const stored = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}

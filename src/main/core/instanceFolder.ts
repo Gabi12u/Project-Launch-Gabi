@@ -22,7 +22,8 @@ import { ensureInstanceLayout, isValidVersionString, paths } from '../paths'
 import { log } from '../logger'
 import { notify } from '../events'
 import { TaskCancelledError, withTask } from '../tasks'
-import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { createInstance, deleteInstance, finishImport, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { withContentLock } from './contentLock'
 import { tr } from '@shared/i18n'
 
 const logger = log('folder-import')
@@ -163,6 +164,17 @@ function guessFromVersionsFolder(
     return null
   }
 
+  // The version played last first, then newest first. Taken in directory
+  // order, an old "1.12.2-forge" left over from years ago beat the Fabric
+  // 1.21 install actually in use, just by sorting first.
+  const lastUsed = lastUsedVersion(gameDir)
+  const modified = new Map(names.map((name) => [name, versionTime(dir, name)]))
+  names.sort((a, b) => {
+    if (a === lastUsed) return -1
+    if (b === lastUsed) return 1
+    return (modified.get(b) ?? 0) - (modified.get(a) ?? 0)
+  })
+
   // A modded id is more informative than a plain one, so it wins.
   for (const name of names) {
     const fabric = /^(fabric|quilt)-loader-([\w.+-]+?)-(\d+\.\d+(?:\.\d+)?)$/i.exec(name)
@@ -181,6 +193,14 @@ function guessFromVersionsFolder(
         loaderVersion: forge[3]
       }
     }
+    // Forge before 1.13 named its folders differently:
+    // "1.12.2-forge1.12.2-14.23.5.2860" repeats the Minecraft version, and the
+    // 1.7.10 era added a branch suffix, "1.7.10-Forge10.13.4.1614-1.7.10".
+    // Neither matched above, so such a folder was taken for no loader at all.
+    const legacyForge = /^(\d+\.\d+(?:\.\d+)?)-forge(?:\1-)?(\d[\w.]*?)(?:-\1)?$/i.exec(name)
+    if (legacyForge) {
+      return { mcVersion: legacyForge[1], loader: 'forge', loaderVersion: legacyForge[2] }
+    }
     // Modern NeoForge installers name the folder just `neoforge-<version>`,
     // with no Minecraft version in the name at all.
     const neoforge = /^neoforge-([\w.+-]+)$/i.exec(name)
@@ -194,9 +214,64 @@ function guessFromVersionsFolder(
 
   const plain = names.filter((name) => /^\d+\.\d+(\.\d+)?$/.test(name)).sort(compareVersionsDesc)
   if (plain.length > 0) {
-    return { mcVersion: plain[0], loader: 'vanilla', loaderVersion: '' }
+    // A plain version next to a full mods/ folder means a loader this list
+    // does not know by name; the jars still say which one.
+    const loader = guessLoaderFromMods(join(gameDir, 'mods'))
+    return {
+      mcVersion: lastUsed && plain.includes(lastUsed) ? lastUsed : plain[0],
+      loader: loader?.loader ?? 'vanilla',
+      loaderVersion: loader?.loaderVersion ?? ''
+    }
   }
   return null
+}
+
+/**
+ * The version the official launcher started last, from its own profile list.
+ * Null when the file is missing or names nothing usable.
+ */
+function lastUsedVersion(gameDir: string): string | null {
+  try {
+    const parsed = JSON.parse(readFileSync(join(gameDir, 'launcher_profiles.json'), 'utf8')) as {
+      profiles?: Record<string, { lastVersionId?: unknown; lastUsed?: unknown } | null>
+    }
+    let best: { id: string; at: number } | null = null
+    for (const profile of Object.values(parsed.profiles ?? {})) {
+      if (typeof profile?.lastVersionId !== 'string') continue
+      const at = typeof profile.lastUsed === 'string' ? Date.parse(profile.lastUsed) : NaN
+      if (!Number.isFinite(at)) continue
+      if (!best || at > best.at) best = { id: profile.lastVersionId, at }
+    }
+    return best?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+/** When a version folder was last written, from its JSON or the folder itself. */
+function versionTime(versionsDir: string, name: string): number {
+  for (const path of [join(versionsDir, name, `${name}.json`), join(versionsDir, name)]) {
+    try {
+      return statSync(path).mtimeMs
+    } catch {
+      // Try the next one.
+    }
+  }
+  return 0
+}
+
+/**
+ * GDLauncher and the Modrinth App store a Forge build together with its
+ * Minecraft version ("1.20.1-47.2.0"), the shape of Forge's own maven
+ * coordinate. Everything here expects the bare build, and the installer adds
+ * the Minecraft version itself, so "1.20.1-1.20.1-47.2.0" was looked up and
+ * never found. A 1.7.10 era branch suffix goes the same way.
+ */
+function stripMcVersion(loaderVersion: string, mcVersion: string): string {
+  let version = loaderVersion.trim()
+  if (version.startsWith(`${mcVersion}-`)) version = version.slice(mcVersion.length + 1)
+  if (version.endsWith(`-${mcVersion}`)) version = version.slice(0, -(mcVersion.length + 1))
+  return version
 }
 
 /** Best-effort loader guess from CurseForge/Modrinth's own jar naming conventions. */
@@ -546,7 +621,7 @@ function readGdLauncherConfig(dir: string): LauncherRead | null {
 
     const type = typeof block.loaderType === 'string' ? block.loaderType.toLowerCase() : ''
     const known: LoaderId[] = ['fabric', 'forge', 'neoforge', 'quilt']
-    const loaderVersion = typeof block.loaderVersion === 'string' ? block.loaderVersion : ''
+    const loaderVersion = typeof block.loaderVersion === 'string' ? stripMcVersion(block.loaderVersion, block.mcVersion) : ''
     return {
       mcVersion: block.mcVersion,
       loader: known.includes(type as LoaderId) ? (type as LoaderId) : 'vanilla',
@@ -591,7 +666,7 @@ function readModrinthProfile(dir: string): LauncherRead | null {
       name: typeof parsed.name === 'string' ? parsed.name : undefined,
       mcVersion: parsed.game_version,
       loader: known.includes(loader as LoaderId) ? (loader as LoaderId) : 'vanilla',
-      loaderVersion: rawVersion
+      loaderVersion: stripMcVersion(rawVersion, parsed.game_version)
     }
   } catch {
     return null
@@ -1015,9 +1090,10 @@ async function copyGameFiles(
   onFile?: (count: number) => void,
   /** Throws to abort, so the caller can raise its own cancellation error. */
   checkCancelled?: () => void
-): Promise<{ files: number; skippedLinks: number }> {
+): Promise<{ files: number; skippedLinks: number; failed: string[] }> {
   let files = 0
   let skippedLinks = 0
+  const failed: string[] = []
   let lastReport = Date.now()
   const stack: string[] = ['']
 
@@ -1082,7 +1158,11 @@ async function copyGameFiles(
 
         try {
           await mkdir(join(target, '..'), { recursive: true })
-          await symlink(newRelative, target)
+          // Windows has to be told a link points at a folder: it cannot look,
+          // the target is only copied later in this walk, and a folder reached
+          // through a file link reads as broken.
+          const kind = await stat(linkSource)
+          await symlink(newRelative, target, kind.isDirectory() ? 'dir' : 'file')
           files++
         } catch {
           // Windows hands out symlink permission sparingly. The target already
@@ -1120,9 +1200,17 @@ async function copyGameFiles(
         await mkdir(join(target, '..'), { recursive: true })
         await copyFile(join(from, childRel), target)
         files++
-      } catch {
-        // A file that vanished mid-copy, or one the OS will not hand over, is
-        // not worth failing the whole import over.
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException)?.code
+        // A full disk fails every file after this one too; carrying on only
+        // turned it into an import that reported success with half its files.
+        if (code === 'ENOSPC') {
+          throw new Error(tr('Auf dem Datenträger ist nicht genug Platz für den Import.', 'There is not enough space on the disk for the import.'))
+        }
+        // A file that vanished mid-copy is nothing to report. One the OS will
+        // not hand over (another program holding it) is: it used to be
+        // skipped without a word.
+        if (code !== 'ENOENT') failed.push(childRel)
       }
 
       // Reported on time rather than every 200th file. An import of a hundred
@@ -1134,7 +1222,7 @@ async function copyGameFiles(
       }
     }
   }
-  return { files, skippedLinks }
+  return { files, skippedLinks, failed }
 }
 
 // Getters, since this module loads before the language is set.
@@ -1204,14 +1292,16 @@ export async function importInstanceFolder(
     loaderVersion: detected.loaderVersion,
     description: FLAVOUR_LABELS[detected.flavour],
     icon: '📥'
-  })
+  }, { importing: true })
 
-  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Dateien werden kopiert…', 'Copying files…'), instance.id, async (task) => {
+  // The content lock is held for the whole import, so the reconciler, a launch
+  // and a backup all leave the folder alone while it is being filled.
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Dateien werden kopiert…', 'Copying files…'), instance.id, (task) => withContentLock(instance.id, async () => {
     ensureInstanceLayout(instance.id)
     const target = paths.gameDir(instance.id)
 
     task.update(tr('Welten, Mods und Konfigurationen werden kopiert…', 'Copying worlds, mods and configs…'), null)
-    const { files: copied, skippedLinks } = await copyGameFiles(
+    const { files: copied, skippedLinks, failed } = await copyGameFiles(
       detected.gameDir,
       target,
       (n) => task.update(tr(`Dateien kopiert: ${n}…`, `Files copied: ${n}…`), null),
@@ -1228,7 +1318,8 @@ export async function importInstanceFolder(
     task.throwIfCancelled()
 
     task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.9)
-    await syncContentWithDisk(instance.id)
+    // Forced: the import holds the content lock itself.
+    await syncContentWithDisk(instance.id, { force: true })
     task.throwIfCancelled()
 
     // The base setup (Minecraft itself) that `createInstance` started in the
@@ -1247,6 +1338,39 @@ export async function importInstanceFolder(
 
     task.throwIfCancelled()
     persist({ ...getInstance(instance.id), installing: false, installed: true })
+
+    // The final status line below is gone a moment later; what was left
+    // behind has to reach the user in a way that stays.
+    if (failed.length > 0) {
+      logger.warn(`Beim Import nicht kopiert: ${failed.join(', ')}`)
+    }
+    if (failed.length > 0 || skippedLinks > 0) {
+      const shown = failed.slice(0, 3).join(', ') + (failed.length > 3 ? tr(' und weitere', ' and more') : '')
+      const one = failed.length === 1
+      const oneLink = skippedLinks === 1
+      notify(
+        'warning',
+        tr('Nicht alles wurde übernommen', 'Not everything was copied'),
+        [
+          failed.length > 0
+            ? tr(
+                `${failed.length} ${one ? 'Datei ließ' : 'Dateien ließen'} sich nicht kopieren, vermutlich weil ein anderes Programm sie geöffnet hält: ${shown}.`,
+                `${failed.length} ${one ? 'file' : 'files'} could not be copied, probably because another program keeps ${one ? 'it' : 'them'} open: ${shown}.`
+              )
+            : '',
+          skippedLinks > 0
+            ? tr(
+                `${skippedLinks} ${oneLink ? 'Verknüpfung zeigte' : 'Verknüpfungen zeigten'} nach außerhalb des Ordners und ${oneLink ? 'wurde' : 'wurden'} ausgelassen.`,
+                `${skippedLinks} ${oneLink ? 'link pointed' : 'links pointed'} outside the folder and ${oneLink ? 'was' : 'were'} left out.`
+              )
+            : ''
+        ]
+          .filter(Boolean)
+          .join(' '),
+        { route: `/instances/${instance.id}` }
+      )
+    }
+
     task.update(
       tr(
         `Import abgeschlossen (${copied} ${copied === 1 ? 'Datei' : 'Dateien'})` +
@@ -1261,7 +1385,7 @@ export async function importInstanceFolder(
       ),
       1
     )
-  }).catch(async (err) => {
+  })).catch(async (err) => {
     logger.error(`Ordner-Import von ${name} fehlgeschlagen:`, err)
     if (err instanceof TaskCancelledError) {
       // The background base setup `createInstance` started may still be
@@ -1291,12 +1415,15 @@ export async function importInstanceFolder(
         )
       }
     }
+    // The base setup may still be running, and it used to mark the instance
+    // installed once it finished, after this had already said it is not.
+    await waitForInstanceSetup(instance.id)
     try {
       persist({ ...getInstance(instance.id), installing: false, installed: false })
     } catch (persistErr) {
       logger.warn(`Importstatus von ${instance.id} nicht zurückgesetzt:`, persistErr)
     }
-  })
+  }).finally(() => finishImport(instance.id))
 
   return instance
 }

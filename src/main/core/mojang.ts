@@ -10,6 +10,12 @@ import { tr } from '@shared/i18n'
 
 const logger = log('mojang')
 
+/**
+ * A version file that is there but does not parse. Still a SyntaxError, which
+ * is what the repair looks for to rebuild it; only the message is readable.
+ */
+export class CorruptVersionFileError extends SyntaxError {}
+
 const VERSION_MANIFEST = 'https://launchermeta.mojang.com/mc/game/version_manifest_v2.json'
 const RESOURCES_BASE = 'https://resources.download.minecraft.net'
 
@@ -258,12 +264,11 @@ export async function loadVersionJson(
       // file needs the repair, which installs the loader again.
       const manifest = await getVersionManifest().catch(() => null)
       if (!manifest?.versions.some((v) => v.id === versionId)) {
-        throw new Error(
+        throw new CorruptVersionFileError(
           tr(
             `Die Versionsdatei ${versionId} ist beschädigt. Öffne die Instanz und klicke auf „Reparieren“.`,
             `The version file ${versionId} is damaged. Open the instance and click "Repair".`
-          ),
-          { cause: err }
+          )
         )
       }
       logger.warn(`Versionsdatei ${versionId} beschädigt, wird neu geladen`)

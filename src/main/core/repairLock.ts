@@ -38,3 +38,8 @@ export function markRepairing(instanceId: string): void {
 export function clearRepairing(instanceId: string): void {
   repairing.delete(instanceId)
 }
+
+/** Whether a repair is running for any instance at all. */
+export function anyRepairing(): boolean {
+  return repairing.size > 0
+}

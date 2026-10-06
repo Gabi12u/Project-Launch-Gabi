@@ -519,7 +519,9 @@ async function runRepair(
     // start into the folder mid rewrite, and the mod buttons stayed enabled.
     await withContentLock(instanceId, async () => {
       try {
-        await syncContentWithDisk(instanceId)
+        // Forced: this step holds the content lock itself, and the scan skips
+        // while that lock is held, so repair's own reconciliation never ran.
+        await syncContentWithDisk(instanceId, { force: true })
       } catch (err) {
         rethrowIfCancelled(err)
         contentStepError = tr(

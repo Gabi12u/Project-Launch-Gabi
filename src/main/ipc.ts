@@ -88,6 +88,9 @@ import {
   pruneAllAutomaticBackups
 } from './core/backups'
 import { repairInstance } from './core/repair'
+import { anyContentBusy } from './core/contentLock'
+import { anyArchiving, anyRestoring, isRestoring } from './core/restoreLock'
+import { anyRepairing, isRepairing } from './core/repairLock'
 import {
   analyzeModpackFile,
   exportMrpack,
@@ -248,6 +251,25 @@ function requireStopped(instanceId: string, action: string): void {
       )
     )
   }
+  // A restore moves the content folders aside and puts the backup's copies
+  // back, and a repair rewrites mods it found broken. A change landing in the
+  // middle of either got lost or stayed half done.
+  if (isRestoring(instanceId)) {
+    throw new Error(
+      tr(
+        `${action} ist nicht möglich, während eine Sicherung eingespielt wird. Warte, bis das fertig ist.`,
+        `${action} is not possible while a backup is being restored. Wait until that is done.`
+      )
+    )
+  }
+  if (isRepairing(instanceId)) {
+    throw new Error(
+      tr(
+        `${action} ist nicht möglich, während die Instanz repariert wird. Warte, bis das fertig ist.`,
+        `${action} is not possible while the instance is being repaired. Wait until that is done.`
+      )
+    )
+  }
 }
 
 export function registerIpc(): void {
@@ -379,6 +401,21 @@ export function registerIpc(): void {
         tr(
           'Der Datenordner lässt sich erst wechseln, wenn alle Downloads und Aufgaben fertig sind.',
           'The data folder can only be changed once all downloads and tasks are finished.'
+        )
+      )
+    }
+    // Not everything that writes into an instance runs as a task: a mod
+    // install from the search, switching a mod on or off, a duplicate copying
+    // the folder. They kept writing into the old folder just the same.
+    if (
+      patch.dataDirectory !== undefined &&
+      patch.dataDirectory !== previous.dataDirectory &&
+      (anyContentBusy() || anyRestoring() || anyRepairing() || anyArchiving())
+    ) {
+      throw new Error(
+        tr(
+          'Der Datenordner lässt sich erst wechseln, wenn die laufende Arbeit an einer Instanz fertig ist.',
+          'The data folder can only be changed once the ongoing work on an instance is finished.'
         )
       )
     }
@@ -660,7 +697,14 @@ export function registerIpc(): void {
   // which the login dialog needs to know which one just signed in) separate
   // from the broadcast, which fetches and sends the complete list instead.
   const announceOne = <T,>(account: T): T => {
-    emit(EVENTS.accountsChanged, listAccounts())
+    // The account is saved at this point. A locked file while reading the
+    // list back must not turn that into a failed sign-in; the list follows
+    // with the next read.
+    try {
+      emit(EVENTS.accountsChanged, listAccounts())
+    } catch (err) {
+      logger.warn('Account-Liste nach der Anmeldung nicht lesbar:', err)
+    }
     return account
   }
 

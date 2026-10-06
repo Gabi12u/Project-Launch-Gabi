@@ -294,6 +294,11 @@ export async function httpRequest(
   throw describeNetworkError(lastError, url)
 }
 
+/** No connection or no answer in time, as opposed to an answer saying no. */
+export class NetworkError extends Error {}
+
+const NETWORK_CODES = new Set(['ENOTFOUND', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET'])
+
 /**
  * Turns the engine's bare "fetch failed" and timeout errors into a sentence a
  * player can act on. These reached search, installs and update checks as
@@ -303,7 +308,7 @@ function describeNetworkError(err: unknown, url: string): unknown {
   if (err instanceof HttpError || err instanceof TaskCancelledError) return err
   const name = (err as Error | undefined)?.name
   if (name === 'TimeoutError' || name === 'AbortError') {
-    return new Error(
+    return new NetworkError(
       tr(
         `${hostOf(url)} hat zu lange nicht geantwortet. Prüfe deine Internetverbindung und versuche es erneut.`,
         `${hostOf(url)} took too long to answer. Check your internet connection and try again.`
@@ -311,8 +316,11 @@ function describeNetworkError(err: unknown, url: string): unknown {
       { cause: err }
     )
   }
-  if (err instanceof TypeError) {
-    return new Error(
+  // Only the engine's own connection failure, not every TypeError: a bad URL
+  // or a broken redirect target is one too, and was reported as no connection.
+  const code = (err as { cause?: { code?: string } })?.cause?.code
+  if (err instanceof TypeError && (err.message === 'fetch failed' || NETWORK_CODES.has(code ?? ''))) {
+    return new NetworkError(
       tr(
         `Keine Verbindung zu ${hostOf(url)}. Prüfe deine Internetverbindung und versuche es erneut.`,
         `No connection to ${hostOf(url)}. Check your internet connection and try again.`

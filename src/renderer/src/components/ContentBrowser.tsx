@@ -117,6 +117,7 @@ export function ContentBrowser({
   openProjectId
 }: Props): JSX.Element {
   const { settings } = useStore()
+  const curseForgeKey = settings.curseForgeApiKey
 
   const [type, setType] = useState<ContentType | 'modpack'>(initialType ?? types[0])
   const [query, setQuery] = useState('')
@@ -205,11 +206,16 @@ export function ContentBrowser({
 
         // Ignore responses from superseded requests.
         if (id !== requestId.current) return
-        // Moved on only once the page arrived. Set before the request, a
-        // failed page skipped twenty results on the next try.
-        if (append) setOffset(nextOffset)
-        if (append && result.errors.length > 0 && result.items.length === 0) {
-          toast('error', tr('Weitere Ergebnisse konnten nicht geladen werden', 'More results could not be loaded'), result.errors[0].message)
+        // A missing CurseForge key is not a failure of this page, it is
+        // reported once above the grid. Everything else is.
+        const failed = result.errors.filter(
+          (e) => !(e.provider === 'curseforge' && e.message.includes('API') && !curseForgeKey)
+        )
+        // Moved on only once the page arrived. A provider failure returns an
+        // empty page rather than throwing, so it is checked here.
+        if (append && failed.length === 0) setOffset(nextOffset)
+        if (append && failed.length > 0) {
+          toast('error', tr('Weitere Ergebnisse konnten nicht geladen werden', 'More results could not be loaded'), failed[0].message)
         }
 
         setResponse((current) => {
@@ -224,13 +230,15 @@ export function ContentBrowser({
           // case, so it alone never reliably signals the end; an empty page
           // of new results does.
           // A page that failed is not the end of the results.
-          if (additions.length === 0 && result.errors.length === 0) setExhausted(true)
+          if (additions.length === 0 && failed.length === 0) setExhausted(true)
           const combined = [...current.items, ...additions]
           // Each page arrives pre-sorted across providers on its own; once a
           // second page is appended, the whole accumulated list needs the
           // same sort re-applied, or the pages just stack platform by platform.
           const items = providers.length > 1 ? sortMerged(combined, sort) : combined
-          return { ...result, items }
+          // A failed page reports a total of 0, which hid "Mehr laden" and
+          // left nothing to try again with.
+          return { ...result, items, total: failed.length > 0 ? current.total : result.total }
         })
       } catch (err) {
         if (id === requestId.current) {
@@ -245,7 +253,7 @@ export function ContentBrowser({
         if (id === requestId.current) setLoading(false)
       }
     },
-    [debounced, type, useVersionFilter, mcVersion, loader, providers, sort]
+    [debounced, type, useVersionFilter, mcVersion, loader, providers, sort, curseForgeKey]
   )
 
   useEffect(() => {

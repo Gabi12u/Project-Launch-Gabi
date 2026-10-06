@@ -30,6 +30,11 @@ export function isContentBusy(instanceId: string): boolean {
   return (busy.get(instanceId) ?? 0) > 0 || copying.has(instanceId)
 }
 
+/** Whether content work or a copy is running for any instance at all. */
+export function anyContentBusy(): boolean {
+  return busy.size > 0 || copying.size > 0
+}
+
 export function isCopying(instanceId: string): boolean {
   return copying.has(instanceId)
 }

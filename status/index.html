@@ -3733,6 +3733,90 @@ footer .grow { flex: 1; }
       "detail": "Stellte man eine Sicherung mit Mods wieder her und blieb dabei auf der Seite der Instanz, glich der Launcher den Mod-Ordner ab, während dieser kurz beiseitegelegt war. Er hielt alle Mods für entfernt. Danach kamen die Dateien zurück, aber ohne Herkunft und Version, und Updates wurden für sie nicht mehr gefunden.",
       "state": "fixing",
       "since": "2026-10-06"
+    },
+    {
+      "id": "mods-aenderbar-waehrend-reparatur",
+      "title": "Während einer Wiederherstellung oder Reparatur ließen sich Mods ändern",
+      "detail": "Mods konnten installiert, entfernt oder an- und ausgeschaltet werden, während eine Sicherung eingespielt oder die Instanz repariert wurde. Die Änderung konnte dabei verloren gehen oder nur halb ausgeführt bleiben, sodass Mod-Ordner und Mod-Liste nicht mehr zusammenpassten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "abgleich-ueberschreibt-aenderung",
+      "title": "Eine gerade gemachte Änderung an den Mods konnte zurückgesetzt werden",
+      "detail": "Der Launcher gleicht die Mod-Liste regelmäßig mit dem Mod-Ordner ab, zum Beispiel beim Öffnen einer Instanz. Lief eine Installation oder ein Update genau in diesem Moment, konnte der Abgleich danach seinen älteren Stand speichern. Ein frisch installierter Mod stand dann ohne Herkunft und Version in der Liste, und Updates wurden für ihn nicht mehr gefunden.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "loeschen-waehrend-sicherung",
+      "title": "Eine Instanz ließ sich löschen, während sie gesichert oder exportiert wurde",
+      "detail": "Die Sicherung oder der Export lief danach mit teilweise gelöschten Dateien weiter und konnte als scheinbar vollständige Datei gespeichert werden, der in Wahrheit Welten oder Mods fehlten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "datenordner-wechsel-waehrend-arbeit",
+      "title": "Der Datenordner ließ sich wechseln, während an einer Instanz gearbeitet wurde",
+      "detail": "Lief gerade das Duplizieren einer Instanz oder eine Änderung an Mods, etwa eine Installation aus der Suche, war der Wechsel trotzdem erlaubt, weil beides nicht als Aufgabe zählte. Diese Arbeit schrieb dann weiter in den alten Ordner, und ihr Ergebnis fehlte im neuen.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "duplikat-ohne-letzte-aenderung",
+      "title": "Beim Duplizieren gingen Änderungen verloren, die während des Kopierens gemacht wurden",
+      "detail": "Die Kopie bekam die Einstellungen der Instanz von dem Moment, in dem das Duplizieren begann. Wer während des Kopierens zum Beispiel den Arbeitsspeicher oder die Java-Einstellungen änderte, fand diese Änderung nur im Original, nicht in der Kopie.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "import-zu-frueh-fertig",
+      "title": "Ein Import galt als fertig, bevor er es war",
+      "detail": "Sobald Minecraft selbst eingerichtet war, zeigte eine importierte Instanz „Spielen“, auch wenn Mods und Dateien noch kopiert oder geladen wurden. Ein Start in diesem Moment lief mit einem halben Modpack. Scheiterte der Import, konnte die Instanz danach trotzdem als fertig installiert gelten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "ordner-import-fehler-verschwiegen",
+      "title": "Beim Import eines Ordners konnten Dateien fehlen, ohne dass es gemeldet wurde",
+      "detail": "Dateien, die sich nicht kopieren ließen, etwa weil die Festplatte voll war oder ein anderes Programm sie gesperrt hielt, wurden still übersprungen, und der Import meldete Erfolg. Verknüpfte Ordner in der Quelle kamen als defekte Verknüpfung an, und übersprungene Verknüpfungen standen nur in der Protokolldatei.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "minecraft-ordner-falsche-version",
+      "title": "Beim Import eines .minecraft-Ordners wurde manchmal die falsche Version erkannt",
+      "detail": "Lagen dort mehrere Versionen, gewann die alphabetisch erste mit Mod-Loader, nicht die zuletzt gespielte. Ältere Forge-Ordner wie „1.12.2-forge1.12.2-14.23.5.2860“ wurden gar nicht als Forge erkannt, und die Instanz entstand ohne Mod-Loader.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "import-gdlauncher-modrinth-forge",
+      "title": "Forge-Instanzen aus GDLauncher und der Modrinth App ließen sich nicht einrichten",
+      "detail": "Beide Programme speichern die Forge-Version zusammen mit der Minecraft-Version. Der Launcher übernahm das unverändert und suchte danach eine Forge-Version, die es nicht gibt, sodass die Einrichtung nach dem Import scheiterte.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "curseforge-import-ohne-mods",
+      "title": "Ein CurseForge-Modpack konnte ohne einen einzigen Mod als fertig gelten",
+      "detail": "War CurseForge während des Imports nicht erreichbar, scheiterte jede Abfrage der Mod-Liste. Der Import lief trotzdem weiter und meldete am Ende Erfolg, mit einer Instanz ganz ohne Mods.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "curseforge-datapacks-in-mods",
+      "title": "Datenpakete aus CurseForge-Modpacks landeten im Mod-Ordner",
+      "detail": "Ein CurseForge-Modpack, das Datenpakete mitbringt, legte sie in den Mod-Ordner. Dort wirkten sie nicht und tauchten auch nicht als Datenpaket in der Instanz auf.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "modpack-archiv-backslash",
+      "title": "Manche Modpack-Archive wurden ohne ihre Konfigurationen entpackt",
+      "detail": "Einige Programme schreiben Zip-Dateien mit umgekehrten Schrägstrichen in den Pfaden. Bei solchen Modpacks fehlten nach dem Import Konfigurationen, Einstellungen und weitere mitgelieferte Dateien, obwohl die Vorschau sie noch gezählt hatte. Außerdem konnte eine Datei aus einem anderen Ordner mit gleichem Namen die Angaben eines Mods erhalten.",
+      "state": "fixing",
+      "since": "2026-10-06"
     }
   ];
   var ISSUE_LABEL = {
@@ -6428,6 +6512,90 @@ footer .grow { flex: 1; }
       "id": "abgleich-waehrend-wiederherstellung",
       "title": "During a restore the details of all mods could be lost",
       "detail": "When restoring a backup with mods while staying on the instance page, the launcher compared the mods folder while it was briefly set aside. It took all mods as removed. Afterwards the files came back, but without their source and version, and updates were no longer found for them.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "mods-aenderbar-waehrend-reparatur",
+      "title": "Mods could be changed during a restore or a repair",
+      "detail": "Mods could be installed, removed or switched on and off while a backup was being restored or the instance was being repaired. The change could get lost or stay half done, leaving the mods folder and the mod list out of step.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "abgleich-ueberschreibt-aenderung",
+      "title": "A change just made to the mods could be undone",
+      "detail": "The launcher regularly compares the mod list with the mods folder, for example when an instance is opened. If an install or an update finished at exactly that moment, the comparison could afterwards save its older state. A freshly installed mod then showed up without its source and version, and updates were no longer found for it.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "loeschen-waehrend-sicherung",
+      "title": "An instance could be deleted while it was being backed up or exported",
+      "detail": "The backup or export then carried on with partly deleted files and could be saved as a seemingly complete file that was in fact missing worlds or mods.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "datenordner-wechsel-waehrend-arbeit",
+      "title": "The data folder could be switched while an instance was being worked on",
+      "detail": "If an instance was being duplicated or a change to mods was running, for example an install from the search, the switch was still allowed, because neither counted as a task. That work then kept writing into the old folder, and its result was missing from the new one.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "duplikat-ohne-letzte-aenderung",
+      "title": "Changes made while duplicating were missing from the copy",
+      "detail": "The copy took the instance settings from the moment duplicating started. Anyone who changed for example the memory or the Java settings while the copy was running found that change only in the original, not in the copy.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "import-zu-frueh-fertig",
+      "title": "An import counted as finished before it was",
+      "detail": "As soon as Minecraft itself was set up, an imported instance showed \"Play\", even while mods and files were still being copied or downloaded. Starting it at that moment ran with half a modpack. If the import failed, the instance could still count as fully installed afterwards.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "ordner-import-fehler-verschwiegen",
+      "title": "Importing a folder could leave files out without saying so",
+      "detail": "Files that could not be copied, for example because the disk was full or another program kept them locked, were skipped silently, and the import reported success. Linked folders in the source arrived as broken links, and skipped links were only mentioned in the log file.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "minecraft-ordner-falsche-version",
+      "title": "Importing a .minecraft folder sometimes detected the wrong version",
+      "detail": "If several versions were there, the alphabetically first one with a mod loader won, not the one played last. Older Forge folders like \"1.12.2-forge1.12.2-14.23.5.2860\" were not recognised as Forge at all, and the instance was created without a mod loader.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "import-gdlauncher-modrinth-forge",
+      "title": "Forge instances from GDLauncher and the Modrinth App could not be set up",
+      "detail": "Both programs store the Forge version together with the Minecraft version. The launcher took that over unchanged and then looked for a Forge version that does not exist, so setting up the instance after the import failed.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "curseforge-import-ohne-mods",
+      "title": "A CurseForge modpack could count as finished without a single mod",
+      "detail": "If CurseForge could not be reached during the import, every request for the mod list failed. The import still carried on and reported success in the end, with an instance that had no mods at all.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "curseforge-datapacks-in-mods",
+      "title": "Data packs from CurseForge modpacks ended up in the mods folder",
+      "detail": "A CurseForge modpack that ships data packs put them into the mods folder. They had no effect there and did not show up as data packs in the instance either.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "modpack-archiv-backslash",
+      "title": "Some modpack archives were unpacked without their configs",
+      "detail": "Some programs write zip files with backslashes in the paths. For such modpacks configs, settings and other included files were missing after the import, although the preview had still counted them. On top of that a file from another folder with the same name could receive the details of a mod.",
       "state": "fixing",
       "since": "2026-10-06"
     }

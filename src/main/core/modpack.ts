@@ -17,7 +17,9 @@ import { notify } from '../events'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
-import { createInstance, deleteInstance, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { createInstance, deleteInstance, finishImport, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import { withContentLock } from './contentLock'
+import { withArchiving } from './restoreLock'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
 import { formatNumber, tr } from '@shared/i18n'
 
@@ -160,7 +162,7 @@ function contentTypeFromPath(path: string): ContentType {
   return 'datapack'
 }
 
-export async function importMrpack(archivePath: string, nameOverride?: string): Promise<Instance> {
+export async function importMrpack(archivePath: string, nameOverride?: string, ownsArchive = false): Promise<Instance> {
   const index = await readEntryJson<MrpackIndex>(archivePath, 'modrinth.index.json')
   if (!index) {
     throw new Error(tr('Das ist kein gültiges .mrpack-Archiv (modrinth.index.json fehlt).', 'This is not a valid .mrpack archive (modrinth.index.json is missing).'))
@@ -181,7 +183,7 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
     loaderVersion,
     description: index.summary ?? '',
     icon: '📦'
-  })
+  }, { importing: true })
 
   persist({
     ...getInstance(instance.id),
@@ -192,14 +194,39 @@ export async function importMrpack(archivePath: string, nameOverride?: string): 
     }
   })
 
-  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mod-Dateien werden geladen…', 'Downloading mod files…'), instance.id, async (task) => {
-    await installMrpackFiles(instance.id, archivePath, index, task)
-  }).catch((err) => {
-    logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    void markImportFailed(instance.id, name, err)
-  })
+  // The content lock is held for the whole import, so the reconciler, a launch
+  // and a backup all leave the folder alone while the pack is written into it.
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mod-Dateien werden geladen…', 'Downloading mod files…'), instance.id, (task) =>
+    withContentLock(instance.id, () => installMrpackFiles(instance.id, archivePath, index, task))
+  )
+    .catch(async (err) => {
+      logger.error(`Import von ${name} fehlgeschlagen:`, err)
+      await markImportFailed(instance.id, name, err)
+    })
+    .finally(() => settleImport(instance.id, archivePath, ownsArchive))
 
   return instance
+}
+
+/**
+ * Ends an import's hold on its instance, and deletes a downloaded archive the
+ * import was handed. Called only once the import task is completely done:
+ * `installModpackFromProvider` used to delete the archive the moment
+ * `importModpack` returned, while the task was still about to unpack the
+ * pack's configs out of it.
+ */
+function settleImport(instanceId: string, archivePath: string, ownsArchive: boolean): void {
+  finishImport(instanceId)
+  if (ownsArchive) removeTransportArchive(archivePath)
+}
+
+/** Deletes a downloaded pack archive; it is only a transport step. */
+function removeTransportArchive(archivePath: string): void {
+  try {
+    rmSync(archivePath, { force: true })
+  } catch (err) {
+    logger.debug(`Zwischendatei ${archivePath} nicht entfernt:`, err)
+  }
 }
 
 /**
@@ -235,6 +262,9 @@ async function markImportFailed(instanceId: string, name: string, err: unknown):
       )
     }
   }
+  // The base setup may still be running, and it used to mark the instance
+  // installed once it finished, after this had already said it is not.
+  await waitForInstanceSetup(instanceId)
   try {
     persist({ ...getInstance(instanceId), installing: false, installed: false })
   } catch (err) {
@@ -356,18 +386,21 @@ async function installMrpackFiles(
 
   // 2. Overrides ------------------------------------------------------
   task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
-  const entries = listEntries(archivePath)
-  if (entries.some((e) => e.name.startsWith('overrides/'))) {
+  // Slashes evened out the way `extractSubtree` does, or a zip written with
+  // backslashes skipped both folders.
+  const entryNames = listEntries(archivePath).map((e) => e.name.replace(/\\/g, '/'))
+  if (entryNames.some((name) => name.startsWith('overrides/'))) {
     extractSubtree(archivePath, 'overrides', gameDir)
   }
-  if (entries.some((e) => e.name.startsWith('client-overrides/'))) {
+  if (entryNames.some((name) => name.startsWith('client-overrides/'))) {
     extractSubtree(archivePath, 'client-overrides', gameDir)
   }
   task.throwIfCancelled()
 
   // 3. Register the files as content ----------------------------------
   task.update(tr('Mods werden erfasst…', 'Registering mods…'), 0.95)
-  await syncContentWithDisk(instanceId)
+  // Forced: the import holds the content lock itself.
+  await syncContentWithDisk(instanceId, { force: true })
   task.throwIfCancelled()
 
   // The base setup (libraries, assets, the client jar) that `createInstance`
@@ -381,7 +414,11 @@ async function installMrpackFiles(
 
   const instance = getInstance(instanceId)
   const enriched: ContentItem[] = instance.content.map((item) => {
-    const match = clientFiles.find((f) => basename(f.path) === item.fileName)
+    // By folder as well as name: a resource pack and a mod can share a file
+    // name, and the mod's ids and hash then landed on the resource pack.
+    const match = clientFiles.find(
+      (f) => basename(f.path) === item.fileName && contentTypeFromPath(f.path) === item.type
+    )
     if (!match) return item
 
     const url = match.downloads?.[0] ?? ''
@@ -448,7 +485,7 @@ function loaderFromCurseId(id: string): { loader: LoaderId; loaderVersion: strin
   }
 }
 
-export async function importCurseForgeZip(archivePath: string, nameOverride?: string): Promise<Instance> {
+export async function importCurseForgeZip(archivePath: string, nameOverride?: string, ownsArchive = false): Promise<Instance> {
   const manifest = await readEntryJson<CurseManifest>(archivePath, 'manifest.json')
   if (!manifest) {
     throw new Error(tr('Das ist kein gültiges CurseForge-Modpack (manifest.json fehlt).', 'This is not a valid CurseForge modpack (manifest.json is missing).'))
@@ -498,14 +535,15 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     loaderVersion,
     description: tr(`von ${manifest.author}`, `by ${manifest.author}`),
     icon: '📦'
-  })
+  }, { importing: true })
 
   persist({
     ...getInstance(instance.id),
     source: { type: 'curseforge', packName: manifest.name, packVersion: manifest.version }
   })
 
-  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mods werden aufgelöst…', 'Resolving mods…'), instance.id, async (task) => {
+  // Held for the whole import, like the mrpack one above.
+  void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mods werden aufgelöst…', 'Resolving mods…'), instance.id, (task) => withContentLock(instance.id, async () => {
     const gameDir = paths.gameDir(instance.id)
 
     // Resolve every file id to a download url in batches. Entries without a
@@ -516,6 +554,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
       .filter((id): id is number => typeof id === 'number' && Number.isFinite(id))
 
     const resolved: ProjectVersion[] = []
+    let failedBatches = 0
     for (let i = 0; i < fileIds.length; i += 100) {
       task.update(tr(`Mods werden aufgelöst (${i}/${fileIds.length})…`, `Resolving mods (${i}/${fileIds.length})…`), i / Math.max(fileIds.length, 1))
       try {
@@ -524,7 +563,20 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
         // One rejected batch must not abort an import of several hundred mods;
         // the shortfall is reported below either way.
         logger.warn(`CurseForge-Batch ab ${i} konnte nicht aufgelöst werden:`, err)
+        failedBatches++
       }
+    }
+
+    // Every batch failing is not a pack with a few missing mods, it is
+    // CurseForge being out of reach. Carrying on finished the import with an
+    // instance that had no mods at all and called it a success.
+    if (fileIds.length > 0 && resolved.length === 0 && failedBatches > 0) {
+      throw new Error(
+        tr(
+          'Die Mod-Liste des Modpacks konnte bei CurseForge nicht abgefragt werden. Prüfe die Internetverbindung und importiere das Modpack erneut.',
+          'The modpack\'s mod list could not be fetched from CurseForge. Check the internet connection and import the modpack again.'
+        )
+      )
     }
 
     if (resolved.length < fileIds.length) {
@@ -575,7 +627,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     const projectTypes = await curseforge.getProjectTypes(resolved.map((version) => version.projectId))
     const typeOf = (version: ProjectVersion): ContentType => {
       const type = projectTypes.get(version.projectId)
-      return type === 'resourcepack' || type === 'shaderpack' ? type : 'mod'
+      return type === 'resourcepack' || type === 'shaderpack' || type === 'datapack' ? type : 'mod'
     }
 
     // `fileName` comes from the API, so it is pinned into its folder rather
@@ -630,7 +682,8 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)
     task.throwIfCancelled()
 
-    await syncContentWithDisk(instance.id)
+    // Forced: the import holds the content lock itself.
+    await syncContentWithDisk(instance.id, { force: true })
     task.throwIfCancelled()
 
     // The sync only sees files, so every mod came out as local content with
@@ -672,10 +725,12 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     task.throwIfCancelled()
     persist({ ...getInstance(instance.id), installing: false, installed: true })
     task.update(tr('Import abgeschlossen', 'Import finished'), 1)
-  }).catch((err) => {
-    logger.error(`Import von ${name} fehlgeschlagen:`, err)
-    void markImportFailed(instance.id, name, err)
-  })
+  }))
+    .catch(async (err) => {
+      logger.error(`Import von ${name} fehlgeschlagen:`, err)
+      await markImportFailed(instance.id, name, err)
+    })
+    .finally(() => settleImport(instance.id, archivePath, ownsArchive))
 
   return instance
 }
@@ -1001,18 +1056,26 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
 }
 
 /** Dispatches by file extension / archive content. */
-export async function importModpack(archivePath: string, nameOverride?: string): Promise<Instance> {
+export async function importModpack(
+  archivePath: string,
+  nameOverride?: string,
+  /**
+   * Hands the archive over: the import deletes it once its own task is done.
+   * Left at false, the archive is the user's own file and stays untouched.
+   */
+  ownsArchive = false
+): Promise<Instance> {
   if (!existsSync(archivePath)) throw new Error(tr('Die Datei existiert nicht.', 'The file does not exist.'))
 
   const ext = extname(archivePath).toLowerCase()
-  if (ext === '.mrpack') return importMrpack(archivePath, nameOverride)
+  if (ext === '.mrpack') return importMrpack(archivePath, nameOverride, ownsArchive)
 
   const entries = listEntries(archivePath)
   if (entries.some((e) => e.name === 'modrinth.index.json')) {
-    return importMrpack(archivePath, nameOverride)
+    return importMrpack(archivePath, nameOverride, ownsArchive)
   }
   if (entries.some((e) => e.name === 'manifest.json')) {
-    return importCurseForgeZip(archivePath, nameOverride)
+    return importCurseForgeZip(archivePath, nameOverride, ownsArchive)
   }
 
   throw new Error(tr('Unbekanntes Modpack-Format. Unterstützt werden .mrpack und CurseForge-Zips.', 'Unknown modpack format. Supported are .mrpack and CurseForge zips.'))
@@ -1082,7 +1145,8 @@ function sha512File(file: string): Promise<string> {
 export async function exportMrpack(instanceId: string, options: ExportOptions): Promise<string> {
   const instance = getInstance(instanceId)
 
-  return withTask(tr(`${instance.name} wird exportiert`, `Exporting ${instance.name}`), tr('Inhalte werden gesammelt…', 'Collecting content…'), instanceId, async (task) => {
+  // Marked as archiving, so the instance cannot be deleted mid export.
+  return withTask(tr(`${instance.name} wird exportiert`, `Exporting ${instance.name}`), tr('Inhalte werden gesammelt…', 'Collecting content…'), instanceId, (task) => withArchiving(instanceId, async () => {
     await syncContentWithDisk(instanceId)
     const current = getInstance(instanceId)
 
@@ -1212,7 +1276,7 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     )
 
     return options.targetFile
-  })
+  }))
 }
 
 /** Installs a modpack straight from a provider search result. */
@@ -1253,15 +1317,13 @@ export async function installModpackFromProvider(
     )
   })
 
+  // Handed over to the import, which deletes it once its task is done: the
+  // task reads the pack's configs out of it long after `importModpack` has
+  // returned. Deleted here only when the import never got that far.
   try {
-    return await importModpack(archive, project.name)
-  } finally {
-    // The archive is only a transport step; keeping it would grow the cache by
-    // the full pack size on every install.
-    try {
-      rmSync(archive, { force: true })
-    } catch (err) {
-      logger.debug(`Zwischendatei ${archive} nicht entfernt:`, err)
-    }
+    return await importModpack(archive, project.name, true)
+  } catch (err) {
+    removeTransportArchive(archive)
+    throw err
   }
 }

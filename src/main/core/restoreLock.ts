@@ -20,6 +20,11 @@ export function isRestoring(instanceId: string): boolean {
   return (busy.get(instanceId) ?? 0) > 0
 }
 
+/** Whether a restore is running for any instance at all. */
+export function anyRestoring(): boolean {
+  return busy.size > 0
+}
+
 /** Holds the marker for as long as `run` takes, however it ends. */
 export async function withRestoreLock<T>(instanceId: string, run: () => Promise<T>): Promise<T> {
   busy.set(instanceId, (busy.get(instanceId) ?? 0) + 1)
@@ -29,5 +34,35 @@ export async function withRestoreLock<T>(instanceId: string, run: () => Promise<
     const left = (busy.get(instanceId) ?? 1) - 1
     if (left > 0) busy.set(instanceId, left)
     else busy.delete(instanceId)
+  }
+}
+
+/**
+ * Marks instances being read into an archive right now: a backup or a
+ * modpack export. Both only read, so they block nothing else, but deleting
+ * the instance underneath them carried on zipping a half deleted folder and
+ * saved the result as if it were complete. Kept here, next to the restore
+ * marker, because it is the same kind of whole folder work.
+ */
+const archiving = new Map<string, number>()
+
+export function isArchiving(instanceId: string): boolean {
+  return (archiving.get(instanceId) ?? 0) > 0
+}
+
+/** Whether a backup or an export is running for any instance at all. */
+export function anyArchiving(): boolean {
+  return archiving.size > 0
+}
+
+/** Holds the archive marker for as long as `run` takes, however it ends. */
+export async function withArchiving<T>(instanceId: string, run: () => Promise<T>): Promise<T> {
+  archiving.set(instanceId, (archiving.get(instanceId) ?? 0) + 1)
+  try {
+    return await run()
+  } finally {
+    const left = (archiving.get(instanceId) ?? 1) - 1
+    if (left > 0) archiving.set(instanceId, left)
+    else archiving.delete(instanceId)
   }
 }

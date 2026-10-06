@@ -324,15 +324,21 @@ export function extractSubtree(archivePath: string, prefix: string, targetDir: s
   const zip = new AdmZip(archivePath)
   const entries = zip.getEntries()
   assertReasonableArchive(entries, archivePath)
-  const normalized = prefix.endsWith('/') ? prefix : `${prefix}/`
+  const slashed = prefix.replace(/\\/g, '/')
+  const normalized = slashed.endsWith('/') ? slashed : `${slashed}/`
   let count = 0
 
   for (const entry of entries) {
     if (entry.isDirectory) continue
-    if (!entry.entryName.startsWith(normalized)) continue
+    // Some zip tools on Windows write `overrides\config\x.toml`. Matched as
+    // written, none of those entries started with "overrides/", and the whole
+    // folder was skipped while the import preview still counted it.
+    const name = entry.entryName.replace(/\\/g, '/')
+    if (!name.startsWith(normalized)) continue
 
-    const rel = entry.entryName.slice(normalized.length)
-    if (!rel) continue
+    const rel = name.slice(normalized.length)
+    // A folder entry written with a backslash is not flagged as a folder.
+    if (!rel || rel.endsWith('/')) continue
 
     assertReasonableSize(entry)
     // `safeJoin` rejects '..', an absolute path and a ':', while a bare

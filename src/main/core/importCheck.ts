@@ -48,7 +48,10 @@ export async function verifyImportedInstance(instanceId: string): Promise<Import
   /* 1. Is the version profile there and readable? --------------------- */
   let versionId: string | null = null
   try {
-    versionId = await resolveVersionId(instance)
+    // Only looks. With installing allowed, a missing Forge or NeoForge ran its
+    // whole installer from inside this check, hidden and with nothing to
+    // cancel, while the result screen sat waiting.
+    versionId = await resolveVersionId(instance, false)
   } catch (err) {
     add(
       'blocker',

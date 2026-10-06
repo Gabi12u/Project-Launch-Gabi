@@ -2550,6 +2550,90 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'When restoring a backup with mods while staying on the instance page, the launcher compared the ' +
       'mods folder while it was briefly set aside. It took all mods as removed. Afterwards the files ' +
       'came back, but without their source and version, and updates were no longer found for them.'
+  },
+  'mods-aenderbar-waehrend-reparatur': {
+    title: 'Mods could be changed during a restore or a repair',
+    detail:
+      'Mods could be installed, removed or switched on and off while a backup was being restored or ' +
+      'the instance was being repaired. The change could get lost or stay half done, leaving the mods ' +
+      'folder and the mod list out of step.'
+  },
+  'abgleich-ueberschreibt-aenderung': {
+    title: 'A change just made to the mods could be undone',
+    detail:
+      'The launcher regularly compares the mod list with the mods folder, for example when an instance ' +
+      'is opened. If an install or an update finished at exactly that moment, the comparison could ' +
+      'afterwards save its older state. A freshly installed mod then showed up without its source and ' +
+      'version, and updates were no longer found for it.'
+  },
+  'loeschen-waehrend-sicherung': {
+    title: 'An instance could be deleted while it was being backed up or exported',
+    detail:
+      'The backup or export then carried on with partly deleted files and could be saved as a ' +
+      'seemingly complete file that was in fact missing worlds or mods.'
+  },
+  'datenordner-wechsel-waehrend-arbeit': {
+    title: 'The data folder could be switched while an instance was being worked on',
+    detail:
+      'If an instance was being duplicated or a change to mods was running, for example an install ' +
+      'from the search, the switch was still allowed, because neither counted as a task. That work ' +
+      'then kept writing into the old folder, and its result was missing from the new one.'
+  },
+  'duplikat-ohne-letzte-aenderung': {
+    title: 'Changes made while duplicating were missing from the copy',
+    detail:
+      'The copy took the instance settings from the moment duplicating started. Anyone who changed for ' +
+      'example the memory or the Java settings while the copy was running found that change only in ' +
+      'the original, not in the copy.'
+  },
+  'import-zu-frueh-fertig': {
+    title: 'An import counted as finished before it was',
+    detail:
+      'As soon as Minecraft itself was set up, an imported instance showed "Play", even while mods and ' +
+      'files were still being copied or downloaded. Starting it at that moment ran with half a ' +
+      'modpack. If the import failed, the instance could still count as fully installed afterwards.'
+  },
+  'ordner-import-fehler-verschwiegen': {
+    title: 'Importing a folder could leave files out without saying so',
+    detail:
+      'Files that could not be copied, for example because the disk was full or another program kept ' +
+      'them locked, were skipped silently, and the import reported success. Linked folders in the ' +
+      'source arrived as broken links, and skipped links were only mentioned in the log file.'
+  },
+  'minecraft-ordner-falsche-version': {
+    title: 'Importing a .minecraft folder sometimes detected the wrong version',
+    detail:
+      'If several versions were there, the alphabetically first one with a mod loader won, not the one ' +
+      'played last. Older Forge folders like "1.12.2-forge1.12.2-14.23.5.2860" were not recognised as ' +
+      'Forge at all, and the instance was created without a mod loader.'
+  },
+  'import-gdlauncher-modrinth-forge': {
+    title: 'Forge instances from GDLauncher and the Modrinth App could not be set up',
+    detail:
+      'Both programs store the Forge version together with the Minecraft version. The launcher took ' +
+      'that over unchanged and then looked for a Forge version that does not exist, so setting up the ' +
+      'instance after the import failed.'
+  },
+  'curseforge-import-ohne-mods': {
+    title: 'A CurseForge modpack could count as finished without a single mod',
+    detail:
+      'If CurseForge could not be reached during the import, every request for the mod list failed. ' +
+      'The import still carried on and reported success in the end, with an instance that had no mods ' +
+      'at all.'
+  },
+  'curseforge-datapacks-in-mods': {
+    title: 'Data packs from CurseForge modpacks ended up in the mods folder',
+    detail:
+      'A CurseForge modpack that ships data packs put them into the mods folder. They had no effect ' +
+      'there and did not show up as data packs in the instance either.'
+  },
+  'modpack-archiv-backslash': {
+    title: 'Some modpack archives were unpacked without their configs',
+    detail:
+      'Some programs write zip files with backslashes in the paths. For such modpacks configs, ' +
+      'settings and other included files were missing after the import, although the preview had still ' +
+      'counted them. On top of that a file from another folder with the same name could receive the ' +
+      'details of a mod.'
   }
 }
 

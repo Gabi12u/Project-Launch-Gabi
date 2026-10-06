@@ -22,7 +22,7 @@ import { log } from '../logger'
 import { renamePackSelection } from './packSelection'
 import { notify } from '../events'
 import { Task, withTask } from '../tasks'
-import { downloadFile, HttpError, sha1File } from './net'
+import { downloadFile, HttpError, NetworkError, sha1File } from './net'
 import {
   addContent,
   getInstance,
@@ -691,8 +691,12 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
     } catch (err) {
       logger.warn(`Update-Prüfung für ${item.name} fehlgeschlagen:`, err)
       updated.push(item)
-      if (err instanceof HttpError) unanswered = 0
-      else if (++unanswered >= 3) gaveUp = true
+      // Only failures that never reached a server count. A missing or
+      // rejected CurseForge key is an answer, and counting it ended the whole
+      // check with "no connection" while the internet was fine.
+      if (err instanceof NetworkError) {
+        if (++unanswered >= 3) gaveUp = true
+      } else unanswered = 0
     }
   }
 

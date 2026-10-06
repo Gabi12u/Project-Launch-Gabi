@@ -9,7 +9,7 @@ import { notify } from '../events'
 import { withTask } from '../tasks'
 import { extractAllSlowly, listEntriesStreaming, zipFolder, ZIP_TEMP_SUFFIX } from './archive'
 import { getInstance } from './instances'
-import { withRestoreLock } from './restoreLock'
+import { withArchiving, withRestoreLock } from './restoreLock'
 import { isRunning, isStarting } from './running'
 import { isContentBusy } from './contentLock'
 // Not imported from `repair.ts` directly: that file imports `content.ts`,
@@ -201,7 +201,8 @@ const instanceLocks = new Map<string, Promise<unknown>>()
 async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Promise<T> {
   const previous = instanceLocks.get(instanceId) ?? Promise.resolve()
   // A failed operation must not wedge the queue for everything after it.
-  const run = previous.catch(() => undefined).then(fn)
+  // Marked as archiving only once it actually runs, not while it queues.
+  const run = previous.catch(() => undefined).then(() => withArchiving(instanceId, fn))
 
   instanceLocks.set(instanceId, run)
   try {

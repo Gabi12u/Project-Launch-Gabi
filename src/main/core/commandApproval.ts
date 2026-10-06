@@ -26,10 +26,15 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'en
  * garbage collector) never asks; these can start a program as surely as a
  * wrapper command can.
  */
-const CODE_LOADING_JVM_ARG = /(^|\s)(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-Djava\.system\.class\.loader|@)/i
+const CODE_LOADING_JVM_ARG = /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@)/i
 
-export function jvmArgsLoadCode(value: string): boolean {
-  return CODE_LOADING_JVM_ARG.test(value)
+/**
+ * Takes the arguments already split the way they reach Java. Checked on the
+ * raw text, a quoted "-javaagent:..." slipped through: the quote stood where
+ * the pattern expected a space, and the split removed it afterwards.
+ */
+export function jvmArgsLoadCode(args: string[]): boolean {
+  return args.some((arg) => CODE_LOADING_JVM_ARG.test(arg.trim()))
 }
 
 /** Executables an explicit `javaPath` may point at, matched case-insensitively. */

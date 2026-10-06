@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
 import { ensureRootLayout, paths } from './paths'
-import { getSettings, saveSettings, takeInstanceBehaviourMigration } from './store'
+import { getSettings, isSettingsUnreadable, saveSettings, takeInstanceBehaviourMigration } from './store'
 import { getLanguage, setLanguage, tr } from '@shared/i18n'
 import { emit, navigate, notify, setMainWindow, getMainWindow} from './events'
 import { registerIpc } from './ipc'
@@ -334,6 +334,17 @@ function bootstrap(): void {
   void app.whenReady().then(async () => {
     // Before any window or translated text exists; fixed until the next start.
     setLanguage(getSettings().language)
+    if (isSettingsUnreadable()) {
+      notify(
+        'error',
+        tr('Einstellungen gesperrt', 'Settings locked'),
+        tr(
+          'Ein anderes Programm hält die Einstellungsdatei fest, zum Beispiel ein Virenscanner oder OneDrive. Der Launcher nutzt vorerst die Voreinstellungen und ändert an deinen Einstellungen nichts. Starte ihn gleich neu.',
+          'Another program is holding the settings file, such as a virus scanner or OneDrive. The launcher uses the defaults for now and changes nothing in your settings. Restart it in a moment.'
+        ),
+        { timeout: 0 }
+      )
+    }
     // Groups the taskbar entry and makes notifications show the app name.
     app.setAppUserModelId('gg.launchgabi.app')
     nativeTheme.themeSource = 'dark'

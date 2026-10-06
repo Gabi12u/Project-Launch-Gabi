@@ -33,7 +33,7 @@ import { installVersion, loadVersionJson } from './mojang'
 import { readEntryJson } from './archive'
 import { isRunning, isStarting } from './running'
 import { assertNotCopying, isContentBusy, isCopying, markCopying, unmarkCopying, withContentLock, withItemLock } from './contentLock'
-import { isRestoring } from './restoreLock'
+import { isArchiving, isRestoring } from './restoreLock'
 import { isRepairing } from './repairLock'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
 import { tr } from '@shared/i18n'
@@ -289,7 +289,11 @@ function uniqueId(name: string): string {
  * Creates the instance record immediately and installs the game files in the
  * background, so the UI can show the new card right away.
  */
-export async function createInstance(options: CreateInstanceOptions): Promise<Instance> {
+export async function createInstance(
+  options: CreateInstanceOptions,
+  /** Set by the imports, which fill the instance after its base setup. */
+  internal: { importing?: boolean } = {}
+): Promise<Instance> {
   const settings = getSettings()
   const id = uniqueId(options.name)
 
@@ -323,6 +327,9 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
   persist(instance)
   logger.info(`Instanz ${id} (${instance.name}) angelegt`)
 
+  // Taken before the setup starts, so it can never finish ahead of the hold.
+  if (internal.importing) importing.set(id, false)
+
   // Fire and forget: progress is reported through the task system.
   void installInstance(id).catch((err) => {
     if (err instanceof TaskCancelledError) logger.info(`Installation von ${id} abgebrochen`)
@@ -345,6 +352,21 @@ export async function createInstance(options: CreateInstanceOptions): Promise<In
 const settingUp = new Map<string, Promise<void>>()
 
 /**
+ * Instances an import is still filling, mapped to whether their base setup
+ * has finished. The base setup used to mark such an instance installed the
+ * moment Minecraft itself was in place, so "Spielen" showed up while the
+ * pack's mods were still downloading, and a failed import could be flipped
+ * back to installed by a setup finishing after it. The import marks the
+ * instance installed itself once it is done.
+ */
+const importing = new Map<string, boolean>()
+
+/** Releases an import's hold, see `importing`. */
+export function finishImport(id: string): void {
+  importing.delete(id)
+}
+
+/**
  * Waits for the background setup `createInstance`/`installInstance` started
  * for this id, without starting one itself.
  *
@@ -356,7 +378,12 @@ const settingUp = new Map<string, Promise<void>>()
  */
 export async function waitForInstanceSetup(id: string, signal?: AbortSignal): Promise<boolean> {
   const running = settingUp.get(id)
-  if (!running) return tryGetInstance(id)?.installed ?? false
+  if (!running) {
+    // Held by an import, the setup's outcome is not in `installed` yet.
+    const held = importing.get(id)
+    if (held !== undefined) return held
+    return tryGetInstance(id)?.installed ?? false
+  }
 
   if (!signal) {
     try {
@@ -467,7 +494,11 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
         await installVersion(versionJson, current.mcVersion, task)
         task.span(0, 1)
 
-        persist({ ...getInstance(id), installing: false, installed: true })
+        if (importing.has(id)) {
+          importing.set(id, true)
+        } else {
+          persist({ ...getInstance(id), installing: false, installed: true })
+        }
       }
     )
   } catch (err) {
@@ -668,6 +699,11 @@ function assertInstanceIdle(id: string, actionPastParticiple: string): void {
 
 export function deleteInstance(id: string): void {
   assertInstanceIdle(id, tr('gelöscht', 'deleted'))
+  // Only for deleting: a backup or an export only reads, so duplicating
+  // alongside one is fine, but deleting the folder under it was not.
+  if (isArchiving(id)) {
+    throw new Error(tr('Diese Instanz wird gerade gesichert oder exportiert. Warte, bis das fertig ist.', 'This instance is being backed up or exported right now. Wait until that is done.'))
+  }
 
   // Must be a known instance, not just any id the caller made up.
   if (!cache.has(id)) {
@@ -803,7 +839,9 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
   }
 
   const clone: Instance = {
-    ...structuredClone(source),
+    // Read again: the copy can take a while, and a settings change made
+    // meanwhile was missing from the clone made from the record of before.
+    ...structuredClone(tryGetInstance(id) ?? source),
     id: newId,
     name,
     createdAt: Date.now(),
@@ -1054,7 +1092,7 @@ function sameContent(a: ContentItem[], b: ContentItem[]): boolean {
  * instance, and an unconditional write would emit a change event, which the
  * renderer answers with another read.
  */
-export async function syncContentWithDisk(id: string): Promise<Instance> {
+export async function syncContentWithDisk(id: string, options: { force?: boolean } = {}): Promise<Instance> {
   const instance = getInstance(id)
 
   // Never while the folder is being rewritten. An update writes the new jar
@@ -1065,7 +1103,12 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
   // state. Ordinary actions reach this, not just unlucky ones: opening the
   // instance page, pressing the compatibility check, or clicking Play all
   // land here.
-  if (isContentBusy(id)) {
+  //
+  // A restore moves the content folders aside for a moment, and a scan landing
+  // then took every mod for deleted, so it is skipped the same way, as is a
+  // repair. `force` is for the one caller doing that work itself (a repair,
+  // an import): it holds the lock, so without it its own scan never ran.
+  if (!options.force && (isContentBusy(id) || isRestoring(id) || isRepairing(id))) {
     logger.debug(`Abgleich für ${id} übersprungen, es wird gerade geschrieben`)
     return instance
   }
@@ -1187,6 +1230,21 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
     }
   }
 
+  // The scan above awaits (hashing a renamed file), so an install, an update
+  // or a restore can start and even finish while it runs. Saving `result`
+  // regardless wrote this scan's older picture over theirs, and a mod
+  // installed in that window lost its source and version. The newer state is
+  // left alone; the next scan sees the folder as it is then.
+  const fresh = tryGetInstance(id)
+  if (!fresh) return instance
+  if (
+    fresh.content !== instance.content ||
+    (!options.force && (isContentBusy(id) || isRestoring(id) || isRepairing(id)))
+  ) {
+    logger.debug(`Abgleich für ${id} verworfen, die Inhalte haben sich währenddessen geändert`)
+    return fresh
+  }
+
   // A datapack whose file was deleted outside the launcher leaves its copies
   // in the worlds behind; Minecraft kept loading them with no way to remove
   // them from the UI.
@@ -1195,8 +1253,8 @@ export async function syncContentWithDisk(id: string): Promise<Instance> {
     for (const world of gone.worlds) removeDatapackFromWorld(id, world, bareExact(gone.fileName))
   }
 
-  if (sameContent(instance.content, result)) return instance
-  return persist({ ...instance, content: result })
+  if (sameContent(instance.content, result)) return fresh
+  return persist({ ...fresh, content: result })
 
   async function findRenamedRecord(
     dir: string,

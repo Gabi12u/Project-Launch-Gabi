@@ -280,7 +280,14 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
     downloadSizeMb = Math.round(((client + libs + assets) / 1024 / 1024) * 10) / 10
   }
 
-  const account = getActiveAccount()
+  // A locked accounts file now throws instead of reading as empty; this page
+  // only shows the account, so it does without one for the moment.
+  let account: ReturnType<typeof getActiveAccount> = null
+  try {
+    account = getActiveAccount()
+  } catch (err) {
+    logger.debug('Account für die Startprüfung nicht lesbar:', err)
+  }
   const compatibility = await checkCompatibility(instanceId)
 
   return {
@@ -340,6 +347,8 @@ const stopRequested = new Set<string>()
  * second taskkill at the same pid. Cleared once the process actually exits.
  */
 const stopping = new Set<string>()
+/** When the current stop of an instance began, see `stopInstance`. */
+const stoppingSince = new Map<string, number>()
 
 export { isStarting, startingCount }
 
@@ -687,7 +696,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // Arguments that load code of their own ask first, as a wrapper does.
     // An instance folder taken over from someone else could otherwise run
     // its own Java agent on the very first click on Play.
-    if (jvmArgsLoadCode(userText(instance.settings.jvmArgs))) {
+    if (jvmArgsLoadCode(splitUserArgs(instance.settings.jvmArgs))) {
       await ensureApproved(instanceId, instance.name, 'jvmArgs', instance.settings.jvmArgs)
     }
     jvmArgs.push(...splitUserArgs(instance.settings.jvmArgs))
@@ -1303,11 +1312,18 @@ export function stopInstance(instanceId: string, immediate = false): void {
     return
   }
 
-  // Already being stopped: a second taskkill or signal at the same pid buys
-  // nothing and can only race the first one.
-  // An immediate stop (launcher quitting) still goes through, it escalates.
-  if (stopping.has(instanceId) && !immediate) return
+  // Already being stopped. A click within a moment of the first is a double
+  // click and ignored. A later one means the game did not react to being
+  // asked, so it is forced; otherwise the only way out was waiting for the
+  // automatic escalation. An immediate stop (launcher quitting) always forces.
+  const since = stoppingSince.get(instanceId)
+  if (stopping.has(instanceId) && !immediate) {
+    if (since === undefined || Date.now() - since < 1500) return
+    logger.info(`Erneuter Stopp für ${instanceId}, wird erzwungen`)
+    immediate = true
+  }
   stopping.add(instanceId)
+  stoppingSince.set(instanceId, Date.now())
   // A game that survives every attempt must not lock the stop button forever.
   // Long enough to cover the polite request below and its escalation.
   setTimeout(() => {
@@ -1388,6 +1404,11 @@ export function stopInstance(instanceId: string, immediate = false): void {
     asker.on('error', (err) => {
       logger.warn(`Höfliches Beenden von ${instanceId} nicht möglich, wird erzwungen:`, err)
       forceWindows()
+    })
+    asker.on('exit', (code) => {
+      // 128 is taskkill finding no window to ask, for example before the game
+      // window exists. The forced stop below still follows.
+      if (code) logger.info(`Höfliches Beenden von ${instanceId} abgelehnt (Code ${code}), Erzwingen folgt`)
     })
     setTimeout(() => {
       if (getRunning(instanceId)?.process !== game.process) return
