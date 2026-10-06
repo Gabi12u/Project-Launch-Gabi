@@ -263,10 +263,21 @@ async function runRepair(
     )
     let versionId: string
     try {
-      versionId = await resolveVersionId(instance)
+      // Only looks. Allowed to install, a missing Forge or NeoForge ran its
+      // whole installer right here, without a task: no progress, no cancel,
+      // and this step then reported the loader as present. A loader that is
+      // not installed now takes the reinstall path below, with the task.
+      let found: string | null = null
+      try {
+        found = await resolveVersionId(instance, false)
+      } catch (err) {
+        rethrowIfCancelled(err)
+        if (instance.loader === 'vanilla') throw err
+      }
+      versionId = found ?? instance.mcVersion
       const versionFile = join(paths.version(versionId), `${versionId}.json`)
 
-      if (!existsSync(versionFile) && instance.loader !== 'vanilla') {
+      if ((!found || !existsSync(versionFile)) && instance.loader !== 'vanilla') {
         repairLog(instanceId, 'warning', tr(`${instance.loader}-Profil fehlt oder ist unvollständig`, `${instance.loader} profile is missing or incomplete`))
         task.update(tr('Mod-Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.1)
         repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
@@ -293,6 +304,8 @@ async function runRepair(
 
     let versionJson: VersionJson
     let versionJsonRebuilt = false
+    // What the report says about a rebuilt version file, see below.
+    let rebuildNote = ''
     try {
       // Only its existence was checked above. A truncated or half-written
       // version JSON passed that check and then blew up here with a raw
@@ -335,6 +348,10 @@ async function runRepair(
         }
         versionJson = await loadVersionJson(versionId)
         versionJsonRebuilt = true
+        rebuildNote = tr(
+          `Versionsdatei ${versionId}.json war beschädigt und wurde neu erstellt. `,
+          `Version file ${versionId}.json was damaged and has been rebuilt. `
+        )
       } catch (retryErr) {
         rethrowIfCancelled(retryErr)
         step(
@@ -347,6 +364,61 @@ async function runRepair(
             (retryErr instanceof Error ? retryErr.message : String(retryErr))
         )
         return report
+      }
+    }
+
+    // Forge and NeoForge produce some libraries during their install, the
+    // patched client jar among them. Those carry no download address, so the
+    // file check below never looked at them: one of them missing made every
+    // launch fail with "Bibliothek fehlt ... nutze Reparieren", while repair
+    // reported everything fine, sending the user in circles. Only the loader
+    // installer makes them, so it runs again.
+    if (instance.loader !== 'vanilla' && !versionJsonRebuilt) {
+      const unfetchable = resolveLibraries(versionJson).filter((l) => !l.download && !existsSync(l.path))
+      if (unfetchable.length > 0) {
+        repairLog(
+          instanceId,
+          'warning',
+          tr(
+            `${unfetchable.length} vom Mod-Loader erzeugte ${unfetchable.length === 1 ? 'Datei fehlt' : 'Dateien fehlen'}`,
+            `${unfetchable.length} ${unfetchable.length === 1 ? 'file' : 'files'} produced by the mod loader ${unfetchable.length === 1 ? 'is' : 'are'} missing`
+          )
+        )
+        if (activeVersionIds().includes(versionId) || isNativesClaimed(versionId)) {
+          step(
+            tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
+            'failed',
+            tr(
+              `Vom Mod-Loader erzeugte Dateien fehlen. ${instance.loader} wird nicht neu installiert, solange eine andere Instanz mit derselben Version läuft. Beende sie und starte die Reparatur erneut.`,
+              `Files produced by the mod loader are missing. ${instance.loader} is not reinstalled while another instance with the same version is running. Close it and start the repair again.`
+            )
+          )
+          return report
+        }
+        try {
+          task.update(tr('Mod-Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.15)
+          repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
+          // Its presence is what marks the loader installed, so it goes first.
+          rmSync(join(paths.version(versionId), `${versionId}.json`), { force: true })
+          versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+          versionJson = await loadVersionJson(versionId)
+          versionJsonRebuilt = true
+          rebuildNote = tr(
+            `Vom Mod-Loader erzeugte Dateien fehlten, ${instance.loader} wurde neu installiert. `,
+            `Files produced by the mod loader were missing, ${instance.loader} has been reinstalled. `
+          )
+        } catch (retryErr) {
+          rethrowIfCancelled(retryErr)
+          step(
+            tr('Minecraft & Bibliotheken', 'Minecraft & libraries'),
+            'failed',
+            tr(
+              `Vom Mod-Loader erzeugte Dateien fehlten, und ${instance.loader} ließ sich nicht neu installieren: `,
+              `Files produced by the mod loader were missing, and ${instance.loader} could not be reinstalled: `
+            ) + (retryErr instanceof Error ? retryErr.message : String(retryErr))
+          )
+          return report
+        }
       }
     }
 
@@ -382,9 +454,7 @@ async function runRepair(
     // it for a second launch of the same version.
     const versionInUse = (): boolean => activeVersionIds().includes(versionId) || isNativesClaimed(versionId)
 
-    const rebuiltNote = versionJsonRebuilt
-      ? tr(`Versionsdatei ${versionId}.json war beschädigt und wurde neu erstellt. `, `Version file ${versionId}.json was damaged and has been rebuilt. `)
-      : ''
+    const rebuiltNote = rebuildNote
 
     if (versionInUse()) {
       step(

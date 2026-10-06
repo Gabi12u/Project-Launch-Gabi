@@ -169,15 +169,11 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
       throw new Error(tr('Unerwartete Antwort beim Laden der NeoForge-Versionen', 'Unexpected response while loading the NeoForge versions'))
     }
     const prefix = `${mcVersion}-`
-    return data.versions
-      .filter((v) => v.startsWith(prefix))
-      .reverse()
-      .map((version, index) => ({
-        version,
-        gameVersion: mcVersion,
-        stable: !version.includes('beta'),
-        recommended: index === 0
-      }))
+    return neoforgeList(
+      data.versions.filter((v) => v.startsWith(prefix)),
+      mcVersion,
+      prefix.length
+    )
   }
 
   const data = await fetchJsonCached<{ versions: string[] }>(
@@ -192,17 +188,46 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
   }
 
   const prefix = neoforgePrefix(mcVersion)
-  return data.versions
-    // Builds for a snapshot of this version ("+snapshot-3") do not run on
-    // the release itself.
-    .filter((v) => v.startsWith(prefix) && !v.includes('+snapshot'))
-    .reverse()
-    .map((version, index) => ({
-      version,
-      gameVersion: mcVersion,
-      stable: !version.includes('beta') && !version.includes('alpha'),
-      recommended: index === 0
-    }))
+  // Builds for a snapshot of this version ("+snapshot-3") do not run on the
+  // release itself.
+  return neoforgeList(
+    data.versions.filter((v) => v.startsWith(prefix) && !v.includes('+snapshot')),
+    mcVersion,
+    0
+  )
+}
+
+/**
+ * Newest first by build number, with the newest stable build recommended.
+ * The maven listing was only reversed, which is not a numeric order
+ * ("21.1.9" against "21.1.100"), and the first entry was recommended even when
+ * it was a beta while stable builds existed.
+ */
+function neoforgeList(versions: string[], mcVersion: string, skip: number): LoaderVersion[] {
+  const numbers = (v: string): number[] =>
+    v
+      .slice(skip)
+      .split(/[.-]/)
+      .map((part) => Number.parseInt(part, 10))
+      .filter((n) => !Number.isNaN(n))
+  const isStable = (v: string): boolean => !/beta|alpha/i.test(v)
+  const sorted = [...versions].sort((a, b) => {
+    const pa = numbers(a)
+    const pb = numbers(b)
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const diff = (pb[i] ?? 0) - (pa[i] ?? 0)
+      if (diff !== 0) return diff
+    }
+    // Same numbers: the stable build before its beta.
+    return Number(isStable(b)) - Number(isStable(a))
+  })
+  const recommended = sorted.find(isStable) ?? sorted[0]
+  return sorted.map((version) => ({
+    version,
+    gameVersion: mcVersion,
+    stable: isStable(version),
+    recommended: version === recommended
+  }))
 }
 
 // A failed lookup used to return an empty list here, indistinguishable from
@@ -338,6 +363,13 @@ interface ForgeInstall {
   promise: Promise<string>
   listeners: Set<Task>
   controller: AbortController
+  /**
+   * Callers waiting without a task of their own, a launch for one. They
+   * cannot cancel, so while any of them waits the install must not be
+   * aborted: another caller's cancel used to end it, and the launch then
+   * reported a cancellation nobody had asked for.
+   */
+  untasked: number
 }
 
 const inFlightInstalls = new Map<string, ForgeInstall>()
@@ -359,7 +391,7 @@ function waitForSharedInstall(entry: ForgeInstall, task?: Task): Promise<string>
       settled = true
       signal.removeEventListener('abort', onAbort)
       entry.listeners.delete(task)
-      if (entry.listeners.size === 0) entry.controller.abort()
+      if (entry.listeners.size === 0 && entry.untasked === 0) entry.controller.abort()
       reject(new TaskCancelledError())
     }
     if (signal.aborted) {
@@ -402,6 +434,7 @@ export function installForgeLike(
   // it would hand this caller a cancellation it never asked for.
   if (running && !running.controller.signal.aborted) {
     if (task) running.listeners.add(task)
+    else running.untasked++
     return waitForSharedInstall(running, task)
   }
 
@@ -427,14 +460,41 @@ export function installForgeLike(
     }
   } as unknown as Task
 
-  const entry = { listeners, controller } as ForgeInstall
-  entry.promise = installForgeLikeInner(loader, mcVersion, loaderVersion, shared).finally(() => {
-    // A newer install may already own this key after a cancelled one.
-    if (inFlightInstalls.get(key) === entry) inFlightInstalls.delete(key)
+  const entry = { listeners, controller, untasked: task ? 0 : 1 } as ForgeInstall
+
+  // Two builds for the same Minecraft version write the same shared output
+  // jars (the patched client among them), so they take turns instead of
+  // running side by side and failing each other's checks.
+  const before = installsByGame.get(mcVersion)
+  if (before) {
+    shared.update(
+      tr('Wartet auf eine andere Installation für dieselbe Minecraft-Version…', 'Waiting for another installation for the same Minecraft version…'),
+      null
+    )
+  }
+  entry.promise = (before ?? Promise.resolve())
+    .then(() => {
+      shared.throwIfCancelled()
+      return installForgeLikeInner(loader, mcVersion, loaderVersion, shared)
+    })
+    .finally(() => {
+      // A newer install may already own this key after a cancelled one.
+      if (inFlightInstalls.get(key) === entry) inFlightInstalls.delete(key)
+    })
+  const turn = entry.promise.then(
+    () => undefined,
+    () => undefined
+  )
+  installsByGame.set(mcVersion, turn)
+  void turn.then(() => {
+    if (installsByGame.get(mcVersion) === turn) installsByGame.delete(mcVersion)
   })
   inFlightInstalls.set(key, entry)
   return waitForSharedInstall(entry, task)
 }
+
+/** The last install queued per Minecraft version, see `installForgeLike`. */
+const installsByGame = new Map<string, Promise<void>>()
 
 async function installForgeLikeInner(
   loader: ForgeLikeLoader,
@@ -482,7 +542,12 @@ async function installForgeLikeInner(
 
   // The id comes straight out of the installer's own JSON, so it is not
   // trusted as a path/file name component before sanitizing it.
-  const versionId = sanitizeVersionId(versionJson.id ?? profile.version)
+  let versionId = sanitizeVersionId(versionJson.id ?? profile.version)
+  // NeoForge for 1.20.1 kept Forge's naming and calls its version
+  // "1.20.1-forge-47.1.106", the very id a Forge build of the same number
+  // writes, so the two overwrote each other's version file. Named after what
+  // it is instead.
+  if (loader === 'neoforge' && /-forge-/i.test(versionId)) versionId = versionId.replace(/-forge-/i, '-neoforge-')
   versionJson.id = versionId
   // Deliberately not written yet. Its mere presence is what repair.ts takes
   // as proof that the loader is installed, so writing it here meant an
@@ -709,13 +774,20 @@ async function installLegacyForge(
   const target = libraryPath(profile.install.path)
   const zip = new AdmZip(installer)
   const entry = zip.getEntry(profile.install.filePath)
-  if (entry) {
-    assertReasonableSize(entry)
-    mkdirSync(join(target, '..'), { recursive: true })
-    writeFileSync(target, entry.getData())
-  } else {
-    logger.warn(`Universal-Jar ${profile.install.filePath} nicht im Installer gefunden`)
+  if (!entry) {
+    // Its library entry has no download address of its own, so nothing
+    // fetches it later. Carrying on marked Forge installed without it, and
+    // every launch then ended at a missing library.
+    throw new Error(
+      tr(
+        `Der Forge-Installer enthält die Datei ${profile.install.filePath} nicht. Wähle eine andere Forge-Version.`,
+        `The Forge installer does not contain ${profile.install.filePath}. Pick another Forge version.`
+      )
+    )
   }
+  assertReasonableSize(entry)
+  mkdirSync(join(target, '..'), { recursive: true })
+  writeFileSync(target, entry.getData())
 
   const libs = resolveLibraries(versionJson)
   await downloadAll(

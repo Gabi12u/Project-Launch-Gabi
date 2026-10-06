@@ -3873,6 +3873,55 @@ footer .grow { flex: 1; }
       "detail": "Lag dasselbe Datenpaket schon von Hand in einer Welt und ordnete man es im Launcher dieser Welt zu, hielt der Launcher die vorhandene Datei für seine eigene. Beim Ausschalten oder Entfernen des Pakets löschte er sie dann mit.",
       "state": "fixing",
       "since": "2026-10-06"
+    },
+    {
+      "id": "reparatur-loader-dateien-fehlen",
+      "title": "„Reparieren“ half nicht, wenn vom Mod-Loader erzeugte Dateien fehlten",
+      "detail": "Forge und NeoForge erzeugen bei der Installation eigene Dateien, etwa einen angepassten Minecraft-Client. Fehlte eine davon, etwa nach einem Virenscanner, meldete der Start fehlende Bibliotheken und verwies auf „Reparieren“. Die Reparatur prüfte genau diese Dateien aber nicht, meldete alles in Ordnung, und der Start scheiterte wieder.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "neoforge-1201-jeder-start-neu",
+      "title": "NeoForge für Minecraft 1.20.1 wurde vor jedem Start neu eingerichtet",
+      "detail": "Der Launcher erkannte eine schon installierte NeoForge-Version für 1.20.1 nicht wieder, weil sie unter einem Forge-Namen gespeichert wird. Vor jedem Start und jeder Reparatur lief deshalb die ganze Installation erneut, was den Start um Minuten verzögern konnte. Hatten eine Forge- und eine NeoForge-Instanz zufällig dieselbe Build-Nummer, überschrieben sie sich gegenseitig ihre Versionsdatei.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "fabric-profil-fehlt-start-unmoeglich",
+      "title": "Fehlte das Fabric- oder Quilt-Profil, startete die Instanz nicht mehr",
+      "detail": "War die erste Einrichtung von Fabric oder Quilt gescheitert oder der Versionsordner aufgeräumt worden, holte der Launcher das Profil beim Start nicht nach, wie er es bei Forge tut. Der Start brach mit „Minecraft-Version ist unbekannt“ ab.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "reparatur-installiert-forge-unsichtbar",
+      "title": "Die Reparatur installierte Forge oder NeoForge unsichtbar neu",
+      "detail": "Fehlte die Versionsdatei von Forge oder NeoForge, lief die Neuinstallation in der Reparatur ohne Fortschrittsanzeige und ohne Möglichkeit zum Abbrechen, oft mehrere Minuten lang. Danach meldete die Reparatur den Mod-Loader als vorhanden, als wäre nichts gewesen.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "forge-abbruch-trifft-spielstart",
+      "title": "Ein abgebrochener Vorgang konnte einen laufenden Spielstart mit abbrechen",
+      "detail": "Brauchten ein Spielstart und eine Einrichtung oder Reparatur gleichzeitig dieselbe Forge-Installation und wurde die Einrichtung abgebrochen, brach auch der Spielstart ab und meldete „Vorgang abgebrochen“, obwohl ihn niemand abgebrochen hatte.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "forge-fuer-jede-instanz-neu",
+      "title": "Forge und NeoForge wurden für jede neue Instanz erneut installiert",
+      "detail": "Auch wenn eine andere Instanz dieselbe Forge- oder NeoForge-Version schon installiert hatte, lief beim Anlegen einer neuen Instanz die ganze Installation noch einmal, oft mehrere Minuten. Lief die andere Instanz gerade, konnte die Einrichtung unter Windows an gesperrten Dateien scheitern.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "neoforge-beta-als-empfohlen",
+      "title": "NeoForge schlug eine Beta-Version als empfohlen vor",
+      "detail": "Als empfohlene NeoForge-Version galt einfach die neueste, auch wenn sie eine Beta war und stabile Versionen bereitstanden. Neue Instanzen bekamen dann ohne Hinweis eine Beta. Die Reihenfolge der Versionen war außerdem nicht nach Nummern sortiert.",
+      "state": "fixing",
+      "since": "2026-10-06"
     }
   ];
   var ISSUE_LABEL = {
@@ -6708,6 +6757,55 @@ footer .grow { flex: 1; }
       "id": "datenpaket-von-hand-geloescht",
       "title": "A data pack placed by hand could be deleted by the launcher",
       "detail": "If the same data pack had already been placed in a world by hand and was then assigned to that world in the launcher, the launcher took the existing file for its own. Switching the pack off or removing it then deleted that file too.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "reparatur-loader-dateien-fehlen",
+      "title": "\"Repair\" did not help when files produced by the mod loader were missing",
+      "detail": "Forge and NeoForge produce files of their own during installation, such as a patched Minecraft client. If one of them was missing, for example after a virus scanner, the start reported missing libraries and pointed to \"Repair\". The repair did not check exactly those files, though, reported everything as fine, and the start failed again.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "neoforge-1201-jeder-start-neu",
+      "title": "NeoForge for Minecraft 1.20.1 was set up again before every start",
+      "detail": "The launcher did not recognise an already installed NeoForge version for 1.20.1, because it is stored under a Forge name. The whole installation therefore ran again before every start and every repair, which could delay the start by minutes. If a Forge and a NeoForge instance happened to have the same build number, they overwrote each other's version file.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "fabric-profil-fehlt-start-unmoeglich",
+      "title": "If the Fabric or Quilt profile was missing, the instance no longer started",
+      "detail": "If the first setup of Fabric or Quilt had failed or the versions folder had been cleaned up, the launcher did not fetch the profile again on start, as it does for Forge. The start stopped with \"Minecraft version is unknown\".",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "reparatur-installiert-forge-unsichtbar",
+      "title": "The repair reinstalled Forge or NeoForge invisibly",
+      "detail": "If the version file of Forge or NeoForge was missing, the reinstall inside the repair ran without any progress and without a way to cancel, often for several minutes. Afterwards the repair reported the mod loader as present, as if nothing had happened.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "forge-abbruch-trifft-spielstart",
+      "title": "A cancelled task could cancel a running game start along with it",
+      "detail": "If a game start and a setup or repair needed the same Forge installation at the same time and the setup was cancelled, the game start stopped as well and reported \"Cancelled\", although nobody had cancelled it.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "forge-fuer-jede-instanz-neu",
+      "title": "Forge and NeoForge were installed again for every new instance",
+      "detail": "Even if another instance had already installed the same Forge or NeoForge version, creating a new instance ran the whole installation once more, often for several minutes. If the other instance was running at the time, the setup could fail on Windows over locked files.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "neoforge-beta-als-empfohlen",
+      "title": "NeoForge suggested a beta version as recommended",
+      "detail": "The recommended NeoForge version was simply the newest one, even if it was a beta while stable versions were available. New instances then got a beta without a word. The order of the versions was not sorted by number either.",
       "state": "fixing",
       "since": "2026-10-06"
     }

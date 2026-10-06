@@ -21,7 +21,8 @@ import {
   paths,
   removeDatapackFromWorld,
   RESERVED_WINDOWS_NAMES,
-  safeJoin
+  safeJoin,
+  sanitizeVersionId
 } from '../paths'
 import { getSettings, readJsonResult, writeJsonAtomic } from '../store'
 import { emit, notify } from '../events'
@@ -482,12 +483,17 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
         }
 
         task.span(0, 0.25)
-        const versionId = await installLoader(
-          current.loader,
-          current.mcVersion,
-          loaderVersion,
-          task
-        )
+        // A Forge or NeoForge build another instance already installed is
+        // reused. The installer used to run again for every new instance,
+        // minutes of work rewriting shared library jars, and on Windows it
+        // failed outright while a running game held those jars open. A forced
+        // setup still reinstalls.
+        const reusable =
+          !force && (current.loader === 'forge' || current.loader === 'neoforge')
+            ? findInstalledLoaderVersionId(current, loaderVersion)
+            : null
+        const versionId =
+          reusable ?? (await installLoader(current.loader, current.mcVersion, loaderVersion, task))
 
         task.span(0.25, 1)
         const versionJson = await loadVersionJson(versionId)
@@ -527,9 +533,18 @@ export async function resolveVersionId(instance: Instance, install = true): Prom
 
   switch (instance.loader) {
     case 'fabric':
-      return `fabric-loader-${loaderVersion}-${instance.mcVersion}`
-    case 'quilt':
-      return `quilt-loader-${loaderVersion}-${instance.mcVersion}`
+    case 'quilt': {
+      // Sanitized the way the installer names the file it writes, or an id
+      // with a stripped character never matched it.
+      const id = sanitizeVersionId(`${instance.loader}-loader-${loaderVersion}-${instance.mcVersion}`)
+      // A failed first setup or a cleaned versions folder left no profile,
+      // and the start stopped at "Minecraft-Version ... ist unbekannt", while
+      // Forge in the same spot simply installed again.
+      if (install && !existsSync(join(paths.version(id), `${id}.json`))) {
+        return installLoader(instance.loader, instance.mcVersion, loaderVersion)
+      }
+      return id
+    }
     default: {
       // Forge/NeoForge ids vary between generations, so read what the
       // installer wrote instead of guessing.
@@ -552,13 +567,27 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
   // empty for an instance created without pinning a build, and an empty needle
   // matched any installed directory for the loader, including one belonging to
   // a different instance on the same Minecraft version.
-  const needle = loaderVersion
+  //
+  // NeoForge for 1.20.1 is a fork of Forge and kept its naming: its builds are
+  // listed as "1.20.1-47.1.106", and its installer calls the version
+  // "1.20.1-forge-47.1.106". Searched for "neoforge" and the full listing, it
+  // was never found, and the whole installer ran again before every start.
+  // Since then forge.ts names it "1.20.1-neoforge-47.1.106"; both spellings
+  // are found here, told apart from a Forge build of the same number by its
+  // own libraries.
+  const legacyNeo = instance.loader === 'neoforge' && loaderVersion.startsWith(`${instance.mcVersion}-`)
+  const needle = legacyNeo ? loaderVersion.slice(instance.mcVersion.length + 1) : loaderVersion
+  const nameMark = legacyNeo ? 'forge' : instance.loader
   const candidates = readdirSync(dir).filter((name) => {
     const lower = name.toLowerCase()
-    if (!lower.includes(instance.loader)) return false
+    if (!lower.includes(nameMark)) return false
     // As a whole build number, not a substring: "21.1.17" also sits inside
     // "neoforge-21.1.172", and the longer id won the sort below.
     if (needle && !containsBuild(lower, needle.toLowerCase())) return false
+    // "forge" also sits inside every NeoForge id, and an older 1.20.1
+    // NeoForge install is named like a Forge one.
+    if (instance.loader === 'forge' && isNeoforgeVersion(dir, name)) return false
+    if (legacyNeo && !isNeoforgeVersion(dir, name)) return false
     // Always required, needle or not. `|| Boolean(needle)` used to stand here,
     // which is true whenever a needle is given, so the mcVersion check was
     // skipped in exactly the case that matters: `resolveVersionId` always
@@ -575,6 +604,15 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
   })
 
   return candidates.sort((a, b) => b.length - a.length)[0] ?? null
+}
+
+/** True when an installed version's own libraries come from NeoForge. */
+function isNeoforgeVersion(versionsDir: string, versionId: string): boolean {
+  try {
+    return /"net\.neoforged[.:]/.test(readFileSync(join(versionsDir, versionId, `${versionId}.json`), 'utf8'))
+  } catch {
+    return false
+  }
 }
 
 /** True when `build` appears in `name` with no digit or dot right before or after it. */
