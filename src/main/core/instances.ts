@@ -26,6 +26,7 @@ import {
 } from '../paths'
 import { getSettings, readJsonResult, readPreviousJson, writeJsonAtomic } from '../store'
 import { guessGameOfFolder } from './instanceFolder'
+import { sleptBetween } from './sleep'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { TaskCancelledError, withTask } from '../tasks'
@@ -1546,7 +1547,12 @@ export function recordSession(
   const instance = tryGetInstance(id)
   if (!instance) return
 
-  const durationMs = Math.max(0, session.endedAt - session.startedAt)
+  // Without the time the computer slept: the game survives a standby, and a
+  // night in it counted as eight hours played.
+  const durationMs = Math.max(
+    0,
+    session.endedAt - session.startedAt - sleptBetween(session.startedAt, session.endedAt)
+  )
   const sessions = [{ ...session, durationMs }, ...instance.sessions].slice(0, 50)
 
   persist({

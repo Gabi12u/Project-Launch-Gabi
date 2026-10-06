@@ -1,6 +1,9 @@
 import { app } from 'electron'
-import { join } from 'node:path'
-import type { ChildProcess } from 'node:child_process'
+import { basename, join } from 'node:path'
+import { execFileSync, type ChildProcess } from 'node:child_process'
+import { statSync } from 'node:fs'
+import { uptime } from 'node:os'
+import { paths } from '../paths'
 import type { LaunchStatus } from '@shared/types'
 import { readJson, writeJsonAtomic } from '../store'
 import { log } from '../logger'
@@ -27,6 +30,11 @@ export interface RunningGame {
  * We have no `ChildProcess` for these, only a pid.
  */
 export interface AdoptedGame {
+  /**
+   * File name of the program that was started (javaw.exe, or a wrapper).
+   * Missing in entries from older builds.
+   */
+  image?: string
   instanceId: string
   pid: number
   startedAt: number
@@ -44,6 +52,55 @@ function stateFile(): string {
   // userData, not the data directory: this is process state, and it has to
   // survive the user pointing the launcher somewhere else.
   return join(app.getPath('userData'), 'running.json')
+}
+
+/**
+ * File name of the program running under a pid, or null when that cannot be
+ * told (gone, or the lookup failed).
+ */
+function processImage(pid: number): string | null {
+  try {
+    if (process.platform === 'win32') {
+      const out = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'], {
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: 5000
+      })
+      const row = /^"([^"]+)","(\d+)"/m.exec(out)
+      return row && Number(row[2]) === pid ? row[1] : null
+    }
+    const out = execFileSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8', timeout: 5000 }).trim()
+    return out ? basename(out) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Whether the pid of an adopted game still belongs to the program that was
+ * started then. Null when that cannot be told. A pid is handed to other
+ * programs once its own ends, so a living pid alone proves nothing.
+ */
+export function isSameProgram(game: AdoptedGame): boolean | null {
+  const now = processImage(game.pid)
+  if (now === null) return null
+  if (game.image) return now.toLowerCase() === game.image.toLowerCase()
+  return /^javaw?(\.exe)?$/i.test(now)
+}
+
+/**
+ * When a game that ended while the launcher was closed was last seen alive:
+ * the last write to its own log, which Minecraft makes up to the moment it
+ * quits. Null when that says nothing believable.
+ */
+function lastSignOfLife(game: AdoptedGame): number | null {
+  try {
+    const written = statSync(join(paths.gameDir(game.instanceId), 'logs', 'latest.log')).mtimeMs
+    if (written <= game.startedAt || written > Date.now()) return null
+    return written
+  } catch {
+    return null
+  }
 }
 
 /** True while the OS still knows this pid. */
@@ -67,7 +124,8 @@ function persist(): void {
         instanceId: game.instanceId,
         pid: game.process.pid as number,
         startedAt: game.startedAt,
-        versionId: game.versionId
+        versionId: game.versionId,
+        image: game.process.spawnfile ? basename(game.process.spawnfile) : undefined
       })),
     ...adopted.values()
   ]
@@ -107,6 +165,8 @@ export function adoptRunningFromDisk(): void {
 
   adopted.clear()
   const now = Date.now()
+  const bootedAt = now - uptime() * 1000
+  const endedMeanwhile: AdoptedGame[] = []
   for (const entry of stored) {
     if (!entry || typeof entry.instanceId !== 'string' || typeof entry.pid !== 'number') continue
     // Fails closed on a missing or unusable timestamp. Requiring a number
@@ -121,7 +181,14 @@ export function adoptRunningFromDisk(): void {
       logger.info(`Eintrag für ${entry.instanceId} ist zu alt und wird verworfen`)
       continue
     }
-    if (!alive(entry.pid)) continue
+    // A game cannot outlive the computer it ran on, and after a reboot any
+    // program may hold that pid. Taken as alive, it locked the instance for
+    // up to the age cap above. Windows fast startup keeps the uptime running,
+    // which is what the program check covers.
+    if (entry.startedAt < bootedAt || !alive(entry.pid) || isSameProgram(entry) === false) {
+      endedMeanwhile.push(entry)
+      continue
+    }
     adopted.set(entry.instanceId, entry)
   }
 
@@ -130,6 +197,13 @@ export function adoptRunningFromDisk(): void {
     ensureAdoptedCheck()
   }
   persist()
+
+  // Ended while the launcher was closed. Dropped silently, these sessions
+  // never reached the play time.
+  for (const entry of endedMeanwhile) {
+    const endedAt = lastSignOfLife(entry)
+    if (endedAt !== null) adoptedEnded(entry, endedAt)
+  }
 }
 
 /**
@@ -375,8 +449,7 @@ export function onAdoptedEnded(listener: AdoptedEndListener): () => void {
   return () => adoptedEndListeners.delete(listener)
 }
 
-function adoptedEnded(game: AdoptedGame): void {
-  const endedAt = Date.now()
+function adoptedEnded(game: AdoptedGame, endedAt = Date.now()): void {
   for (const listener of adoptedEndListeners) {
     try {
       listener(game, endedAt)

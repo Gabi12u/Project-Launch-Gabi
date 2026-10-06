@@ -2823,6 +2823,60 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'If a file of your own, for example a data pack, had the same file name as a resource pack from ' +
       'Modrinth, the export left it out, because it compared only the name and not the folder. It was ' +
       'missing from the finished modpack without any notice.'
+  },
+  'bat-befehl-spawn-einval': {
+    title: 'A .bat or .cmd file as pre-launch command or wrapper failed',
+    detail:
+      'On Windows the system refuses to start .bat and .cmd files directly since a security change. ' +
+      'Such a script as pre-launch command or wrapper therefore stopped the game start with the ' +
+      'cryptic message "spawn EINVAL".'
+  },
+  'stopp-uebernommenes-spiel-gibt-frei': {
+    title: '"Stop" on a game from an earlier session freed the instance while it kept running',
+    detail:
+      'If Minecraft was still running when the launcher restarted, the instance did show "Running", ' +
+      'but clicking "Stop" only removed the entry. The game kept running, the instance counted as ' +
+      'free, and a second start on the same world was possible.'
+  },
+  'neustart-pc-instanz-gesperrt': {
+    title: 'After restarting the PC an instance could be locked for up to 18 hours',
+    detail:
+      'If the PC went off while Minecraft was running, the launcher took any other program with the ' +
+      'same process number for the old game on its next start. The instance then reported "Minecraft ' +
+      'is still running from an earlier session" and could not be started.'
+  },
+  'spielzeit-ohne-launcher-verloren': {
+    title: 'Play time was lost if the game ended while the launcher was closed',
+    detail:
+      'If Minecraft outlived the launcher, for example after a launcher crash or update, and ended ' +
+      'before it was running again, that session was never counted. The instance\'s play time then ' +
+      'lacked it without any notice.'
+  },
+  'startpruefung-falsches-java': {
+    title: 'The pre-launch check showed a different Java than the launch used',
+    detail:
+      'With automatic Java management the overview before launch showed an installed, newer Java, ' +
+      'while the launch itself downloaded and used the matching one. If Java was missing entirely or a ' +
+      'custom path still needed approval, it said "Loading" for good, although nothing was loading.'
+  },
+  'log-zeigt-alte-sitzung': {
+    title: 'The log of a new start began with the lines of the previous one',
+    detail:
+      'After a crash and a new start the live log first showed the old crash and only below it the new ' +
+      'session. Whether the game had crashed again could not be told at a glance.'
+  },
+  'apostroph-in-befehlen': {
+    title: 'An apostrophe in paths or arguments broke the command apart',
+    detail:
+      'A single apostrophe, for example in "C:\\Users\\O\'Brien\\..." as pre-launch command or in a Java ' +
+      'argument, split the value in two at that point. Two apostrophes in different parts even ' +
+      'swallowed the text in between.'
+  },
+  'spielzeit-zaehlt-standby': {
+    title: 'Standby and hibernation counted as play time',
+    detail:
+      'If a laptop went into standby with the game open, all the time until it woke up counted as ' +
+      'played. A night in standby turned into an eight-hour session that way.'
   }
 }
 

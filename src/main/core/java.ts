@@ -604,12 +604,13 @@ interface AdoptiumArchiveMetadata {
  */
 async function adoptiumArchiveMetadata(
   major: number,
-  imageType: 'jdk' | 'jre'
+  imageType: 'jdk' | 'jre',
+  arch = adoptiumArch()
 ): Promise<AdoptiumArchiveMetadata | 'unavailable' | null> {
   try {
     const url =
       `https://api.adoptium.net/v3/assets/latest/${major}/hotspot` +
-      `?architecture=${adoptiumArch()}&image_type=${imageType}&os=${adoptiumOs()}&vendor=eclipse`
+      `?architecture=${arch}&image_type=${imageType}&os=${adoptiumOs()}&vendor=eclipse`
     const releases = await fetchJson<
       Array<{ binary?: { package?: { link?: string; size?: number; checksum?: string } } }>
     >(url)
@@ -666,7 +667,14 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
 
   const imageType = major <= 8 ? 'jdk' : 'jre'
 
-  const metadata = await adoptiumArchiveMetadata(major, imageType)
+  let metadata = await adoptiumArchiveMetadata(major, imageType)
+  // Windows and macOS on ARM run x64 programs through emulation, while
+  // Temurin has no ARM build of the older Java versions old Minecraft needs.
+  // Refusing outright left those versions unplayable there.
+  if (metadata === 'unavailable' && adoptiumArch() === 'aarch64' && (process.platform === 'win32' || process.platform === 'darwin')) {
+    logger.info(`Kein ARM-Paket für Java ${major}, nehme das x64-Paket`)
+    metadata = await adoptiumArchiveMetadata(major, imageType, 'x64')
+  }
   if (metadata === 'unavailable') {
     throw new Error(
       tr(
@@ -867,10 +875,15 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
  * Resolves the runtime to launch with: an explicit override wins, otherwise
  * the best matching detected runtime, otherwise a managed download.
  */
+/** Thrown by `resolveJava` with `noInstall` where it would have downloaded Java. */
+export class JavaNotInstalledError extends Error {}
+
 export async function resolveJava(options: {
   explicitPath?: string
   major: number
   autoManage: boolean
+  /** Reports what would be downloaded instead of downloading it. */
+  noInstall?: boolean
   task?: Task
   /** Only for the mismatch warning below, to link back to where it was set. */
   instanceId?: string
@@ -986,6 +999,9 @@ export async function resolveJava(options: {
     )
   }
 
+  if (options.noInstall) {
+    throw new JavaNotInstalledError(tr(`Java ${major} wird beim Start geladen.`, `Java ${major} is downloaded on start.`))
+  }
   return installJava(major, task)
 }
 

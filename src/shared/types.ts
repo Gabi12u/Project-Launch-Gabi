@@ -591,6 +591,13 @@ export interface LaunchPreflight {
   memoryMb: number
   systemMemoryMb: number
   java: { major: number; version: string; path: string; managed: boolean } | null
+  /**
+   * Why `java` is empty: downloaded on start, a custom path still waiting for
+   * approval, or no suitable one at all.
+   */
+  javaPending?: 'download' | 'approval' | 'missing'
+  /** The Java major version this instance needs. */
+  javaNeeded?: number
   modCount: number
   enabledModCount: number
   resourcePackCount: number

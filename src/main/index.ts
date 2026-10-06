@@ -10,6 +10,7 @@ import { registerIpc } from './ipc'
 import { launchInstance } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, onAdoptedEnded, ownRunningCount, pruneAdopted, runningCount, startingCount } from './core/running'
+import { watchSleep } from './core/sleep'
 import { cleanTempFiles } from './core/repair'
 import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
@@ -381,6 +382,7 @@ function bootstrap(): void {
     // A game that outlived a launcher restart has no exit handler here, so
     // its play time and session were never recorded. The end is noticed by
     // the regular adopted check, a few seconds late at most.
+    watchSleep()
     onAdoptedEnded((game, endedAt) => {
       try {
         recordSession(game.instanceId, { startedAt: game.startedAt, endedAt, crashed: false, exitCode: null })

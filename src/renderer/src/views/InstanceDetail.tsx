@@ -637,18 +637,30 @@ function OverviewTab({
             value={
               preflight?.java
                 ? `Java ${preflight.java.major}`
-                : checkFailed && !preflight
-                  ? tr('Nicht geprüft', 'Not checked')
-                  : tr('Wird geladen', 'Loading')
+                : preflight?.javaPending === 'download'
+                  ? `Java ${preflight.javaNeeded ?? ''}`.trim()
+                  : preflight?.javaPending === 'approval'
+                    ? tr('Eigener Pfad', 'Custom path')
+                    : preflight?.javaPending === 'missing'
+                      ? tr('Fehlt', 'Missing')
+                      : checkFailed && !preflight
+                        ? tr('Nicht geprüft', 'Not checked')
+                        : tr('Wird geladen', 'Loading')
             }
             hint={
               preflight?.java
                 ? preflight.java.managed
                   ? tr('verwaltet', 'managed')
                   : tr('System', 'system')
-                : checkFailed && !preflight
-                  ? tr('Neu prüfen oben rechts', 'Use Check again at the top right')
-                  : tr('bei Bedarf', 'when needed')
+                : preflight?.javaPending === 'download'
+                  ? tr('wird beim Start geladen', 'downloaded on start')
+                  : preflight?.javaPending === 'approval'
+                    ? tr('wird beim Start bestätigt', 'confirmed on start')
+                    : preflight?.javaPending === 'missing'
+                      ? tr(`Java ${preflight.javaNeeded ?? ''} installieren`, `install Java ${preflight.javaNeeded ?? ''}`)
+                      : checkFailed && !preflight
+                        ? tr('Neu prüfen oben rechts', 'Use Check again at the top right')
+                        : tr('bei Bedarf', 'when needed')
             }
           />
           <Cell

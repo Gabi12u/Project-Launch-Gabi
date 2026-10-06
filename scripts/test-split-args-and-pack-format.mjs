@@ -66,6 +66,7 @@ try {
      const startScreen = require(${JSON.stringify(join(root, 'src/main/core/startScreen.ts'))})
      module.exports = {
        splitUserArgs: launch.splitUserArgs,
+       userCommand: launch.userCommand,
        packFormatFor: startScreen.packFormatFor
      }`
   )
@@ -81,7 +82,7 @@ try {
     logLevel: 'error'
   })
 
-  const { splitUserArgs, packFormatFor } = require(out)
+  const { splitUserArgs, userCommand, packFormatFor } = require(out)
 
   /* ------------------------------------------------------------------ *
    * splitUserArgs: quotes that do not sit at the very edge of a token.
@@ -128,6 +129,29 @@ try {
       twoQuotedInOne[1] === '-javaagent:C:\\A B\\a.jar',
     `splitUserArgs(zwei gequotete Argumente) ergab ${JSON.stringify(twoQuotedInOne)}`
   )
+
+  // An apostrophe inside a word is part of it, not the start of a quote.
+  const apostrophe = splitUserArgs("C:\\Users\\O'Brien\\prep.exe --name D'Arcy")
+  check(
+    apostrophe.length === 3 && apostrophe[0] === "C:\\Users\\O'Brien\\prep.exe" && apostrophe[2] === "D'Arcy",
+    `splitUserArgs mit Apostrophen ergab ${JSON.stringify(apostrophe)}`
+  )
+  const unclosed = splitUserArgs('-Dname="offen')
+  check(
+    unclosed.length === 1 && unclosed[0] === '-Dname="offen',
+    `Nicht geschlossenes Anfuehrungszeichen ergab ${JSON.stringify(unclosed)}`
+  )
+
+  // .bat and .cmd go through cmd.exe on Windows, everything else directly.
+  const exe = userCommand(['C:\\tools\\wrap.exe', '-a'])
+  check(exe.file === 'C:\\tools\\wrap.exe' && !exe.verbatim, `userCommand(.exe) ergab ${JSON.stringify(exe)}`)
+  if (process.platform === 'win32') {
+    const bat = userCommand(['C:\\A B\\prep.bat', 'x y'])
+    check(
+      bat.verbatim && /cmd\.exe$/i.test(bat.file) && bat.args[3] === '""C:\\A B\\prep.bat" "x y""',
+      `userCommand(.bat) ergab ${JSON.stringify(bat)}`
+    )
+  }
 
   notes.push(`splitUserArgs: ${JSON.stringify(jvmArgQuoted)}, ${JSON.stringify(javaAgentQuoted)}, ${JSON.stringify(barePathQuoted)}`)
 

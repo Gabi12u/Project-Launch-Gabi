@@ -4408,6 +4408,86 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'fertigen Modpack fehlte sie ohne Hinweis.',
     state: 'fixing',
     since: '2026-10-06'
+  },
+  {
+    id: 'bat-befehl-spawn-einval',
+    title: 'Eine .bat- oder .cmd-Datei als Befehl vor dem Start oder als Wrapper scheiterte',
+    detail:
+      'Unter Windows lehnt das System das direkte Starten von .bat- und .cmd-Dateien seit einer ' +
+      'Sicherheitsänderung ab. Ein solches Skript als Befehl vor dem Start oder als Wrapper brach den ' +
+      'Spielstart deshalb mit der unverständlichen Meldung „spawn EINVAL“ ab.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'stopp-uebernommenes-spiel-gibt-frei',
+    title: '„Stoppen“ bei einem Spiel aus einer früheren Sitzung gab die Instanz frei, obwohl es weiterlief',
+    detail:
+      'Lief Minecraft noch, als der Launcher neu startete, zeigte die Instanz zwar „Läuft“, aber ein ' +
+      'Klick auf „Stoppen“ entfernte nur den Eintrag. Das Spiel lief weiter, die Instanz galt als ' +
+      'frei, und ein zweiter Start auf derselben Welt war möglich.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'neustart-pc-instanz-gesperrt',
+    title: 'Nach einem Neustart des PCs konnte eine Instanz bis zu 18 Stunden gesperrt sein',
+    detail:
+      'Ging der PC aus, während Minecraft lief, hielt der Launcher beim nächsten Start ein beliebiges ' +
+      'anderes Programm mit derselben Prozessnummer für das alte Spiel. Die Instanz meldete dann ' +
+      '„Minecraft läuft noch aus einer früheren Sitzung“ und ließ sich nicht starten.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'spielzeit-ohne-launcher-verloren',
+    title: 'Spielzeit ging verloren, wenn das Spiel endete, während der Launcher geschlossen war',
+    detail:
+      'Überlebte Minecraft den Launcher, etwa nach einem Absturz oder Update des Launchers, und ' +
+      'endete, bevor er wieder lief, wurde diese Sitzung nie gezählt. Die Spielzeit der Instanz fehlte ' +
+      'dann ohne Hinweis.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'startpruefung-falsches-java',
+    title: 'Die Prüfung vor dem Start zeigte ein anderes Java als der Start benutzte',
+    detail:
+      'Mit automatischer Java-Verwaltung zeigte die Übersicht vor dem Start ein vorhandenes, neueres ' +
+      'Java an, während der Start selbst das passende Java herunterlud und verwendete. Fehlte Java ' +
+      'ganz oder musste ein eigener Pfad noch bestätigt werden, stand dort dauerhaft „Wird geladen“, ' +
+      'obwohl nichts geladen wurde.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'log-zeigt-alte-sitzung',
+    title: 'Das Log eines neuen Starts begann mit den Zeilen des vorigen',
+    detail:
+      'Nach einem Absturz und erneutem Start zeigte das Live-Log zuerst den alten Absturz und erst ' +
+      'darunter die neue Sitzung. Ob das Spiel wieder abgestürzt war, ließ sich so nicht auf einen ' +
+      'Blick erkennen.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'apostroph-in-befehlen',
+    title: 'Ein Apostroph in Pfaden oder Argumenten zerlegte den Befehl',
+    detail:
+      'Ein einzelnes Apostroph, etwa in „C:\\Users\\O\'Brien\\…“ als Befehl vor dem Start oder in einem ' +
+      'Java-Argument, teilte den Wert an dieser Stelle in zwei. Zwei Apostrophe in verschiedenen ' +
+      'Teilen verschluckten sogar den Text dazwischen.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'spielzeit-zaehlt-standby',
+    title: 'Standby und Ruhezustand zählten als Spielzeit',
+    detail:
+      'Ging ein Laptop mit offenem Spiel in den Standby, zählte die ganze Zeit bis zum Aufwachen als ' +
+      'gespielt. Eine Nacht im Standby ergab so eine achtstündige Sitzung.',
+    state: 'fixing',
+    since: '2026-10-06'
   }
 ]
 

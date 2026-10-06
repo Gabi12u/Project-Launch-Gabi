@@ -26,7 +26,13 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'en
  * garbage collector) never asks; these can start a program as surely as a
  * wrapper command can.
  */
-const CODE_LOADING_JVM_ARG = /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@)/i
+//
+// Arguments that point the JVM, its native libraries or the mod loader at
+// other code count as well: given after the launcher's own, a classpath or
+// module path replaces the real one, and a folder shipped with an imported
+// instance could be loaded from there without a word.
+const CODE_LOADING_JVM_ARG =
+  /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile)/i
 
 /**
  * Takes the arguments already split the way they reach Java. Checked on the
@@ -75,12 +81,25 @@ function kindText(kind: CommandKind): { title: string; detail: (name: string, va
   return {
     title: texts.title,
     detail: (name, value) =>
-      `${texts.intro(name)}\n\n${value}\n\n` +
+      `${texts.intro(name)}\n\n${shownValue(value)}\n\n` +
       tr(
         'Erlaube das nur, wenn du diesen Befehl oder Pfad selbst eingerichtet hast.',
         'Only allow this if you set up this command or path yourself.'
       )
   }
+}
+
+/**
+ * The value as the dialog shows it. Blank lines and runs of spaces are
+ * squeezed out: as typed, padding could push the part that matters out of
+ * the visible area of the message box.
+ */
+function shownValue(value: string): string {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
 }
 
 function isUncPath(value: string): boolean {

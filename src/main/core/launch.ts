@@ -26,7 +26,7 @@ import {
   type VersionJson
 } from './mojang'
 import { extractNatives } from './archive'
-import { is32BitJava, requiredJavaMajor, resolveJava } from './java'
+import { is32BitJava, JavaNotInstalledError, requiredJavaMajor, resolveJava } from './java'
 import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath, jvmArgsLoadCode } from './commandApproval'
 import {
   getInstance,
@@ -40,7 +40,7 @@ import {
 import { checkCompatibility } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
 import { SignInUnavailableError, getActiveAccount, getValidAccessToken, storedAccessToken, toPublicAccount } from '../auth/microsoft'
-import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount } from './running'
+import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isSameProgram, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount } from './running'
 import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
@@ -216,14 +216,70 @@ function windowSize(value: number, fallback: number): number {
 }
 
 export function splitUserArgs(raw: string): string[] {
-  // Respects quoted segments so paths with spaces survive.
-  const matches = userText(raw).match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? []
-  // Every quoted run inside a token is unwrapped, not just a quote sitting at
-  // the token's own start/end, so `-Dfoo="C:\Program Files\x"` becomes
+  // Respects quoted segments so paths with spaces survive. Every quoted run
+  // inside a token is unwrapped, not just a quote sitting at the token's own
+  // start/end, so `-Dfoo="C:\Program Files\x"` becomes
   // `-Dfoo=C:\Program Files\x` instead of keeping a stray leading quote.
-  return matches
-    .map((a) => a.replace(/"([^"]*)"|'([^']*)'/g, (_m, d, s) => d ?? s ?? ''))
-    .filter(Boolean)
+  //
+  // A single quote opens a quoted run only where one can start (at the start
+  // of a token, or after "=" or ":") and only if it is closed again. Taken
+  // anywhere, the apostrophe in "C:\Users\O'Brien" split the path in two,
+  // and two of them in different parts swallowed the text in between.
+  const text = userText(raw)
+  const tokens: string[] = []
+  let current = ''
+  let inToken = false
+  let quote: '"' | "'" | null = null
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (quote) {
+      if (c === quote) quote = null
+      else current += c
+      continue
+    }
+    if (/\s/.test(c)) {
+      if (inToken) tokens.push(current)
+      current = ''
+      inToken = false
+      continue
+    }
+    const closed = text.indexOf(c, i + 1) !== -1
+    const opensSingle = c === "'" && closed && (!inToken || /[=:]$/.test(current))
+    if ((c === '"' && closed) || opensSingle) {
+      quote = c
+      inToken = true
+      continue
+    }
+    current += c
+    inToken = true
+  }
+  if (inToken) tokens.push(current)
+  return tokens.filter(Boolean)
+}
+
+/**
+ * How to start a command the user typed in. Node refuses to start a .bat or
+ * .cmd file directly since a security fix in 2024 ("spawn EINVAL"), and
+ * scripts are what most people put into these fields on Windows. Those run
+ * through cmd.exe instead, every part quoted.
+ */
+export function userCommand(parts: string[]): { file: string; args: string[]; verbatim: boolean } {
+  const [first = '', ...rest] = parts
+  if (process.platform !== 'win32' || !/\.(bat|cmd)$/i.test(first)) {
+    return { file: first, args: rest, verbatim: false }
+  }
+  const line = parts.map((part) => `"${part.replace(/"/g, '""')}"`).join(' ')
+  // cmd.exe takes at most 8191 characters, and the full Java command of a
+  // modded instance is often longer than that.
+  if (line.length > 8000) {
+    throw new Error(
+      tr(
+        'Ein .bat- oder .cmd-Skript kann einen so langen Befehl nicht weitergeben, weil cmd.exe ihn auf 8191 Zeichen begrenzt. Nutze ein Programm (.exe) als Wrapper.',
+        'A .bat or .cmd script cannot pass on a command this long, because cmd.exe limits it to 8191 characters. Use a program (.exe) as the wrapper.'
+      )
+    )
+  }
+  return { file: process.env.ComSpec || 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`], verbatim: true }
 }
 
 /* ------------------------------------------------------------------ *
@@ -247,6 +303,11 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
     : requiredJavaMajor({ libraries: [] } as unknown as VersionJson, instance.mcVersion)
 
   let java: LaunchPreflight['java'] = null
+  // Said instead of a lasting "Wird geladen" when no Java is shown: whether
+  // one gets downloaded on start, a custom path waits for approval, or none
+  // fits at all.
+  let javaPending: LaunchPreflight['javaPending']
+  const neededJava = instance.settings.javaMajorOverride ?? javaMajor
   const explicitJavaPath = instance.settings.javaPath || undefined
   // This runs unprompted every time the instance page opens, so an explicit
   // path that has not been approved yet must never be probed here: that would
@@ -259,16 +320,22 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
     try {
       const runtime = await resolveJava({
         explicitPath: explicitJavaPath,
-        major: instance.settings.javaMajorOverride ?? javaMajor,
-        // Never trigger a download from the preflight panel.
-        autoManage: false,
+        major: neededJava,
+        // The same choice the launch makes. With `autoManage: false` this
+        // showed an installed newer Java while the launch downloaded and used
+        // the matching one. `noInstall` keeps the download for the launch.
+        autoManage: getSettings().javaAutoManage,
+        noInstall: true,
         instanceId: instance.id,
         announce: false
       })
       java = { major: runtime.major, version: runtime.version, path: runtime.path, managed: runtime.managed }
-    } catch {
+    } catch (err) {
       java = null
+      javaPending = err instanceof JavaNotInstalledError ? 'download' : 'missing'
     }
+  } else {
+    javaPending = 'approval'
   }
 
   // Rough estimate of what still has to be downloaded.
@@ -298,6 +365,8 @@ export async function preflight(instanceId: string): Promise<LaunchPreflight> {
     memoryMb: instance.settings.memoryMb,
     systemMemoryMb: Math.round(totalmem() / 1024 / 1024),
     java,
+    javaPending,
+    javaNeeded: neededJava,
     modCount: instance.content.filter((c) => c.type === 'mod').length,
     enabledModCount: instance.content.filter((c) => c.type === 'mod' && c.enabled).length,
     resourcePackCount: instance.content.filter((c) => c.type === 'resourcepack').length,
@@ -430,6 +499,17 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
   stopRequested.delete(instanceId)
 
   try {
+    // The log of the last session goes, so this one starts on its own. Kept,
+    // a crash from before sat above the new start and read like a new crash.
+    // Views still open get a line marking where the new start begins.
+    dropLogBuffer(instanceId)
+    pushLog({
+      instanceId,
+      stream: 'launcher',
+      level: 'info',
+      text: tr(`Neuer Start um ${new Date().toLocaleTimeString()}`, `New start at ${new Date().toLocaleTimeString()}`),
+      time: Date.now()
+    })
     setStatus(instanceId, 'preparing', tr('Vorbereitung…', 'Preparing…'))
     openGameLogWindow(instanceId, instance.name)
 
@@ -602,6 +682,11 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       await buildVirtualAssets(versionJson, virtualDir)
       assetsRoot = virtualDir
     }
+    if (assetsIndexName === 'pre-1.6') {
+      // Minecraft 1.5.2 and older look for their sounds in "resources" inside
+      // the game folder, which is where the official launcher puts them too.
+      await buildVirtualAssets(versionJson, join(gameDir, 'resources'))
+    }
 
     // 8. Arguments ---------------------------------------------------
     // A non-numeric value from a hand-edited instance.json would otherwise
@@ -763,11 +848,13 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     let command = javaBinary
     let commandArgs = args
+    let verbatimArgs = false
     if (userText(instance.settings.wrapperCommand).trim()) {
       await ensureApproved(instanceId, instance.name, 'wrapper', instance.settings.wrapperCommand)
-      const wrapper = splitUserArgs(instance.settings.wrapperCommand)
-      command = wrapper[0]
-      commandArgs = [...wrapper.slice(1), javaBinary, ...args]
+      const wrapper = userCommand([...splitUserArgs(instance.settings.wrapperCommand), javaBinary, ...args])
+      command = wrapper.file
+      commandArgs = wrapper.args
+      verbatimArgs = wrapper.verbatim
     }
 
     logger.info(`Kommando: ${command} (${commandArgs.length} Argumente)`)
@@ -786,6 +873,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       cwd: gameDir,
       env,
       windowsHide: true,
+      windowsVerbatimArguments: verbatimArgs,
       detached: false
     })
 
@@ -1183,9 +1271,10 @@ const PRE_LAUNCH_TIMEOUT_MS = 5 * 60_000
 async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promise<void> {
   const parts = splitUserArgs(instance.settings.preLaunchCommand)
   if (parts.length === 0) return
+  const run = userCommand(parts)
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(parts[0], parts.slice(1), { cwd, windowsHide: true })
+    const child = spawn(run.file, run.args, { cwd, windowsHide: true, windowsVerbatimArguments: run.verbatim })
 
     const settle = (fn: () => void): void => {
       clearTimeout(timeout)
@@ -1296,6 +1385,48 @@ function handleWindowRestore(instanceId: string): void {
  *   to SIGKILL five seconds later dies with the process that armed it — leaving
  *   a JVM that ignored SIGTERM running with nothing left to supervise it.
  */
+/** When the last stop of an adopted game was asked for, per instance. */
+const adoptedStopAsked = new Map<string, number>()
+
+/**
+ * Stops a game an earlier launcher session started. Asked first, the way the
+ * window's own close button asks, so the world is saved; a second click a
+ * moment later forces it, as for a game this session started. The regular
+ * check of adopted games notices the end and records the session.
+ */
+function stopAdopted(instanceId: string, pid: number, immediate: boolean): void {
+  const asked = adoptedStopAsked.get(instanceId)
+  if (asked !== undefined && Date.now() - asked < 1500 && !immediate) return
+  const force = immediate || asked !== undefined
+  const at = Date.now()
+  adoptedStopAsked.set(instanceId, at)
+  setTimeout(() => {
+    if (adoptedStopAsked.get(instanceId) === at) adoptedStopAsked.delete(instanceId)
+  }, 30_000).unref()
+
+  logger.info(`Beende übernommenes Spiel ${instanceId} (PID ${pid})${force ? ', erzwungen' : ''}`)
+  if (process.platform === 'win32') {
+    const killer = spawn('taskkill', ['/pid', String(pid), '/t', ...(force ? ['/f'] : [])], { windowsHide: true })
+    killer.on('error', (err) => logger.error(`taskkill für ${instanceId} fehlgeschlagen:`, err))
+  } else {
+    try {
+      process.kill(pid, force ? 'SIGKILL' : 'SIGTERM')
+    } catch (err) {
+      logger.warn(`Übernommenes Spiel ${instanceId} nicht beendet:`, err)
+    }
+  }
+  notify(
+    'info',
+    tr('Minecraft wird beendet', 'Stopping Minecraft'),
+    force
+      ? tr('Das Spiel wird sofort beendet.', 'The game is being ended right away.')
+      : tr(
+          'Minecraft wurde gebeten, sich zu schließen, und speichert dabei die Welt. Ein weiterer Klick auf „Stoppen“ beendet es sofort.',
+          'Minecraft was asked to close and saves the world while doing so. Clicking "Stop" again ends it right away.'
+        )
+  )
+}
+
 export function stopInstance(instanceId: string, immediate = false): void {
   const game = getRunning(instanceId)
   if (!game) {
@@ -1307,6 +1438,13 @@ export function stopInstance(instanceId: string, immediate = false): void {
     // still running — without it the instance stays locked indefinitely.
     const orphan = getAdopted(instanceId)
     if (orphan) {
+      // Still the very program that was started then: stopped for real. Only
+      // dropping the record left the game running while the instance looked
+      // free, and a second start on the same world went through.
+      if (isSameProgram(orphan) === true) {
+        stopAdopted(instanceId, orphan.pid, immediate)
+        return
+      }
       clearRunning(instanceId)
       logger.info(`Übernommener Eintrag für ${instanceId} (PID ${orphan.pid}) verworfen`)
       setStatus(instanceId, 'idle', tr('Eintrag entfernt, die Instanz lässt sich wieder starten.', 'Entry removed, the instance can be started again.'))

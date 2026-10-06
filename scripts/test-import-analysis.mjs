@@ -55,6 +55,7 @@ try {
      export const ipcMain = { handle() {}, on() {} }
      export const desktopCapturer = {}
      export const globalShortcut = {}
+     export const powerMonitor = { on() {} }
      export default { app }`
   )
 
