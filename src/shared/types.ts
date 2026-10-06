@@ -100,6 +100,8 @@ export interface ContentItem {
    * empty for a jar that declares none.
    */
   modIds?: string[]
+  /** Size and modification time of the jar `modIds` was read from. */
+  modIdsFrom?: string
   /** Disabled content keeps a `.disabled` suffix on disk. */
   enabled: boolean
   gameVersions: string[]

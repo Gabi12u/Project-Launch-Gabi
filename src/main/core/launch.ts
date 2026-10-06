@@ -11,7 +11,7 @@ import { getSettings } from '../store'
 import { emit, getMainWindow, navigate, notify } from '../events'
 import { closeGameLogWindow, hasGameLogWindow, openGameLogWindow } from '../gameLogWindow'
 import { createLog4jParser } from './log4jParse'
-import { createBackup } from './backups'
+import { createBackup, NothingToBackUpError } from './backups'
 import { log } from '../logger'
 import { Task, TaskCancelledError } from '../tasks'
 import {
@@ -902,6 +902,13 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         const backUp = (): Promise<unknown> => createBackup(instanceId, { reason: 'automatic', includes: ['saves'] })
         void backUp()
           .catch(async (first: unknown) => {
+            // A session on a server leaves no world of its own behind, and
+            // nothing to keep is not a failure. Saved as an empty archive, it
+            // used to push the real backups out of the automatic ones.
+            if (first instanceof NothingToBackUpError) {
+              logger.debug(`Automatische Sicherung von ${instanceId} übersprungen, keine Welten`)
+              return
+            }
             // Right after the game quits its world files can still be held for
             // a moment, so one more try a little later.
             logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen, neuer Versuch:`, first)
@@ -909,6 +916,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
             return backUp()
           })
           .catch((err: unknown) => {
+            if (err instanceof NothingToBackUpError) return
             logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen:`, err)
             // Said, not only logged: the player otherwise believes the last
             // session is backed up when it is not.

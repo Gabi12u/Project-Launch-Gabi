@@ -1288,12 +1288,31 @@ function ContentRow({
 
 function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const [worlds, setWorlds] = useState<WorldInfo[] | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
 
   useEffect(() => {
-    void window.gabi.instances.worlds(instanceId).then(setWorlds).catch(() => setWorlds([]))
+    setFailure(null)
+    void window.gabi.instances
+      .worlds(instanceId)
+      .then(setWorlds)
+      .catch((err: unknown) => {
+        setFailure(err instanceof Error ? err.message : String(err))
+        setWorlds([])
+      })
   }, [instanceId])
 
   if (!worlds) return <div className="skeleton" style={{ height: 200 }} />
+
+  // A failed listing used to read as "Noch keine Welten", as if there were none.
+  if (failure) {
+    return (
+      <EmptyState
+        icon={<IconCube size={26} />}
+        title={tr('Welten konnten nicht gelesen werden', 'Worlds could not be read')}
+        message={failure}
+      />
+    )
+  }
 
   if (worlds.length === 0) {
     return (

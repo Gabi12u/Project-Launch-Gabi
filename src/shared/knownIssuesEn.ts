@@ -2740,6 +2740,89 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'The recommended NeoForge version was simply the newest one, even if it was a beta while stable ' +
       'versions were available. New instances then got a beta without a word. The order of the ' +
       'versions was not sorted by number either.'
+  },
+  'wiederherstellung-loescht-originale': {
+    title: 'A failed restore could delete the current worlds',
+    detail:
+      'If the launcher could not set a folder aside while restoring a backup, for example because ' +
+      'Explorer or a virus scanner was inside it, it was meant to roll everything back. Instead it ' +
+      'deleted the original folders still in place, as if they were new, and still reported that the ' +
+      'previous state was back. The automatic safety copy taken before the restore was kept.'
+  },
+  'leere-sicherungen-verdraengen-echte': {
+    title: 'Empty backups counted as successful and pushed out real ones',
+    detail:
+      'An instance without worlds of its own, for example one only played on servers, produced an ' +
+      'empty backup that was reported as successful and could not be restored later. With automatic ' +
+      'backups after playing, such empty backups pushed out the older ones that really held the worlds ' +
+      'after a few sessions.'
+  },
+  'beschaedigte-instanzdatei-wird-vanilla': {
+    title: 'A damaged instance file turned the instance into an empty vanilla instance',
+    detail:
+      'If an instance\'s file was damaged, for example after a power cut, the launcher set it aside and ' +
+      'showed an unnamed instance with vanilla and the newest Minecraft version instead. Clicking ' +
+      '"Play" then started that version with the existing worlds, which Minecraft may convert to the ' +
+      'new version on the way.'
+  },
+  'beschaedigte-einstellungen-datenordner-weg': {
+    title: 'A damaged settings file reset the data folder',
+    detail:
+      'If the settings file was damaged, the launcher started as on a fresh install, with the default ' +
+      'data folder and the setup from the beginning. Anyone using a data folder of their own then saw ' +
+      'no instances, although they were still there.'
+  },
+  'verknuepfung-ueberschreibt-andere-instanz': {
+    title: 'A desktop shortcut could overwrite the one of another instance',
+    detail:
+      'If two instances had the same name, the shortcut of one could replace the existing one of the ' +
+      'other, because the launcher only told them apart by the start of their ID. On top of that the ' +
+      'success message appeared twice when creating one.'
+  },
+  'sicherung-verwaist-bei-gesperrter-liste': {
+    title: 'With a locked backup list, a finished backup stayed behind invisibly',
+    detail:
+      'If the list of backups was locked by another program at that moment, the backup failed only ' +
+      'after packing. The finished file then stayed in the folder without showing up in the list or ' +
+      'ever being cleaned up.'
+  },
+  'sicherung-loeschen-ohne-wirkung': {
+    title: 'Deleting a backup reported success without deleting anything',
+    detail:
+      'If the list of backups was locked while deleting, the launcher did not find the backup and ' +
+      'still reported "Backup deleted". The file stayed fully in place.'
+  },
+  'abbruch-als-fehler-gemeldet': {
+    title: 'A cancel by the user was reported as an error',
+    detail:
+      'Cancelling a backup, an export or a restore yourself showed a red error message such as "Backup ' +
+      'failed", as if something had gone wrong.'
+  },
+  'duplizieren-hinterlaesst-kopie': {
+    title: 'A failed duplicate could leave an invisible copy behind',
+    detail:
+      'If the new instance could not be saved after copying, for example because of a locked file, the ' +
+      'fully copied folder stayed behind without showing up in the list. It took up disk space and was ' +
+      'never cleaned up.'
+  },
+  'welten-fehler-als-leer': {
+    title: 'If the worlds could not be read, it said "No worlds yet"',
+    detail:
+      'If listing the worlds of an instance failed, the "Worlds" tab showed the same view as for an ' +
+      'instance without worlds instead of naming the error.'
+  },
+  'sicherung-geloeschter-instanz': {
+    title: 'Backups of deleted instances could neither be restored nor opened',
+    detail:
+      'Backups of a deleted instance stayed in the list, with the buttons to restore them and to open ' +
+      'their folder. Both failed with "Instance does not exist".'
+  },
+  'export-datei-gleichen-namens-fehlt': {
+    title: 'A file with the same name could be missing from a modpack export',
+    detail:
+      'If a file of your own, for example a data pack, had the same file name as a resource pack from ' +
+      'Modrinth, the export left it out, because it compared only the name and not the folder. It was ' +
+      'missing from the finished modpack without any notice.'
   }
 }
 

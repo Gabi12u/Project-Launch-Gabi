@@ -19,7 +19,7 @@ import { getSettings, resetSettings, saveSettings } from './store'
 import { tr } from '@shared/i18n'
 import { emit, getMainWindow, notify } from './events'
 import { log, getLogDirectory } from './logger'
-import { cancelTask, listTasks } from './tasks'
+import { cancelTask, listTasks, TaskCancelledError } from './tasks'
 
 import { listMinecraftVersions } from './core/mojang'
 import { listLoaderVersions } from './loaders'
@@ -145,7 +145,8 @@ function handle<T extends unknown[], R>(
       return await fn(...(args as T))
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      logger.error(`${channel} fehlgeschlagen:`, err)
+      if (err instanceof TaskCancelledError) logger.info(`${channel} abgebrochen`)
+      else logger.error(`${channel} fehlgeschlagen:`, err)
       // Rethrowing keeps the renderer's promise rejected with a clean message.
       throw new Error(message)
     }

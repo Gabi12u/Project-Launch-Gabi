@@ -580,6 +580,16 @@ export async function zipFolder(
     if (options.exclude?.some((ex) => rel === ex || rel.startsWith(`${ex}/`))) return false
     return true
   })
+  // The readers refuse an archive past this many entries, so writing one
+  // made a backup that could be created but never restored.
+  if (filtered.length + (options.extraFiles?.length ?? 0) > MAX_ARCHIVE_ENTRIES) {
+    throw new Error(
+      tr(
+        `Das sind mehr als ${MAX_ARCHIVE_ENTRIES.toLocaleString()} Dateien, so ein Archiv ließe sich später nicht mehr entpacken. Wähle weniger Ordner aus.`,
+        `That is more than ${MAX_ARCHIVE_ENTRIES.toLocaleString()} files, an archive like that could not be unpacked later. Choose fewer folders.`
+      )
+    )
+  }
 
   mkdirSync(dirname(targetFile), { recursive: true })
   // Written into a temp file next to the target first, renamed onto it only

@@ -6,9 +6,9 @@ import { paths } from '../paths'
 import { getSettings, readJson, readJsonResult, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
-import { withTask } from '../tasks'
+import { TaskCancelledError, withTask } from '../tasks'
 import { extractAllSlowly, listEntriesStreaming, zipFolder, ZIP_TEMP_SUFFIX } from './archive'
-import { getInstance } from './instances'
+import { getInstance, tryGetInstance } from './instances'
 import { withArchiving, withRestoreLock } from './restoreLock'
 import { isRunning, isStarting } from './running'
 import { isContentBusy } from './contentLock'
@@ -212,6 +212,13 @@ async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Pr
   }
 }
 
+/**
+ * The chosen folders hold no file at all. A fresh instance always has an
+ * empty saves folder, so this is the normal case for one only ever played on
+ * servers, not a failure.
+ */
+export class NothingToBackUpError extends Error {}
+
 export async function createBackup(
   instanceId: string,
   options: CreateBackupOptions = {}
@@ -280,13 +287,13 @@ async function createBackupUnlocked(
       const existing = includes.filter((key) => existsSync(join(gameDir, key)))
 
       if (existing.length === 0) {
-        throw new Error(tr('Es gibt nichts zu sichern, die gewählten Ordner sind leer.', 'There is nothing to back up, the chosen folders are empty.'))
+        throw new NothingToBackUpError(tr('Es gibt nichts zu sichern, die gewählten Ordner sind leer.', 'There is nothing to back up, the chosen folders are empty.'))
       }
 
       const skipped: string[] = []
       const skippedLinks: string[] = []
       try {
-        await zipFolder(
+        const packed = await zipFolder(
           gameDir,
           target,
           {
@@ -317,6 +324,13 @@ async function createBackupUnlocked(
             )
           )
         }
+
+        // Folders that exist but hold no file made an empty archive, reported
+        // as a success and refused as empty on restore. As an automatic
+        // backup it also pushed an older one with real worlds out.
+        if (packed === 0) {
+          throw new NothingToBackUpError(tr('Es gibt nichts zu sichern, die gewählten Ordner sind leer.', 'There is nothing to back up, the chosen folders are empty.'))
+        }
       } catch (err) {
         // Never leave a half-written archive behind; it would look like a
         // usable backup in the folder.
@@ -328,24 +342,37 @@ async function createBackupUnlocked(
         throw err
       }
 
-      const entry: BackupEntry = {
-        id: randomUUID(),
-        instanceId,
-        instanceName: instance.name,
-        name:
-          options.name?.trim() ||
-          tr(
-            `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
-            `Backup from ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`
-          ),
-        fileName,
-        createdAt: Date.now(),
-        size: statSync(target).size,
-        reason,
-        includes: existing
-      }
-
-      const entries = [entry, ...readIndex(instanceId, true)]
+      // Inside a try of its own: a locked backups.json made `readIndex` throw
+      // here, after the archive was already in place, and the finished zip
+      // stayed in the folder recorded nowhere and never cleaned up.
+      const { entry, entries } = ((): { entry: BackupEntry; entries: BackupEntry[] } => {
+        try {
+          const entry: BackupEntry = {
+            id: randomUUID(),
+            instanceId,
+            instanceName: instance.name,
+            name:
+              options.name?.trim() ||
+              tr(
+                `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
+                `Backup from ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`
+              ),
+            fileName,
+            createdAt: Date.now(),
+            size: statSync(target).size,
+            reason,
+            includes: existing
+          }
+          return { entry, entries: [entry, ...readIndex(instanceId, true)] }
+        } catch (err) {
+          try {
+            rmSync(target, { force: true })
+          } catch {
+            // best effort
+          }
+          throw err
+        }
+      })()
       try {
         writeIndex(instanceId, entries)
       } catch {
@@ -831,7 +858,10 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
               includes
             })
           } catch (err) {
-            throw new Error(
+            // Empty folders hold nothing a restore could overwrite.
+            if (err instanceof NothingToBackUpError) {
+              logger.info(`Keine Sicherheitskopie vor der Wiederherstellung nötig, ${instanceId} hat nichts zu sichern`)
+            } else throw new Error(
               tr(
                 `Die Sicherheitskopie des aktuellen Stands ist fehlgeschlagen, deshalb wurde nichts überschrieben. Deine Daten sind unverändert. (${err instanceof Error ? err.message : String(err)})`,
                 `Backing up the current state failed, so nothing was overwritten. Your data is unchanged. (${err instanceof Error ? err.message : String(err)})`
@@ -854,9 +884,12 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
         // the next startup what was about to happen and how to undo it,
         // instead of the parked originals sitting there forever unexplained.
         const plan = includes.map((key) => ({ key, from: join(gameDir, key), to: join(parked, key) }))
+        // Decided now, before anything moves: only these may be removed again
+        // if the restore fails.
+        const newKeys = includes.filter((key) => !existsSync(join(gameDir, key)))
         writeJsonAtomic(journalFile(parked), {
           moved: plan.filter((item) => existsSync(item.from)),
-          newKeys: includes.filter((key) => !existsSync(join(gameDir, key)))
+          newKeys
         } satisfies RestoreJournal)
 
         try {
@@ -911,10 +944,14 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           // Folders the backup introduces that the instance did not have are
           // never in `moved`, so a partial extraction would leave them behind
           // while the message below promises the previous state is back.
-          const restoredKeys = new Set(moved.map((item) => item.key))
+          //
+          // Taken from what existed before the restore began, not from what
+          // is missing in `moved`: a rename that failed above (Explorer or a
+          // scanner inside the folder) also kept a folder out of `moved`, and
+          // this loop then deleted the user's untouched original, along with
+          // every folder after it that had not been moved yet.
           const newLeftover: string[] = []
-          for (const key of includes) {
-            if (restoredKeys.has(key)) continue
+          for (const key of newKeys) {
             try {
               rmSync(join(gameDir, key), { recursive: true, force: true })
             } catch (cleanupErr) {
@@ -940,6 +977,9 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           // Only this case may say the previous state is truly back: every
           // parked folder was renamed back and nothing new was left behind.
           if (stranded.length === 0 && newLeftover.length === 0) {
+            // Cancelled by the user, with everything back as it was: that is
+            // a cancel, not a failure worth a red message.
+            if (err instanceof TaskCancelledError) throw err
             throw new Error(
               tr(
                 `Die Wiederherstellung ist fehlgeschlagen, der vorherige Stand wurde zurückgeholt. ${reason}`,
@@ -1013,7 +1053,9 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
 export async function deleteBackup(instanceId: string, backupId: string): Promise<void> {
   assertBackupIdSafe(instanceId)
   return withInstanceLock(instanceId, async () => {
-    const entries = readIndex(instanceId)
+    // For writing: a locked index read as empty, the backup was "not found",
+    // and the button said it was deleted while the file stayed.
+    const entries = readIndex(instanceId, true)
     const entry = entries.find((e) => e.id === backupId)
     if (!entry) return
 
@@ -1043,6 +1085,13 @@ export async function deleteBackup(instanceId: string, backupId: string): Promis
  * merely showing it.
  */
 export function backupFolder(instanceId: string): string {
-  getInstance(instanceId)
-  return paths.instanceBackups(instanceId)
+  if (tryGetInstance(instanceId)) return paths.instanceBackups(instanceId)
+  // The backups of a deleted instance stay listed, and opening their folder
+  // failed with "existiert nicht". Allowed for a plain folder name that
+  // really is a folder, which keeps the reasoning above intact.
+  const dir = paths.instanceBackups(instanceId)
+  if (!/^[\p{L}\p{N}_-]+$/u.test(instanceId) || !existsSync(dir) || !statSync(dir).isDirectory()) {
+    throw new Error(tr('Diesen Sicherungsordner gibt es nicht.', 'This backup folder does not exist.'))
+  }
+  return dir
 }

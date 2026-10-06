@@ -185,14 +185,20 @@ export async function importMrpack(archivePath: string, nameOverride?: string, o
     icon: '📦'
   }, { importing: true })
 
-  persist({
-    ...getInstance(instance.id),
-    source: {
-      type: 'mrpack',
-      packName: index.name,
-      packVersion: index.versionId
-    }
-  })
+  try {
+    persist({
+      ...getInstance(instance.id),
+      source: {
+        type: 'mrpack',
+        packName: index.name,
+        packVersion: index.versionId
+      }
+    })
+  } catch (err) {
+    // The task below never starts, so nothing else would release the hold.
+    finishImport(instance.id)
+    throw err
+  }
 
   // The content lock is held for the whole import, so the reconciler, a launch
   // and a backup all leave the folder alone while the pack is written into it.
@@ -537,10 +543,16 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     icon: '📦'
   }, { importing: true })
 
-  persist({
-    ...getInstance(instance.id),
-    source: { type: 'curseforge', packName: manifest.name, packVersion: manifest.version }
-  })
+  try {
+    persist({
+      ...getInstance(instance.id),
+      source: { type: 'curseforge', packName: manifest.name, packVersion: manifest.version }
+    })
+  } catch (err) {
+    // The task below never starts, so nothing else would release the hold.
+    finishImport(instance.id)
+    throw err
+  }
 
   // Held for the whole import, like the mrpack one above.
   void withTask(tr(`${name} wird importiert`, `Importing ${name}`), tr('Mods werden aufgelöst…', 'Resolving mods…'), instance.id, (task) => withContentLock(instance.id, async () => {
@@ -1224,9 +1236,12 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     mkdirSync(join(options.targetFile, '..'), { recursive: true })
 
     // Bundle only the files that are not resolvable through a download link.
+    // By folder and name: matched by name alone, a data pack of your own
+    // called like a downloaded resource pack was left out as well, and then
+    // missing from the pack without a word.
     const excluded = current.content
-      .filter((item) => files.some((f) => basename(f.path) === item.fileName))
       .map((item) => `${overrideFolderFor(item.type)}/${item.fileName}`)
+      .filter((path) => files.some((f) => f.path === path))
 
     const skipped: string[] = []
     const skippedLinks: string[] = []

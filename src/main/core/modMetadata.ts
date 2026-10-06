@@ -109,7 +109,10 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
     if (toml === undefined) continue
     const parsed = parseModsToml(toml)
     for (const mod of parsed.mods) {
-      ids.push(mod.modId)
+      // An unprocessed "${mod_id}" is no id; two jars carrying it are not
+      // the same mod.
+      const id = value(mod.modId)
+      if (id) ids.push(id)
       name ??= value(mod.displayName)
       version ??= value(mod.version)
     }

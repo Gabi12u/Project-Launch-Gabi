@@ -146,7 +146,11 @@ export function BackupsView(): JSX.Element {
         />
       ) : (
         <div className="col gap-8 stagger">
-          {filtered.map((backup) => (
+          {filtered.map((backup) => {
+            // The backups of a deleted instance stay listed, but there is
+            // nothing left to restore them into.
+            const instanceExists = instances.some((instance) => instance.id === backup.instanceId)
+            return (
             <div key={backup.id} className="backup-row">
               <div className="backup-icon">
                 <IconSave size={18} />
@@ -158,13 +162,17 @@ export function BackupsView(): JSX.Element {
                   <span className="badge">{REASON_LABELS[backup.reason]}</span>
                 </div>
                 <div className="content-meta">
-                  <button
-                    className="link"
-                    style={{ background: 'none', padding: 0 }}
-                    onClick={() => navigate(`/instances/${backup.instanceId}`)}
-                  >
-                    {backup.instanceName}
-                  </button>
+                  {instanceExists ? (
+                    <button
+                      className="link"
+                      style={{ background: 'none', padding: 0 }}
+                      onClick={() => navigate(`/instances/${backup.instanceId}`)}
+                    >
+                      {backup.instanceName}
+                    </button>
+                  ) : (
+                    <span>{tr(`${backup.instanceName} (gelöscht)`, `${backup.instanceName} (deleted)`)}</span>
+                  )}
                   <span>{formatBytes(backup.size)}</span>
                   <span title={formatDateTime(backup.createdAt)}>{formatRelative(backup.createdAt)}</span>
                   <span>{backup.includes.map((key) => FOLDER_LABELS[key] ?? key).join(', ')}</span>
@@ -172,7 +180,12 @@ export function BackupsView(): JSX.Element {
               </div>
 
               <div className="content-actions">
-                <button className="btn sm primary" onClick={() => setRestoring(backup)}>
+                <button
+                  className="btn sm primary"
+                  disabled={!instanceExists}
+                  title={instanceExists ? undefined : tr('Die Instanz dieser Sicherung gibt es nicht mehr.', 'The instance of this backup no longer exists.')}
+                  onClick={() => setRestoring(backup)}
+                >
                   <IconUpload size={13} />
                   {tr('Wiederherstellen', 'Restore')}
                 </button>
@@ -192,7 +205,8 @@ export function BackupsView(): JSX.Element {
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

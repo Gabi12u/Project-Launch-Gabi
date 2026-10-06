@@ -3922,6 +3922,90 @@ footer .grow { flex: 1; }
       "detail": "Als empfohlene NeoForge-Version galt einfach die neueste, auch wenn sie eine Beta war und stabile Versionen bereitstanden. Neue Instanzen bekamen dann ohne Hinweis eine Beta. Die Reihenfolge der Versionen war außerdem nicht nach Nummern sortiert.",
       "state": "fixing",
       "since": "2026-10-06"
+    },
+    {
+      "id": "wiederherstellung-loescht-originale",
+      "title": "Eine gescheiterte Wiederherstellung konnte die aktuellen Welten löschen",
+      "detail": "Konnte der Launcher beim Einspielen einer Sicherung einen Ordner nicht beiseitelegen, etwa weil der Explorer oder ein Virenscanner gerade darin war, sollte er alles zurückdrehen. Dabei löschte er aber die noch vorhandenen Originalordner, als wären sie neu hinzugekommen, und meldete trotzdem, der vorherige Stand sei zurück. Die automatische Sicherheitskopie vor der Wiederherstellung blieb erhalten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "leere-sicherungen-verdraengen-echte",
+      "title": "Leere Sicherungen galten als erfolgreich und verdrängten echte",
+      "detail": "Eine Instanz ohne eigene Welten, etwa nur auf Servern gespielt, ergab eine leere Sicherung, die als erfolgreich gemeldet wurde und sich später nicht einspielen ließ. Mit automatischen Sicherungen nach dem Spielen verdrängten solche leeren Sicherungen nach wenigen Sitzungen die älteren, in denen die Welten wirklich steckten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "beschaedigte-instanzdatei-wird-vanilla",
+      "title": "Eine beschädigte Instanzdatei machte aus der Instanz eine leere Vanilla-Instanz",
+      "detail": "War die Datei einer Instanz beschädigt, etwa nach einem Stromausfall, legte der Launcher sie beiseite und zeigte stattdessen eine unbenannte Instanz mit Vanilla und der neuesten Minecraft-Version. Ein Klick auf „Spielen“ startete diese Version dann mit den vorhandenen Welten, die Minecraft dabei auf die neue Version umstellen kann.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "beschaedigte-einstellungen-datenordner-weg",
+      "title": "Eine beschädigte Einstellungsdatei setzte den Datenordner zurück",
+      "detail": "War die Einstellungsdatei beschädigt, startete der Launcher wie bei einer Neuinstallation, mit dem Standard-Datenordner und der Einrichtung von vorn. Wer einen eigenen Datenordner nutzte, sah danach keine Instanzen mehr, obwohl sie noch da waren.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "verknuepfung-ueberschreibt-andere-instanz",
+      "title": "Eine Desktop-Verknüpfung konnte die einer anderen Instanz überschreiben",
+      "detail": "Trugen zwei Instanzen denselben Namen, konnte die Verknüpfung der einen die bereits vorhandene der anderen ersetzen, weil der Launcher die beiden nur am Anfang ihrer Kennung unterschied. Außerdem erschien die Erfolgsmeldung beim Anlegen doppelt.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-verwaist-bei-gesperrter-liste",
+      "title": "Bei gesperrter Sicherungsliste blieb eine fertige Sicherung unsichtbar liegen",
+      "detail": "War die Liste der Sicherungen gerade von einem anderen Programm gesperrt, scheiterte die Sicherung erst nach dem Packen. Die fertige Datei blieb dann im Ordner liegen, ohne in der Liste aufzutauchen oder je aufgeräumt zu werden.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-loeschen-ohne-wirkung",
+      "title": "Das Löschen einer Sicherung meldete Erfolg, ohne etwas zu löschen",
+      "detail": "War die Liste der Sicherungen beim Löschen gerade gesperrt, fand der Launcher die Sicherung nicht und meldete trotzdem „Sicherung gelöscht“. Die Datei blieb vollständig erhalten.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "abbruch-als-fehler-gemeldet",
+      "title": "Ein Abbruch durch den Nutzer wurde als Fehler gemeldet",
+      "detail": "Brach man eine Sicherung, einen Export oder eine Wiederherstellung selbst ab, erschien eine rote Fehlermeldung wie „Sicherung fehlgeschlagen“, als wäre etwas schiefgegangen.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "duplizieren-hinterlaesst-kopie",
+      "title": "Ein gescheitertes Duplizieren konnte eine unsichtbare Kopie hinterlassen",
+      "detail": "Ließ sich die neue Instanz nach dem Kopieren nicht speichern, etwa wegen einer gesperrten Datei, blieb der vollständig kopierte Ordner liegen, ohne in der Liste aufzutauchen. Er belegte Speicherplatz und wurde nie aufgeräumt.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "welten-fehler-als-leer",
+      "title": "Ließen sich die Welten nicht lesen, hieß es „Noch keine Welten“",
+      "detail": "Scheiterte das Auflisten der Welten einer Instanz, zeigte der Reiter „Welten“ dieselbe Ansicht wie bei einer Instanz ohne Welten, statt den Fehler zu nennen.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-geloeschter-instanz",
+      "title": "Sicherungen gelöschter Instanzen ließen sich weder einspielen noch öffnen",
+      "detail": "Sicherungen einer gelöschten Instanz standen weiter in der Liste, mit den Knöpfen zum Wiederherstellen und zum Öffnen des Ordners. Beide scheiterten mit „Instanz existiert nicht“.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "export-datei-gleichen-namens-fehlt",
+      "title": "Beim Modpack-Export konnte eine Datei mit gleichem Namen fehlen",
+      "detail": "Trug eine eigene Datei, etwa ein Datenpaket, denselben Dateinamen wie ein Ressourcenpaket von Modrinth, ließ der Export sie weg, weil er nur den Namen verglich und nicht den Ordner. Im fertigen Modpack fehlte sie ohne Hinweis.",
+      "state": "fixing",
+      "since": "2026-10-06"
     }
   ];
   var ISSUE_LABEL = {
@@ -6806,6 +6890,90 @@ footer .grow { flex: 1; }
       "id": "neoforge-beta-als-empfohlen",
       "title": "NeoForge suggested a beta version as recommended",
       "detail": "The recommended NeoForge version was simply the newest one, even if it was a beta while stable versions were available. New instances then got a beta without a word. The order of the versions was not sorted by number either.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "wiederherstellung-loescht-originale",
+      "title": "A failed restore could delete the current worlds",
+      "detail": "If the launcher could not set a folder aside while restoring a backup, for example because Explorer or a virus scanner was inside it, it was meant to roll everything back. Instead it deleted the original folders still in place, as if they were new, and still reported that the previous state was back. The automatic safety copy taken before the restore was kept.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "leere-sicherungen-verdraengen-echte",
+      "title": "Empty backups counted as successful and pushed out real ones",
+      "detail": "An instance without worlds of its own, for example one only played on servers, produced an empty backup that was reported as successful and could not be restored later. With automatic backups after playing, such empty backups pushed out the older ones that really held the worlds after a few sessions.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "beschaedigte-instanzdatei-wird-vanilla",
+      "title": "A damaged instance file turned the instance into an empty vanilla instance",
+      "detail": "If an instance's file was damaged, for example after a power cut, the launcher set it aside and showed an unnamed instance with vanilla and the newest Minecraft version instead. Clicking \"Play\" then started that version with the existing worlds, which Minecraft may convert to the new version on the way.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "beschaedigte-einstellungen-datenordner-weg",
+      "title": "A damaged settings file reset the data folder",
+      "detail": "If the settings file was damaged, the launcher started as on a fresh install, with the default data folder and the setup from the beginning. Anyone using a data folder of their own then saw no instances, although they were still there.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "verknuepfung-ueberschreibt-andere-instanz",
+      "title": "A desktop shortcut could overwrite the one of another instance",
+      "detail": "If two instances had the same name, the shortcut of one could replace the existing one of the other, because the launcher only told them apart by the start of their ID. On top of that the success message appeared twice when creating one.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-verwaist-bei-gesperrter-liste",
+      "title": "With a locked backup list, a finished backup stayed behind invisibly",
+      "detail": "If the list of backups was locked by another program at that moment, the backup failed only after packing. The finished file then stayed in the folder without showing up in the list or ever being cleaned up.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-loeschen-ohne-wirkung",
+      "title": "Deleting a backup reported success without deleting anything",
+      "detail": "If the list of backups was locked while deleting, the launcher did not find the backup and still reported \"Backup deleted\". The file stayed fully in place.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "abbruch-als-fehler-gemeldet",
+      "title": "A cancel by the user was reported as an error",
+      "detail": "Cancelling a backup, an export or a restore yourself showed a red error message such as \"Backup failed\", as if something had gone wrong.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "duplizieren-hinterlaesst-kopie",
+      "title": "A failed duplicate could leave an invisible copy behind",
+      "detail": "If the new instance could not be saved after copying, for example because of a locked file, the fully copied folder stayed behind without showing up in the list. It took up disk space and was never cleaned up.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "welten-fehler-als-leer",
+      "title": "If the worlds could not be read, it said \"No worlds yet\"",
+      "detail": "If listing the worlds of an instance failed, the \"Worlds\" tab showed the same view as for an instance without worlds instead of naming the error.",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "sicherung-geloeschter-instanz",
+      "title": "Backups of deleted instances could neither be restored nor opened",
+      "detail": "Backups of a deleted instance stayed in the list, with the buttons to restore them and to open their folder. Both failed with \"Instance does not exist\".",
+      "state": "fixing",
+      "since": "2026-10-06"
+    },
+    {
+      "id": "export-datei-gleichen-namens-fehlt",
+      "title": "A file with the same name could be missing from a modpack export",
+      "detail": "If a file of your own, for example a data pack, had the same file name as a resource pack from Modrinth, the export left it out, because it compared only the name and not the folder. It was missing from the finished modpack without any notice.",
       "state": "fixing",
       "since": "2026-10-06"
     }

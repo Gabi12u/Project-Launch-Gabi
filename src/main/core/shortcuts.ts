@@ -1,6 +1,6 @@
 import { app, shell } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { paths, RESERVED_WINDOWS_NAMES } from '../paths'
 import { log } from '../logger'
 import { getInstance } from './instances'
@@ -56,11 +56,15 @@ function safeFileName(name: string): string {
  */
 function belongsToInstance(linkPath: string, instanceId: string): boolean {
   try {
-    const marker = `--launch=${instanceId}`
+    // As a whole argument: as a plain substring, "--launch=pack" also sat
+    // inside "--launch=pack-2", and creating a shortcut for one instance
+    // replaced that of another with the same display name.
+    const escaped = instanceId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const marker = new RegExp(`--launch=${escaped}(?=$|[\\s"'])`)
     if (process.platform === 'win32') {
-      return shell.readShortcutLink(linkPath).args?.includes(marker) ?? false
+      return marker.test(shell.readShortcutLink(linkPath).args ?? '')
     }
-    return readFileSync(linkPath, 'utf8').includes(marker)
+    return marker.test(readFileSync(linkPath, 'utf8'))
   } catch {
     return false
   }
@@ -210,7 +214,8 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
         `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) über Launch Gabi`,
         `${singleLine(instance.name)}: Minecraft ${instance.mcVersion} (${instance.loader}) via Launch Gabi`
       ),
-      cwd: app.getAppPath(),
+      // A packaged app's path is the app.asar file, not a folder.
+      cwd: app.isPackaged ? dirname(process.execPath) : app.getAppPath(),
       icon,
       iconIndex: 0
     })

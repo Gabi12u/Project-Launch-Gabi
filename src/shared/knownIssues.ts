@@ -4288,6 +4288,126 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Reihenfolge der Versionen war außerdem nicht nach Nummern sortiert.',
     state: 'fixing',
     since: '2026-10-06'
+  },
+  {
+    id: 'wiederherstellung-loescht-originale',
+    title: 'Eine gescheiterte Wiederherstellung konnte die aktuellen Welten löschen',
+    detail:
+      'Konnte der Launcher beim Einspielen einer Sicherung einen Ordner nicht beiseitelegen, etwa weil ' +
+      'der Explorer oder ein Virenscanner gerade darin war, sollte er alles zurückdrehen. Dabei ' +
+      'löschte er aber die noch vorhandenen Originalordner, als wären sie neu hinzugekommen, und ' +
+      'meldete trotzdem, der vorherige Stand sei zurück. Die automatische Sicherheitskopie vor der ' +
+      'Wiederherstellung blieb erhalten.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'leere-sicherungen-verdraengen-echte',
+    title: 'Leere Sicherungen galten als erfolgreich und verdrängten echte',
+    detail:
+      'Eine Instanz ohne eigene Welten, etwa nur auf Servern gespielt, ergab eine leere Sicherung, die ' +
+      'als erfolgreich gemeldet wurde und sich später nicht einspielen ließ. Mit automatischen ' +
+      'Sicherungen nach dem Spielen verdrängten solche leeren Sicherungen nach wenigen Sitzungen die ' +
+      'älteren, in denen die Welten wirklich steckten.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'beschaedigte-instanzdatei-wird-vanilla',
+    title: 'Eine beschädigte Instanzdatei machte aus der Instanz eine leere Vanilla-Instanz',
+    detail:
+      'War die Datei einer Instanz beschädigt, etwa nach einem Stromausfall, legte der Launcher sie ' +
+      'beiseite und zeigte stattdessen eine unbenannte Instanz mit Vanilla und der neuesten ' +
+      'Minecraft-Version. Ein Klick auf „Spielen“ startete diese Version dann mit den vorhandenen ' +
+      'Welten, die Minecraft dabei auf die neue Version umstellen kann.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'beschaedigte-einstellungen-datenordner-weg',
+    title: 'Eine beschädigte Einstellungsdatei setzte den Datenordner zurück',
+    detail:
+      'War die Einstellungsdatei beschädigt, startete der Launcher wie bei einer Neuinstallation, mit ' +
+      'dem Standard-Datenordner und der Einrichtung von vorn. Wer einen eigenen Datenordner nutzte, ' +
+      'sah danach keine Instanzen mehr, obwohl sie noch da waren.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'verknuepfung-ueberschreibt-andere-instanz',
+    title: 'Eine Desktop-Verknüpfung konnte die einer anderen Instanz überschreiben',
+    detail:
+      'Trugen zwei Instanzen denselben Namen, konnte die Verknüpfung der einen die bereits vorhandene ' +
+      'der anderen ersetzen, weil der Launcher die beiden nur am Anfang ihrer Kennung unterschied. ' +
+      'Außerdem erschien die Erfolgsmeldung beim Anlegen doppelt.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'sicherung-verwaist-bei-gesperrter-liste',
+    title: 'Bei gesperrter Sicherungsliste blieb eine fertige Sicherung unsichtbar liegen',
+    detail:
+      'War die Liste der Sicherungen gerade von einem anderen Programm gesperrt, scheiterte die ' +
+      'Sicherung erst nach dem Packen. Die fertige Datei blieb dann im Ordner liegen, ohne in der ' +
+      'Liste aufzutauchen oder je aufgeräumt zu werden.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'sicherung-loeschen-ohne-wirkung',
+    title: 'Das Löschen einer Sicherung meldete Erfolg, ohne etwas zu löschen',
+    detail:
+      'War die Liste der Sicherungen beim Löschen gerade gesperrt, fand der Launcher die Sicherung ' +
+      'nicht und meldete trotzdem „Sicherung gelöscht“. Die Datei blieb vollständig erhalten.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'abbruch-als-fehler-gemeldet',
+    title: 'Ein Abbruch durch den Nutzer wurde als Fehler gemeldet',
+    detail:
+      'Brach man eine Sicherung, einen Export oder eine Wiederherstellung selbst ab, erschien eine ' +
+      'rote Fehlermeldung wie „Sicherung fehlgeschlagen“, als wäre etwas schiefgegangen.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'duplizieren-hinterlaesst-kopie',
+    title: 'Ein gescheitertes Duplizieren konnte eine unsichtbare Kopie hinterlassen',
+    detail:
+      'Ließ sich die neue Instanz nach dem Kopieren nicht speichern, etwa wegen einer gesperrten ' +
+      'Datei, blieb der vollständig kopierte Ordner liegen, ohne in der Liste aufzutauchen. Er belegte ' +
+      'Speicherplatz und wurde nie aufgeräumt.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'welten-fehler-als-leer',
+    title: 'Ließen sich die Welten nicht lesen, hieß es „Noch keine Welten“',
+    detail:
+      'Scheiterte das Auflisten der Welten einer Instanz, zeigte der Reiter „Welten“ dieselbe Ansicht ' +
+      'wie bei einer Instanz ohne Welten, statt den Fehler zu nennen.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'sicherung-geloeschter-instanz',
+    title: 'Sicherungen gelöschter Instanzen ließen sich weder einspielen noch öffnen',
+    detail:
+      'Sicherungen einer gelöschten Instanz standen weiter in der Liste, mit den Knöpfen zum ' +
+      'Wiederherstellen und zum Öffnen des Ordners. Beide scheiterten mit „Instanz existiert nicht“.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'export-datei-gleichen-namens-fehlt',
+    title: 'Beim Modpack-Export konnte eine Datei mit gleichem Namen fehlen',
+    detail:
+      'Trug eine eigene Datei, etwa ein Datenpaket, denselben Dateinamen wie ein Ressourcenpaket von ' +
+      'Modrinth, ließ der Export sie weg, weil er nur den Namen verglich und nicht den Ordner. Im ' +
+      'fertigen Modpack fehlte sie ohne Hinweis.',
+    state: 'fixing',
+    since: '2026-10-06'
   }
 ]
 

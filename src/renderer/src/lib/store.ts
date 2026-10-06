@@ -265,8 +265,21 @@ export function dismissToast(id: string): void {
 }
 
 /** Reports a rejected IPC call without every call site repeating the try/catch. */
+/**
+ * A cancel the user asked for, as it arrives from the main process: the
+ * task's own message, with Electron's "Error invoking remote method ...:"
+ * prefix in front.
+ */
+const CANCELLED = /(^|: )(Vorgang abgebrochen|Task cancelled)$/
+
 export function toastError(error: unknown, fallback = tr('Es ist ein Fehler aufgetreten', 'An error occurred')): void {
   const message = error instanceof Error ? error.message : String(error)
+  // Shown as a red "failed" message for twelve seconds, as if something had
+  // gone wrong.
+  if (CANCELLED.test(message)) {
+    toast('info', tr('Abgebrochen', 'Cancelled'), undefined, 4000)
+    return
+  }
   toast('error', fallback, message, 12000)
 }
 

@@ -428,6 +428,12 @@ export function installForgeLike(
   loaderVersion: string,
   task?: Task
 ): Promise<string> {
+  // NeoForge for 1.20.1 is published as "1.20.1-47.1.106". Modpacks and other
+  // launchers often give just "47.1.106", which built an installer address
+  // that does not exist.
+  if (loader === 'neoforge' && isNeoforgeLegacy(mcVersion) && !loaderVersion.startsWith(`${mcVersion}-`)) {
+    loaderVersion = `${mcVersion}-${loaderVersion}`
+  }
   const key = `${loader}:${mcVersion}:${loaderVersion}`
   const running = inFlightInstalls.get(key)
   // An install whose last waiter already cancelled is on its way out; joining

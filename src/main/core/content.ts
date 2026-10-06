@@ -33,7 +33,7 @@ import {
   toggleContent
 } from './instances'
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
-import { createBackup } from './backups'
+import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 import { flattenName } from './compat'
 import { locale, tr } from '@shared/i18n'
@@ -860,7 +860,8 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
     releasedAt: item.update.releasedAt,
     update: null,
     // Read again from the new jar by the next folder scan.
-    modIds: undefined
+    modIds: undefined,
+    modIdsFrom: undefined
   }
 
   // The file downloaded above always sits under its bare name. If the mod is
@@ -1080,11 +1081,16 @@ async function updateAllOnce(instanceId: string): Promise<number> {
   return withTask(tr(`Updates für ${instance.name}`, `Updates for ${instance.name}`), tr('Vorbereitung…', 'Preparing…'), instanceId, async (task) => {
     if (instance.settings.backupBeforeUpdates) {
       task.update(tr('Sicherung wird erstellt…', 'Creating backup…'), null)
-      await createBackup(instanceId, {
-        name: tr(`Vor Mod-Update ${new Date().toLocaleDateString(locale())}`, `Before mod update ${new Date().toLocaleDateString(locale())}`),
-        reason: 'pre-update',
-        includes: ['saves']
-      })
+      try {
+        await createBackup(instanceId, {
+          name: tr(`Vor Mod-Update ${new Date().toLocaleDateString(locale())}`, `Before mod update ${new Date().toLocaleDateString(locale())}`),
+          reason: 'pre-update',
+          includes: ['saves']
+        })
+      } catch (err) {
+        // No world yet means nothing an update could damage.
+        if (!(err instanceof NothingToBackUpError)) throw err
+      }
     }
 
     const pending = getInstance(instanceId).content.filter((c) => c.update)

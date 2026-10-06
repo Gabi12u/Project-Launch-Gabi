@@ -398,9 +398,23 @@ async function runRepair(
         try {
           task.update(tr('Mod-Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.15)
           repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
-          // Its presence is what marks the loader installed, so it goes first.
-          rmSync(join(paths.version(versionId), `${versionId}.json`), { force: true })
-          versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+          // Its presence is what marks the loader installed, so it goes first,
+          // set aside rather than deleted: if the reinstall fails (offline),
+          // the instance keeps the profile it had.
+          const profile = join(paths.version(versionId), `${versionId}.json`)
+          const setAside = `${profile}.repair-old`
+          renameSync(profile, setAside)
+          try {
+            versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+          } catch (installErr) {
+            try {
+              if (!existsSync(profile)) renameSync(setAside, profile)
+            } catch (restoreErr) {
+              logger.warn(`Versionsdatei ${profile} nicht zurückgelegt:`, restoreErr)
+            }
+            throw installErr
+          }
+          rmSync(setAside, { force: true })
           versionJson = await loadVersionJson(versionId)
           versionJsonRebuilt = true
           rebuildNote = tr(

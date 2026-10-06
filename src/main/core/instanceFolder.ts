@@ -175,7 +175,17 @@ function guessFromVersionsFolder(
     return (modified.get(b) ?? 0) - (modified.get(a) ?? 0)
   })
 
-  // A modded id is more informative than a plain one, so it wins.
+  // A modded id is more informative than a plain one, so it wins, unless the
+  // version played last is a plain one and no mod loader shows in mods/: an
+  // old modded install left over from years ago then says nothing about now.
+  if (
+    lastUsed &&
+    /^\d+\.\d+(\.\d+)?$/.test(lastUsed) &&
+    names.includes(lastUsed) &&
+    !guessLoaderFromMods(join(gameDir, 'mods'))
+  ) {
+    return { mcVersion: lastUsed, loader: 'vanilla', loaderVersion: '' }
+  }
   for (const name of names) {
     const fabric = /^(fabric|quilt)-loader-([\w.+-]+?)-(\d+\.\d+(?:\.\d+)?)$/i.exec(name)
     if (fabric) {
@@ -310,6 +320,19 @@ function guessFromFolderName(
     loader: guessedLoader?.loader ?? 'vanilla',
     loaderVersion: guessedLoader?.loaderVersion ?? ''
   }
+}
+
+/**
+ * Minecraft version and loader of a game folder, read from its worlds and its
+ * mods. For recovering an instance whose own file is damaged.
+ */
+export function guessGameOfFolder(
+  gameDir: string
+): { mcVersion: string; loader: LoaderId; loaderVersion: string } | null {
+  const mcVersion = readVersionFromSaves(gameDir)
+  if (!mcVersion || !isValidVersionString(mcVersion)) return null
+  const loader = guessLoaderFromMods(join(gameDir, 'mods'))
+  return { mcVersion, loader: loader?.loader ?? 'vanilla', loaderVersion: loader?.loaderVersion ?? '' }
 }
 
 /* ------------------------------------------------------------------ *

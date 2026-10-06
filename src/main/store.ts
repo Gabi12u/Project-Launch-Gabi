@@ -1,6 +1,17 @@
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  copyFileSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { basename, join } from 'node:path'
 import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/defaults'
 import type { Account, LauncherSettings, LaunchBehaviour } from '@shared/types'
@@ -11,7 +22,12 @@ import { tr } from '@shared/i18n'
 const logger = log('store')
 
 /** Writes through a temp file so a crash mid-write cannot corrupt the config. */
-export function writeJsonAtomic(file: string, data: unknown): void {
+export function writeJsonAtomic(
+  file: string,
+  data: unknown,
+  /** Keeps the version being replaced, see `readPreviousJson`. */
+  options: { keepPrevious?: boolean } = {}
+): void {
   mkdirSync(join(file, '..'), { recursive: true })
   // Unique per call: a shared `<file>.tmp` means two concurrent writers
   // interleave into one temp file and the loser's rename destroys the winner's
@@ -24,7 +40,18 @@ export function writeJsonAtomic(file: string, data: unknown): void {
     // be, which on a shared Linux or macOS machine can leave it readable by
     // every other account on that machine. Windows has no equivalent
     // permission bit, so this is a no-op there, not a regression.
-    writeFileSync(tmp, JSON.stringify(data, null, 2), { encoding: 'utf8', mode: 0o600 })
+    const fd = openSync(tmp, 'w', 0o600)
+    try {
+      writeFileSync(fd, JSON.stringify(data, null, 2), 'utf8')
+      // Flushed before the rename. Without it a power cut right after the
+      // rename could leave the real name on a file whose content never
+      // reached the disk, an empty or garbled one, and that is how an
+      // instance came back as a blank vanilla instance.
+      fsyncSync(fd)
+    } finally {
+      closeSync(fd)
+    }
+    if (options.keepPrevious) keepPreviousVersion(file)
     renameWithRetry(tmp, file)
   } catch (err) {
     try {
@@ -109,6 +136,37 @@ export function readJsonResult<T>(file: string, quarantine = false): JsonReadRes
       return { ok: false, reason: 'corrupt' }
     }
   }
+}
+
+/** Where `keepPrevious` puts the last good version of a file. */
+function previousFile(file: string): string {
+  return `${file}.previous`
+}
+
+/**
+ * Copies the current version aside before it is replaced, but only while it
+ * still reads: a damaged file must never push out the last good copy.
+ */
+function keepPreviousVersion(file: string): void {
+  try {
+    if (!existsSync(file)) return
+    const text = readFileSync(file, 'utf8')
+    JSON.parse(text)
+    writeFileSync(previousFile(file), text, { encoding: 'utf8', mode: 0o600 })
+  } catch {
+    // Only a safety net; the write itself goes ahead.
+  }
+}
+
+/**
+ * The last good version of a file written with `keepPrevious`, for when the
+ * file itself turned out damaged. Null when there is none that reads.
+ */
+export function readPreviousJson<T>(file: string): T | null {
+  const result = readJsonResult<T>(previousFile(file), false)
+  if (!result.ok) return null
+  logger.warn(`${basename(file)} war beschädigt, der vorherige Stand wird verwendet`)
+  return result.value
 }
 
 export function readJson<T>(file: string, fallback: T, quarantine = false): T {
@@ -277,6 +335,14 @@ function readSettingsFile(): JsonReadResult<Partial<LauncherSettings>> {
     sleepSync(250)
     result = readJsonResult<Partial<LauncherSettings>>(settingsFile(), true)
   }
+  // Damaged rather than missing: the last good version still knows the data
+  // folder and everything else. Starting from scratch instead ran the first
+  // setup again and pointed the launcher at the default data folder, where
+  // the user's instances were not.
+  if (!result.ok && result.reason === 'corrupt') {
+    const previous = readPreviousJson<Partial<LauncherSettings>>(settingsFile())
+    if (previous) return { ok: true, value: previous }
+  }
   return result
 }
 
@@ -395,7 +461,7 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
   // whatever they were before this call. Assigning first would have shown
   // the new values everywhere in the app while the file on disk still held
   // the old ones.
-  writeJsonAtomic(settingsFile(), next)
+  writeJsonAtomic(settingsFile(), next, { keepPrevious: true })
   settings = next
   return next
 }
@@ -418,7 +484,7 @@ export function resetSettings(): LauncherSettings {
     curseForgeApiKey
   }
   // Same ordering as saveSettings, and for the same reason.
-  writeJsonAtomic(settingsFile(), next)
+  writeJsonAtomic(settingsFile(), next, { keepPrevious: true })
   settings = next
   return next
 }

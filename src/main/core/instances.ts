@@ -24,7 +24,8 @@ import {
   safeJoin,
   sanitizeVersionId
 } from '../paths'
-import { getSettings, readJsonResult, writeJsonAtomic } from '../store'
+import { getSettings, readJsonResult, readPreviousJson, writeJsonAtomic } from '../store'
+import { guessGameOfFolder } from './instanceFolder'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { TaskCancelledError, withTask } from '../tasks'
@@ -112,8 +113,10 @@ export function loadInstances(force = false): Instance[] {
           )
           continue
         }
-        const raw = result.ok && result.value && typeof result.value === 'object' ? result.value : {}
-        cache.set(entry, normalise(raw, entry))
+        let raw: Partial<Instance> | null =
+          result.ok && result.value && typeof result.value === 'object' ? result.value : null
+        if (!raw && !result.ok && result.reason === 'corrupt') raw = recoverDamagedInstance(entry, file)
+        cache.set(entry, normalise(raw ?? {}, entry))
       } catch (err) {
         logger.error(`Instanz ${entry} konnte nicht geladen werden:`, err)
       }
@@ -160,6 +163,53 @@ export function migrateInstanceLaunchBehaviour(previousGlobal: LaunchBehaviour):
   return complete
 }
 
+/**
+ * What is left to go on once an instance.json turned out damaged.
+ *
+ * It used to become a blank stand in: "Unbenannt", vanilla, the newest
+ * Minecraft version. "Spielen" then started that version on the old worlds,
+ * which Minecraft may convert one way. The last good version comes first;
+ * failing that, the worlds themselves say which Minecraft they were played
+ * with, and the mods which loader.
+ */
+function recoverDamagedInstance(id: string, file: string): Partial<Instance> {
+  const previous = readPreviousJson<Partial<Instance>>(file)
+  if (previous && typeof previous === 'object' && !Array.isArray(previous)) {
+    const name = typeof previous.name === 'string' ? previous.name : id
+    notify(
+      'warning',
+      tr('Instanz wiederhergestellt', 'Instance restored'),
+      tr(
+        `Die Datei der Instanz „${name}“ war beschädigt. Der Stand vor ihrer letzten Änderung wurde wiederhergestellt.`,
+        `The file of the instance "${name}" was damaged. The state before its last change has been restored.`
+      )
+    )
+    return previous
+  }
+
+  const guessed = guessGameOfFolder(paths.gameDir(id))
+  notify(
+    'warning',
+    tr('Instanz nur teilweise wiederhergestellt', 'Instance only partly restored'),
+    tr(
+      `Die Datei der Instanz „${id}“ war beschädigt. ` +
+        (guessed ? `Aus den Welten wurde Minecraft ${guessed.mcVersion} erkannt. ` : '') +
+        'Prüfe Version und Mod-Loader in den Einstellungen der Instanz, bevor du spielst.',
+      `The file of the instance "${id}" was damaged. ` +
+        (guessed ? `Minecraft ${guessed.mcVersion} was recognised from the worlds. ` : '') +
+        'Check the version and mod loader in the instance settings before you play.'
+    )
+  )
+  return {
+    name: id,
+    description: tr(
+      'Aus einer beschädigten Datei wiederhergestellt. Prüfe Version und Mod-Loader, bevor du spielst.',
+      'Restored from a damaged file. Check the version and mod loader before you play.'
+    ),
+    ...(guessed ?? {})
+  }
+}
+
 export function invalidateInstanceCache(): void {
   cache.clear()
   loaded = false
@@ -199,7 +249,7 @@ export function persist(instance: Instance): Instance {
   // session while the file on disk still held the old one, silently
   // reverting on the next launcher start. `store.ts` had the same bug for
   // launcher settings, fixed the same way.
-  writeJsonAtomic(paths.instanceFile(instance.id), instance)
+  writeJsonAtomic(paths.instanceFile(instance.id), instance, { keepPrevious: true })
   cache.set(instance.id, instance)
   emit(EVENTS.instanceChanged, toSummary(instance))
   return instance
@@ -575,8 +625,13 @@ function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string)
   // Since then forge.ts names it "1.20.1-neoforge-47.1.106"; both spellings
   // are found here, told apart from a Forge build of the same number by its
   // own libraries.
-  const legacyNeo = instance.loader === 'neoforge' && loaderVersion.startsWith(`${instance.mcVersion}-`)
-  const needle = legacyNeo ? loaderVersion.slice(instance.mcVersion.length + 1) : loaderVersion
+  // The build may come with or without the "1.20.1-" in front: modpacks and
+  // other launchers often give just "47.1.106".
+  const legacyNeo = instance.loader === 'neoforge' && instance.mcVersion === '1.20.1'
+  const needle =
+    legacyNeo && loaderVersion.startsWith(`${instance.mcVersion}-`)
+      ? loaderVersion.slice(instance.mcVersion.length + 1)
+      : loaderVersion
   const nameMark = legacyNeo ? 'forge' : instance.loader
   const candidates = readdirSync(dir).filter((name) => {
     const lower = name.toLowerCase()
@@ -894,7 +949,18 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     installing: false
   }
 
-  persist(clone)
+  try {
+    persist(clone)
+  } catch (err) {
+    // The copy is complete but recorded nowhere: without its instance.json it
+    // never showed up in the list and was never cleaned up either.
+    try {
+      rmSync(paths.instance(newId), { recursive: true, force: true })
+    } catch (cleanupErr) {
+      logger.warn(`Kopie ${newId} nach gescheitertem Speichern nicht entfernt:`, cleanupErr)
+    }
+    throw err
+  }
   logger.info(`Instanz ${id} nach ${newId} dupliziert`)
   if (skippedLinks.length > 0) {
     logger.info(`Verknüpfungen beim Duplizieren ausgelassen: ${skippedLinks.join(', ')}`)
@@ -1110,6 +1176,16 @@ export function removeContentRecord(id: string, contentId: string): Instance {
 }
 
 /** True when two content lists describe the same files in the same state. */
+/** Size and modification time of a jar, to notice it was replaced under the same name. */
+function jarStamp(file: string): string | null {
+  try {
+    const info = statSync(file)
+    return `${info.size}:${Math.round(info.mtimeMs)}`
+  } catch {
+    return null
+  }
+}
+
 /** The display name a file gets when nothing better is known about it. */
 function nameFromFile(fileName: string): string {
   const bare = fileName.endsWith('.disabled') ? fileName.slice(0, -'.disabled'.length) : fileName
@@ -1121,10 +1197,10 @@ function nameFromFile(fileName: string): string {
  * declared ids; a hand-dropped one also gets the loaders, and the real name
  * and version where it still only had the ones made from its file name.
  */
-function withJarMetadata(item: ContentItem, meta: JarMetadata): ContentItem {
-  const next: ContentItem = { ...item, modIds: meta.ids }
+function withJarMetadata(item: ContentItem, meta: JarMetadata, stamp: string | null, replaced = false): ContentItem {
+  const next: ContentItem = { ...item, modIds: meta.ids, modIdsFrom: stamp ?? undefined }
   if (item.provider !== 'local') return next
-  if (item.loaders.length === 0) next.loaders = meta.loaders
+  if (item.loaders.length === 0 || replaced) next.loaders = meta.loaders
   if (meta.name && item.name === nameFromFile(item.fileName)) next.name = meta.name
   if (meta.version && !item.version) next.version = meta.version
   return next
@@ -1289,20 +1365,24 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
       // its file name and nothing else, so the compatibility check could not
       // match it against anything. Its own metadata says what it is.
       const meta = folder.type === 'mod' ? await readJarMetadata(join(folder.dir, fileName)) : null
-      result.push(meta ? withJarMetadata(registered, meta) : registered)
+      result.push(meta ? withJarMetadata(registered, meta, jarStamp(join(folder.dir, fileName))) : registered)
     }
   }
 
-  // Records from before the ids were kept, and records whose jar an update
-  // replaced, are read once here. A jar that cannot be read right now stays
-  // unread and is tried again on the next scan.
+  // Records from before the ids were kept, records whose jar an update
+  // replaced, and jars swapped by hand under the same name are read here. A
+  // jar that cannot be read right now stays as it is and is tried again on
+  // the next scan.
   let filledIn = false
   for (let i = 0; i < result.length; i++) {
     const item = result[i]
-    if (item.type !== 'mod' || item.modIds !== undefined) continue
-    const meta = await readJarMetadata(join(paths.mods(id), item.fileName))
+    if (item.type !== 'mod') continue
+    const file = join(paths.mods(id), item.fileName)
+    const stamp = jarStamp(file)
+    if (item.modIds !== undefined && item.modIdsFrom === stamp) continue
+    const meta = await readJarMetadata(file)
     if (!meta) continue
-    result[i] = withJarMetadata(item, meta)
+    result[i] = withJarMetadata(item, meta, stamp, item.modIds !== undefined)
     filledIn = true
   }
 
