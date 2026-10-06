@@ -2536,6 +2536,20 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'The backups themselves stay in the instance\'s folder, but no longer show up in the launcher and ' +
       'cannot be restored there. This only happens when the list itself gets damaged, for example by a ' +
       'disk fault.'
+  },
+  'modpack-aus-suche-unvollstaendig': {
+    title: 'A modpack installed straight from "Discover" was left without its settings and configs',
+    detail:
+      'When installing a modpack straight from the search, the launcher deleted the downloaded file ' +
+      'while the import was still running. The mods were downloaded, but configs, settings and other ' +
+      'files shipped with the modpack were missing, and the instance did not count as fully installed.'
+  },
+  'abgleich-waehrend-wiederherstellung': {
+    title: 'During a restore the details of all mods could be lost',
+    detail:
+      'When restoring a backup with mods while staying on the instance page, the launcher compared the ' +
+      'mods folder while it was briefly set aside. It took all mods as removed. Afterwards the files ' +
+      'came back, but without their source and version, and updates were no longer found for them.'
   }
 }
 

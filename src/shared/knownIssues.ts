@@ -3990,6 +3990,28 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'beschädigt wird, etwa bei einem Festplattenfehler.',
     state: 'investigating',
     since: '2026-10-05'
+  },
+  {
+    id: 'modpack-aus-suche-unvollstaendig',
+    title: 'Ein Modpack direkt aus „Entdecken“ blieb ohne seine Einstellungen und Konfigurationen',
+    detail:
+      'Beim Installieren eines Modpacks direkt aus der Suche löschte der Launcher die heruntergeladene ' +
+      'Datei, während der Import noch lief. Die Mods wurden geladen, aber Konfigurationen, ' +
+      'Einstellungen und weitere mitgelieferte Dateien des Modpacks fehlten, und die Instanz galt ' +
+      'nicht als fertig installiert.',
+    state: 'fixing',
+    since: '2026-10-06'
+  },
+  {
+    id: 'abgleich-waehrend-wiederherstellung',
+    title: 'Während einer Wiederherstellung konnten die Angaben zu allen Mods verloren gehen',
+    detail:
+      'Stellte man eine Sicherung mit Mods wieder her und blieb dabei auf der Seite der Instanz, glich ' +
+      'der Launcher den Mod-Ordner ab, während dieser kurz beiseitegelegt war. Er hielt alle Mods für ' +
+      'entfernt. Danach kamen die Dateien zurück, aber ohne Herkunft und Version, und Updates wurden ' +
+      'für sie nicht mehr gefunden.',
+    state: 'fixing',
+    since: '2026-10-06'
   }
 ]
 
