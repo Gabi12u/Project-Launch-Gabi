@@ -53,6 +53,7 @@ export function writeJsonAtomic(
     }
     if (options.keepPrevious) keepPreviousVersion(file)
     renameWithRetry(tmp, file)
+    writtenThisSession.add(file)
   } catch (err) {
     try {
       if (existsSync(tmp)) unlinkSync(tmp)
@@ -150,6 +151,12 @@ function previousFile(file: string): string {
 function keepPreviousVersion(file: string): void {
   try {
     if (!existsSync(file)) return
+    // Written by this very function earlier in the session, so known good: a
+    // plain copy does, without reading and parsing it on every save.
+    if (writtenThisSession.has(file)) {
+      copyFileSync(file, previousFile(file))
+      return
+    }
     const text = readFileSync(file, 'utf8')
     JSON.parse(text)
     writeFileSync(previousFile(file), text, { encoding: 'utf8', mode: 0o600 })
@@ -157,6 +164,9 @@ function keepPreviousVersion(file: string): void {
     // Only a safety net; the write itself goes ahead.
   }
 }
+
+/** Files `writeJsonAtomic` completed in this session. */
+const writtenThisSession = new Set<string>()
 
 /**
  * The last good version of a file written with `keepPrevious`, for when the
@@ -341,7 +351,17 @@ function readSettingsFile(): JsonReadResult<Partial<LauncherSettings>> {
   // the user's instances were not.
   if (!result.ok && result.reason === 'corrupt') {
     const previous = readPreviousJson<Partial<LauncherSettings>>(settingsFile())
-    if (previous) return { ok: true, value: previous }
+    if (previous) {
+      // Written back at once. The damaged file was set aside by the read
+      // above, so held only in memory the recovery lasted this one start:
+      // the next one found no settings at all and ran the first setup.
+      try {
+        writeJsonAtomic(settingsFile(), previous)
+      } catch (err) {
+        logger.warn('Wiederhergestellte Einstellungen konnten nicht gespeichert werden:', err)
+      }
+      return { ok: true, value: previous }
+    }
   }
   return result
 }

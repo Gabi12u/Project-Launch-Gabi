@@ -40,7 +40,7 @@ import {
 import { checkCompatibility } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
 import { SignInUnavailableError, getActiveAccount, getValidAccessToken, storedAccessToken, toPublicAccount } from '../auth/microsoft'
-import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isSameProgram, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount } from './running'
+import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isSameProcess, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount, type AdoptedGame } from './running'
 import { isRepairing } from './repairLock'
 import { isRestoring } from './restoreLock'
 import { applyCustomStartScreen, removeCustomStartScreen } from './startScreen'
@@ -1427,6 +1427,36 @@ function stopAdopted(instanceId: string, pid: number, immediate: boolean): void 
   )
 }
 
+/**
+ * A game an earlier launcher session started. Still the very process that was
+ * started then, by program and start time: stopped for real. Only dropping the
+ * record left the game running while the instance looked free, and a second
+ * start on the same world went through. Anything less certain is not killed
+ * by pid, only the record goes.
+ */
+async function stopOrphan(instanceId: string, orphan: AdoptedGame, immediate: boolean): Promise<void> {
+  let same = false
+  try {
+    same = await isSameProcess(orphan)
+  } catch (err) {
+    logger.warn(`Prozess von ${instanceId} nicht prüfbar:`, err)
+  }
+  // The record may have gone meanwhile: the game ended, or another click.
+  if (getAdopted(instanceId)?.pid !== orphan.pid) return
+  if (same) {
+    stopAdopted(instanceId, orphan.pid, immediate)
+    return
+  }
+  clearRunning(instanceId)
+  logger.info(`Übernommener Eintrag für ${instanceId} (PID ${orphan.pid}) verworfen`)
+  setStatus(instanceId, 'idle', tr('Eintrag entfernt, die Instanz lässt sich wieder starten.', 'Entry removed, the instance can be started again.'))
+  notify(
+    'info',
+    tr('Eintrag entfernt', 'Entry removed'),
+    tr('Falls Minecraft noch offen ist, schließe das Fenster selbst. Dieser Launcher kann es nicht beenden, weil es eine frühere Sitzung gestartet hat.', 'If Minecraft is still open, close the window yourself. This launcher cannot stop it because an earlier session started it.')
+  )
+}
+
 export function stopInstance(instanceId: string, immediate = false): void {
   const game = getRunning(instanceId)
   if (!game) {
@@ -1437,24 +1467,7 @@ export function stopInstance(instanceId: string, immediate = false): void {
     // user's way out when a recycled pid makes us think a long-gone game is
     // still running — without it the instance stays locked indefinitely.
     const orphan = getAdopted(instanceId)
-    if (orphan) {
-      // Still the very program that was started then: stopped for real. Only
-      // dropping the record left the game running while the instance looked
-      // free, and a second start on the same world went through.
-      if (isSameProgram(orphan) === true) {
-        stopAdopted(instanceId, orphan.pid, immediate)
-        return
-      }
-      clearRunning(instanceId)
-      logger.info(`Übernommener Eintrag für ${instanceId} (PID ${orphan.pid}) verworfen`)
-      setStatus(instanceId, 'idle', tr('Eintrag entfernt, die Instanz lässt sich wieder starten.', 'Entry removed, the instance can be started again.'))
-      notify(
-        'info',
-        tr('Eintrag entfernt', 'Entry removed'),
-        tr('Falls Minecraft noch offen ist, schließe das Fenster selbst. Dieser Launcher kann es nicht beenden, weil es eine frühere Sitzung gestartet hat.', 'If Minecraft is still open, close the window yourself. This launcher cannot stop it because an earlier session started it.')
-      )
-      return
-    }
+    if (orphan) void stopOrphan(instanceId, orphan, immediate)
     return
   }
 

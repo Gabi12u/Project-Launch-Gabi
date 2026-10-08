@@ -212,6 +212,25 @@ async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Pr
   }
 }
 
+/** Whether a folder holds at least one file anywhere below it, links not followed. */
+function holdsAnyFile(dir: string): boolean {
+  const stack = [dir]
+  while (stack.length > 0) {
+    const current = stack.pop() as string
+    let entries: import('node:fs').Dirent[]
+    try {
+      entries = readdirSync(current, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (entry.isFile()) return true
+      if (entry.isDirectory()) stack.push(join(current, entry.name))
+    }
+  }
+  return false
+}
+
 /**
  * The chosen folders hold no file at all. A fresh instance always has an
  * empty saves folder, so this is the normal case for one only ever played on
@@ -259,6 +278,14 @@ async function createBackupUnlocked(
   // Deliberately no `isRunning`/`isStarting` check here: unlike a restore, a
   // backup only reads the game folder, and blocking it while Minecraft runs
   // has never been required.
+
+  // Checked before the task exists. Thrown inside it, an instance only ever
+  // played on servers put a red "Sicherung fehlgeschlagen" into the task list
+  // after every session, for an empty saves folder.
+  const gameDirBefore = paths.gameDir(instanceId)
+  if (!includes.some((key) => holdsAnyFile(join(gameDirBefore, key)))) {
+    throw new NothingToBackUpError(tr('Es gibt nichts zu sichern, die gewählten Ordner sind leer.', 'There is nothing to back up, the chosen folders are empty.'))
+  }
 
   return withTask(
     tr(`Sicherung von ${instance.name}`, `Backup of ${instance.name}`),

@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { basename, join } from 'node:path'
-import { execFileSync, type ChildProcess } from 'node:child_process'
+import { execFile, execFileSync, type ChildProcess } from 'node:child_process'
 import { statSync } from 'node:fs'
 import { uptime } from 'node:os'
 import { paths } from '../paths'
@@ -84,8 +84,62 @@ function processImage(pid: number): string | null {
 export function isSameProgram(game: AdoptedGame): boolean | null {
   const now = processImage(game.pid)
   if (now === null) return null
-  if (game.image) return now.toLowerCase() === game.image.toLowerCase()
-  return /^javaw?(\.exe)?$/i.test(now)
+  const current = now.toLowerCase()
+  const isJava = /^javaw?(\.exe)?$/.test(current)
+  if (!game.image) return isJava
+  const started = game.image.toLowerCase()
+  if (current === started) return true
+  if (process.platform !== 'win32') {
+    // Linux cuts the name to 15 characters, and wrappers such as gamemoderun
+    // or prime-run replace themselves with Java under the same pid. Taken as
+    // another program, a game still running was let go and a second one
+    // could start on the same world.
+    if (current.slice(0, 15) === started.slice(0, 15)) return true
+    if (isJava) return true
+  }
+  return false
+}
+
+/**
+ * When the program under a pid was started, or null when that cannot be told.
+ * Slow (it asks PowerShell on Windows), so only for a deliberate action.
+ */
+function processStartTime(pid: number): Promise<number | null> {
+  return new Promise((resolvePromise) => {
+    const done = (err: Error | null, out: string): void => {
+      if (err) return resolvePromise(null)
+      const at = Date.parse(out.trim())
+      resolvePromise(Number.isFinite(at) ? at : null)
+    }
+    if (process.platform === 'win32') {
+      execFile(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `(Get-Process -Id ${pid} -ErrorAction Stop).StartTime.ToUniversalTime().ToString('o')`
+        ],
+        { encoding: 'utf8', windowsHide: true, timeout: 10_000 },
+        (err, out) => done(err, out)
+      )
+    } else {
+      execFile('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000 }, (err, out) => done(err, out))
+    }
+  })
+}
+
+/**
+ * Whether an adopted game's pid still is the very process that was started
+ * then: the same program, started at the recorded time. Only this is safe
+ * enough to end a process by pid; a pid handed on to another Java program
+ * (a second Minecraft, a server) passes the name check alone.
+ */
+export async function isSameProcess(game: AdoptedGame): Promise<boolean> {
+  if (!game.image || isSameProgram(game) !== true) return false
+  const startedAt = await processStartTime(game.pid)
+  if (startedAt === null) return false
+  return Math.abs(startedAt - game.startedAt) <= 60_000
 }
 
 /**

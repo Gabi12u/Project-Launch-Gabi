@@ -114,9 +114,21 @@ export function loadInstances(force = false): Instance[] {
           )
           continue
         }
-        let raw: Partial<Instance> | null =
+        const raw: Partial<Instance> | null =
           result.ok && result.value && typeof result.value === 'object' ? result.value : null
-        if (!raw && !result.ok && result.reason === 'corrupt') raw = recoverDamagedInstance(entry, file)
+        if (!raw && !result.ok && result.reason === 'corrupt') {
+          const recovered = normalise(recoverDamagedInstance(entry, file), entry)
+          // Written back at once. The damaged file was set aside by the read
+          // above, so held only in memory the instance vanished from the list
+          // on the next start, worlds and all still on disk.
+          try {
+            writeJsonAtomic(file, recovered)
+          } catch (err) {
+            logger.warn(`Wiederhergestellte Instanz ${entry} konnte nicht gespeichert werden:`, err)
+          }
+          cache.set(entry, recovered)
+          continue
+        }
         cache.set(entry, normalise(raw ?? {}, entry))
       } catch (err) {
         logger.error(`Instanz ${entry} konnte nicht geladen werden:`, err)
@@ -1201,7 +1213,9 @@ function nameFromFile(fileName: string): string {
 function withJarMetadata(item: ContentItem, meta: JarMetadata, stamp: string | null, replaced = false): ContentItem {
   const next: ContentItem = { ...item, modIds: meta.ids, modIdsFrom: stamp ?? undefined }
   if (item.provider !== 'local') return next
-  if (item.loaders.length === 0 || replaced) next.loaders = meta.loaders
+  // Only with something to put there: a jar naming no loader must not wipe
+  // what was known before.
+  if (meta.loaders.length > 0 && (item.loaders.length === 0 || replaced)) next.loaders = meta.loaders
   if (meta.name && item.name === nameFromFile(item.fileName)) next.name = meta.name
   if (meta.version && !item.version) next.version = meta.version
   return next
@@ -1381,6 +1395,13 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
     const file = join(paths.mods(id), item.fileName)
     const stamp = jarStamp(file)
     if (item.modIds !== undefined && item.modIdsFrom === stamp) continue
+    // Ids read before the stamp existed: the jar is taken as the one they
+    // came from and only stamped, instead of reading every jar again.
+    if (item.modIds !== undefined && item.modIdsFrom === undefined && stamp !== null) {
+      result[i] = { ...item, modIdsFrom: stamp }
+      filledIn = true
+      continue
+    }
     const meta = await readJarMetadata(file)
     if (!meta) continue
     result[i] = withJarMetadata(item, meta, stamp, item.modIds !== undefined)

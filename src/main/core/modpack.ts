@@ -1231,7 +1231,12 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     const gameDir = paths.gameDir(instanceId)
     const overrideFolders = [
       ...new Set([...(options.includeFolders ?? packFolders(gameDir)), ...bundled.map((b) => b.split('/')[0])])
-    ].filter((folder) => existsSync(join(gameDir, folder)))
+    ]
+      .filter((folder) => existsSync(join(gameDir, folder)))
+      // Minecraft 1.5.2 and older get their sounds copied into "resources"
+      // by the launcher on every start. Packed along, they made the export
+      // tens of megabytes bigger for nothing.
+      .filter((folder) => !(folder.toLowerCase() === 'resources' && usesResourcesFolderForSounds(current.mcVersion)))
 
     mkdirSync(join(options.targetFile, '..'), { recursive: true })
 
@@ -1292,6 +1297,14 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
 
     return options.targetFile
   }))
+}
+
+/** Minecraft 1.5.2 and older, which read their sounds from gameDir/resources. */
+function usesResourcesFolderForSounds(mcVersion: string): boolean {
+  const release = /^1\.(\d+)(?:\.|$)/.exec(mcVersion)
+  if (release) return Number(release[1]) < 6
+  // Alpha, beta, classic and the earliest ids.
+  return /^(a|b|c|rd-|inf-)\d/i.test(mcVersion)
 }
 
 /** Installs a modpack straight from a provider search result. */
