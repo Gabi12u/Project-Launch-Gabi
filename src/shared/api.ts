@@ -122,6 +122,11 @@ export interface ErrorReport {
   area: string
   message: string
   detail: string
+  /**
+   * False while waiting to be sent, true once the server took it. Missing on
+   * reports that were never meant to leave the machine and on older ones.
+   */
+  delivered?: boolean
 }
 
 export interface RepairReport {

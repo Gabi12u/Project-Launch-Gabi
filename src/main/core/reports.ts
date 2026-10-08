@@ -11,47 +11,25 @@ import { log } from '../logger'
 const logger = log('reports')
 
 /**
- * Where finished reports are sent.
+ * Where finished reports are sent: the launcher's own server only.
  *
- * A Discord webhook, deliberately: the connection terminates at Discord, so
- * the address of the person reporting never reaches us. Pointing this at our
- * own server would put every reporter's IP in its access log, which is exactly
- * what we do not want to collect.
+ * Reports used to go straight to a Discord webhook as well. Its address sat in
+ * every installation, readable by anyone unpacking the app, and with it
+ * anyone could write into the channel or delete the webhook outright (a
+ * tester pointed that out on 2026-10-08). The server now forwards new faults
+ * to Discord itself, with an address only it knows.
  *
- * Injected at build time, never written down here. The previous address sat
- * in this file as a literal, and on 2026-09-08 a scanner bot found it in the
- * public repository and used it to spam the channel. In a built installer the
- * address is still readable, which cannot be avoided for a client that posts
- * on its own, but that takes someone unpacking the app on purpose instead of
- * a bot grepping GitHub every few minutes.
+ * The server sees the reporter's address when a report arrives, like any
+ * server does. It uses it only to brake a flood, in memory, and stores none:
+ * not with the report, and nginx keeps no access log for this path.
  *
- * It is not a key to anything: it can only write into one channel, nothing can
- * be read back through it, and replacing it in Discord revokes it instantly.
- *
- * Empty means this path stays inert: reports are still written locally and can
- * be handed over by the user, but nothing leaves the machine. That is what
- * every fork and every build without the secret gets.
- */
-const WEBHOOK_URL = process.env.LG_REPORT_WEBHOOK ?? ''
-
-/**
- * Das interne Panel, als zweiter Empfaenger neben Discord.
- *
- * Beides, nicht statt: Discord ist der Weg, auf dem ein Bericht auch
- * dann noch ankommt, wenn der eigene Server gerade das Problem ist.
- * Das Panel fasst gleiche Fehler zusammen und zeigt, wie oft und in
- * welchen Versionen sie auftreten.
- *
- * Anders als bei Discord terminiert diese Verbindung auf dem eigenen
- * Server. Die Adresse der meldenden Person ist damit dort sichtbar.
- * Das ist eine bewusste Entscheidung und kein Versehen.
- *
- * Das Berichtswort kommt wie die Webhook-Adresse aus dem Bau und steht
- * nicht im Quelltext. In einer fertigen Installation ist es trotzdem
- * auslesbar, anders geht es bei einem Client nicht, der selbst sendet.
- * Es oeffnet nichts: damit laesst sich ausschliesslich schreiben, nichts
- * lesen, und ein Wechsel auf dem Server entwertet es sofort. Leer
- * heisst: dieser Weg bleibt aus.
+ * The token comes from the build, never from this file: a webhook address
+ * once sat here as a literal, and on 2026-09-08 a scanner bot found it in the
+ * public repository. In a built installer the token is still readable, which
+ * cannot be avoided for a client that reports on its own. It opens nothing:
+ * it can only add reports, nothing can be read back with it, and changing it
+ * on the server revokes it instantly. Empty means nothing leaves the machine,
+ * which is what every fork and every build without the secret gets.
  */
 const PANEL_URL = 'https://admin.launchgabi.com/api/reports'
 const PANEL_TOKEN = process.env.LG_REPORT_PANEL_TOKEN ?? ''
@@ -59,12 +37,11 @@ const PANEL_TOKEN = process.env.LG_REPORT_PANEL_TOKEN ?? ''
 /** Reports per launcher session, so a crash loop cannot flood the channel. */
 const MAX_PER_SESSION = 5
 
-/** Discord refuses anything longer, and a wall of text helps nobody anyway. */
-const MAX_MESSAGE = 1800
-
+/** Reports sent or tried this session, see `send`. */
 let sentThisSession = 0
-/** The panel's own budget, see `send`. */
-let panelThisSession = 0
+
+/** How long a report that could not be delivered is kept for another try. */
+const RETRY_FOR_MS = 7 * 24 * 60 * 60 * 1000
 
 /** Fingerprints already reported, so the same fault is not sent twice. */
 const seen = new Set<string>()
@@ -78,6 +55,11 @@ export interface ErrorReport {
   area: string
   message: string
   detail: string
+  /**
+   * False while waiting to be sent, true once the server took it. Missing on
+   * reports that were never meant to leave the machine and on older ones.
+   */
+  delivered?: boolean
 }
 
 function reportsDir(): string {
@@ -274,7 +256,7 @@ export function scrub(text: string): string {
   // The bare numeric form, which is how an XUID appears outside quotes.
   out = out.replace(/\b\d{15,20}\b/g, '<Kennung>')
 
-  // The reporter's own network address. Nothing about the webhook keeps an
+  // The reporter's own network address. Nothing about the server keeps an
   // address that shows up *inside* an error's own text from travelling with
   // it, and the consent dialog promises none is kept — this is that promise
   // actually enforced rather than relying only on where the report is sent.
@@ -341,7 +323,7 @@ function prune(): void {
  *
  * Everything is written locally either way. That is the part the user can hand
  * over themselves, and it is what makes the feature useful even with no
- * webhook configured and no consent given.
+ * reporting configured and no consent given.
  */
 export function reportError(area: string, error: unknown, extra?: string): void {
   try {
@@ -366,6 +348,10 @@ export function reportError(area: string, error: unknown, extra?: string): void 
       detail: scrub([stack, extra].filter(Boolean).join('\n\n')).slice(0, 6000)
     }
 
+    // Marked as waiting only when it is meant to leave the machine at all.
+    // Reports from before this field existed carry none and are never sent
+    // again, and neither are ones written without consent.
+    if (shouldSend()) report.delivered = false
     writeLocally(report)
     // Caught here rather than left floating. An unhandled rejection would reach
     // the process-wide handler, which calls straight back into this function.
@@ -383,31 +369,17 @@ export function reportError(area: string, error: unknown, extra?: string): void 
 
 function shouldSend(): boolean {
   if (!reportingConfigured()) return false
-  if (getSettings().crashReports !== 'on') return false
-  return sentThisSession < MAX_PER_SESSION
+  return getSettings().crashReports === 'on'
 }
 
 /**
- * Stands in for a backtick inside the fenced code block below.
- *
- * Markdown has no escape that works inside a fence, so three of the real
- * character in the error text would close it early and let whatever follows
- * render as ordinary Discord markdown, links included. Swapped for a
- * lookalike that cannot, rather than only handling a run of exactly three.
+ * Sends one report to the launcher's server. True once it arrived; a refusal
+ * or no connection is false, and the report keeps waiting for the next start.
+ * Never throws: a launcher that cannot report an error must not make a
+ * second error out of that.
  */
-function fenceSafe(text: string): string {
-  return text.replace(/`/g, 'ˋ')
-}
-
-/**
- * Schickt einen Bericht an das interne Panel.
- *
- * Laeuft neben Discord und ist absichtlich anspruchslos: schlaegt es
- * fehl, passiert nichts weiter. Ein Launcher, der einen Fehler nicht
- * melden kann, darf daraus keinen zweiten Fehler machen.
- */
-async function sendToPanel(report: ErrorReport): Promise<void> {
-  if (!PANEL_URL || !PANEL_TOKEN) return
+function sendToPanel(report: ErrorReport): Promise<boolean> {
+  if (!PANEL_URL || !PANEL_TOKEN) return Promise.resolve(false)
 
   const body = JSON.stringify({
     area: report.area,
@@ -417,7 +389,7 @@ async function sendToPanel(report: ErrorReport): Promise<void> {
     platform: report.platform
   })
 
-  await new Promise<void>((done) => {
+  return new Promise<boolean>((done) => {
     try {
       const req = request(
         PANEL_URL,
@@ -432,92 +404,84 @@ async function sendToPanel(report: ErrorReport): Promise<void> {
         },
         (res) => {
           res.resume()
-          if (res.statusCode && res.statusCode >= 400) {
-            logger.warn(`Panel hat den Fehlerbericht abgelehnt (HTTP ${res.statusCode})`)
+          const status = res.statusCode ?? 0
+          // A 4xx other than the brake will not get better by trying again
+          // (a revoked token, a report the server rejects): taken as handled.
+          if (status >= 400 && status !== 429 && status < 500) {
+            logger.warn(`Server hat den Fehlerbericht abgelehnt (HTTP ${status})`)
+            done(true)
+            return
           }
-          done()
+          if (status >= 400) {
+            logger.warn(`Fehlerbericht vorerst nicht angenommen (HTTP ${status})`)
+            done(false)
+            return
+          }
+          logger.info(`Fehlerbericht ${report.id} gesendet`)
+          done(true)
         }
       )
-      req.on('error', () => done())
-      req.on('timeout', () => {
-        req.destroy()
-        done()
-      })
-      req.end(body)
-    } catch {
-      done()
-    }
-  })
-}
-
-async function send(report: ErrorReport): Promise<void> {
-  if (!shouldSend()) return
-
-  // Das Panel bekommt denselben Bericht. Getrennt vom Webhook, damit
-  // ein Ausfall der einen Seite die andere nicht mitnimmt.
-  // Counted on the way out, apart from the webhook: that counter only moves
-  // when a post to Discord succeeded, so without a webhook, or with a
-  // failing one, the panel had no limit at all.
-  if (panelThisSession < MAX_PER_SESSION) {
-    panelThisSession++
-    void sendToPanel(report)
-  }
-
-  // Ein Bau kann das Panel kennen und den Webhook nicht. Ohne diese
-  // Zeile ginge die Anfrage an eine leere Adresse und verbrauchte einen
-  // der fuenf Plaetze dieser Sitzung fuer nichts.
-  if (!WEBHOOK_URL) return
-
-  const body = JSON.stringify({
-    // No mentions, ever: a report should never be able to ping a whole server.
-    allowed_mentions: { parse: [] },
-    content: [
-      `**${report.area}** in ${report.version} auf ${report.platform}`,
-      '```',
-      fenceSafe(`${report.message}\n\n${report.detail}`).slice(0, MAX_MESSAGE),
-      '```'
-    ].join('\n')
-  })
-
-  await new Promise<void>((done) => {
-    try {
-      const req = request(
-        WEBHOOK_URL,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) },
-          timeout: 8000
-        },
-        (res) => {
-          res.resume()
-          if (res.statusCode && res.statusCode >= 400) {
-            logger.warn(`Fehlerbericht abgelehnt (HTTP ${res.statusCode})`)
-          } else {
-            // Counted only once something actually arrived. Counting on the way
-            // out meant a revoked webhook or a dead connection used up the whole
-            // session's budget without a single report ever landing.
-            sentThisSession++
-            logger.info(`Fehlerbericht ${report.id} gesendet`)
-          }
-          done()
-        }
-      )
-      // Every failure path ends the same way: give up quietly. A launcher that
-      // cannot report an error must not make a second error out of that.
       req.on('error', (err) => {
         logger.warn('Fehlerbericht konnte nicht gesendet werden:', err)
-        done()
+        done(false)
       })
       req.on('timeout', () => {
         req.destroy()
-        done()
+        done(false)
       })
       req.end(body)
     } catch (err) {
       logger.warn('Fehlerbericht konnte nicht gesendet werden:', err)
-      done()
+      done(false)
     }
   })
+}
+
+/** Rewrites a stored report as delivered, so it is not sent again. */
+function markDelivered(report: ErrorReport): void {
+  try {
+    const file = join(reportsDir(), `${report.id}.json`)
+    if (!existsSync(file)) return
+    writeFileSync(file, JSON.stringify({ ...report, delivered: true }, null, 2), { encoding: 'utf8', mode: 0o600 })
+  } catch (err) {
+    logger.debug('Fehlerbericht nicht als gesendet markiert:', err)
+  }
+}
+
+async function send(report: ErrorReport): Promise<void> {
+  if (!shouldSend()) return
+  // Counted per attempt: a crash loop or a dead server must not turn into
+  // an endless stream of requests.
+  if (sentThisSession >= MAX_PER_SESSION) return
+  sentThisSession++
+  if (await sendToPanel(report)) markDelivered(report)
+}
+
+/**
+ * Sends the reports an earlier session could not deliver, the server being
+ * down for maintenance for one. Before, the second path to Discord covered
+ * that; now the report simply waits on this machine for the next start.
+ * Only reports marked as waiting, and only for a week.
+ */
+export async function sendPendingReports(): Promise<void> {
+  if (!shouldSend()) return
+  const dir = reportsDir()
+  if (!existsSync(dir)) return
+  const cutoff = Date.now() - RETRY_FOR_MS
+  const pending: ErrorReport[] = []
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith('.json')) continue
+    try {
+      const report = JSON.parse(readFileSync(join(dir, name), 'utf8')) as ErrorReport
+      if (report.delivered === false && report.at >= cutoff) pending.push(report)
+    } catch {
+      // An unreadable report is not worth a retry.
+    }
+  }
+  for (const report of pending.sort((a, b) => a.at - b.at)) {
+    if (sentThisSession >= MAX_PER_SESSION) break
+    await send(report)
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -549,9 +513,9 @@ export function clearReports(): void {
   logger.info('Fehlerberichte gelöscht')
 }
 
-/** True when the webhook is configured, so the interface can be honest. */
+/** True when this build can send at all, so the interface can be honest. */
 export function reportingConfigured(): boolean {
-  return WEBHOOK_URL.length > 0 || (PANEL_URL.length > 0 && PANEL_TOKEN.length > 0)
+  return PANEL_URL.length > 0 && PANEL_TOKEN.length > 0
 }
 
 export function reportsFolder(): string {

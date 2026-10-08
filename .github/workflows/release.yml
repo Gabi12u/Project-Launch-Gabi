@@ -85,7 +85,8 @@ jobs:
           # hatte sie am 2026-09-08 aus dem oeffentlichen Repository gefischt.
           # Fehlt eines der beiden, baut alles weiter und der jeweilige Weg
           # bleibt in dieser Version einfach aus.
-          LG_REPORT_WEBHOOK: ${{ secrets.LG_REPORT_WEBHOOK }}
+          # Kein Discord-Webhook mehr im Bau: er war aus jeder Installation
+          # auslesbar. Der eigene Server leitet jetzt an Discord weiter.
           LG_REPORT_PANEL_TOKEN: ${{ secrets.LG_REPORT_PANEL_TOKEN }}
         run: npm run pack:${{ matrix.platform }}
 

@@ -77,8 +77,8 @@ export function ReportConsent(): JSX.Element | null {
             <li>{tr('Die Version von Launch Gabi und dein Betriebssystem', 'The version of Launch Gabi and your operating system')}</li>
             <li>
               {tr(
-                'An wen: an den Launch-Gabi-Server und einen Discord-Kanal der Entwicklung. Der Server speichert dabei deine IP-Adresse mit dem Bericht, wie es jeder Server beim Empfang tun kann.',
-                'To whom: the Launch Gabi server and a Discord channel of the developer. The server stores your IP address with the report, as any server receiving it can.'
+                'An wen: an den Launch-Gabi-Server der Entwicklung. Neue Fehler meldet er an ihren Discord-Kanal weiter.',
+                'To whom: the Launch Gabi server of the developer. It passes new errors on to a Discord channel of the developer.'
               )}
             </li>
           </ul>
@@ -88,6 +88,12 @@ export function ReportConsent(): JSX.Element | null {
             <li>{tr('Dein Minecraft-Name, deine UUID und deine Zugangsdaten', 'Your Minecraft name, your UUID and your credentials')}</li>
             <li>{tr('Dein Windows-Benutzername, auch nicht versteckt in Dateipfaden', 'Your Windows user name, not even hidden in file paths')}</li>
 
+            <li>
+              {tr(
+                'Deine IP-Adresse: Der Server sieht sie beim Empfang wie jeder Server, speichert sie aber nicht',
+                'Your IP address: the server sees it on receipt like any server, but does not store it'
+              )}
+            </li>
             <li>{tr('Nichts aus deinen Welten, Mods oder Screenshots', 'Nothing from your worlds, mods or screenshots')}</li>
           </ul>
         </div>

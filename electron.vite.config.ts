@@ -21,7 +21,9 @@ export default defineConfig(({ mode }) => {
     main: {
       plugins: [externalizeDepsPlugin()],
       define: {
-        'process.env.LG_REPORT_WEBHOOK': JSON.stringify(env.LG_REPORT_WEBHOOK ?? ''),
+        // Only the token for the launcher's own server. The Discord webhook
+        // is gone from the build: it was readable in every installation, and
+        // the server now forwards to Discord itself.
         'process.env.LG_REPORT_PANEL_TOKEN': JSON.stringify(env.LG_REPORT_PANEL_TOKEN ?? '')
       },
       resolve: {

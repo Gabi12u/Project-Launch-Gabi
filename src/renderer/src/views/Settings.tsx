@@ -1262,8 +1262,8 @@ function ReportsPanel(): JSX.Element {
           hint={
             configured
               ? tr(
-                  'Ohne deinen Namen, deine UUID und deine Zugangsdaten. Der Launch-Gabi-Server speichert dabei deine IP-Adresse mit.',
-                  'Without your name, your UUID and your credentials. The Launch Gabi server stores your IP address along with it.'
+                  'An den Launch-Gabi-Server, ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.',
+                  'To the Launch Gabi server, without your name, your UUID and your credentials. Your IP address is not stored.'
                 )
               : tr(
                   'In dieser Version ist kein Empfänger hinterlegt, es wird nichts gesendet. Berichte werden nur bei dir gespeichert.',

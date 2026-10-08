@@ -26,7 +26,7 @@ import {
   initRecording,
   isFinalisingRecording
 } from './core/recording'
-import { reportError } from './core/reports'
+import { reportError, sendPendingReports } from './core/reports'
 import { showLauncherWindow } from './gameLogWindow'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
@@ -596,6 +596,11 @@ function bootstrap(): void {
       // an earlier session. Skipped while a game adopted from that session may
       // still run out of a parked folder.
       if (runningCount() === 0) sweepStagingDirs()
+      // Reports a previous session could not deliver (the server down for
+      // maintenance, no connection) get their second try now.
+      void sendPendingReports().catch((err: unknown) => {
+        logger.debug('Wartende Fehlerberichte nicht gesendet:', err)
+      })
       void cleanTempFiles()
         .then((removed) => {
           if (removed > 0) logger.info(`${removed} unterbrochene Downloads aufgeräumt`)
