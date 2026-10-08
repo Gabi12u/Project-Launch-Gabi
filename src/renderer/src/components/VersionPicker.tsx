@@ -5,6 +5,7 @@ import { IconCheck, IconDownload } from './Icons'
 import { LOADER_LABELS, formatBytes, formatRelative, releaseTypeLabel } from '../lib/format'
 import { toast, toastError } from '../lib/store'
 import { tr } from '@shared/i18n'
+import { gameVersionMatches, sameVersionLine } from '@shared/gameVersions'
 
 interface Props {
   item: ContentItem
@@ -32,6 +33,8 @@ export function VersionPicker({
   const [versions, setVersions] = useState<ProjectVersion[] | null>(null)
   const [onlyCompatible, setOnlyCompatible] = useState(true)
   const [installing, setInstalling] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!item.projectId || item.provider === 'local') {
@@ -52,15 +55,24 @@ export function VersionPicker({
       .catch((err) => {
         if (!current) return
         toastError(err, tr('Versionen konnten nicht geladen werden', 'Versions could not be loaded'))
+        // Kept apart from an empty list: once the toast had gone, a failed
+        // load read as "no versions found".
+        setLoadError(err instanceof Error ? err.message : String(err))
         setVersions([])
       })
     return () => {
       current = false
     }
-  }, [item.projectId, item.provider])
+  }, [item.projectId, item.provider, reloadKey])
 
+  // The rule the install uses (shared/gameVersions.ts). Demanding the exact
+  // version marked the "1.21" build the install had picked for a 1.21.1
+  // instance as unsuitable.
   const fits = (version: ProjectVersion): boolean => {
-    const versionOk = version.gameVersions.length === 0 || version.gameVersions.includes(mcVersion)
+    const looseLine = item.type === 'resourcepack' || item.type === 'shaderpack'
+    const versionOk =
+      version.gameVersions.length === 0 ||
+      version.gameVersions.some((v) => (looseLine ? sameVersionLine(mcVersion, v) : gameVersionMatches(mcVersion, v)))
     const loaderOk =
       version.loaders.length === 0 ||
       loader === 'vanilla' ||
@@ -108,6 +120,21 @@ export function VersionPicker({
             <div key={i} className="skeleton" style={{ height: 54 }} />
           ))}
         </div>
+      ) : loadError ? (
+        <div className="col gap-8">
+          <p className="hint">{tr(`Die Versionen konnten nicht geladen werden: ${loadError}`, `The versions could not be loaded: ${loadError}`)}</p>
+          <button
+            className="btn sm"
+            style={{ alignSelf: 'flex-start' }}
+            onClick={() => {
+              setLoadError(null)
+              setVersions(null)
+              setReloadKey((key) => key + 1)
+            }}
+          >
+            {tr('Erneut versuchen', 'Try again')}
+          </button>
+        </div>
       ) : versions.length === 0 ? (
         <p className="hint">
           {item.provider === 'local'
@@ -139,7 +166,12 @@ export function VersionPicker({
           ) : (
             <div className="col gap-8">
               {shown.slice(0, 60).map((version) => {
-                const active = version.fileName === item.fileName
+                // By version id: a switched off mod carries ".disabled" in its
+                // file name and was never marked, and two versions sharing a
+                // file name were both marked.
+                const active = item.versionId
+                  ? version.versionId === item.versionId
+                  : version.fileName === item.fileName.replace(/\.disabled$/, '')
                 const compatible = fits(version)
                 return (
                   <div key={version.versionId} className={`content-row${active ? ' is-you' : ''}`}>

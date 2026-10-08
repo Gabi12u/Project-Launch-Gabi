@@ -170,6 +170,7 @@ export function Onboarding(): JSX.Element {
                   onClick={() => setAutoJava((value) => !value)}
                   role="switch"
                   aria-checked={autoJava}
+                  aria-label={tr('Java automatisch verwalten', 'Manage Java automatically')}
                 />
               </div>
             </div>

@@ -318,8 +318,12 @@ function describeNetworkError(err: unknown, url: string): unknown {
   }
   // Only the engine's own connection failure, not every TypeError: a bad URL
   // or a broken redirect target is one too, and was reported as no connection.
+  // "terminated" is a connection that dropped in the middle of a download.
   const code = (err as { cause?: { code?: string } })?.cause?.code
-  if (err instanceof TypeError && (err.message === 'fetch failed' || NETWORK_CODES.has(code ?? ''))) {
+  if (
+    err instanceof TypeError &&
+    (err.message === 'fetch failed' || err.message === 'terminated' || NETWORK_CODES.has(code ?? ''))
+  ) {
     return new NetworkError(
       tr(
         `Keine Verbindung zu ${hostOf(url)}. Prüfe deine Internetverbindung und versuche es erneut.`,
@@ -558,6 +562,18 @@ async function fetchToFile(
       hash.update(chunk)
       attemptBytes += chunk.length
       onBytes?.(chunk.length)
+      // Stopped as soon as it is longer than announced, rather than written
+      // to the end first: a server can send far more than it declared.
+      if (item.size !== undefined && item.size > 0 && attemptBytes > item.size) {
+        source.destroy(
+          new Error(
+            tr(
+              `Download von ${item.url} ist größer als angekündigt und wurde abgebrochen`,
+              `Download of ${item.url} is larger than announced and was stopped`
+            )
+          )
+        )
+      }
     })
 
     mkdirSync(dirname(item.path), { recursive: true })
@@ -662,7 +678,9 @@ export async function downloadFile(
             }
           }
         }
-        throw lastError
+        // In words: a dropped connection used to arrive as the engine's own
+        // English "fetch failed" or "terminated".
+        throw describeNetworkError(lastError, sources[sources.length - 1])
       }
 
       const promise = run().finally(() => {

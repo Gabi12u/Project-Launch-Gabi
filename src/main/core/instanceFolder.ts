@@ -8,7 +8,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'node:fs'
-import { copyFile, mkdir, readdir, readlink, stat, symlink } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readlink, realpath, stat, symlink } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type {
@@ -1192,6 +1192,16 @@ async function copyGameFiles(
           // passed the containment check above, so recreating its actual
           // content here is exactly as safe as the link would have been.
           try {
+            // The check above is only about the link's own text. A link to
+            // "B\secret" passes it while B itself points outside, and the
+            // copy below follows the whole chain: the user's own files came
+            // along into the instance. Resolved for real here.
+            const realRoot = await realpath(sourceRoot)
+            const realTarget = await realpath(linkSource)
+            if (realTarget !== realRoot && !realTarget.startsWith(realRoot + sep)) {
+              skippedLinks++
+              continue
+            }
             const kind = await stat(linkSource)
             if (kind.isDirectory()) {
               // Handed to the main loop as an ordinary folder instead of

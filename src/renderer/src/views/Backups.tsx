@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
 import type { BackupEntry } from '@shared/types'
 import { navigate, toast, toastError, useStore } from '../lib/store'
-import { formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
+import { contentBlockedReason, formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
 import { Confirm, EmptyState, Modal, ProgressBar } from '../components/ui'
 import { IconFolder, IconRefresh, IconSave, IconTrash, IconUpload } from '../components/Icons'
 import { tr } from '@shared/i18n'
@@ -149,7 +149,11 @@ export function BackupsView(): JSX.Element {
           {filtered.map((backup) => {
             // The backups of a deleted instance stay listed, but there is
             // nothing left to restore them into.
-            const instanceExists = instances.some((instance) => instance.id === backup.instanceId)
+            const owner = instances.find((instance) => instance.id === backup.instanceId)
+            const instanceExists = owner !== undefined
+            // Refused while the game runs or the mods are being worked on, but
+            // only after the confirmation. Said on the button instead.
+            const restoreBlocked = owner ? contentBlockedReason(owner) : null
             return (
             <div key={backup.id} className="backup-row">
               <div className="backup-icon">
@@ -182,8 +186,12 @@ export function BackupsView(): JSX.Element {
               <div className="content-actions">
                 <button
                   className="btn sm primary"
-                  disabled={!instanceExists}
-                  title={instanceExists ? undefined : tr('Die Instanz dieser Sicherung gibt es nicht mehr.', 'The instance of this backup no longer exists.')}
+                  disabled={!instanceExists || restoreBlocked !== null}
+                  title={
+                    !instanceExists
+                      ? tr('Die Instanz dieser Sicherung gibt es nicht mehr.', 'The instance of this backup no longer exists.')
+                      : (restoreBlocked ?? undefined)
+                  }
                   onClick={() => setRestoring(backup)}
                 >
                   <IconUpload size={13} />

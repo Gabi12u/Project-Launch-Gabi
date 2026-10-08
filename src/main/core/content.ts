@@ -13,7 +13,6 @@ import {
   contentDir,
   contentFileName,
   contentPath,
-  copyDatapackIntoWorld,
   placeDatapackInWorld,
   worldExists,
   removeDatapackFromWorld
@@ -36,6 +35,7 @@ import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
 import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 import { flattenName } from './compat'
+import { isSafeAutoFix } from '@shared/fixes'
 import { locale, tr } from '@shared/i18n'
 
 const logger = log('content')
@@ -241,12 +241,18 @@ async function installContentOnce(
   options.task?.update(tr(`${project.name} wird geladen…`, `Downloading ${project.name}…`), null)
 
   try {
-    await downloadFile({
-      url: version.downloadUrl,
-      path: destination,
-      sha1: version.sha1,
-      size: version.size
-    })
+    // With the task's signal: "Abbrechen" used to wait for the file to finish.
+    await downloadFile(
+      {
+        url: version.downloadUrl,
+        path: destination,
+        sha1: version.sha1,
+        size: version.size
+      },
+      undefined,
+      3,
+      options.task?.signal
+    )
   } catch (err) {
     // CurseForge answers with a fallback CDN link when an author disabled
     // third-party distribution (see `curseforge.ts`'s `fallbackDownloadUrl`),
@@ -358,6 +364,12 @@ async function installContentOnce(
       // place. Only while the previous entry was enabled: a disabled datapack
       // has no world copies to remove in the first place, matching
       // `applyUpdateOnce`.
+      // Resource packs and shaders are selected in the game by file name. The
+      // update path already carries the choice over; swapping the version
+      // here left the old name selected, and the pack was off next start.
+      if (previous.enabled && (previous.type === 'resourcepack' || previous.type === 'shaderpack')) {
+        renamePackSelection(instanceId, previous.type, previous.fileName, finalFileName)
+      }
       if (previous.type === 'datapack' && previous.worlds && previous.worlds.length > 0) {
         if (previous.enabled) {
           const oldName = previous.fileName.endsWith('.disabled')
@@ -394,11 +406,7 @@ async function installContentOnce(
   if (worlds) worlds = worlds.filter((world) => worldExists(instanceId, world))
   if (worlds && worlds.length > 0) {
     if (enabled) {
-      const failed = worlds.filter(
-        (world) => !copyDatapackIntoWorld(instanceId, world, finalDestination, item.fileName)
-      )
-      item.worlds = worlds.filter((world) => !failed.includes(world))
-      warnWorldCopyFailed(project.name, failed)
+      item.worlds = placeIntoWorlds(instanceId, worlds, finalDestination, item.fileName, project.name)
     } else {
       item.worlds = worlds
     }
@@ -582,9 +590,20 @@ async function importContentFileOnce(
   const hash = await sha1File(destination)
   const identified = await modrinth.lookupByHash(hash)
 
-  let item: ContentItem
+  // Recognised by its hash, but the project details may still fail to load
+  // (a rate limit, a blip). That used to fail the whole import while the file
+  // already sat in the folder; it is recorded as a local file instead.
+  let project: Awaited<ReturnType<typeof modrinth.getProject>> | null = null
   if (identified) {
-    const project = await modrinth.getProject(identified.projectId)
+    try {
+      project = await modrinth.getProject(identified.projectId)
+    } catch (err) {
+      logger.warn(`Angaben zu ${fileName} nicht abrufbar, wird als lokale Datei erfasst:`, err)
+    }
+  }
+
+  let item: ContentItem
+  if (identified && project) {
     item = toContentItem(
       identified,
       type,
@@ -644,7 +663,7 @@ function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
 /** Thrown when an update check stopped because there was no connection at all. */
 export class UpdateCheckOfflineError extends Error {}
 
-export async function checkUpdates(instanceId: string, task?: Task): Promise<Instance> {
+export async function checkUpdates(instanceId: string, task?: Task, announceFailures = true): Promise<Instance> {
   await syncContentWithDisk(instanceId)
   const instance = getInstance(instanceId)
 
@@ -659,6 +678,10 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
   // updates". A few failures in a row without any answer end the check.
   let unanswered = 0
   let gaveUp = false
+  // Answers that were not "no connection" but still no answer: a missing or
+  // rejected CurseForge key, a rate limit, a server error. Each used to count
+  // as "no update", and the page said "Alles aktuell".
+  const unchecked: { name: string; reason: string }[] = []
 
   for (const item of instance.content) {
     if (!managed.includes(item) || gaveUp) {
@@ -704,7 +727,10 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
       // check with "no connection" while the internet was fine.
       if (err instanceof NetworkError) {
         if (++unanswered >= 3) gaveUp = true
-      } else unanswered = 0
+      } else {
+        unanswered = 0
+        unchecked.push({ name: item.name, reason: err instanceof Error ? err.message : String(err) })
+      }
     }
   }
 
@@ -727,6 +753,21 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
   const result = persist({ ...current, content: merged })
   const count = merged.filter((c) => c.update).length
   logger.info(`${count} Updates für ${current.name} gefunden`)
+  if (unchecked.length > 0 && announceFailures && !gaveUp) {
+    const one = unchecked.length === 1
+    notify(
+      'warning',
+      tr(
+        `${unchecked.length} ${one ? 'Mod konnte' : 'Mods konnten'} nicht geprüft werden`,
+        `${unchecked.length} ${one ? 'mod' : 'mods'} could not be checked`
+      ),
+      tr(
+        `${current.name}: Für ${unchecked.slice(0, 3).map((u) => u.name).join(', ')}${unchecked.length > 3 ? ' und weitere' : ''} ist unklar, ob es Updates gibt. ${unchecked[0].reason}`,
+        `${current.name}: For ${unchecked.slice(0, 3).map((u) => u.name).join(', ')}${unchecked.length > 3 ? ' and more' : ''} it is unclear whether there are updates. ${unchecked[0].reason}`
+      ),
+      { route: `/instances/${instanceId}` }
+    )
+  }
   if (gaveUp) {
     throw new UpdateCheckOfflineError(
       tr(
@@ -738,9 +779,9 @@ export async function checkUpdates(instanceId: string, task?: Task): Promise<Ins
   return result
 }
 
-export async function applyUpdate(instanceId: string, contentId: string): Promise<ContentItem | null> {
+export async function applyUpdate(instanceId: string, contentId: string, signal?: AbortSignal): Promise<ContentItem | null> {
   const updated = await withContentLock(instanceId, () =>
-    withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId))
+    withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId, signal))
   )
   // After the item lock is released: the dependency installs take their own.
   if (updated) await installNewDependencies(instanceId, updated)
@@ -786,7 +827,7 @@ async function installNewDependencies(instanceId: string, item: ContentItem): Pr
   }
 }
 
-async function applyUpdateOnce(instanceId: string, contentId: string): Promise<ContentItem | null> {
+async function applyUpdateOnce(instanceId: string, contentId: string, signal?: AbortSignal): Promise<ContentItem | null> {
   assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
@@ -799,12 +840,17 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   const downloadPath = contentPath(dir, item.update.fileName)
 
   try {
-    await downloadFile({
-      url: item.update.downloadUrl,
-      path: downloadPath,
-      sha1: item.update.sha1,
-      size: item.update.size
-    })
+    await downloadFile(
+      {
+        url: item.update.downloadUrl,
+        path: downloadPath,
+        sha1: item.update.sha1,
+        size: item.update.size
+      },
+      undefined,
+      3,
+      signal
+    )
   } catch (err) {
     // Same distribution lock as on install: an author can disable third-party
     // downloads for a later file of an already installed mod.
@@ -890,14 +936,10 @@ async function applyUpdateOnce(instanceId: string, contentId: string): Promise<C
   if (next.type === 'datapack' && current.enabled && current.worlds && current.worlds.length > 0) {
     const bare = (name: string): string =>
       name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
-    const failed: string[] = []
     // A world deleted since it was assigned is dropped, not recreated.
-    next.worlds = current.worlds.filter((world) => worldExists(instanceId, world))
-    for (const world of next.worlds) {
-      removeDatapackFromWorld(instanceId, world, bare(current.fileName))
-      if (!copyDatapackIntoWorld(instanceId, world, destination, bare(next.fileName))) failed.push(world)
-    }
-    warnWorldCopyFailed(item.name, failed)
+    const live = current.worlds.filter((world) => worldExists(instanceId, world))
+    for (const world of live) removeDatapackFromWorld(instanceId, world, bare(current.fileName))
+    next.worlds = placeIntoWorlds(instanceId, live, destination, bare(next.fileName), item.name)
   }
 
   // Dependencies can change between versions.
@@ -1009,8 +1051,15 @@ async function setDatapackWorldsOnce(
     throw new Error(tr('Nur Data Packs können Welten zugeordnet werden.', 'Only data packs can be assigned to worlds.'))
   }
 
-  let next = Array.from(new Set(worlds))
-  for (const world of next) assertWorldExists(instanceId, world)
+  // Names are still checked, but a world deleted since it was assigned is
+  // dropped rather than refused: it had no checkbox left in the picker, so
+  // the selection could never be saved again.
+  let next = Array.from(new Set(worlds)).filter((world) => {
+    if (worldExists(instanceId, world)) return true
+    if ((item.worlds ?? []).includes(world)) return false
+    assertWorldExists(instanceId, world)
+    return false
+  })
 
   if (item.enabled) {
     const previous = item.worlds ?? []
@@ -1020,29 +1069,9 @@ async function setDatapackWorldsOnce(
     for (const world of previous) {
       if (!next.includes(world)) removeDatapackFromWorld(instanceId, world, bare)
     }
-    const failed: string[] = []
-    const alreadyThere: string[] = []
-    for (const world of next) {
-      if (previous.includes(world)) continue
-      const placed = placeDatapackInWorld(instanceId, world, source, bare)
-      if (placed === 'failed') failed.push(world)
-      // The same file already sitting there was put there by hand. Recording
-      // the world made it the launcher's, and switching the pack off or
-      // removing it later deleted the user's own copy.
-      else if (placed === 'present') alreadyThere.push(world)
-    }
-    next = next.filter((world) => !failed.includes(world) && !alreadyThere.includes(world))
-    warnWorldCopyFailed(item.name, failed)
-    if (alreadyThere.length > 0) {
-      notify(
-        'info',
-        tr(`${item.name}: liegt schon in der Welt`, `${item.name}: already in the world`),
-        tr(
-          `In ${alreadyThere.map((w) => `„${w}“`).join(', ')} liegt dieses Data Pack schon. Der Launcher lässt die vorhandene Datei, wie sie ist, und verwaltet sie nicht, damit er sie später nicht löscht.`,
-          `This data pack is already in ${alreadyThere.map((w) => `"${w}"`).join(', ')}. The launcher leaves the existing file as it is and does not manage it, so it never deletes it later.`
-        )
-      )
-    }
+    const added = next.filter((world) => !previous.includes(world))
+    const placed = placeIntoWorlds(instanceId, added, source, bare, item.name)
+    next = next.filter((world) => previous.includes(world) || placed.includes(world))
   }
   // If disabled, no copies exist to add or remove; the assignment is only
   // recorded and takes effect once the datapack is enabled again.
@@ -1052,6 +1081,37 @@ async function setDatapackWorldsOnce(
   persist({ ...instance, content })
   logger.info(`${item.name}: Welten aktualisiert (${next.length})`)
   return updated
+}
+
+/**
+ * Copies a datapack into the given worlds and returns the ones the launcher
+ * now manages. A world it could not be copied into is left out, and so is
+ * one where the very same file already sat: that one was put there by hand,
+ * and recording it made a later switch-off or removal delete the user's own
+ * copy. Both are said.
+ */
+function placeIntoWorlds(instanceId: string, worlds: string[], source: string, fileName: string, name: string): string[] {
+  const managed: string[] = []
+  const failed: string[] = []
+  const alreadyThere: string[] = []
+  for (const world of worlds) {
+    const placed = placeDatapackInWorld(instanceId, world, source, fileName)
+    if (placed === 'copied') managed.push(world)
+    else if (placed === 'present') alreadyThere.push(world)
+    else failed.push(world)
+  }
+  warnWorldCopyFailed(name, failed)
+  if (alreadyThere.length > 0) {
+    notify(
+      'info',
+      tr(`${name}: liegt schon in der Welt`, `${name}: already in the world`),
+      tr(
+        `In ${alreadyThere.map((w) => `„${w}“`).join(', ')} liegt dieses Data Pack schon. Der Launcher lässt die vorhandene Datei, wie sie ist, und verwaltet sie nicht, damit er sie später nicht löscht.`,
+        `This data pack is already in ${alreadyThere.map((w) => `"${w}"`).join(', ')}. The launcher leaves the existing file as it is and does not manage it, so it never deletes it later.`
+      )
+    )
+  }
+  return managed
 }
 
 /** Tells the user which worlds a datapack could not be copied into, if any. */
@@ -1101,8 +1161,9 @@ async function updateAllOnce(instanceId: string): Promise<number> {
       task.throwIfCancelled()
       task.update(tr(`${item.name} wird aktualisiert…`, `Updating ${item.name}…`), (done + failed.length) / Math.max(pending.length, 1))
       try {
-        await applyUpdate(instanceId, item.id)
-        done++
+        // Counted only when something was actually updated: null means the
+        // item was removed or changed meanwhile.
+        if (await applyUpdate(instanceId, item.id, task.signal)) done++
       } catch (err) {
         logger.error(`Update für ${item.name} fehlgeschlagen:`, err)
         failed.push({ name: item.name, reason: err instanceof Error ? err.message : String(err) })
@@ -1228,7 +1289,7 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
 
 /** Fixes every automatically resolvable issue in one go. */
 export async function fixAll(instanceId: string, issues: CompatibilityIssue[]): Promise<number> {
-  const fixable = issues.filter((i) => i.fix)
+  const fixable = issues.filter(isSafeAutoFix)
   let applied = 0
 
   // One lock for the whole batch, so the gap between two fixes is covered too.

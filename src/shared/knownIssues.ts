@@ -3767,15 +3767,6 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-10-05'
   },
   {
-    id: 'sicherungen-vor-reparatur',
-    title: 'Sicherungen vor einer Reparatur wurden nie aufgeräumt',
-    detail:
-      'Vor jeder Reparatur legt der Launcher eine Sicherung an. Anders als die automatischen ' +
-      'Sicherungen wurden diese nie aufgeräumt und belegten mit der Zeit immer mehr Speicherplatz.',
-    state: 'fixing',
-    since: '2026-10-05'
-  },
-  {
     id: 'fremde-instanz-argumente',
     title: 'Java-Argumente und Umgebungsvariablen einer fremden Instanz liefen ohne Rückfrage',
     detail:
@@ -4488,6 +4479,230 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'gespielt. Eine Nacht im Standby ergab so eine achtstündige Sitzung.',
     state: 'fixing',
     since: '2026-10-06'
+  },
+  {
+    id: 'beenden-waehrend-reparatur-mod-weg',
+    title: 'Den Launcher während einer Reparatur zu schließen konnte einen Mod verschwinden lassen',
+    detail:
+      'Eine Reparatur legt einen beschädigten Mod kurz beiseite, während sie ihn neu lädt. Wurde der ' +
+      'Launcher genau dann geschlossen oder stürzte ab, blieb der Mod unter einem fremden Namen ' +
+      'liegen, fehlte im Spiel und verschwand beim nächsten Abgleich aus der Liste. Der Launcher ' +
+      'fragte beim Schließen auch nicht nach, ob noch Aufgaben laufen.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'reparatur-laedt-neueste-version',
+    title: 'Die Reparatur ersetzte einen Mod durch die neueste statt durch die installierte Version',
+    detail:
+      'Fehlte ein Mod oder war er beschädigt, lud die Reparatur die neueste passende Version, auch ' +
+      'wenn bewusst eine ältere installiert war. In der Liste stand danach weiter die alte Version. ' +
+      'Ein ausgeschalteter Mod wurde dabei wieder eingeschaltet, und ein Abbruch mitten in der ' +
+      'Reparatur konnte die Angaben schon ersetzter Mods verlieren.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'reparatur-ressourcenpakete',
+    title: 'Die Reparatur konnte Ressourcenpakete, Shader und Datenpakete nicht reparieren',
+    detail:
+      'In Instanzen mit Mod-Loader fand die Reparatur für beschädigte Ressourcenpakete, Shader und ' +
+      'Datenpakete nie eine passende Version und meldete sie als inkompatibel.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'oberflaeche-laedt-nicht-unsichtbar',
+    title: 'Konnte die Oberfläche nicht geladen werden, blieb ein unsichtbarer Launcher zurück',
+    detail:
+      'Fehlte eine Datei der Oberfläche, etwa weil ein Virenscanner sie entfernt hatte, erschien eine ' +
+      'Fehlermeldung. Danach lief der Launcher unsichtbar weiter, und jeder neue Start zeigte nur ein ' +
+      'leeres Fenster, bis man ihn im Task-Manager beendete.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'oberflaeche-neulade-schleife',
+    title: 'Eine immer wieder abstürzende Oberfläche lud endlos neu',
+    detail:
+      'Stürzte die Oberfläche beim Laden ab, etwa wegen eines Grafiktreibers, lud der Launcher sie ' +
+      'sofort neu, ohne Begrenzung. Das Fenster flackerte dann dauerhaft, und es wurde jedes Mal ein ' +
+      'Fehlerbericht erzeugt.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'aufnahmetaste-still',
+    title: 'Die Aufnahmetaste blieb bei einem Fehler stumm',
+    detail:
+      'Ließ sich eine Aufnahme nicht starten, etwa weil der Aufnahmeordner nicht beschreibbar war, ' +
+      'passierte beim Drücken der Taste einfach nichts. Lief die Aufnahme über den ganzen Bildschirm, ' +
+      'weil das Spielfenster nicht gefunden wurde, sagte der Hinweis das nicht.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'alle-beheben-loescht-mods',
+    title: '„Alle automatisch beheben“ konnte von Hand abgelegte Mods löschen',
+    detail:
+      'Trugen zwei von Hand abgelegte Mods denselben Namen, schlug die Prüfung vor, das selbst ' +
+      'nachzusehen, weil es auch zwei verschiedene Mods sein können. „Alle automatisch beheben“ ' +
+      'löschte trotzdem einen davon. Außerdem brach das Beheben ab, sobald ein Fehler sich durch einen ' +
+      'vorherigen schon erledigt hatte.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'update-pruefung-fehler-verschwiegen',
+    title: 'Gescheiterte Update-Prüfungen erschienen als „Alles aktuell“',
+    detail:
+      'Ließ sich ein Mod nicht auf Updates prüfen, etwa wegen eines fehlenden CurseForge-Schlüssels ' +
+      'oder weil Modrinth zu viele Anfragen ablehnte, zeigte der Launcher trotzdem „Alles aktuell“. ' +
+      'Updates wurden so ohne Hinweis übersehen.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'welten-auswahl-geloeschte-welt',
+    title: 'Eine gelöschte Welt blockierte die Welten-Auswahl eines Datenpakets',
+    detail:
+      'War eine Welt, der ein Datenpaket zugeordnet war, inzwischen gelöscht, ließ sich die Auswahl ' +
+      'nicht mehr speichern. Die Meldung nannte die gelöschte Welt, die sich aber nicht abwählen ließ.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'versionswahl-zu-streng',
+    title: '„Version wählen“ zeigte passende Versionen als unpassend',
+    detail:
+      'Die Versionsauswahl eines Mods verlangte eine exakt gleiche Minecraft-Version und zeigte eine ' +
+      'Version für 1.21 in einer Instanz mit 1.21.1 als unpassend, obwohl die Installation sie selbst ' +
+      'gewählt hatte. Bei ausgeschalteten Mods wurde die installierte Version nicht markiert.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'version-waehlen-paket-abgewaehlt',
+    title: 'Nach „Version wählen“ war ein Ressourcenpaket oder Shader im Spiel abgewählt',
+    detail:
+      'Wurde ein ausgewähltes Ressourcenpaket oder ein Shader über „Version wählen“ gegen eine andere ' +
+      'Version getauscht, stand im Spiel noch der alte Dateiname. Das Paket war beim nächsten Start ' +
+      'ohne Hinweis ausgeschaltet.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'datei-hinzufuegen-meldet-fehler',
+    title: '„Datei hinzufügen“ meldete einen Fehler, obwohl die Datei schon kopiert war',
+    detail:
+      'Erkannte Modrinth eine hinzugefügte Datei, scheiterte aber das Laden ihrer Angaben, erschien ' +
+      '„Import fehlgeschlagen“. Die Datei lag trotzdem im Ordner und tauchte später als unbekannter ' +
+      'Mod auf. Der Knopf war außerdem auch bei laufendem Spiel aktiv.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'umschalten-gesperrte-datei',
+    title: 'Ein- und Ausschalten scheiterte an kurz gesperrten Dateien',
+    detail:
+      'Hielt ein Virenscanner einen Mod gerade kurz geöffnet, scheiterte das Ein- oder Ausschalten ' +
+      'sofort mit einer technischen Meldung, die den Windows-Benutzernamen enthielt. Andere Aktionen ' +
+      'versuchen es in diesem Fall kurz darauf noch einmal.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'download-nicht-abbrechbar',
+    title: 'Downloads beim Installieren und Aktualisieren ließen sich nicht abbrechen',
+    detail:
+      '„Abbrechen“ wartete bei einer Installation oder einem Update, bis die laufende Datei fertig ' +
+      'geladen war. Bei einer hängenden Verbindung konnte das mehrere Minuten dauern. Brach die ' +
+      'Verbindung ab, erschien eine englische technische Meldung.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'entdecken-modpacks-gefiltert',
+    title: '„Entdecken“ zeigte Modpacks nur für die Version der ersten Instanz',
+    detail:
+      'Modpacks bringen ihre eigene Instanz mit, wurden aber nach Minecraft-Version und Mod-Loader der ' +
+      'gerade gewählten Instanz gefiltert. Die meisten Modpacks fehlten so auf der ersten Seite. Ohne ' +
+      'Instanz ließen sich Modpacks gar nicht installieren, obwohl der Hinweis das versprach.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'entdecken-installieren-bei-laufendem-spiel',
+    title: 'Installieren-Knöpfe waren bei laufendem Spiel aktiv',
+    detail:
+      'In „Entdecken“ und im Projektfenster blieb „Installieren“ aktiv, während die Zielinstanz lief, ' +
+      'und scheiterte erst nach dem Klick. Im Mods-Reiter verschwanden die Knöpfe stattdessen ohne ' +
+      'Erklärung.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'startbildschirm-alte-versionen',
+    title: 'Die eigene Startseite wurde bei Minecraft 1.6 bis 1.12 nie aktiviert',
+    detail:
+      'Minecraft vor 1.13 führt Ressourcenpakete unter einem anderen Namen als neuere Versionen. Die ' +
+      'eigene Startseite wurde dort zwar angelegt, aber nie eingeschaltet.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'anmeldefehler-bei-einrichtung-unsichtbar',
+    title: 'Anmeldefehler bei der ersten Einrichtung wurden nicht angezeigt',
+    detail:
+      'Scheiterte die Anmeldung mit Microsoft während der ersten Einrichtung, schloss sich das ' +
+      'Anmeldefenster einfach wieder, ohne Fehlermeldung. Auch Erfolgsmeldungen fehlten dort. ' +
+      'Tastenkürzel wie Strg+N wirkten während der Einrichtung und öffneten danach unerwartet Fenster.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'snapshot-einstellung-ohne-wirkung',
+    title: 'Die Einstellung „Snapshots in der Versionsliste zeigen“ wirkte nicht',
+    detail:
+      'Der Assistent für neue Instanzen startete immer ohne Snapshots, egal was in den Einstellungen ' +
+      'gewählt war.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'oberflaeche-kleinere-anzeigefehler',
+    title: 'Mehrere Anzeigen sagten etwas anderes, als tatsächlich galt',
+    detail:
+      'Die Startseite zeigte „STARTET…“, während eine Instanz nur eingerichtet wurde, und ihr kleiner ' +
+      'Spielen-Knopf blieb dabei aktiv. „Wiederherstellen“ war bei laufenden Instanzen aktiv und ' +
+      'scheiterte erst nach der Rückfrage. Viele fehlgeschlagene Aufgaben verdeckten eine neue, ' +
+      'laufende. Aufnahmen und Versionslisten, die sich nicht laden ließen, sahen aus wie leer. ' +
+      'Bindestriche verschwanden aus Beschreibungen, und Fensterbreiten unter 640 wurden ohne Hinweis ' +
+      'zu 854.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'fehlerbericht-ip-hinweis-falsch',
+    title: 'Der Hinweis zu Fehlerberichten versprach, die IP-Adresse werde nicht gespeichert',
+    detail:
+      'Wer Fehlerberichte erlaubt, sendet sie auch an den Launch-Gabi-Server, und der speichert die ' +
+      'IP-Adresse zu jedem Bericht. Der Hinweis sagte das Gegenteil und nannte die Empfänger nicht. ' +
+      'Außerdem konnten Namen von Instanzen und Welten sowie Pfade außerhalb des Benutzerordners in ' +
+      'Berichten stehen.',
+    state: 'fixing',
+    since: '2026-10-08'
+  },
+  {
+    id: 'ordnerimport-verknuepfungskette',
+    title: 'Ein Ordner-Import konnte über verkettete Verknüpfungen fremde Dateien mitkopieren',
+    detail:
+      'Enthielt ein importierter Ordner eine Verknüpfung, die über eine zweite Verknüpfung nach außen ' +
+      'zeigte, kopierte der Import unter Windows ohne Verknüpfungsrecht die Dateien am Ziel mit, etwa ' +
+      'aus dem eigenen Dokumente-Ordner. Sie landeten so in der Instanz und später in Sicherungen und ' +
+      'Exporten.',
+    state: 'fixing',
+    since: '2026-10-08'
   }
 ]
 

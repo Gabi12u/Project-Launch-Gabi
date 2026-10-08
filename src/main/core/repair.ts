@@ -1,7 +1,7 @@
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, renameSync, rmSync, statSync } from 'node:fs'
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ContentItem } from '@shared/types'
-import { contentDir, ensureInstanceLayout, paths } from '../paths'
+import { contentDir, contentFileName, ensureInstanceLayout, paths } from '../paths'
 import { getSettings } from '../store'
 import { readdir, stat } from 'node:fs/promises'
 import { log } from '../logger'
@@ -12,7 +12,7 @@ import { requiredJavaMajor, resolveJava } from './java'
 import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
 import { checkUpdates, contentFilePath, removeContent } from './content'
 import { isContentBusy, withContentLock } from './contentLock'
-import { bestVersionFor } from '../providers'
+import { bestVersionFor, getVersions } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
 import { isRestoring } from './restoreLock'
@@ -648,6 +648,12 @@ async function runRepair(
       // someone else's.
       const before = new Map(current.content.map((item) => [item.id, item]))
 
+      // A cancel ends the loop, but what was already replaced is still saved
+      // below. Thrown straight out, the swapped files sat on disk under their
+      // new names while the list still named the old ones, and the next scan
+      // dropped those records and showed the files as unknown mods.
+      let cancelledBy: TaskCancelledError | null = null
+      try {
       for (const item of current.content) {
         task.throwIfCancelled()
         const file = contentFilePath(instanceId, item)
@@ -720,12 +726,23 @@ async function runRepair(
         }
 
         try {
-          const version = await bestVersionFor(
-            item.provider as 'modrinth' | 'curseforge',
-            item.projectId,
-            current.mcVersion,
-            current.loader
-          )
+          const provider = item.provider as 'modrinth' | 'curseforge'
+          // The version that was installed, not the newest one: a mod kept on
+          // an older version on purpose (to match a server or the rest of a
+          // pack) came back as the newest, while the list still showed the
+          // old one. The newest matching one only when that version is gone.
+          let version: Awaited<ReturnType<typeof bestVersionFor>> = null
+          if (item.versionId) {
+            try {
+              version = (await getVersions(provider, item.projectId)).find((v) => v.versionId === item.versionId) ?? null
+            } catch (err) {
+              rethrowIfCancelled(err)
+              logger.debug(`Installierte Version von ${item.name} nicht abrufbar:`, err)
+            }
+          }
+          // With the item's type: without it every resource pack, shader and
+          // data pack was looked up as a mod and never found.
+          version ??= await bestVersionFor(provider, item.projectId, current.mcVersion, current.loader, item.type)
           if (!version) {
             // Not silently skipped: a mod nobody publishes a matching build for
             // (wrong Minecraft version, wrong loader, or pulled entirely) is
@@ -753,7 +770,10 @@ async function runRepair(
             )
           )
 
-          const target = contentFilePath(instanceId, { ...item, fileName: version.fileName })
+          // A switched off mod stays switched off: downloaded under its plain
+          // name, the next scan took it as switched on again.
+          const newName = item.enabled ? contentFileName(version.fileName) : `${contentFileName(version.fileName)}.disabled`
+          const target = contentFilePath(instanceId, { ...item, fileName: newName })
           const aside = `${file}.repair-${process.pid}`
           let movedAside = false
 
@@ -797,11 +817,23 @@ async function runRepair(
             if (movedAside) rmSync(aside, { force: true })
 
             const index = survivors.indexOf(item)
+            // Everything about the version, not only the file. Kept, the old
+            // version number and id made the update check compare against a
+            // version that was no longer there.
             survivors[index] = {
               ...item,
-              fileName: version.fileName,
+              fileName: newName,
               sha1: version.sha1,
-              size: version.size
+              size: version.size,
+              version: version.versionNumber,
+              versionId: version.versionId,
+              releasedAt: version.releasedAt,
+              gameVersions: version.gameVersions,
+              loaders: version.loaders,
+              dependencies: version.dependencies,
+              update: null,
+              modIds: undefined,
+              modIdsFrom: undefined
             }
             restored++
             repairLog(instanceId, 'success', tr(`${version.fileName} erfolgreich repariert`, `${version.fileName} repaired successfully`))
@@ -827,6 +859,10 @@ async function runRepair(
           logger.warn(`${item.name} konnte nicht wiederhergestellt werden:`, err)
           repairLog(instanceId, 'error', tr(`${item.name} konnte nicht repariert werden: ${message}`, `${item.name} could not be repaired: ${message}`))
         }
+      }
+      } catch (err) {
+        if (!(err instanceof TaskCancelledError)) throw err
+        cancelledBy = err
       }
 
       // Merged into the current list, not written over it. This used to
@@ -860,6 +896,7 @@ async function runRepair(
           `Changes could not be saved: ${err instanceof Error ? err.message : String(err)}`
         )
       }
+      if (cancelledBy) throw cancelledBy
     })
     report.repairedFiles += restored
 
@@ -1011,6 +1048,52 @@ async function runRepair(
  * old is from a process that is long gone.
  */
 const TEMP_MIN_AGE_MS = 30 * 60 * 1000
+
+/**
+ * Puts back the mods a repair set aside, in every instance, right at startup.
+ *
+ * A repair renames a damaged mod to "<file>.repair-<pid>" while it downloads
+ * the replacement. Closed or crashed in between, the original stayed under
+ * that name: missing in the game and, at the next scan, gone from the list.
+ * The sweep below only looked at an instance's mods when that instance was
+ * repaired again, and then only after half an hour. At startup no repair of
+ * this process can be running, so only its own pid is left alone.
+ */
+export function restoreParkedRepairFiles(): number {
+  let restored = 0
+  let ids: string[] = []
+  try {
+    ids = readdirSync(paths.instances())
+  } catch {
+    return 0
+  }
+  for (const id of ids) {
+    const dirs = [paths.mods(id), paths.resourcePacks(id), paths.shaderPacks(id), contentDir(id, 'datapack')]
+    for (const dir of dirs) {
+      let names: string[]
+      try {
+        names = readdirSync(dir)
+      } catch {
+        continue
+      }
+      for (const name of names) {
+        const parked = /^(.+)\.repair-(\d+)$/.exec(name)
+        if (!parked || Number(parked[2]) === process.pid) continue
+        const full = join(dir, name)
+        try {
+          const original = join(dir, parked[1])
+          if (existsSync(original)) rmSync(full, { force: true })
+          else renameSync(full, original)
+          restored++
+        } catch (err) {
+          logger.warn(`Beiseitegelegte Datei ${full} nicht zurückgelegt:`, err)
+        }
+      }
+    }
+  }
+  if (restored > 0) logger.info(`${restored} von einer Reparatur beiseitegelegte Dateien zurückgelegt`)
+  return restored
+}
 
 export async function cleanTempFiles(instanceId?: string): Promise<number> {
   const roots = [paths.libraries(), paths.assets(), paths.versions(), paths.cache()]

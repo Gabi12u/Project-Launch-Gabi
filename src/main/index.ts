@@ -1,4 +1,5 @@
 import { BrowserWindow, app, dialog, nativeTheme, shell } from 'electron'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { EVENTS } from '@shared/ipc'
 import { initLogger, log } from './logger'
@@ -11,7 +12,8 @@ import { launchInstance } from './core/launch'
 import { failedRestoreRecoveries, recoverInterruptedRestores } from './core/backups'
 import { adoptRunningFromDisk, onAdoptedEnded, ownRunningCount, pruneAdopted, runningCount, startingCount } from './core/running'
 import { watchSleep } from './core/sleep'
-import { cleanTempFiles } from './core/repair'
+import { cleanTempFiles, restoreParkedRepairFiles } from './core/repair'
+import { cancelTask, listTasks } from './tasks'
 import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
 import { UpdateCheckOfflineError, checkUpdates } from './core/content'
@@ -125,7 +127,8 @@ if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv) => {
-    const win = BrowserWindow.getAllWindows()[0]
+    // The main window, not just any: the live-log window may be the first.
+    const win = getMainWindow() ?? BrowserWindow.getAllWindows()[0]
     if (win) {
       if (win.isMinimized()) win.restore()
       if (!win.isVisible()) win.show()
@@ -211,7 +214,43 @@ function createWindow(): BrowserWindow {
     if (ownRunningCount() > 0 || startingCount() > 0) {
       event.preventDefault()
       window.hide()
+      return
     }
+    // A repair, an import, a backup or a download still running was cut off
+    // without a word. A repair in particular leaves a mod set aside under
+    // another name until it is done.
+    if (quitConfirmed) return
+    const busy = listTasks().filter((task) => task.state === 'running')
+    if (busy.length === 0) return
+    event.preventDefault()
+    void dialog
+      .showMessageBox(window, {
+        type: 'warning',
+        buttons: [tr('Trotzdem beenden', 'Quit anyway'), tr('Weiterlaufen lassen', 'Keep running')],
+        defaultId: 1,
+        cancelId: 1,
+        title: tr('Es läuft noch etwas', 'Something is still running'),
+        message:
+          busy.length === 1
+            ? tr(`„${busy[0].title}“ läuft noch.`, `"${busy[0].title}" is still running.`)
+            : tr(`${busy.length} Aufgaben laufen noch, etwa „${busy[0].title}“.`, `${busy.length} tasks are still running, for example "${busy[0].title}".`),
+        detail: tr(
+          'Beim Beenden werden sie abgebrochen. Was sie schon geändert haben, wird dabei so weit wie möglich zurückgenommen.',
+          'Quitting cancels them. Whatever they already changed is undone as far as possible.'
+        )
+      })
+      .then(async ({ response }) => {
+        if (response !== 0 || window.isDestroyed()) return
+        quitConfirmed = true
+        // Cancelled first, so their own clean-up (a repair putting a mod
+        // back) gets a moment to run before the process ends.
+        for (const task of busy) cancelTask(task.id)
+        const until = Date.now() + 5000
+        while (Date.now() < until && listTasks().some((task) => task.state === 'running')) {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        }
+        if (!window.isDestroyed()) window.close()
+      })
   })
 
   window.on('closed', () => setMainWindow(null))
@@ -253,6 +292,10 @@ function createWindow(): BrowserWindow {
       tr('Launch Gabi konnte nicht starten', 'Launch Gabi could not start'),
       tr('Die Programmoberfläche konnte nicht geladen werden. Eine Neuinstallation behebt das in der Regel.', 'The program interface could not be loaded. Reinstalling usually fixes this.')
     )
+    // The window was never shown, so nothing closes it: the process stayed
+    // alive invisibly, held the single-instance lock, and every new start
+    // only produced an empty window.
+    app.quit()
   }
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
@@ -283,7 +326,7 @@ function createWindow(): BrowserWindow {
       if (window.isDestroyed()) return
       logger.error('Oberfläche reagiert seit 10s nicht, lade neu')
       reportError('renderer:unresponsive', new Error('webContents unresponsive for 10s'))
-      window.webContents.reload()
+      reloadAfterFailure(window.webContents)
     }, 10_000)
   })
   window.on('responsive', () => {
@@ -301,7 +344,58 @@ function createWindow(): BrowserWindow {
  * Startup
  * ------------------------------------------------------------------ */
 
+/** Recent reloads after a crash or hang, see `reloadAfterFailure`. */
+const recentReloads: number[] = []
+/** Asks the next start to run without graphics acceleration. */
+const SAFE_GRAPHICS_MARKER = 'graphics-safe-mode-once'
+/** Set once the user confirmed quitting with tasks still running. */
+let quitConfirmed = false
+
+/**
+ * Reloads the interface after a crash or a hang, but not endlessly. One that
+ * crashes on every load (a graphics driver, a damaged GPU cache) reloaded
+ * without end: a flickering window and a fresh error report each time. After
+ * three in a minute it stops, says so, and asks the next start to run
+ * without graphics acceleration, the usual way out.
+ */
+function reloadAfterFailure(contents: Electron.WebContents): void {
+  const now = Date.now()
+  while (recentReloads.length > 0 && now - recentReloads[0] > 60_000) recentReloads.shift()
+  if (recentReloads.length >= 3) {
+    logger.error('Oberfläche stürzt wiederholt ab, kein weiteres Neuladen')
+    try {
+      writeFileSync(join(app.getPath('userData'), SAFE_GRAPHICS_MARKER), '', 'utf8')
+    } catch (err) {
+      logger.warn('Markierung für den sicheren Grafikmodus nicht geschrieben:', err)
+    }
+    dialog.showErrorBox(
+      tr('Die Oberfläche stürzt immer wieder ab', 'The interface keeps crashing'),
+      tr(
+        'Launch Gabi hört auf, sie neu zu laden. Schließe den Launcher und starte ihn neu, er startet dann einmal ohne Grafikbeschleunigung. Laufende Spiele sind davon nicht betroffen.',
+        'Launch Gabi stops reloading it. Close the launcher and start it again, it then starts once without graphics acceleration. Running games are not affected.'
+      )
+    )
+    return
+  }
+  recentReloads.push(now)
+  if (!contents.isDestroyed()) contents.reload()
+}
+
 function bootstrap(): void {
+  // Asked for by `reloadAfterFailure` after repeated crashes. Only works
+  // before the app is ready, and only once, so a fixed driver gets the
+  // acceleration back on the start after.
+  try {
+    const marker = join(app.getPath('userData'), SAFE_GRAPHICS_MARKER)
+    if (existsSync(marker)) {
+      rmSync(marker, { force: true })
+      app.disableHardwareAcceleration()
+      logger.warn('Start ohne Grafikbeschleunigung nach wiederholten Abstürzen der Oberfläche')
+    }
+  } catch (err) {
+    logger.warn('Markierung für den sicheren Grafikmodus nicht lesbar:', err)
+  }
+
   // Without these, any stray rejection or throw anywhere in the main process
   // terminates the launcher outright — taking every running download and the
   // window with it. Logging and carrying on is nearly always the better trade
@@ -324,7 +418,7 @@ function bootstrap(): void {
     if (details.reason === 'clean-exit') return
     logger.error(`Oberflächenprozess beendet (${details.reason}, Exitcode ${details.exitCode}), lade neu`)
     reportError('renderer:gone', new Error(`render-process-gone: ${details.reason} (${details.exitCode})`))
-    if (!webContents.isDestroyed()) webContents.reload()
+    reloadAfterFailure(webContents)
   })
 
   app.on('open-url', (event, url) => {
@@ -393,6 +487,13 @@ function bootstrap(): void {
     // Before the instances are read, so their `running` flag reflects a game
     // the previous session left behind rather than claiming nothing is up.
     adoptRunningFromDisk()
+    // Before the instances are read and their folders scanned: a mod a repair
+    // had set aside when the launcher closed is back before anything looks.
+    try {
+      restoreParkedRepairFiles()
+    } catch (err) {
+      logger.warn('Beiseitegelegte Dateien einer Reparatur nicht geprüft:', err)
+    }
     try {
       loadInstances()
       const previousBehaviour = takeInstanceBehaviourMigration()
@@ -679,7 +780,9 @@ async function runStartupChecks(): Promise<void> {
   let total = 0
   for (const instance of instances) {
     try {
-      const updated = await checkUpdates(instance.id)
+      // Quiet: a check that could not reach every mod is said when the user
+      // asks for one, not for every instance at every start.
+      const updated = await checkUpdates(instance.id, undefined, false)
       total += updated.content.filter((c) => c.update).length
     } catch (err) {
       logger.debug(`Update-Prüfung für ${instance.name} übersprungen:`, err)

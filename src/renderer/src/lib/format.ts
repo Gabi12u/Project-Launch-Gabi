@@ -173,7 +173,12 @@ export function plainText(value: string, limit = 240): string {
   const text = value
     .replace(/<[^>]+>/g, ' ')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[#*_`>~|-]+/g, ' ')
+    // Markdown marks only, not every hyphen and underscore: "Fabric-API",
+    // "1.20-1.21" and "mini_map" came out as separate words.
+    .replace(/^\s*(?:#{1,6}|>|[-*+]|\d+\.)\s+/gm, ' ')
+    .replace(/(\*\*|__|\*|`|~~)(.+?)\1/g, '$2')
+    .replace(/(^|\s)[-*_]{3,}(\s|$)/g, ' ')
+    .replace(/[`|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
   return text.length > limit ? `${text.slice(0, limit)}…` : text

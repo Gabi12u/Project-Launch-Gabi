@@ -16,6 +16,7 @@ import type {
 import {
   contentPath,
   copyDatapackIntoWorld,
+  placeDatapackInWorld,
   ensureInstanceLayout,
   worldExists,
   paths,
@@ -1515,7 +1516,25 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
             )
           )
         }
-        renameSync(currentPath, target)
+        // Retried once like remove and replace do: a virus scanner holding the
+        // file for a moment failed this outright, with a raw message carrying
+        // the full path and the Windows user name.
+        try {
+          renameSync(currentPath, target)
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 200))
+          try {
+            renameSync(currentPath, target)
+          } catch (err) {
+            throw new Error(
+              tr(
+                `${item.name} wird gerade von einem anderen Programm verwendet und konnte nicht ${enabled ? 'eingeschaltet' : 'ausgeschaltet'} werden. Versuche es gleich noch einmal.`,
+                `${item.name} is in use by another program right now and could not be turned ${enabled ? 'on' : 'off'}. Try again in a moment.`
+              ),
+              { cause: err }
+            )
+          }
+        }
       }
 
       // Minecraft has no ".disabled" convention for a datapack sitting inside
@@ -1529,7 +1548,9 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       if (item.type === 'datapack' && liveWorlds && liveWorlds.length > 0) {
         if (enabled) {
           const source = contentPath(dir, bare)
-          const failed = liveWorlds.filter((world) => !copyDatapackIntoWorld(id, world, source, bare))
+          // An identical file found there was put back by hand meanwhile and
+          // is not taken over either, so switching off later leaves it alone.
+          const failed = liveWorlds.filter((world) => placeDatapackInWorld(id, world, source, bare) !== 'copied')
           if (failed.length > 0) {
             // Not remembered for those worlds. The file found there is not
             // ours, and a later disable, removal or update would otherwise

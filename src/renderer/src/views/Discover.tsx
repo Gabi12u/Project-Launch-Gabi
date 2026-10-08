@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX, useRef, useCallback} from 'react'
 import type { ContentType } from '@shared/types'
 import { setState, useStore } from '../lib/store'
-import { LOADER_LABELS } from '../lib/format'
+import { LOADER_LABELS, contentBlockedReason } from '../lib/format'
 import { ContentBrowser } from '../components/ContentBrowser'
 import { EmptyState } from '../components/ui'
 import { IconCompass, IconPlus } from '../components/Icons'
@@ -105,20 +105,30 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
       </header>
 
       {instances.length === 0 ? (
-        <EmptyState
-          icon={<IconCompass size={26} />}
-          title={tr('Erst eine Instanz, dann die Mods', 'First an instance, then the mods')}
-          message={tr(
-            'Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit.',
-            'Mods are always installed into a specific instance. Create one first. Modpacks can be installed without an instance, they bring their own.'
-          )}
-          action={
-            <button className="btn primary" onClick={() => setState({ createOpen: true })}>
-              <IconPlus size={16} />
-              {tr('Instanz erstellen', 'Create instance')}
-            </button>
-          }
-        />
+        <>
+          <EmptyState
+            icon={<IconCompass size={26} />}
+            title={tr('Erst eine Instanz, dann die Mods', 'First an instance, then the mods')}
+            message={tr(
+              'Mods werden immer in eine bestimmte Instanz installiert. Lege zuerst eine an. Modpacks kannst du auch ohne Instanz installieren, sie bringen ihre eigene mit.',
+              'Mods are always installed into a specific instance. Create one first. Modpacks can be installed without an instance, they bring their own.'
+            )}
+            action={
+              <button className="btn primary" onClick={() => setState({ createOpen: true })}>
+                <IconPlus size={16} />
+                {tr('Instanz erstellen', 'Create instance')}
+              </button>
+            }
+          />
+          {/* What the text above promises: modpacks need no instance. */}
+          <ContentBrowser
+            instanceId=""
+            types={['modpack']}
+            initialType="modpack"
+            installedProjectIds={installedIds}
+            onInstalled={refreshInstalled}
+          />
+        </>
       ) : (
         <>
           {instance && (
@@ -134,6 +144,9 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
 
           <ContentBrowser
             instanceId={target}
+            // The target's live state: installing into a running or busy
+            // instance is refused, and the buttons used to stay bright anyway.
+            blockedReason={instance ? contentBlockedReason(instance) : null}
             mcVersion={instance?.mcVersion}
             loader={instance?.loader}
             types={['modpack', 'mod', 'resourcepack', 'shaderpack', 'datapack']}

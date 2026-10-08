@@ -19,7 +19,7 @@ import {
   IconSearch,
   IconSparkle
 } from '../components/Icons'
-import { tr } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 interface Row {
   instance: InstanceSummary
@@ -252,7 +252,7 @@ export function ModsView(): JSX.Element {
       })
       .sort((a, b) => {
         if (Boolean(a.item.update) !== Boolean(b.item.update)) return a.item.update ? -1 : 1
-        return a.item.name.localeCompare(b.item.name, 'de')
+        return a.item.name.localeCompare(b.item.name, locale())
       })
   }, [rows, search, onlyUpdates, instanceFilter])
 

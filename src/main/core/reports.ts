@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { accountsSnapshot, getSettings } from '../store'
+import { paths } from '../paths'
 import { log } from '../logger'
 
 const logger = log('reports')
@@ -120,8 +121,38 @@ function boundary(value: string): string {
  * The rules are ordered from most specific to most general, and each replaces
  * with a placeholder that no later rule can match again.
  */
+/** The names of the instances on this machine, longest first. */
+function instanceNames(): string[] {
+  const names = new Set<string>()
+  try {
+    for (const id of readdirSync(paths.instances()).slice(0, 500)) {
+      try {
+        const raw = JSON.parse(readFileSync(paths.instanceFile(id), 'utf8')) as { name?: unknown }
+        if (typeof raw.name === 'string' && raw.name.trim().length >= 3) names.add(raw.name.trim())
+      } catch {
+        // A damaged or locked file only means one name less to hide.
+      }
+    }
+  } catch {
+    // No instances folder, nothing to hide.
+  }
+  return [...names].sort((a, b) => b.length - a.length)
+}
+
 export function scrub(text: string): string {
   let out = text
+
+  // The data folder as a whole, first: the home folder rule below would
+  // otherwise rewrite its user name part, and the path then no longer
+  // matched.
+  try {
+    const root = paths.root()
+    for (const form of new Set([root, root.replace(/\\/g, '\\\\'), root.replace(/\\/g, '/')])) {
+      if (form.length >= 4) out = out.replace(new RegExp(literal(form), 'gi'), '<Datenordner>')
+    }
+  } catch {
+    // Without a data folder there is nothing of it to hide.
+  }
 
   // Windows, macOS and Linux home directories, whatever the account is
   // called. Case-insensitive on the folder name itself: tools that write
@@ -132,6 +163,20 @@ export function scrub(text: string): string {
   out = out.replace(/([A-Za-z]:\\{1,2}Users\\{1,2})[^\\\r\n"']+/gi, '$1<Nutzer>')
   out = out.replace(/(\/Users\/)[^/\r\n"']+/gi, '$1<Nutzer>')
   out = out.replace(/(\/home\/)[^/\r\n"']+/g, '$1<Nutzer>')
+
+  // The names below the data folder. Only the home folder was covered, so a
+  // data folder on D:\ carried instance and world names straight into the
+  // report. Network paths go the same way.
+  out = out.replace(/((?:instances|saves)[\\/]{1,2})[^\\/\r\n"']+/gi, (_m, prefix: string) =>
+    prefix + (prefix.toLowerCase().startsWith('saves') ? '<Welt>' : '<Instanz>')
+  )
+  out = out.replace(/(^|[\s"'(=])\\\\[^\\\s"']+\\[^\\\s"']+/g, '$1\\\\<Server>\\<Freigabe>')
+  // Instance names as the launcher's own messages quote them.
+  for (const name of instanceNames()) {
+    for (const [open, close] of [['„', '“'], ['"', '"'], ["'", "'"]]) {
+      out = out.split(`${open}${name}${close}`).join(`${open}<Instanz>${close}`)
+    }
+  }
 
   // Email addresses, ahead of the name rules below rather than after them.
   // An address whose local part happened to equal the account name used to

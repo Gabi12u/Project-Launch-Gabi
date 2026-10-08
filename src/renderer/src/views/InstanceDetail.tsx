@@ -58,7 +58,7 @@ import {
   IconX} from '../components/Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from '../components/ContextMenu'
 import { VersionPicker } from '../components/VersionPicker'
-import { tr } from '@shared/i18n'
+import { locale, tr } from '@shared/i18n'
 
 type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'recordings' | 'logs' | 'settings'
 
@@ -222,7 +222,8 @@ export function InstanceDetailView({
     try {
       const result = await window.gabi.instances.repair(instanceId)
       const repaired = result.steps.filter((s) => s.status === 'repaired').length
-      const failed = result.steps.filter((s) => s.status === 'failed').length
+      const failedSteps = result.steps.filter((s) => s.status === 'failed')
+      const failed = failedSteps.length
 
       toast(
         failed > 0 ? 'warning' : 'success',
@@ -230,11 +231,12 @@ export function InstanceDetailView({
         tr(
           `${result.checkedFiles} ${pluralise(result.checkedFiles, 'Datei', 'Dateien')} geprüft, ` +
             `${result.repairedFiles} erneuert, ${repaired} ${pluralise(repaired, 'Bereich', 'Bereiche')} korrigiert` +
-            (failed > 0 ? `, ${failed} ${pluralise(failed, 'Schritt', 'Schritte')} fehlgeschlagen` : '') +
+            // Named, not only counted: which step failed was only in the log tab.
+            (failed > 0 ? `. Fehlgeschlagen: ${failedSteps.map((s) => s.label).join(', ')}. Einzelheiten stehen im Reiter „Log“` : '') +
             '.',
           `${result.checkedFiles} ${pluralise(result.checkedFiles, 'file', 'files')} checked, ` +
             `${result.repairedFiles} replaced, ${repaired} ${pluralise(repaired, 'area', 'areas')} fixed` +
-            (failed > 0 ? `, ${failed} ${pluralise(failed, 'step', 'steps')} failed` : '') +
+            (failed > 0 ? `. Failed: ${failedSteps.map((s) => s.label).join(', ')}. Details are in the "Log" tab` : '') +
             '.'
         ),
         9000
@@ -808,10 +810,10 @@ function ContentTab({
         return [...filtered].sort((a, b) => b.installedAt - a.installedAt)
       case 'provider':
         return [...filtered].sort(
-          (a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name, 'de')
+          (a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name, locale())
         )
       default:
-        return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'de'))
+        return [...filtered].sort((a, b) => a.name.localeCompare(b.name, locale()))
     }
   }, [instance.content, type, search, sort])
 
@@ -949,6 +951,9 @@ function ContentTab({
 
         <button
           className="btn sm"
+          // Refused while the game runs, before the file dialog even opens.
+          disabled={blockedReason !== null}
+          title={blockedReason ?? undefined}
           onClick={async () => {
             try {
               const added = await window.gabi.content.importFile(instance.id, type)
@@ -1383,12 +1388,26 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
   const [shots, setShots] = useState<ScreenshotInfo[] | null>(null)
   const [clips, setClips] = useState<RecordingInfo[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<RecordingInfo | null>(null)
+  // Kept apart from an empty result: a failed listing read as "Noch nichts
+  // aufgenommen".
+  const [loadFailed, setLoadFailed] = useState<string | null>(null)
 
   const load = useCallback(async (): Promise<void> => {
+    let failure: string | null = null
+    const note = (err: unknown): void => {
+      failure ??= err instanceof Error ? err.message : String(err)
+    }
     const [nextShots, nextClips] = await Promise.all([
-      window.gabi.instances.screenshots(instanceId).catch(() => [] as ScreenshotInfo[]),
-      window.gabi.instances.recordings(instanceId).catch(() => [] as RecordingInfo[])
+      window.gabi.instances.screenshots(instanceId).catch((err: unknown) => {
+        note(err)
+        return [] as ScreenshotInfo[]
+      }),
+      window.gabi.instances.recordings(instanceId).catch((err: unknown) => {
+        note(err)
+        return [] as RecordingInfo[]
+      })
     ])
+    setLoadFailed(failure)
     setShots(nextShots)
     setClips(nextClips)
   }, [instanceId])
@@ -1411,6 +1430,21 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
   }, [load])
 
   if (!shots || !clips) return <div className="skeleton" style={{ height: 200 }} />
+
+  if (loadFailed && shots.length === 0 && clips.length === 0) {
+    return (
+      <EmptyState
+        icon={<IconCube size={26} />}
+        title={tr('Aufnahmen konnten nicht gelesen werden', 'Recordings could not be read')}
+        message={loadFailed}
+        action={
+          <button className="btn sm" onClick={() => void load()}>
+            {tr('Erneut versuchen', 'Try again')}
+          </button>
+        }
+      />
+    )
+  }
 
   const moments: Moment[] = [
     ...clips.map((clip) => ({

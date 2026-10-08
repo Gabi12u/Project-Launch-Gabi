@@ -300,7 +300,11 @@ function FeaturedInstance({
                 onClick={() => void startInstance(instance.id, instance.name)}
               >
                 {busy ? <span className="spinner" /> : <IconPlay size={18} />}
-                {busy ? tr('STARTET…', 'STARTING…') : tr('SPIELEN', 'PLAY')}
+                {starting
+                  ? tr('STARTET…', 'STARTING…')
+                  : instance.installing
+                    ? tr('WIRD EINGERICHTET…', 'SETTING UP…')
+                    : tr('SPIELEN', 'PLAY')}
               </PlayButton>
             )}
           </div>
@@ -357,6 +361,10 @@ function QuickCard({ instance, busy }: { instance: InstanceSummary; busy: boolea
       <button
         type="button"
         className="quick-play-btn"
+        // Refused by the main process while the instance is still being set
+        // up, so not offered until then.
+        disabled={instance.installing && !instance.running}
+        title={instance.installing && !instance.running ? tr('Wird noch eingerichtet', 'Still being set up') : undefined}
         aria-label={
           instance.running
             ? tr(`${instance.name} stoppen`, `Stop ${instance.name}`)

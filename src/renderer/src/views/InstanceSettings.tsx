@@ -160,8 +160,10 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       // builder passes these straight through to the game with no fallback of
       // its own. The `min` attribute on the inputs is only a validity hint, it
       // does not clamp anything.
-      const safeWidth = Number.isFinite(width) && width >= 640 ? Math.round(width) : 854
-      const safeHeight = Number.isFinite(height) && height >= 480 ? Math.round(height) : 480
+      // Raised to the smallest size instead of jumping to the default: 600
+      // was saved as 854. Only an empty or nonsense field takes the default.
+      const safeWidth = Number.isFinite(width) && width > 0 ? Math.max(640, Math.round(width)) : 854
+      const safeHeight = Number.isFinite(height) && height > 0 ? Math.max(480, Math.round(height)) : 480
       // The stored name is the one the toast should report, not the raw field.
       const savedName = name.trim() || instance.name
       const savedGroup = group.trim()
@@ -475,7 +477,9 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               <input id="is-fensterbreite"
                 className="input"
                 type="number"
-                value={width}
+                // Empty rather than "0" once cleared, so typing does not
+                // produce "01280".
+                value={width || ''}
                 min={640}
                 onChange={(e) => setWidth(Number(e.target.value))}
               />
@@ -485,7 +489,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               <input id="is-fensterhohe"
                 className="input"
                 type="number"
-                value={height}
+                value={height || ''}
                 min={480}
                 onChange={(e) => setHeight(Number(e.target.value))}
               />

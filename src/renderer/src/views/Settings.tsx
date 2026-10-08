@@ -726,7 +726,14 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     value={apiKey}
                     onChange={(event) => setApiKey(event.target.value)}
                   />
-                  <button className="btn primary" onClick={() => void saveSettings({ curseForgeApiKey: apiKey })}>
+                  <button
+                    className="btn primary"
+                    onClick={() =>
+                      void saveSettings({ curseForgeApiKey: apiKey }).then((saved) => {
+                        if (saved) toast('success', tr('CurseForge-Schlüssel gespeichert', 'CurseForge key saved'))
+                      })
+                    }
+                  >
                     {tr('Speichern', 'Save')}
                   </button>
                 </div>
@@ -1255,8 +1262,8 @@ function ReportsPanel(): JSX.Element {
           hint={
             configured
               ? tr(
-                  'Ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.',
-                  'Without your name, your UUID and your credentials. Your IP address is not stored.'
+                  'Ohne deinen Namen, deine UUID und deine Zugangsdaten. Der Launch-Gabi-Server speichert dabei deine IP-Adresse mit.',
+                  'Without your name, your UUID and your credentials. The Launch Gabi server stores your IP address along with it.'
                 )
               : tr(
                   'In dieser Version ist kein Empfänger hinterlegt, es wird nichts gesendet. Berichte werden nur bei dir gespeichert.',

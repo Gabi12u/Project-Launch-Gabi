@@ -2389,12 +2389,6 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'If the installed loader of a Forge or NeoForge instance was missing, just opening its page ' +
       'started the installation in the background, with nothing shown and no way to cancel.'
   },
-  'sicherungen-vor-reparatur': {
-    title: 'Backups made before a repair were never cleaned up',
-    detail:
-      'Before every repair the launcher creates a backup. Unlike the automatic backups, these were ' +
-      'never cleaned up and took more and more disk space over time.'
-  },
   'fremde-instanz-argumente': {
     title: 'Java arguments and environment variables of a foreign instance ran without asking',
     detail:
@@ -2877,6 +2871,161 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'If a laptop went into standby with the game open, all the time until it woke up counted as ' +
       'played. A night in standby turned into an eight-hour session that way.'
+  },
+  'beenden-waehrend-reparatur-mod-weg': {
+    title: 'Closing the launcher during a repair could make a mod disappear',
+    detail:
+      'A repair briefly sets a damaged mod aside while it downloads it again. If the launcher was ' +
+      'closed or crashed at exactly that moment, the mod stayed behind under another name, was missing ' +
+      'in the game and vanished from the list on the next scan. The launcher also did not ask on ' +
+      'closing whether tasks were still running.'
+  },
+  'reparatur-laedt-neueste-version': {
+    title: 'The repair replaced a mod with the newest instead of the installed version',
+    detail:
+      'If a mod was missing or damaged, the repair downloaded the newest matching version, even if an ' +
+      'older one had been installed on purpose. The list still showed the old version afterwards. A ' +
+      'mod that was switched off got switched on again in the process, and cancelling in the middle of ' +
+      'a repair could lose the details of mods already replaced.'
+  },
+  'reparatur-ressourcenpakete': {
+    title: 'The repair could not fix resource packs, shaders or data packs',
+    detail:
+      'In instances with a mod loader the repair never found a matching version for damaged resource ' +
+      'packs, shaders and data packs, and reported them as incompatible.'
+  },
+  'oberflaeche-laedt-nicht-unsichtbar': {
+    title: 'If the interface could not load, an invisible launcher stayed behind',
+    detail:
+      'If a file of the interface was missing, for example because a virus scanner removed it, an ' +
+      'error message appeared. The launcher then kept running invisibly, and every new start only ' +
+      'showed an empty window until it was ended in the Task Manager.'
+  },
+  'oberflaeche-neulade-schleife': {
+    title: 'An interface that kept crashing reloaded endlessly',
+    detail:
+      'If the interface crashed while loading, for example because of a graphics driver, the launcher ' +
+      'reloaded it right away, without any limit. The window then flickered for good, and an error ' +
+      'report was created every time.'
+  },
+  'aufnahmetaste-still': {
+    title: 'The recording key stayed silent on an error',
+    detail:
+      'If a recording could not start, for example because the recordings folder was not writable, ' +
+      'pressing the key simply did nothing. If the recording covered the whole screen because the game ' +
+      'window was not found, the notice did not say so.'
+  },
+  'alle-beheben-loescht-mods': {
+    title: '"Fix all automatically" could delete mods placed by hand',
+    detail:
+      'If two mods placed by hand had the same name, the check suggested looking at it yourself, ' +
+      'because they can also be two different mods. "Fix all automatically" still deleted one of them. ' +
+      'On top of that, fixing stopped as soon as a problem had already been solved by an earlier fix.'
+  },
+  'update-pruefung-fehler-verschwiegen': {
+    title: 'Failed update checks showed up as "All up to date"',
+    detail:
+      'If a mod could not be checked for updates, for example because of a missing CurseForge key or ' +
+      'because Modrinth refused too many requests, the launcher still showed "All up to date". Updates ' +
+      'were missed that way without any notice.'
+  },
+  'welten-auswahl-geloeschte-welt': {
+    title: 'A deleted world blocked the world selection of a data pack',
+    detail:
+      'If a world a data pack was assigned to had been deleted meanwhile, the selection could no ' +
+      'longer be saved. The message named the deleted world, which could not be unticked.'
+  },
+  'versionswahl-zu-streng': {
+    title: '"Choose version" showed matching versions as unsuitable',
+    detail:
+      'The version picker of a mod required exactly the same Minecraft version and showed a version ' +
+      'for 1.21 in an instance with 1.21.1 as unsuitable, although the install had picked it itself. ' +
+      'For mods that were switched off the installed version was not marked.'
+  },
+  'version-waehlen-paket-abgewaehlt': {
+    title: 'After "Choose version" a resource pack or shader was deselected in the game',
+    detail:
+      'If a selected resource pack or shader was swapped for another version through "Choose version", ' +
+      'the game still had the old file name. The pack was switched off without notice on the next ' +
+      'start.'
+  },
+  'datei-hinzufuegen-meldet-fehler': {
+    title: '"Add file" reported an error although the file was already copied',
+    detail:
+      'If Modrinth recognised an added file but loading its details failed, "Import failed" appeared. ' +
+      'The file was in the folder anyway and showed up later as an unknown mod. The button was also ' +
+      'active while the game was running.'
+  },
+  'umschalten-gesperrte-datei': {
+    title: 'Switching on and off failed on briefly locked files',
+    detail:
+      'If a virus scanner briefly held a mod open, switching it on or off failed right away with a ' +
+      'technical message that contained the Windows user name. Other actions try again a moment later ' +
+      'in that case.'
+  },
+  'download-nicht-abbrechbar': {
+    title: 'Downloads during install and update could not be cancelled',
+    detail:
+      '"Cancel" waited during an install or an update until the file being downloaded was finished. ' +
+      'With a stalled connection that could take several minutes. If the connection dropped, an ' +
+      'English technical message appeared.'
+  },
+  'entdecken-modpacks-gefiltert': {
+    title: '"Discover" showed modpacks only for the version of the first instance',
+    detail:
+      'Modpacks bring their own instance, but were filtered by the Minecraft version and mod loader of ' +
+      'the instance chosen at the moment. Most modpacks were missing from the first page that way. ' +
+      'Without any instance modpacks could not be installed at all, although the notice promised it.'
+  },
+  'entdecken-installieren-bei-laufendem-spiel': {
+    title: 'Install buttons were active while the game was running',
+    detail:
+      'In "Discover" and in the project window "Install" stayed active while the target instance was ' +
+      'running, and only failed after the click. In the mods tab the buttons vanished without ' +
+      'explanation instead.'
+  },
+  'startbildschirm-alte-versionen': {
+    title: 'The custom start screen was never activated on Minecraft 1.6 to 1.12',
+    detail:
+      'Minecraft before 1.13 lists resource packs under a different name than newer versions. The ' +
+      'custom start screen was created there, but never switched on.'
+  },
+  'anmeldefehler-bei-einrichtung-unsichtbar': {
+    title: 'Sign-in errors during the first setup were not shown',
+    detail:
+      'If signing in with Microsoft failed during the first setup, the sign-in window simply went back ' +
+      'without an error message. Success messages were missing there too. Shortcuts like Ctrl+N worked ' +
+      'during the setup and opened windows unexpectedly afterwards.'
+  },
+  'snapshot-einstellung-ohne-wirkung': {
+    title: 'The setting "Show snapshots in the version list" had no effect',
+    detail:
+      'The wizard for new instances always started without snapshots, whatever was chosen in the ' +
+      'settings.'
+  },
+  'oberflaeche-kleinere-anzeigefehler': {
+    title: 'Several displays said something other than what actually applied',
+    detail:
+      'The home page showed "STARTING..." while an instance was only being set up, and its small play ' +
+      'button stayed active. "Restore" was active for running instances and only failed after the ' +
+      'confirmation. Many failed tasks hid a new, running one. Recordings and version lists that could ' +
+      'not be loaded looked empty. Hyphens vanished from descriptions, and window widths below 640 ' +
+      'became 854 without notice.'
+  },
+  'fehlerbericht-ip-hinweis-falsch': {
+    title: 'The notice on error reports promised the IP address would not be stored',
+    detail:
+      'Anyone who allows error reports also sends them to the Launch Gabi server, and it stores the IP ' +
+      'address with every report. The notice said the opposite and did not name the recipients. On top ' +
+      'of that, names of instances and worlds as well as paths outside the user folder could appear in ' +
+      'reports.'
+  },
+  'ordnerimport-verknuepfungskette': {
+    title: 'A folder import could copy outside files through chained links',
+    detail:
+      'If an imported folder contained a link that pointed outside through a second link, the import ' +
+      'on Windows without link permission copied the files at the target along, for example from your ' +
+      'own Documents folder. They ended up in the instance and later in backups and exports.'
   }
 }
 

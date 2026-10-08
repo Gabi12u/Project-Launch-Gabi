@@ -6,6 +6,7 @@ import { startInstanceForced } from '../lib/actions'
 import { Modal } from './ui'
 import { IconCheckCircle, IconInfo, IconPlay, IconSparkle, IconWarning } from './Icons'
 import { tr } from '@shared/i18n'
+import { isSafeAutoFix } from '@shared/fixes'
 
 const ISSUE_ICON = {
   error: IconWarning,
@@ -87,7 +88,7 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading, fai
 
   const fixAll = async (): Promise<void> => {
     if (!report || fixing !== null) return
-    const fixable = report.issues.filter((i) => i.fix)
+    const fixable = report.issues.filter(isSafeAutoFix)
     setFixing('all')
     // Reported after every step, not only once the whole run finishes. Each
     // applyFix has already taken effect on disk by the time it returns, so
@@ -98,6 +99,10 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading, fai
     let done = 0
     try {
       for (const issue of fixable) {
+        // Already gone after an earlier fix (a removed duplicate that was
+        // also the wrong loader): applying its fix failed on the missing mod
+        // and stopped the whole run.
+        if (!latest.issues.some((current) => current.id === issue.id)) continue
         latest = await window.gabi.content.applyFix(instanceId, issue.fix!)
         done++
         onChanged(latest)
@@ -238,7 +243,8 @@ export function CompatibilityGate(): JSX.Element | null {
     // failure partway through does not throw away the fixes that succeeded.
     let latest = current
     try {
-      for (const issue of current.issues.filter((i) => i.fix)) {
+      for (const issue of current.issues.filter(isSafeAutoFix)) {
+        if (!latest.issues.some((open) => open.id === issue.id)) continue
         latest = await window.gabi.content.applyFix(compatGate.instanceId, issue.fix!)
         setReport(latest)
       }

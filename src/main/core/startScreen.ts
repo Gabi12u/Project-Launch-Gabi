@@ -307,7 +307,9 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
   // Minecraft's own resource pack screen is not overridden on the next
   // launch.
   if (!existsSync(marker)) {
-    setPackActive(instanceId, PACK_ID, true)
+    // Minecraft before 1.13 lists packs by bare file name, without "file/",
+    // so the pack was created there but never switched on.
+    setPackActive(instanceId, packFormatFor(mcVersion) < 4 ? PACK_FILENAME : PACK_ID, true)
     try {
       writeFileSync(marker, '', 'utf8')
     } catch (err) {
@@ -319,6 +321,7 @@ export function applyCustomStartScreen(instanceId: string, mcVersion: string): v
 /** Deactivates and deletes the pack, leaving no trace once the beta is off. */
 export function removeCustomStartScreen(instanceId: string): void {
   setPackActive(instanceId, PACK_ID, false)
+  setPackActive(instanceId, PACK_FILENAME, false)
   const dir = paths.resourcePacks(instanceId)
   const target = join(dir, PACK_FILENAME)
   try {

@@ -23,6 +23,7 @@ import {
   IconWarning
 } from './Icons'
 import { tr } from '@shared/i18n'
+import { gameVersionMatches, sameVersionLine } from '@shared/gameVersions'
 
 const TYPE_LABELS: Record<ContentType | 'modpack', string> = {
   mod: tr('Mods', 'Mods'),
@@ -196,8 +197,10 @@ export function ContentBrowser({
         const result = await window.gabi.providers.search({
           query: debounced,
           type,
-          gameVersion: useVersionFilter ? mcVersion : undefined,
-          loader: useVersionFilter ? loader : undefined,
+          // Not for modpacks: they bring their own instance, and filtering
+          // them by the chosen one hid most of them.
+          gameVersion: useVersionFilter && type !== 'modpack' ? mcVersion : undefined,
+          loader: useVersionFilter && type !== 'modpack' ? loader : undefined,
           providers,
           sort,
           offset: nextOffset,
@@ -263,7 +266,8 @@ export function ContentBrowser({
   }, [search])
 
   const install = async (item: SearchResultItem, versionId?: string, worlds?: string[]): Promise<void> => {
-    if (!instanceId) return
+    // A modpack brings its own instance and needs no target.
+    if (!instanceId && item.type !== 'modpack') return
     // Guards against a double click landing twice before the first render.
     // Keyed with the provider: a Modrinth and a CurseForge project can share
     // an id, and one install then showed the other one as busy too.
@@ -275,7 +279,7 @@ export function ContentBrowser({
       if (item.type === 'modpack') {
         await window.gabi.modpacks.installFromProvider(item.provider, item.projectId, versionId)
         toast('success', tr('Modpack wird installiert', 'Installing modpack'), item.name)
-      } else {
+      } else if (instanceId) {
         const installed = await window.gabi.content.install({
           instanceId,
           provider: item.provider,
@@ -366,11 +370,12 @@ export function ContentBrowser({
       </div>
 
       <div className="row gap-12 wrap" style={{ fontSize: 12.5 }}>
-        {mcVersion && (
+        {mcVersion && type !== 'modpack' && (
           <button
             className={`badge ${useVersionFilter ? 'accent' : ''}`}
             onClick={() => setUseVersionFilter((value) => !value)}
             style={{ cursor: 'pointer' }}
+            aria-pressed={useVersionFilter}
           >
             {useVersionFilter ? <IconCheck size={11} /> : null}
             {tr('Nur passend für Minecraft', 'Only for Minecraft')} {mcVersion}
@@ -381,6 +386,7 @@ export function ContentBrowser({
         <button
           className={`badge ${providers.includes('modrinth') ? 'accent' : ''}`}
           style={{ cursor: 'pointer' }}
+          aria-pressed={providers.includes('modrinth')}
           title={
             providers.length === 1 && providers.includes('modrinth')
               ? tr('Mindestens eine Quelle muss aktiv sein', 'At least one source has to stay active')
@@ -403,6 +409,7 @@ export function ContentBrowser({
         <button
           className={`badge ${providers.includes('curseforge') ? 'accent' : ''}`}
           style={{ cursor: 'pointer' }}
+          aria-pressed={providers.includes('curseforge')}
           title={
             providers.length === 1 && providers.includes('curseforge')
               ? tr('Mindestens eine Quelle muss aktiv sein', 'At least one source has to stay active')
@@ -503,7 +510,10 @@ export function ContentBrowser({
                 // carry the same id.
                 installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
                 installing={installing.has(installKey(item))}
-                canInstall={Boolean(instanceId) && !blockedReason}
+                canInstall={Boolean(instanceId) || item.type === 'modpack'}
+                // Shown as a disabled button with the reason instead of no
+                // button at all, which left the user guessing why.
+                blockedReason={item.type === 'modpack' ? null : (blockedReason ?? null)}
                 onInstall={() =>
                   item.type === 'datapack' ? setWorldPickFor({ item }) : void install(item)
                 }
@@ -529,6 +539,7 @@ export function ContentBrowser({
         <ProjectModal
           item={detail}
           instanceId={instanceId}
+          blockedReason={detail.type === 'modpack' ? null : (blockedReason ?? null)}
           mcVersion={mcVersion}
           loader={loader}
           onClose={() => setDetail(null)}
@@ -565,6 +576,7 @@ function ProjectCard({
   installed,
   installing,
   canInstall,
+  blockedReason,
   onInstall,
   onOpen
 }: {
@@ -572,6 +584,7 @@ function ProjectCard({
   installed: boolean
   installing: boolean
   canInstall: boolean
+  blockedReason: string | null
   onInstall: () => void
   onOpen: () => void
 }): JSX.Element {
@@ -611,7 +624,8 @@ function ProjectCard({
         <button
           className={`btn sm ${installed ? '' : 'primary'}`}
           style={{ alignSelf: 'center', flexShrink: 0 }}
-          disabled={installing || installed}
+          disabled={installing || installed || blockedReason !== null}
+          title={blockedReason ?? undefined}
           onClick={(event) => {
             event.stopPropagation()
             onInstall()
@@ -640,10 +654,12 @@ function ProjectModal({
   loader,
   onClose,
   onInstall,
-  installing
+  installing,
+  blockedReason = null
 }: {
   item: SearchResultItem
   instanceId?: string
+  blockedReason?: string | null
   mcVersion?: string
   loader?: LoaderId
   onClose: () => void
@@ -721,11 +737,14 @@ function ProjectModal({
   const compatibleVersions = useMemo(() => {
     if (!mcVersion) return versions
 
-    const line = mcVersion.split('.').slice(0, 2).join('.')
+    // The same rule the install itself uses (shared/gameVersions.ts): for
+    // mods and data packs the exact version or a hotfix of it, for resource
+    // packs and shaders the whole line. Wider here, "Neueste installieren"
+    // named a version the install then did not pick.
+    const looseLine = item.type === 'resourcepack' || item.type === 'shaderpack'
     const versionFits = (version: (typeof versions)[number]): boolean =>
       version.gameVersions.length === 0 ||
-      version.gameVersions.includes(mcVersion) ||
-      version.gameVersions.some((v) => v === line || v.startsWith(`${line}.`))
+      version.gameVersions.some((v) => (looseLine ? sameVersionLine(mcVersion, v) : gameVersionMatches(mcVersion, v)))
 
     const loaderFits = (version: (typeof versions)[number]): boolean =>
       !loader ||
@@ -735,7 +754,15 @@ function ProjectModal({
       (loader === 'quilt' && version.loaders.includes('fabric'))
 
     return versions.filter((version) => versionFits(version) && loaderFits(version))
-  }, [versions, mcVersion, loader])
+  }, [versions, mcVersion, loader, item.type])
+
+  // A version picked while all were shown stays picked when the list narrows
+  // to compatible ones, hidden, and the button still offered to install it.
+  useEffect(() => {
+    if (onlyCompatible && selected && !compatibleVersions.some((version) => version.versionId === selected)) {
+      setSelected('')
+    }
+  }, [onlyCompatible, selected, compatibleVersions])
 
   const shown = onlyCompatible && mcVersion ? compatibleVersions : versions
   // With the filter off every version looked alike, so one for another loader
@@ -774,12 +801,15 @@ function ProjectModal({
             )}
           </button>
           <div className="grow" />
-          {instanceId && (
+          {(instanceId || item.type === 'modpack') && (
             <button
               className="btn primary"
               onClick={() => onInstall(selected || undefined)}
-              disabled={installing || (!selected && installedIsLatest)}
-              title={!selected && installedIsLatest ? tr('Diese Version ist schon installiert', 'This version is already installed') : undefined}
+              disabled={installing || (!selected && installedIsLatest) || blockedReason !== null}
+              title={
+                blockedReason ??
+                (!selected && installedIsLatest ? tr('Diese Version ist schon installiert', 'This version is already installed') : undefined)
+              }
             >
               {installing ? <span className="spinner" /> : <IconDownload size={15} />}
               {selected ? tr('Diese Version installieren', 'Install this version') : tr('Neueste installieren', 'Install latest')}
@@ -822,6 +852,7 @@ function ProjectModal({
                   className={`badge ${onlyCompatible ? 'accent' : ''}`}
                   style={{ cursor: 'pointer' }}
                   onClick={() => setOnlyCompatible((value) => !value)}
+                  aria-pressed={onlyCompatible}
                 >
                   {tr('Nur kompatible', 'Compatible only')}
                 </button>

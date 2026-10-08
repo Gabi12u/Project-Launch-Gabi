@@ -8,6 +8,7 @@ import {
   refreshAccounts,
   refreshInstances,
   refreshSettings,
+  getState,
   setState,
   useStore
 } from './lib/store'
@@ -258,6 +259,10 @@ export function App(): JSX.Element {
   /* --- Keyboard shortcuts ---------------------------------------- */
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      // Neither the wizard nor the palette exists during the first setup, so
+      // a shortcut pressed there only queued it up, and it then popped open
+      // on its own the moment the setup ended.
+      if (!getState().settings.onboarded) return
       const target = event.target as HTMLElement | null
       const typing =
         target &&
@@ -300,7 +305,14 @@ export function App(): JSX.Element {
   }
 
   if (!settings.onboarded) {
-    return <Onboarding />
+    // Toasts here too: a failed sign-in during the setup reported its error
+    // as a toast that nothing showed, and the dialog just went back.
+    return (
+      <>
+        <Onboarding />
+        <Toasts />
+      </>
+    )
   }
 
   const routeKey = parsed.section + (parsed.param ?? '')

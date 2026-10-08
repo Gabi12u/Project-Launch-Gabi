@@ -218,7 +218,19 @@ export function syncRecordingHotkey(): void {
   if (!wanted) return
 
   try {
-    const ok = globalShortcut.register(wanted, () => void toggleRecording())
+    // Caught here: a failure to start (a folder that cannot be written, the
+    // capture refusing) went to the unhandled-rejection log only, and the
+    // key simply did nothing.
+    const ok = globalShortcut.register(wanted, () => {
+      toggleRecording().catch((err: unknown) => {
+        logger.error('Aufnahme über die Taste fehlgeschlagen:', err)
+        notify(
+          'error',
+          tr('Aufnahme nicht gestartet', 'Recording not started'),
+          err instanceof Error ? err.message : String(err)
+        )
+      })
+    })
     if (!ok) {
       // Another application already holds it. Nothing is broken, but the key
       // will do nothing, and silence here would look like the feature failing.
@@ -422,7 +434,15 @@ async function startRecording(instanceId: string): Promise<void> {
     tr(
       `Aufnahme von „${instanceName}“ läuft. Nochmal ${settings.recordingHotkey} drücken beendet sie.`,
       `Recording "${instanceName}". Press ${settings.recordingHotkey} again to stop.`
-    )
+    ) +
+      // The game window was not found, so everything on screen is recorded,
+      // other windows included. Said, so nobody records more than they meant to.
+      (source.kind === 'screen'
+        ? tr(
+            ' Das Spielfenster wurde nicht gefunden, aufgenommen wird der ganze Bildschirm.',
+            ' The game window was not found, the whole screen is being recorded.'
+          )
+        : '')
   )
 }
 

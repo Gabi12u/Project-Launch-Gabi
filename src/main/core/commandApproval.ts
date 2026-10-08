@@ -32,7 +32,7 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'en
 // module path replaces the real one, and a folder shipped with an imported
 // instance could be loaded from there without a word.
 const CODE_LOADING_JVM_ARG =
-  /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile)/i
+  /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile|-Dminecraft\.api\.|-Dhttps?\.proxy|-DsocksProxy|-Djava\.net\.useSystemProxies|-Djavax\.net\.ssl\.)/i
 
 /**
  * Takes the arguments already split the way they reach Java. Checked on the
@@ -63,8 +63,8 @@ function kindText(kind: CommandKind): { title: string; detail: (name: string, va
       title: tr('Java-Argumente erlauben', 'Allow Java arguments'),
       intro: (name: string) =>
         tr(
-          `Die Instanz „${name}“ möchte Java mit diesen Argumenten starten. Sie können zusätzlichen Programmcode laden:`,
-          `The instance "${name}" wants to start Java with these arguments. They can load additional program code:`
+          `Die Instanz „${name}“ möchte Java mit diesen Argumenten starten. Sie können zusätzlichen Programmcode laden oder die Verbindungen des Spiels umleiten, auch die mit deinem Anmeldeschlüssel:`,
+          `The instance "${name}" wants to start Java with these arguments. They can load additional program code or redirect the game's connections, including the ones carrying your sign-in token:`
         )
     },
     envVars: {

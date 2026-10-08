@@ -75,13 +75,19 @@ export function ReportConsent(): JSX.Element | null {
           <ul className="hint bullet-list">
             <li>{tr('Die Fehlermeldung und wo im Programm sie aufgetreten ist', 'The error message and where in the program it happened')}</li>
             <li>{tr('Die Version von Launch Gabi und dein Betriebssystem', 'The version of Launch Gabi and your operating system')}</li>
+            <li>
+              {tr(
+                'An wen: an den Launch-Gabi-Server und einen Discord-Kanal der Entwicklung. Der Server speichert dabei deine IP-Adresse mit dem Bericht, wie es jeder Server beim Empfang tun kann.',
+                'To whom: the Launch Gabi server and a Discord channel of the developer. The server stores your IP address with the report, as any server receiving it can.'
+              )}
+            </li>
           </ul>
 
           <h3 style={{ marginTop: 14 }}>{tr('Was nicht gesendet wird', 'What is not sent')}</h3>
           <ul className="hint bullet-list">
             <li>{tr('Dein Minecraft-Name, deine UUID und deine Zugangsdaten', 'Your Minecraft name, your UUID and your credentials')}</li>
             <li>{tr('Dein Windows-Benutzername, auch nicht versteckt in Dateipfaden', 'Your Windows user name, not even hidden in file paths')}</li>
-            <li>{tr('Deine IP-Adresse wird nicht gespeichert', 'Your IP address is not stored')}</li>
+
             <li>{tr('Nichts aus deinen Welten, Mods oder Screenshots', 'Nothing from your worlds, mods or screenshots')}</li>
           </ul>
         </div>

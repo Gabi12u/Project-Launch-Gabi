@@ -2,11 +2,25 @@ import type { LoaderId, LoaderVersion } from '@shared/types'
 import { installFabricLike, listFabricLikeVersions, resolveLatestFabricLike } from './fabric'
 import { installForgeLike, listForgeLikeVersions, resolveLatestForgeLike } from './forge'
 import type { Task } from '../tasks'
+import { isValidVersionString } from '../paths'
+import { tr } from '@shared/i18n'
+
+/**
+ * Both versions become part of file names in the cache and the versions
+ * folder. Coming from the renderer they were used as they were, so a value
+ * with "../" in it could write outside those folders.
+ */
+function assertVersions(mcVersion: string, loaderVersion = ''): void {
+  if (!isValidVersionString(mcVersion) || (loaderVersion !== '' && !isValidVersionString(loaderVersion))) {
+    throw new Error(tr('Ungültige Versionsangabe.', 'Invalid version.'))
+  }
+}
 
 export async function listLoaderVersions(
   loader: LoaderId,
   mcVersion: string
 ): Promise<LoaderVersion[]> {
+  assertVersions(mcVersion)
   switch (loader) {
     case 'vanilla':
       return []
@@ -25,6 +39,7 @@ export async function resolveLatestLoaderVersion(
   loader: LoaderId,
   mcVersion: string
 ): Promise<string> {
+  assertVersions(mcVersion)
   switch (loader) {
     case 'vanilla':
       return ''
@@ -49,6 +64,7 @@ export async function installLoader(
   loaderVersion: string,
   task?: Task
 ): Promise<string> {
+  assertVersions(mcVersion, loaderVersion)
   switch (loader) {
     case 'vanilla':
       return mcVersion

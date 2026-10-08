@@ -44,7 +44,11 @@ export function WorldPickerModal({
     void window.gabi.instances
       .worlds(instanceId)
       .then((list) => {
-        if (current) setWorlds(list)
+        if (!current) return
+        setWorlds(list)
+        // A world deleted since it was assigned had no checkbox left to untick
+        // and made every save fail. Only worlds that exist stay selected.
+        setSelected((previous) => new Set([...previous].filter((name) => list.some((world) => world.name === name))))
       })
       .catch((err) => {
         if (!current) return

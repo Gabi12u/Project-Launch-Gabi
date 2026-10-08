@@ -50,7 +50,8 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   const [versions, setVersions] = useState<MinecraftVersion[]>([])
   const [loadingVersions, setLoadingVersions] = useState(false)
   const [versionSearch, setVersionSearch] = useState('')
-  const [showSnapshots, setShowSnapshots] = useState(false)
+  // From the setting of the same name, which otherwise did nothing.
+  const [showSnapshots, setShowSnapshots] = useState(() => settings.showSnapshots === true)
 
   const [mcVersion, setMcVersion] = useState('')
   const [loader, setLoader] = useState<LoaderId>('vanilla')

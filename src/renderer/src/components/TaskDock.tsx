@@ -107,9 +107,12 @@ export function TaskDock(): JSX.Element | null {
     setState((current) => ({ tasks: current.tasks.filter((t) => t.id !== id) }))
   }
 
-  const visible = tasks.filter(
-    (task) => task.state === 'running' || task.state === 'failed' || lingering.has(task.id)
-  )
+  // Running ones first: failed tasks stay until dismissed, and four of them
+  // pushed a new running task behind "+ N weitere", out of sight and out of
+  // reach of its cancel button.
+  const visible = tasks
+    .filter((task) => task.state === 'running' || task.state === 'failed' || lingering.has(task.id))
+    .sort((a, b) => Number(b.state === 'running') - Number(a.state === 'running'))
   if (visible.length === 0) return null
 
   const running = visible.filter((t) => t.state === 'running')
