@@ -488,7 +488,7 @@ export interface BackupEntry {
   createdAt: number
   size: number
   /** What triggered the backup. */
-  reason: 'manual' | 'automatic' | 'pre-update' | 'pre-repair'
+  reason: 'manual' | 'automatic' | 'pre-update' | 'pre-repair' | 'cloud'
   /** Which folders were captured. */
   includes: string[]
 }
@@ -687,6 +687,11 @@ export interface LauncherSettings {
    */
   /** Whether error reports may be sent to the developers. */
   crashReports: ReportConsent
+  /**
+   * Whether the user has read and accepted the note on cloud backups. `unset`
+   * shows it the first time anything goes to or comes from the cloud.
+   */
+  cloudBackups: ReportConsent
   lastRunVersion: string
   /**
    * The version whose changelog the user has already seen.

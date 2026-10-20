@@ -164,6 +164,14 @@ const api = {
     openFolder: call(IPC.backupOpenFolder)
   },
 
+  cloud: {
+    overview: call(IPC.cloudOverview),
+    upload: call(IPC.cloudUpload),
+    download: call(IPC.cloudDownload),
+    remove: call(IPC.cloudRemove),
+    removeAccount: call(IPC.cloudRemoveAccount)
+  },
+
   news: {
     list: call(IPC.newsList)
   },

@@ -87,6 +87,7 @@ import {
   backupFolder,
   pruneAllAutomaticBackups
 } from './core/backups'
+import { cloudOverview, deleteCloudAccount, deleteFromCloud, downloadFromCloud, uploadToCloud } from './core/cloud'
 import { repairInstance } from './core/repair'
 import {
   analyzeModpackFile,
@@ -886,6 +887,18 @@ export function registerIpc(): void {
   })
 
   handle(IPC.backupOpenFolder, (instanceId: string) => openLauncherPath(backupFolder(instanceId)))
+
+  /* ---------------------------------------------------------------- *
+   * Cloud backups
+   * ---------------------------------------------------------------- */
+
+  handle(IPC.cloudOverview, () => cloudOverview())
+  handle(IPC.cloudUpload, (instanceId: string, backupId: string, replace?: string) =>
+    uploadToCloud(instanceId, backupId, replace)
+  )
+  handle(IPC.cloudDownload, (instanceKey: string, into?: string) => downloadFromCloud(instanceKey, into))
+  handle(IPC.cloudRemove, (instanceKey: string) => deleteFromCloud(instanceKey))
+  handle(IPC.cloudRemoveAccount, () => deleteCloudAccount())
 
   /* ---------------------------------------------------------------- *
    * News & tasks

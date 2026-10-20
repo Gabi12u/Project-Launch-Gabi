@@ -57,6 +57,12 @@ export const IconCompass = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+export const IconCloud = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <path d="M7 18.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a5 5 0 0 1-.5 9.99z" />
+  </Icon>
+)
+
 export const IconSave = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <g>

@@ -181,6 +181,9 @@ function sanitize(input: LauncherSettings): LauncherSettings {
     next.crashReports = fallback.crashReports
   }
   // Same reasoning as crashReports: "not asked" is not "yes".
+  if (!['unset', 'on', 'off'].includes(next.cloudBackups)) {
+    next.cloudBackups = fallback.cloudBackups
+  }
   if (!['unset', 'on', 'off'].includes(next.customStartScreen)) {
     next.customStartScreen = fallback.customStartScreen
   }

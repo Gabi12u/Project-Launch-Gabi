@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import type { BackupEntry } from '@shared/types'
 import { paths } from '../paths'
@@ -206,6 +206,61 @@ async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Pr
   } finally {
     if (instanceLocks.get(instanceId) === run) instanceLocks.delete(instanceId)
   }
+}
+
+/** The archive of one backup on disk, for sending it to the cloud. */
+export function backupArchive(instanceId: string, backupId: string): { entry: BackupEntry; file: string } {
+  assertBackupIdSafe(instanceId)
+  const entry = readIndex(instanceId).find((e) => e.id === backupId)
+  if (!entry) throw new Error(tr('Diese Sicherung gibt es nicht mehr.', 'This backup no longer exists.'))
+  const file = backupPath(instanceId, entry.fileName)
+  if (!existsSync(file)) throw new Error(tr('Die Sicherungsdatei fehlt auf der Festplatte.', 'The backup file is missing from the disk.'))
+  return { entry, file }
+}
+
+/**
+ * Takes a backup that came from the cloud into an instance's own list, so it
+ * can be restored like any other and stays on this PC afterwards. The file is
+ * moved, not copied: it was downloaded into the cache for exactly this.
+ */
+export async function addDownloadedBackup(
+  instanceId: string,
+  sourceFile: string,
+  meta: { name: string; includes: string[]; createdAt: number }
+): Promise<BackupEntry> {
+  const instance = getInstance(instanceId)
+  return withInstanceLock(instanceId, async () => {
+    const dir = paths.instanceBackups(instanceId)
+    mkdirSync(dir, { recursive: true })
+    const fileName = `cloud-${new Date().toISOString().slice(0, 10)}-${randomUUID().slice(0, 6)}.zip`
+    const target = backupPath(instanceId, fileName)
+    try {
+      renameSync(sourceFile, target)
+    } catch {
+      // Another drive: the cache and the data folder can live apart.
+      copyFileSync(sourceFile, target)
+      rmSync(sourceFile, { force: true })
+    }
+    const includes = sanitizeIncludes(meta.includes)
+    const entry: BackupEntry = {
+      id: randomUUID(),
+      instanceId,
+      instanceName: instance.name,
+      name: meta.name,
+      fileName,
+      createdAt: Number.isFinite(meta.createdAt) ? meta.createdAt : Date.now(),
+      size: statSync(target).size,
+      reason: 'cloud',
+      includes: includes.length > 0 ? includes : ['saves', 'config']
+    }
+    try {
+      writeIndex(instanceId, [entry, ...readIndex(instanceId, true)])
+    } catch (err) {
+      rmSync(target, { force: true })
+      throw err
+    }
+    return entry
+  })
 }
 
 export async function createBackup(

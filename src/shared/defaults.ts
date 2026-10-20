@@ -64,6 +64,7 @@ export const DEFAULT_LAUNCHER_SETTINGS: LauncherSettings = {
   recordingMaxMinutes: 15,
   customStartScreen: 'unset',
   crashReports: 'unset',
+  cloudBackups: 'unset',
   lastRunVersion: '',
   launchBehaviourDefaultApplied: true,
   lastSeenVersion: '',

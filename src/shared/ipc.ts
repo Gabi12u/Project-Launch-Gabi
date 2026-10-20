@@ -117,6 +117,13 @@ export const IPC = {
   backupDelete: 'backup:delete',
   backupOpenFolder: 'backup:open-folder',
 
+  // cloud backups
+  cloudOverview: 'cloud:overview',
+  cloudUpload: 'cloud:upload',
+  cloudDownload: 'cloud:download',
+  cloudRemove: 'cloud:remove',
+  cloudRemoveAccount: 'cloud:remove-account',
+
   // news
   newsList: 'news:list',
 

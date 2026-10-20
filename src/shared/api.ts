@@ -114,6 +114,40 @@ export interface RecordingRequest {
 }
 
 /** One recorded fault, already stripped of anything personal. */
+/** One instance's backup in the cloud, as the cloud describes it. */
+export interface CloudBackup {
+  /** The instance id on the PC that uploaded it. */
+  instanceKey: string
+  instanceName: string
+  mcVersion: string
+  loader: LoaderId
+  loaderVersion: string
+  includes: string[]
+  createdAt: number
+  uploadedAt: number
+  size: number
+  sha256: string
+}
+
+export interface CloudOverview {
+  /** False without a Microsoft account; then nothing else is filled in. */
+  available: boolean
+  playerName?: string
+  backups: CloudBackup[]
+  account?: {
+    usedBytes: number
+    lastSeen: number | null
+    deleteAfter: number | null
+    limits: { maxInstances: number; maxBackupBytes: number }
+  }
+  website?: string
+}
+
+export type CloudUploadResult =
+  | { status: 'uploaded'; backup: CloudBackup }
+  /** All places are taken by other instances: these are the ones to choose from. */
+  | { status: 'full'; backups: CloudBackup[] }
+
 export interface ErrorReport {
   id: string
   at: number
@@ -305,6 +339,13 @@ export interface GabiApi {
     restore(instanceId: string, backupId: string): Promise<void>
     remove(instanceId: string, backupId: string): Promise<BackupEntry[]>
     openFolder(instanceId: string): Promise<string>
+  }
+  cloud: {
+    overview(): Promise<CloudOverview>
+    upload(instanceId: string, backupId: string, replace?: string): Promise<CloudUploadResult>
+    download(instanceKey: string, into?: string): Promise<{ instanceId: string; created: boolean }>
+    remove(instanceKey: string): Promise<void>
+    removeAccount(): Promise<void>
   }
   news: {
     list(limit?: number): Promise<NewsItem[]>
