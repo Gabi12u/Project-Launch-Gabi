@@ -4310,7 +4310,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'War die Datei einer Instanz beschädigt, etwa nach einem Stromausfall, legte der Launcher sie ' +
       'beiseite und zeigte stattdessen eine unbenannte Instanz mit Vanilla und der neuesten ' +
       'Minecraft-Version. Ein Klick auf „Spielen“ startete diese Version dann mit den vorhandenen ' +
-      'Welten, die Minecraft dabei auf die neue Version umstellen kann.',
+      'Welten, die Minecraft dabei auf die neue Version umstellen kann. Spielzeit und die Herkunft ' +
+      'der Mods fehlten ebenfalls, und „Reparieren“ half nicht, weil es die ursprüngliche Version ' +
+      'nicht kennt. Am häufigsten passiert das, wenn der PC kurz nach dem Ende eines Spiels hart ' +
+      'ausgeht, denn dann speichert der Launcher die Instanz.',
     state: 'fixing',
     since: '2026-10-06'
   },

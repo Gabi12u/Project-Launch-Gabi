@@ -2757,7 +2757,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'If an instance\'s file was damaged, for example after a power cut, the launcher set it aside and ' +
       'showed an unnamed instance with vanilla and the newest Minecraft version instead. Clicking ' +
       '"Play" then started that version with the existing worlds, which Minecraft may convert to the ' +
-      'new version on the way.'
+      'new version on the way. Play time and where the mods came from were missing too, and "Repair" ' +
+      'did not help, because it does not know the original version. It happens most often when the ' +
+      'PC goes off hard shortly after a game ends, because that is when the launcher saves the instance.'
   },
   'beschaedigte-einstellungen-datenordner-weg': {
     title: 'A damaged settings file reset the data folder',
