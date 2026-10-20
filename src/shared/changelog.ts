@@ -40,7 +40,7 @@ export const CHANGELOG: ChangelogRelease[] = [
     changes: [
       {
         kind: 'new',
-        text: 'Cloud-Backups: Unter Backups kannst du eine Sicherung jetzt in die Cloud legen. Meldest du dich auf einem anderen PC mit demselben Microsoft-Konto an, lädst du sie dort herunter, und der Launcher legt die Instanz mit Minecraft-Version und Mod-Loader selbst an.'
+        text: 'Cloud-Backups: Unter Backups kannst du eine Sicherung jetzt in die Cloud legen. Meldest du dich auf einem anderen PC mit demselben Microsoft-Konto an, lädst du sie dort herunter, und der Launcher legt die Instanz mit Minecraft-Version und Mod-Loader selbst an. Die Idee dazu kam von mister.mccain, danke!'
       },
       {
         kind: 'new',
