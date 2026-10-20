@@ -18,6 +18,7 @@ import { sweepStagingDirs } from './core/java'
 import { loadInstances, migrateInstanceLaunchBehaviour, recordSession, tryGetInstance } from './core/instances'
 import { UpdateCheckOfflineError, checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
+import { appIconPng, integrateLinuxDesktop } from './core/linuxDesktop'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
 import {
   disposeRecording,
@@ -155,6 +156,9 @@ function createWindow(): BrowserWindow {
     backgroundColor: '#0a0b12',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
     autoHideMenuBar: true,
+    // Windows and macOS take the icon from the installed app. On Linux the
+    // window brings its own, or the panel shows a generic one.
+    ...(process.platform === 'linux' ? { icon: appIconPng() ?? undefined } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // The preload only touches `contextBridge` and `ipcRenderer`, so nothing
@@ -471,6 +475,7 @@ function bootstrap(): void {
       logger.error('Prüfung auf abgebrochene Wiederherstellungen fehlgeschlagen:', err)
     }
 
+    integrateLinuxDesktop()
     registerProtocol()
     registerIpc()
     // A game that outlived a launcher restart has no exit handler here, so

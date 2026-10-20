@@ -6,6 +6,7 @@ import { log } from '../logger'
 import { getInstance } from './instances'
 import { icoFromDataUrls } from './ico'
 import { tr } from '@shared/i18n'
+import { appIconPng, appImagePath } from './linuxDesktop'
 
 const logger = log('shortcuts')
 
@@ -96,7 +97,9 @@ function resolveLinkPath(desktop: string, fileName: string, ext: string, instanc
  */
 function launchTarget(): { target: string; baseArgs: string[] } {
   if (app.isPackaged) {
-    return { target: process.execPath, baseArgs: [] }
+    // Inside an AppImage, execPath points into a mount under /tmp that is gone
+    // as soon as the launcher closes, and every shortcut to it did nothing.
+    return { target: appImagePath() ?? process.execPath, baseArgs: [] }
   }
   return { target: process.execPath, baseArgs: [app.getAppPath()] }
 }
@@ -227,7 +230,8 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
 
   if (process.platform === 'linux') {
     const linkPath = resolveLinkPath(desktop, fileName, '.desktop', instanceId)
-    const iconFile = writeInstancePng(instanceId, iconImages) ?? appIconPath()
+    // The .ico from appIconPath() is a Windows format a .desktop entry may not show.
+    const iconFile = writeInstancePng(instanceId, iconImages) ?? appIconPng() ?? appIconPath()
     const contents = [
       '[Desktop Entry]',
       'Type=Application',

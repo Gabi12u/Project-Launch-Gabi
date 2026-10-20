@@ -101,7 +101,21 @@ linux:
   category: Game
   icon: build/icon.png
   maintainer: Gabi
-  artifactName: ${name}-${version}-linux-${arch}.${ext}
+  # Deliberately without the version. electron-updater keeps the file name
+  # of an AppImage only when it carries no version; otherwise each update
+  # deletes the file and puts the new one next to it under a new name, and
+  # everything pointing at the old path broke: a panel icon pinned to it,
+  # instance shortcuts, start.sh. With this name the update replaces the file
+  # in place. Users still on a versioned file move over once, with their
+  # next update.
+  artifactName: ${name}-linux-${arch}.${ext}
+  # `desktopName` in package.json would otherwise make electron-builder use
+  # it as the window class here as well, while Electron names the X11 window
+  # class after the product name. The menu entry the launcher writes itself
+  # (src/main/core/linuxDesktop.ts) says the same.
+  desktop:
+    entry:
+      StartupWMClass: Launch Gabi
   target:
     - target: AppImage
       arch: [x64]

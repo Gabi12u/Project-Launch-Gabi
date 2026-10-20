@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { getLanguage, tr } from '@shared/i18n'
 import { getMainWindow } from './events'
 import { log } from './logger'
+import { appIconPng } from './core/linuxDesktop'
 
 const logger = log('gameLogWindow')
 
@@ -101,6 +102,8 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
     // dropped next to the rest of the launcher's own dark, custom chrome.
     frame: false,
     backgroundColor: '#0a0b12',
+    // Same as the main window: on Linux the panel would show a generic icon.
+    ...(process.platform === 'linux' ? { icon: appIconPng() ?? undefined } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
