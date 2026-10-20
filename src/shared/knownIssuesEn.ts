@@ -3026,6 +3026,20 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'If an imported folder contained a link that pointed outside through a second link, the import ' +
       'on Windows without link permission copied the files at the target along, for example from your ' +
       'own Documents folder. They ended up in the instance and later in backups and exports.'
+  },
+  'linux-kein-menueeintrag': {
+    title: 'On Linux there is no entry in the application menu, and the icon in the panel disappears after every update',
+    detail:
+      'On Linux, Launch Gabi could only be started by opening the AppImage file itself, because the ' +
+      'launcher created no entry in the application menu. On top of that, the file carries the version ' +
+      'number in its name. Every update deletes it and puts it back under a new name, so an icon pinned ' +
+      'to the panel disappeared after every update.'
+  },
+  'linux-verknuepfung-temporaerer-pfad': {
+    title: 'On Linux, desktop shortcuts to instances did not start',
+    detail:
+      'A shortcut or start script (start.sh) for an instance pointed on Linux to a folder that only ' +
+      'exists while the launcher is running. Once the launcher was closed, clicking it did nothing.'
   }
 }
 

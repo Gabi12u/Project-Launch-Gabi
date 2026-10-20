@@ -4703,6 +4703,29 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Exporten.',
     state: 'fixing',
     since: '2026-10-08'
+  },
+  {
+    id: 'linux-kein-menueeintrag',
+    title: 'Unter Linux fehlt der Eintrag im Anwendungsmenü, und das Symbol in der Leiste verschwindet nach jedem Update',
+    detail:
+      'Launch Gabi ließ sich unter Linux nur starten, indem man die AppImage-Datei selbst öffnete, denn ' +
+      'der Launcher legte keinen Eintrag im Anwendungsmenü an. Außerdem trägt die Datei die ' +
+      'Versionsnummer im Namen. Jedes Update löscht sie und legt sie unter neuem Namen wieder ab, ' +
+      'deshalb verschwand ein an die Leiste angeheftetes Symbol nach jedem Update.',
+    state: 'fixing',
+    since: '2026-10-20',
+    platforms: ['Linux']
+  },
+  {
+    id: 'linux-verknuepfung-temporaerer-pfad',
+    title: 'Unter Linux starteten Desktop-Verknüpfungen von Instanzen nicht',
+    detail:
+      'Eine Verknüpfung oder ein Startskript (start.sh) für eine Instanz zeigte unter Linux auf einen ' +
+      'Ordner, den es nur gibt, solange der Launcher läuft. Nach dem Schließen des Launchers tat ein ' +
+      'Klick darauf nichts mehr.',
+    state: 'fixing',
+    since: '2026-10-20',
+    platforms: ['Linux']
   }
 ]
 
