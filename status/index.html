@@ -967,72 +967,40 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.21",
-    "date": "2026-10-01",
-    "headline": "Ein Logo-Intro beim Start, ein Launcher, der auch bei großen Modpacks flüssig bleibt, und 60 Fehler behoben.",
+    "version": "1.0.22",
+    "date": "2026-10-20",
+    "headline": "Cloud-Backups: Spiel auf einem PC, mach auf einem anderen weiter.",
     "changes": [
       {
         "kind": "new",
-        "text": "Beim Start spielt jetzt kurz das Logo von Launch Gabi ab, bevor sich der Launcher öffnet. Wer das nicht möchte, schaltet es unter Einstellungen, Start ab."
+        "text": "Cloud-Backups: Unter Backups kannst du eine Sicherung jetzt in die Cloud legen. Meldest du dich auf einem anderen PC mit demselben Microsoft-Konto an, lädst du sie dort herunter, und der Launcher legt die Instanz mit Minecraft-Version und Mod-Loader selbst an."
       },
       {
-        "kind": "fixed",
-        "text": "Bei großen Modpacks konnte der Launcher nach einigen Minuten hängen und sich neu laden, wenn Minecraft sehr viele Log-Zeilen schrieb. Das Log bleibt jetzt auch bei Tausenden Zeilen pro Sekunde flüssig und zeigt die Meldungen lesbar statt als rohes XML."
+        "kind": "new",
+        "text": "Pro Instanz liegt das neueste Backup in der Cloud, für bis zu drei Instanzen, jedes bis 1,5 GB. Nach dem Erstellen einer Sicherung fragt der Launcher, ob sie auch in die Cloud soll. Sind alle drei Plätze belegt, wählst du, welche Instanz Platz macht."
       },
       {
-        "kind": "fixed",
-        "text": "Sicherungen ab 2 GB, etwa von großen Welten, ließen sich nicht wiederherstellen. Das geht jetzt, auch mit Sicherungen, die schon vorher angelegt wurden. „Automatisch sichern“ wirkt außerdem endlich nach jeder Spielsitzung."
-      },
-      {
-        "kind": "fixed",
-        "text": "Mit „Launcher minimieren“ beendete das Schließen des Launchers ein laufendes Spiel sofort, ohne dass es noch speichern konnte. Das Schließen blendet den Launcher jetzt nur aus, bis das Spiel endet."
-      },
-      {
-        "kind": "improved",
-        "text": "Derselbe Mod von Modrinth und von CurseForge wird jetzt vor dem Start erkannt, statt dass Minecraft einfach nicht startet. CurseForge-Modpacks behalten beim Import die Herkunft ihrer Mods und legen Resourcepacks und Shader in die richtigen Ordner, und der Export als Modpack nimmt auch Ordner wie kubejs und defaultconfigs mit."
-      },
-      {
-        "kind": "improved",
-        "text": "Mehrere Installationen gleichzeitig bremsen sich nicht mehr gegenseitig aus: Die Einstellung für gleichzeitige Downloads gilt jetzt für den ganzen Launcher, und „Abbrechen“ greift sofort."
-      },
-      {
-        "kind": "fixed",
-        "text": "Dutzende weitere Fehler sind behoben, etwa fehlende Spielzeit nach einem Neustart des Launchers, die falsche Java-Version für Minecraft 26, unverständliche Meldungen ohne Internet oder hinter einer WLAN-Anmeldeseite und leere Profilbilder. Alle stehen einzeln auf der Statusseite."
+        "kind": "new",
+        "text": "Auf cloud.launchgabi.com siehst du deine Cloud-Backups im Browser und kannst sie herunterladen, hochladen und löschen. Die Backups liegen verschlüsselt auf dem Server von Launch Gabi in Deutschland, deine IP-Adresse wird nicht gespeichert, und wer sich zwölf Monate nicht anmeldet, dessen Cloud-Backups werden gelöscht."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.21",
-    "date": "2026-10-01",
-    "headline": "A logo intro at startup, a launcher that stays smooth even with large modpacks, and 60 bugs fixed.",
+    "version": "1.0.22",
+    "date": "2026-10-20",
+    "headline": "Cloud backups: play on one PC, carry on on another.",
     "changes": [
       {
         "kind": "new",
-        "text": "The Launch Gabi logo now plays briefly at startup before the launcher opens. Anyone who prefers not to see it can turn it off under Settings, Startup."
+        "text": "Cloud backups: under Backups you can now put a backup into the cloud. When you sign in on another PC with the same Microsoft account, you download it there, and the launcher creates the instance with its Minecraft version and mod loader by itself."
       },
       {
-        "kind": "fixed",
-        "text": "With large modpacks the launcher could hang after a few minutes and reload itself when Minecraft wrote very many log lines. The log now stays smooth even at thousands of lines per second and shows the messages readably instead of as raw XML."
+        "kind": "new",
+        "text": "The newest backup per instance is kept in the cloud, for up to three instances, each up to 1.5 GB. After creating a backup the launcher asks whether it should also go to the cloud. When all three places are taken, you choose which instance makes room."
       },
       {
-        "kind": "fixed",
-        "text": "Backups of 2 GB or more, for example of large worlds, could not be restored. That now works, including backups made earlier. \"Back up automatically\" also finally takes effect after every play session."
-      },
-      {
-        "kind": "fixed",
-        "text": "With \"Minimize the launcher\", closing the launcher ended a running game at once, without a chance to save. Closing now only hides the launcher until the game ends."
-      },
-      {
-        "kind": "improved",
-        "text": "The same mod from Modrinth and from CurseForge is now caught before starting, instead of Minecraft simply not starting. CurseForge modpacks keep the origin of their mods when imported and put resource packs and shaders into the right folders, and exporting as a modpack now also takes folders such as kubejs and defaultconfigs along."
-      },
-      {
-        "kind": "improved",
-        "text": "Several installs at once no longer slow each other down: the setting for simultaneous downloads now applies to the whole launcher, and \"Cancel\" takes effect at once."
-      },
-      {
-        "kind": "fixed",
-        "text": "Dozens of other bugs are fixed, such as missing play time after a launcher restart, the wrong Java version for Minecraft 26, cryptic messages without internet or behind a Wi-Fi sign-in page, and empty profile pictures. Each one is listed on the status page."
+        "kind": "new",
+        "text": "On cloud.launchgabi.com you see your cloud backups in the browser and can download, upload and delete them. The backups are stored encrypted on the Launch Gabi server in Germany, your IP address is not stored, and the cloud backups of anyone who does not sign in for twelve months are deleted."
       }
     ]
   };
