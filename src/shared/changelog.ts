@@ -34,6 +34,25 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.22',
+    date: '2026-10-20',
+    headline: 'Cloud-Backups: Spiel auf einem PC, mach auf einem anderen weiter.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Cloud-Backups: Unter Backups kannst du eine Sicherung jetzt in die Cloud legen. Meldest du dich auf einem anderen PC mit demselben Microsoft-Konto an, lädst du sie dort herunter, und der Launcher legt die Instanz mit Minecraft-Version und Mod-Loader selbst an.'
+      },
+      {
+        kind: 'new',
+        text: 'Pro Instanz liegt das neueste Backup in der Cloud, für bis zu drei Instanzen, jedes bis 1,5 GB. Nach dem Erstellen einer Sicherung fragt der Launcher, ob sie auch in die Cloud soll. Sind alle drei Plätze belegt, wählst du, welche Instanz Platz macht.'
+      },
+      {
+        kind: 'new',
+        text: 'Auf cloud.launchgabi.com siehst du deine Cloud-Backups im Browser und kannst sie herunterladen, hochladen und löschen. Die Backups liegen verschlüsselt auf dem Server von Launch Gabi in Deutschland, deine IP-Adresse wird nicht gespeichert, und wer sich zwölf Monate nicht anmeldet, dessen Cloud-Backups werden gelöscht.'
+      }
+    ]
+  },
+  {
     version: '1.0.21',
     date: '2026-10-01',
     headline: 'Ein Logo-Intro beim Start, ein Launcher, der auch bei großen Modpacks flüssig bleibt, und 60 Fehler behoben.',

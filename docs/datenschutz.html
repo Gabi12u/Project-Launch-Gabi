@@ -44,7 +44,14 @@
     Diese Website setzt <strong>keine Cookies</strong>, verwendet <strong>keine
     Analyse- oder Trackingdienste</strong>, bindet <strong>keine externen Schriftarten
     oder Werbenetzwerke</strong> ein und führt <strong>keine Benutzerkonten</strong>.
-    Eine Registrierung ist nicht möglich und nicht vorgesehen.
+    Eine Registrierung ist nicht möglich und nicht vorgesehen. Die gewählte Sprache
+    merkt sich Ihr Browser im lokalen Speicher Ihres Geräts, sie wird nicht an uns
+    übertragen.
+  </p>
+  <p>
+    Für die freiwilligen Cloud-Backups unter <em>cloud.launchgabi.com</em> gilt
+    Punkt 9. Auch dort wird kein eigenes Konto angelegt, die Anmeldung läuft über Ihr
+    Microsoft-Konto.
   </p>
 
   <h2>3. Verschlüsselung</h2>
@@ -75,7 +82,8 @@
     Deutschland, die damit als Unterauftragsverarbeiter t&auml;tig wird.
   </p>
   <p>
-    Beide verarbeiten die unter Punkt 5 genannten Server-Logfiles ausschlie&szlig;lich
+    Beide verarbeiten die unter Punkt 5 genannten Server-Logfiles und die unter
+    Punkt 9 genannten Cloud-Backups ausschlie&szlig;lich
     weisungsgebunden f&uuml;r den Betrieb dieser Website und nicht zu eigenen Zwecken.
     Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; das berechtigte Interesse
     liegt darin, die Website nicht selbst betreiben zu m&uuml;ssen.
@@ -225,7 +233,94 @@
     Fehler wird nicht mehrfach gesendet.
   </p>
 
-  <h2>9. Externe Links</h2>
+  <h2>9. Cloud-Backups</h2>
+  <p>
+    Launch Gabi bietet an, Sicherungen Ihrer Minecraft-Instanzen auf unserem Server
+    abzulegen und auf einem anderen Gerät wieder herunterzuladen, im Programm und im
+    Browser unter <em>cloud.launchgabi.com</em>. Die Nutzung ist freiwillig. Daten
+    gelangen nur dann auf den Server, wenn Sie selbst ein Backup hochladen oder sich
+    anmelden. Vor dem ersten Hochladen weist das Programm auf die folgenden Punkte hin.
+  </p>
+
+  <h3>Was gespeichert wird</h3>
+  <ul>
+    <li>Ihre Minecraft-UUID und Ihr Minecraft-Name sowie der Zeitpunkt Ihrer ersten
+      und Ihrer letzten Anmeldung</li>
+    <li>Je Cloud-Backup die Sicherungsdatei mit den Ordnern, die Sie gewählt haben,
+      etwa Welten, Einstellungen und Mods, dazu der Name der Instanz, die
+      Minecraft-Version, der Mod-Loader samt Version, der Zeitpunkt der Erstellung, die
+      Größe und eine Prüfsumme</li>
+    <li>Für die Dauer einer Anmeldung ein Sitzungsschlüssel, auf dem Server nur als
+      Hashwert abgelegt, im Programm höchstens 12 Stunden und im Browser höchstens
+      24 Stunden gültig</li>
+  </ul>
+  <p>
+    Die Sicherungsdateien werden verschlüsselt gespeichert (AES-256). Der Schlüssel
+    liegt auf demselben Server, als Betreiber könnten wir technisch also trotzdem auf
+    die Inhalte zugreifen. Wir tun das nicht und werten die Inhalte nicht aus.
+    Gespeichert wird höchstens ein Backup je Instanz für bis zu drei Instanzen, ein
+    neues Backup derselben Instanz ersetzt das vorherige.
+  </p>
+
+  <h3>Anmeldung</h3>
+  <p>
+    <strong>Im Programm</strong> bestätigt Launch Gabi Ihre Anmeldung über die
+    Sitzungsschnittstelle von Mojang (<code>sessionserver.mojang.com</code>), auf
+    dieselbe Weise wie beim Betreten eines Minecraft-Servers. Ihr Zugangsschlüssel
+    wird dabei nur an Mojang gesendet, nicht an uns. Unser Server fragt anschließend
+    mit Ihrem Minecraft-Namen bei Mojang nach, ob die Anmeldung gültig ist.
+  </p>
+  <p>
+    <strong>Im Browser</strong> melden Sie sich direkt bei Microsoft an. Ihr Passwort
+    erhalten wir nie. Microsoft übergibt unserem Server einen Code, mit dem er über
+    Xbox Live und die Minecraft-Dienste Ihre UUID und Ihren Minecraft-Namen abruft.
+    Die dabei erhaltenen Zugangsschlüssel werden sofort verworfen und nicht
+    gespeichert.
+  </p>
+  <p>
+    Anbieter dieser Dienste ist die Microsoft Corporation, One Microsoft Way, Redmond,
+    WA 98052, USA, zu der auch Mojang AB, Schweden, gehört. Eine Übermittlung in die
+    USA ist möglich. Microsoft ist unter dem EU-US Data Privacy Framework zertifiziert.
+    Die Datenschutzerklärung von Microsoft finden Sie unter
+    <a href="https://privacy.microsoft.com/de-de/privacystatement" rel="noopener noreferrer">privacy.microsoft.com</a>.
+  </p>
+
+  <h3>Cookie</h3>
+  <p>
+    Nach der Anmeldung im Browser setzt <em>cloud.launchgabi.com</em> ein einziges
+    Cookie, das Ihre Sitzung hält. Es ist für Skripte der Seite nicht lesbar, gilt
+    höchstens 24 Stunden und wird beim Abmelden gelöscht. Ohne dieses Cookie ließe
+    sich der Dienst im Browser nicht nutzen, es ist daher technisch notwendig
+    (&sect; 165 Abs. 3 TKG 2021). Die gewählte Sprache merkt sich Ihr Browser im
+    lokalen Speicher Ihres Geräts.
+  </p>
+
+  <h3>Keine Speicherung der IP-Adresse</h3>
+  <p>
+    Für <em>cloud.launchgabi.com</em> führt der Webserver kein Zugriffsprotokoll, und
+    der Dienst speichert Ihre IP-Adresse nicht. Um Missbrauch zu begrenzen, zählt er
+    Anmeldeversuche je IP-Adresse ausschließlich im Arbeitsspeicher. Dieser Zähler
+    wird nicht auf einen Datenträger geschrieben und spätestens nach 24 Stunden
+    verworfen. Nur bei schwerwiegenden Fehlern des Webservers kann dessen
+    Fehlerprotokoll eine IP-Adresse enthalten; es wird nach 14 Tagen gelöscht.
+  </p>
+
+  <h3>Rechtsgrundlage, Dauer und Löschung</h3>
+  <p>
+    <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO, die Bereitstellung
+    des von Ihnen genutzten Dienstes. Für die Begrenzung der Anmeldeversuche Art. 6
+    Abs. 1 lit. f DSGVO; das berechtigte Interesse liegt im Schutz des Dienstes vor
+    Missbrauch.
+  </p>
+  <p>
+    Sie können einzelne Cloud-Backups jederzeit selbst löschen, im Programm unter
+    <em>Backups</em> oder auf <em>cloud.launchgabi.com</em>. Dort lassen sich auch
+    alle Ihre Daten auf einmal löschen.
+    Melden Sie sich zwölf Monate lang nicht an, werden Ihre Cloud-Backups und Ihr
+    Eintrag automatisch gelöscht.
+  </p>
+
+  <h2>10. Externe Links</h2>
   <p>
     Diese Website verlinkt auf das Quellcode-Repository bei GitHub sowie auf einen
     Discord-Server, der als Anlaufstelle für Fragen dient. Eine Datenübermittlung an
@@ -237,7 +332,7 @@
     <a href="https://discord.com/privacy" rel="noopener noreferrer">discord.com/privacy</a>.
   </p>
 
-  <h2>10. Ihre Rechte</h2>
+  <h2>11. Ihre Rechte</h2>
   <p>Sie haben im Rahmen der gesetzlichen Voraussetzungen jederzeit das Recht auf:</p>
   <ul>
     <li>Auskunft über die zu Ihrer Person gespeicherten Daten (Art. 15 DSGVO)</li>
@@ -252,7 +347,7 @@
     E-Mail-Adresse.
   </p>
 
-  <h2>11. Beschwerderecht</h2>
+  <h2>12. Beschwerderecht</h2>
   <p>
     Wenn Sie der Ansicht sind, dass die Verarbeitung Ihrer Daten gegen das
     Datenschutzrecht verstößt, können Sie sich bei der Aufsichtsbehörde beschweren:
@@ -266,15 +361,15 @@
     </address>
   </div>
 
-  <h2>12. Keine automatisierte Entscheidungsfindung</h2>
+  <h2>13. Keine automatisierte Entscheidungsfindung</h2>
   <p>
     Eine automatisierte Entscheidungsfindung einschließlich Profiling nach Art. 22 DSGVO
     findet nicht statt.
   </p>
 
-  <h2>13. Stand</h2>
+  <h2>14. Stand</h2>
   <p>
-    Diese Datenschutzerklärung hat den Stand 26. August 2026 und
+    Diese Datenschutzerklärung hat den Stand 20. Oktober 2026 und
     wird angepasst, sobald sich die Verarbeitung ändert.
   </p>
 
