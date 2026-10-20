@@ -25,7 +25,7 @@ export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] 
   '1.0.22': {
     headline: 'Cloud backups: play on one PC, carry on on another.',
     changes: [
-      'Cloud backups: under Backups you can now put a backup into the cloud. When you sign in on another PC with the same Microsoft account, you download it there, and the launcher creates the instance with its Minecraft version and mod loader by itself.',
+      'Cloud backups: under Backups you can now put a backup into the cloud. When you sign in on another PC with the same Microsoft account, you download it there, and the launcher creates the instance with its Minecraft version and mod loader by itself. The idea came from mister.mccain, thank you!',
       'The newest backup per instance is kept in the cloud, for up to three instances, each up to 1.5 GB. After creating a backup the launcher asks whether it should also go to the cloud. When all three places are taken, you choose which instance makes room.',
       'On cloud.launchgabi.com you see your cloud backups in the browser and can download, upload and delete them. The backups are stored encrypted on the Launch Gabi server in Germany, your IP address is not stored, and the cloud backups of anyone who does not sign in for twelve months are deleted.'
     ]
