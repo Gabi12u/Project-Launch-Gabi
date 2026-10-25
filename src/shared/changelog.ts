@@ -34,6 +34,49 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.23',
+    date: '2026-10-25',
+    headline: 'Mehr Platz in der Cloud, Launch Gabi im Linux-Menü und über 130 Fehler behoben.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'In die Cloud passen jetzt zusammen bis zu 5 GB statt 1,5 GB pro Backup. Eine große Instanz kann den Platz also fast allein nutzen, mehrere kleine teilen ihn sich. Wie viel noch frei ist, steht unter Backups.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Der Launcher meldet sich erst bei der Cloud an, wenn du dem Hinweis zu Cloud-Backups zugestimmt hast. Bisher geschah das schon beim Öffnen von Sicherungen. Dort lassen sich Cloud-Backups jetzt auch wieder ausschalten.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Beim Herunterladen eines Cloud-Backups ist keine fremde Instanz mit gleichem Namen mehr vorausgewählt, und ob die Instanz gerade läuft, wird vor dem Herunterladen geprüft. Auf cloud.launchgabi.com hochgeladene Backups spielen nur die Ordner ein, die wirklich darin stecken, und heruntergeladene Kopien sammeln sich nicht mehr an.'
+      },
+      {
+        kind: 'new',
+        text: 'Unter Linux trägt sich Launch Gabi beim Start ins Anwendungsmenü ein, mit Logo. Die AppImage-Datei trägt keine Versionsnummer mehr im Namen, deshalb bleibt ein angeheftetes Symbol nach Updates erhalten. Nach diesem Update das Symbol bitte einmal neu anheften.'
+      },
+      {
+        kind: 'improved',
+        text: 'Fehlerberichte gehen nicht mehr direkt an Discord, sondern an den Server von Launch Gabi. Deine IP-Adresse wird dabei nicht gespeichert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Eine beschädigte Instanzdatei, etwa nach einem Stromausfall, macht aus der Instanz keine leere Vanilla-Instanz mehr. Der Launcher speichert sicherer und stellt den letzten Stand von selbst wieder her.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Sicherungen sind deutlich robuster: Eine gescheiterte Wiederherstellung löscht keine Welten mehr, leere Sicherungen verdrängen keine echten, und die Sicherheitskopie vor einer Wiederherstellung bleibt erhalten.'
+      },
+      {
+        kind: 'fixed',
+        text: 'NeoForge und Forge werden nicht mehr vor jedem Start oder für jede neue Instanz eingerichtet, und „Reparieren“ hilft jetzt auch, wenn Dateien des Mod-Loaders fehlen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Dutzende weitere Fehler sind behoben, etwa beim Import von Modpacks und Ordnern, beim Start ohne Internet und bei „Stopp“, das Minecraft jetzt die Welt speichern lässt. Standby zählt nicht mehr als Spielzeit. Alle stehen einzeln auf der Statusseite.'
+      }
+    ]
+  },
+  {
     version: '1.0.22',
     date: '2026-10-20',
     headline: 'Cloud-Backups: Spiel auf einem PC, mach auf einem anderen weiter.',

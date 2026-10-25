@@ -22,6 +22,20 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.23': {
+    headline: 'More room in the cloud, Launch Gabi in the Linux menu and over 130 bugs fixed.',
+    changes: [
+      'Up to 5 GB now fit into the cloud in total, instead of 1.5 GB per backup. One big instance can use almost all of the room, several small ones share it. How much is still free is shown under Backups.',
+      'The launcher only signs in to the cloud once you have accepted the note on cloud backups. Until now that already happened when opening Backups. Cloud backups can now also be turned off there again.',
+      'When downloading a cloud backup, an unrelated instance with the same name is no longer preselected, and whether the instance is running is checked before the download. Backups uploaded on cloud.launchgabi.com only restore the folders they really hold, and downloaded copies no longer pile up.',
+      'On Linux, Launch Gabi adds itself to the application menu at startup, with its logo. The AppImage file no longer carries the version number in its name, so a pinned icon now survives updates. Please pin the icon again once after this update.',
+      'Error reports no longer go straight to Discord but to the Launch Gabi server. Your IP address is not stored on the way.',
+      'A damaged instance file, for example after a power cut, no longer turns the instance into an empty vanilla instance. The launcher saves more safely and restores the last state by itself.',
+      'Backups are much sturdier: a failed restore no longer deletes worlds, empty backups no longer push out real ones, and the safety copy taken before a restore is kept.',
+      'NeoForge and Forge are no longer set up again before every start or for every new instance, and "Repair" now also helps when files of the mod loader are missing.',
+      'Dozens of further bugs are fixed, for example when importing modpacks and folders, when starting without internet, and with "Stop", which now lets Minecraft save the world. Standby no longer counts as play time. All of them are listed one by one on the status page.'
+    ]
+  },
   '1.0.22': {
     headline: 'Cloud backups: play on one PC, carry on on another.',
     changes: [

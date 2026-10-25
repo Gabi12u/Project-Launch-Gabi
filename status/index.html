@@ -967,40 +967,88 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.22",
-    "date": "2026-10-20",
-    "headline": "Cloud-Backups: Spiel auf einem PC, mach auf einem anderen weiter.",
+    "version": "1.0.23",
+    "date": "2026-10-25",
+    "headline": "Mehr Platz in der Cloud, Launch Gabi im Linux-Menü und über 130 Fehler behoben.",
     "changes": [
       {
         "kind": "new",
-        "text": "Cloud-Backups: Unter Backups kannst du eine Sicherung jetzt in die Cloud legen. Meldest du dich auf einem anderen PC mit demselben Microsoft-Konto an, lädst du sie dort herunter, und der Launcher legt die Instanz mit Minecraft-Version und Mod-Loader selbst an. Die Idee dazu kam von mister.mccain, danke!"
+        "text": "In die Cloud passen jetzt zusammen bis zu 5 GB statt 1,5 GB pro Backup. Eine große Instanz kann den Platz also fast allein nutzen, mehrere kleine teilen ihn sich. Wie viel noch frei ist, steht unter Backups."
+      },
+      {
+        "kind": "fixed",
+        "text": "Der Launcher meldet sich erst bei der Cloud an, wenn du dem Hinweis zu Cloud-Backups zugestimmt hast. Bisher geschah das schon beim Öffnen von Sicherungen. Dort lassen sich Cloud-Backups jetzt auch wieder ausschalten."
+      },
+      {
+        "kind": "fixed",
+        "text": "Beim Herunterladen eines Cloud-Backups ist keine fremde Instanz mit gleichem Namen mehr vorausgewählt, und ob die Instanz gerade läuft, wird vor dem Herunterladen geprüft. Auf cloud.launchgabi.com hochgeladene Backups spielen nur die Ordner ein, die wirklich darin stecken, und heruntergeladene Kopien sammeln sich nicht mehr an."
       },
       {
         "kind": "new",
-        "text": "Pro Instanz liegt das neueste Backup in der Cloud, für bis zu drei Instanzen, jedes bis 1,5 GB. Nach dem Erstellen einer Sicherung fragt der Launcher, ob sie auch in die Cloud soll. Sind alle drei Plätze belegt, wählst du, welche Instanz Platz macht."
+        "text": "Unter Linux trägt sich Launch Gabi beim Start ins Anwendungsmenü ein, mit Logo. Die AppImage-Datei trägt keine Versionsnummer mehr im Namen, deshalb bleibt ein angeheftetes Symbol nach Updates erhalten. Nach diesem Update das Symbol bitte einmal neu anheften."
       },
       {
-        "kind": "new",
-        "text": "Auf cloud.launchgabi.com siehst du deine Cloud-Backups im Browser und kannst sie herunterladen, hochladen und löschen. Die Backups liegen verschlüsselt auf dem Server von Launch Gabi in Deutschland, deine IP-Adresse wird nicht gespeichert, und wer sich zwölf Monate nicht anmeldet, dessen Cloud-Backups werden gelöscht."
+        "kind": "improved",
+        "text": "Fehlerberichte gehen nicht mehr direkt an Discord, sondern an den Server von Launch Gabi. Deine IP-Adresse wird dabei nicht gespeichert."
+      },
+      {
+        "kind": "fixed",
+        "text": "Eine beschädigte Instanzdatei, etwa nach einem Stromausfall, macht aus der Instanz keine leere Vanilla-Instanz mehr. Der Launcher speichert sicherer und stellt den letzten Stand von selbst wieder her."
+      },
+      {
+        "kind": "fixed",
+        "text": "Sicherungen sind deutlich robuster: Eine gescheiterte Wiederherstellung löscht keine Welten mehr, leere Sicherungen verdrängen keine echten, und die Sicherheitskopie vor einer Wiederherstellung bleibt erhalten."
+      },
+      {
+        "kind": "fixed",
+        "text": "NeoForge und Forge werden nicht mehr vor jedem Start oder für jede neue Instanz eingerichtet, und „Reparieren“ hilft jetzt auch, wenn Dateien des Mod-Loaders fehlen."
+      },
+      {
+        "kind": "fixed",
+        "text": "Dutzende weitere Fehler sind behoben, etwa beim Import von Modpacks und Ordnern, beim Start ohne Internet und bei „Stopp“, das Minecraft jetzt die Welt speichern lässt. Standby zählt nicht mehr als Spielzeit. Alle stehen einzeln auf der Statusseite."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.22",
-    "date": "2026-10-20",
-    "headline": "Cloud backups: play on one PC, carry on on another.",
+    "version": "1.0.23",
+    "date": "2026-10-25",
+    "headline": "More room in the cloud, Launch Gabi in the Linux menu and over 130 bugs fixed.",
     "changes": [
       {
         "kind": "new",
-        "text": "Cloud backups: under Backups you can now put a backup into the cloud. When you sign in on another PC with the same Microsoft account, you download it there, and the launcher creates the instance with its Minecraft version and mod loader by itself. The idea came from mister.mccain, thank you!"
+        "text": "Up to 5 GB now fit into the cloud in total, instead of 1.5 GB per backup. One big instance can use almost all of the room, several small ones share it. How much is still free is shown under Backups."
+      },
+      {
+        "kind": "fixed",
+        "text": "The launcher only signs in to the cloud once you have accepted the note on cloud backups. Until now that already happened when opening Backups. Cloud backups can now also be turned off there again."
+      },
+      {
+        "kind": "fixed",
+        "text": "When downloading a cloud backup, an unrelated instance with the same name is no longer preselected, and whether the instance is running is checked before the download. Backups uploaded on cloud.launchgabi.com only restore the folders they really hold, and downloaded copies no longer pile up."
       },
       {
         "kind": "new",
-        "text": "The newest backup per instance is kept in the cloud, for up to three instances, each up to 1.5 GB. After creating a backup the launcher asks whether it should also go to the cloud. When all three places are taken, you choose which instance makes room."
+        "text": "On Linux, Launch Gabi adds itself to the application menu at startup, with its logo. The AppImage file no longer carries the version number in its name, so a pinned icon now survives updates. Please pin the icon again once after this update."
       },
       {
-        "kind": "new",
-        "text": "On cloud.launchgabi.com you see your cloud backups in the browser and can download, upload and delete them. The backups are stored encrypted on the Launch Gabi server in Germany, your IP address is not stored, and the cloud backups of anyone who does not sign in for twelve months are deleted."
+        "kind": "improved",
+        "text": "Error reports no longer go straight to Discord but to the Launch Gabi server. Your IP address is not stored on the way."
+      },
+      {
+        "kind": "fixed",
+        "text": "A damaged instance file, for example after a power cut, no longer turns the instance into an empty vanilla instance. The launcher saves more safely and restores the last state by itself."
+      },
+      {
+        "kind": "fixed",
+        "text": "Backups are much sturdier: a failed restore no longer deletes worlds, empty backups no longer push out real ones, and the safety copy taken before a restore is kept."
+      },
+      {
+        "kind": "fixed",
+        "text": "NeoForge and Forge are no longer set up again before every start or for every new instance, and \"Repair\" now also helps when files of the mod loader are missing."
+      },
+      {
+        "kind": "fixed",
+        "text": "Dozens of further bugs are fixed, for example when importing modpacks and folders, when starting without internet, and with \"Stop\", which now lets Minecraft save the world. Standby no longer counts as play time. All of them are listed one by one on the status page."
       }
     ]
   };
@@ -3314,365 +3362,417 @@ footer .grow { flex: 1; }
       "id": "neoforge-installer-bei-jedem-start",
       "title": "NeoForge-Instanzen richteten NeoForge vor jedem Start neu ein",
       "detail": "Bei NeoForge für Minecraft 1.20.2 und neuer erkannte der Launcher die bereits installierte NeoForge-Version nicht und ließ den Installer vor jedem Start, jeder Reparatur und jeder Prüfung vor dem Start erneut laufen. Der Start dauerte dadurch deutlich länger, klappte ohne Internet gar nicht und konnte ein zweites laufendes NeoForge-Spiel stören.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-mods-gleicher-name-doppelt",
       "title": "Zwei verschiedene Forge-Mods mit gleichem Namen galten als doppelt installiert",
       "detail": "Seit 1.0.21 liest die Prüfung vor dem Start die Mod-ID aus den Dateien. Bei Forge und NeoForge las sie dabei auch die Angaben zu Abhängigkeiten mit. Zwei verschiedene Mods mit gleichem Namen galten dadurch als derselbe Mod, das Spiel ließ sich nicht starten, und „Ältere Datei entfernen“ hätte einen der beiden gelöscht.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-sicherungen-mitgeloescht",
       "title": "Sicherungen vor Mod-Updates wurden zusammen mit den automatischen Sicherungen gelöscht",
       "detail": "Seit 1.0.21 zählen Sicherungen vor Mod-Updates zum selben Limit wie die automatischen Sicherungen nach jeder Spielsitzung. Beim ersten neuen Sichern wurden dadurch ältere Sicherungen vor Mod-Updates gelöscht, und nach einigen Spielsitzungen auch die neueste davon.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alte-anmeldung-abgemeldet",
       "title": "Konten aus sehr alten Versionen konnten nach einem Update abgemeldet werden",
       "detail": "Wer mit Version 1.0.13 oder älter angemeldet war und direkt auf eine neuere Version aktualisiert hat, konnte beim nächsten Spielstart abgemeldet werden. Die Anmeldung wurde mit der neuen Anwendung von Launch Gabi erneuert, obwohl sie noch zur alten gehörte.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "texte-unuebersetzt-falsch",
       "title": "Einige Beschriftungen standen auf Englisch oder waren falsch formuliert",
       "detail": "Versionsarten wie „snapshot“, „release“ oder „beta“ wurden unübersetzt angezeigt, nach einem Spiel hieß es „Spielzeit: 1 Minuten“, und bei einem Filter ohne Suchbegriff stand „Für „“ gibt es keine passende Instanz“.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "bedienung-kleine-fehler",
       "title": "Kleinere Bedienfehler: Meldungen verschwanden zu schnell, Löschen ohne Rückfrage, irreführende Hinweise",
       "detail": "Wichtige Fehlermeldungen, etwa nach einem Absturz des Spiels, verschwanden nach wenigen Sekunden. „Alle löschen“ bei den Fehlerberichten fragte nicht nach. Eine Suche ohne Treffer bei den installierten Inhalten hieß „Nichts installiert“, Kopieren des Logs gab keine Rückmeldung, eine neue Sicherung landete trotz Filter bei der ersten Instanz, Enter bestätigte keine Rückfrage, und ein einzelnes Mod-Update ließ die Mod-Übersicht an den Anfang springen.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modrinth-pakete-ohne-version",
       "title": "Resourcepacks, Shader und Data Packs von Modrinth ließen sich in Instanzen mit Mod Loader nicht installieren",
       "detail": "In einer Instanz mit Fabric, Forge, NeoForge oder Quilt fand „Installieren“ für Resourcepacks, Shader und Data Packs von Modrinth keine passende Version, weil der Launcher dort nach dem Mod Loader filterte. Nur die Auswahl einer bestimmten Version im Projektfenster funktionierte. Updates wurden für solche Inhalte nie angezeigt.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-pack-abgewaehlt",
       "title": "Nach dem Update eines Resourcepacks oder Shaders war er im Spiel nicht mehr ausgewählt",
       "detail": "Ein Update ersetzt die Datei, und der neue Dateiname enthält meist die neue Versionsnummer. Minecraft und Iris fanden den gewählten Pack danach nicht mehr und schalteten ihn ohne Hinweis ab.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alle-aktualisieren-fehler-verschwiegen",
       "title": "„Alle aktualisieren“ verschwieg fehlgeschlagene Updates",
       "detail": "Schlugen einzelne Updates fehl, etwa wegen einer gesperrten Datei oder eines Netzwerkfehlers, meldete der Launcher nur die Zahl der erfolgreichen. Welche fehlschlugen und warum, stand nirgends.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherheitskopie-vor-wiederherstellung-geloescht",
       "title": "Die Sicherheitskopie vor einer Wiederherstellung wurde nach einigen Spielsitzungen gelöscht",
       "detail": "Vor dem Einspielen einer Sicherung legt der Launcher eine Kopie des aktuellen Stands an. Sie zählte zu den automatischen Sicherungen und wurde nach einigen Spielsitzungen aufgeräumt. Danach ließ sich die Wiederherstellung nicht mehr rückgängig machen.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "screenshots-volle-groesse",
       "title": "Der Reiter Aufnahmen lud Screenshots in voller Größe",
       "detail": "Für die Vorschau schickte der Launcher bis zu 40 Screenshots in voller Auflösung an die Oberfläche. Bei großen Bildern brauchte der Reiter lange und belegte Hunderte Megabyte Arbeitsspeicher.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "speichern-gesperrt-rohfehler",
       "title": "Ein kurz gesperrter Ordner konnte das Speichern mit einem rohen Fehler abbrechen",
       "detail": "Hielt ein Virenscanner oder OneDrive eine Datei des Launchers einen Moment fest, brach das Speichern einer Instanz oder der Einstellungen sofort mit einer technischen Meldung wie „EPERM“ ab, statt es kurz erneut zu versuchen.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-liste-abweichend",
       "title": "Der Reiter Welten zeigte Ordner ohne Welt und ließ verknüpfte Welten weg",
       "detail": "Jeder Ordner in „saves“ erschien als Welt, auch einer ohne Spielstand darin. Eine Welt, die als Verknüpfung in „saves“ liegt, fehlte dagegen, obwohl Minecraft sie anzeigt. Dasselbe galt für die Auswahl der Welten bei Data Packs.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufnahme-loeschen-rohfehler",
       "title": "Eine geöffnete Aufnahme ließ sich nicht löschen und meldete nur einen technischen Fehler",
       "detail": "War eine Aufnahme gerade in einem anderen Programm offen, etwa in einem Videoplayer, scheiterte „Löschen“ mit einer Meldung wie „EBUSY“, ohne zu sagen, woran es lag.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "texte-mehrzahl-englisch",
       "title": "Zahlen mit falscher Mehrzahl und holprige englische Texte",
       "detail": "Bei genau einem Eintrag hieß es zum Beispiel „1 Dateien in Ordnung“ oder „1 Hinweise zur Kompatibilität“. In der englischen Oberfläche klangen einige Texte wie wörtlich übersetzt, etwa „taken over“ statt „imported“, und die Rückfrage vor einem eigenen Java-Pfad sprach von einem Befehl.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "screenreader-seite-reiter-fortschritt",
       "title": "Screenreader erfuhren nicht, welche Seite und welcher Reiter gewählt ist",
       "detail": "Die aktuelle Seite in der Seitenleiste, der gewählte Reiter einer Instanz und der Fortschritt von Downloads waren nur farblich erkennbar. Einige Auswahl- und Suchfelder hatten keinen Namen, und der Fokusrahmen in Eingabefeldern war auf dunklem Hintergrund kaum zu sehen.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "accounts-datei-gesperrt",
       "title": "Eine kurz gesperrte Account-Datei konnte alle gespeicherten Accounts löschen",
       "detail": "Hielt ein Virenscanner oder OneDrive die Datei mit den Accounts gerade fest, las der Launcher sie als leer. Wurde in diesem Moment etwas gespeichert, etwa ein neues Offline-Profil, ein Wechsel des Accounts oder eine erneuerte Anmeldung, waren alle anderen Accounts weg und mussten neu angemeldet werden.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "start-ohne-internet-abgelaufen",
       "title": "Ohne Internet ließ sich das Spiel nach Ablauf der Anmeldung gar nicht starten",
       "detail": "Die Anmeldung bei Minecraft gilt etwa einen Tag. War sie abgelaufen und keine Verbindung zu Microsoft möglich, brach der Start ab, obwohl man im Einzelspieler auch ohne Internet spielen kann.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anmeldung-serverfehler-abbruch",
       "title": "Ein einzelner Serverfehler bei Microsoft brach die Anmeldung ab",
       "detail": "Antwortete Microsoft während der Anmeldung mit dem Code ein einziges Mal mit einem Serverfehler, war die ganze Anmeldung verloren, und es erschien nur eine technische Meldung wie „HTTP 503“.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anwendungs-id-feld",
       "title": "Ein geleertes Feld für die Anwendungs-ID machte die Anmeldung unmöglich",
       "detail": "Wer das Feld für die eigene Microsoft-Anwendungs-ID leerte, wie es ein Hinweis empfahl, konnte sich danach nicht mehr anmelden. Ein Leerzeichen am Ende einer eingefügten ID führte zu einem unverständlichen Fehler, und der Text in den Einstellungen beschrieb noch die alte Voreinstellung.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "xbox-sperre-hinweis",
       "title": "Gesperrte oder eingeschränkte Xbox-Konten bekamen einen falschen Hinweis",
       "detail": "War ein Konto von Xbox gesperrt, durch den Jugendschutz für Online-Spiele eingeschränkt oder hatte es die Nutzungsbedingungen von Xbox noch nicht angenommen, hieß es nur, man solle sich auf xbox.com anmelden. Das half in keinem dieser Fälle.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "skin-anzeige-verzoegert",
       "title": "Ein neuer Skin erschien im Launcher erst nach einem Neustart",
       "detail": "Beim Erneuern der Anmeldung holt der Launcher auch den aktuellen Skin. Die Anzeige im Launcher erfuhr davon aber erst beim nächsten Programmstart.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "natives-zweite-instanz",
       "title": "Eine zweite Instanz derselben Version bis 1.16 startete nicht, solange die erste lief",
       "detail": "Liefen zwei Instanzen mit derselben Minecraft-Version bis einschließlich 1.16, versuchte der Start der zweiten, Dateien zu überschreiben, die das laufende Spiel gerade benutzt. Windows verweigert das, und der Start brach mit einer technischen Meldung ab.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-tmp-in-welten",
       "title": "Reparieren löschte auch .tmp- und .part-Dateien in Welten und Einstellungen",
       "detail": "Beim Aufräumen alter Download-Reste durchsuchte die Reparatur den ganzen Spielordner einer Instanz, auch Welten und Mod-Einstellungen, und löschte dort jede ältere Datei mit der Endung .tmp oder .part, auch wenn sie zu einer Welt oder einem Mod gehörte.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-ueber-1gb-datei",
       "title": "Sicherungen mit einer einzelnen Datei über 1 GB ließen sich nicht wiederherstellen",
       "detail": "Enthielt eine Welt eine einzelne sehr große Datei, etwa die Datenbank von Distant Horizons, ließ sich die Sicherung zwar anlegen, aber nicht wiederherstellen. Das zeigte sich erst, wenn man sie brauchte.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "export-fehlende-dateien",
       "title": "Beim Export als Modpack fehlten gesperrte Dateien ohne Hinweis",
       "detail": "Hielt ein anderes Programm beim Export eine Datei fest, oder lag eine Verknüpfung im Ordner, fehlte sie im fertigen Modpack. Der Launcher meldete trotzdem einen erfolgreichen Export.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datapack-fremde-datei",
       "title": "Ein Data Pack konnte eine eigene, gleichnamige Datei in einer Welt löschen",
       "detail": "Lag in einer Welt schon eine andere Datei mit demselben Namen wie ein Data Pack aus dem Launcher, merkte sich der Launcher die Welt trotzdem. Beim späteren Ausschalten, Entfernen oder Aktualisieren des Data Packs löschte er dann die fremde Datei.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ausschalten-ueberschreibt",
       "title": "Ausschalten eines Mods konnte eine gleichnamige ausgeschaltete Datei überschreiben",
       "detail": "Lagen ein Mod und eine ausgeschaltete Datei mit demselben Namen (Endung .disabled) im Ordner, überschrieb das Ausschalten die vorhandene Datei ohne Nachfrage.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "stopp-ohne-speichern",
       "title": "„Stopp“ beendete Minecraft unter Windows sofort, ohne die Welt zu speichern",
       "detail": "Unter Windows erzwang „Stopp“ das Ende des Spiels sofort. Minecraft bekam keine Gelegenheit, die Welt zu speichern, und Fortschritt seit dem letzten automatischen Speichern konnte verloren gehen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "versionsdatei-beschaedigt",
       "title": "Eine beschädigte Versionsdatei brachte beim Start nur eine unverständliche Meldung",
       "detail": "War die Beschreibungsdatei einer Minecraft-Version beschädigt, etwa nach einem Absturz oder bei voller Festplatte, erschien beim Start nur „Unexpected end of JSON input“. Der Launcher lud die Datei nicht neu und sagte auch nicht, dass „Reparieren“ hilft.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "vorschau-installiert-loader",
       "title": "Das Öffnen einer Forge- oder NeoForge-Instanz konnte den Loader unbemerkt installieren",
       "detail": "Fehlte der installierte Loader einer Forge- oder NeoForge-Instanz, startete schon das Öffnen ihrer Seite die Installation im Hintergrund, ohne Anzeige und ohne Möglichkeit zum Abbrechen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fremde-instanz-argumente",
       "title": "Java-Argumente und Umgebungsvariablen einer fremden Instanz liefen ohne Rückfrage",
       "detail": "Befehle vor dem Start, Wrapper und eigene Java-Pfade fragen vor dem ersten Ausführen nach. Java-Argumente, die zusätzlichen Programmcode laden, und Umgebungsvariablen taten das nicht. Eine von jemand anderem übernommene Instanz konnte damit beim Start eigenen Code ausführen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "umleitung-schluessel",
       "title": "Bei einer Umleitung konnten Zugangsschlüssel an einen anderen Server gehen",
       "detail": "Leitete ein Server eine Anfrage an eine andere Adresse weiter, schickte der Launcher den CurseForge-Schlüssel oder die Minecraft-Anmeldung dorthin mit, und auch eine Weiterleitung auf eine unverschlüsselte Adresse wurde befolgt.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fehlerbericht-pfad-doppelt",
       "title": "Fehlerberichte konnten den Namen des Windows-Benutzerordners enthalten",
       "detail": "In Fehlerberichten wird der Name des Benutzerordners unkenntlich gemacht. Stand ein Pfad in einer bestimmten technischen Schreibweise mit doppelten Schrägstrichen im Bericht, blieb der Name stehen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "einstellungen-gesperrt-zurueckgesetzt",
       "title": "Eine kurz gesperrte Einstellungsdatei konnte alle Einstellungen zurücksetzen",
       "detail": "Hielt ein Virenscanner oder OneDrive die Einstellungsdatei beim Start fest, lief der Launcher mit den Voreinstellungen und schrieb sie kurz darauf in die Datei. Ein eigener Datenordner, der CurseForge-Schlüssel und alle anderen Einstellungen waren danach weg, und die Instanzen schienen verschwunden.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "zuruecksetzen-ersteinrichtung",
       "title": "„Einstellungen zurücksetzen“ startete die Ersteinrichtung neu und löschte den CurseForge-Schlüssel",
       "detail": "Nach dem Zurücksetzen erschien die Ersteinrichtung wieder, die Fragen zu Fehlerberichten und zur eigenen Startseite kamen erneut, und ein eingetragener CurseForge-Schlüssel war gelöscht. Der Dialog hatte nur gesagt, dass die Einstellungen zur Voreinstellung zurückkehren.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "wichtige-hinweise-verdraengt",
       "title": "Hinweise, die stehen bleiben sollten, konnten von neueren verdrängt werden",
       "detail": "Manche Hinweise bleiben absichtlich stehen, etwa nach einem Absturz des Spiels oder wenn ein Update bereitliegt. Kamen mehrere Hinweise gleichzeitig, verschwanden sie trotzdem.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "launcher-update-hinweise",
       "title": "Hinweise zu Launcher-Updates fehlten oder waren irreführend",
       "detail": "Ohne automatischen Download wurde ein gefundenes Update nirgends angekündigt. Das Einschalten der automatischen Updates wirkte erst nach einem Neustart. Der Hinweis „wird beim nächsten Start installiert“ erschien auch, wenn das automatische Installieren aus war, und jeder Fehler hieß „Update-Server nicht erreichbar“.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "minimiert-unsichtbar",
       "title": "„Minimiert starten“ machte den Launcher unsichtbar",
       "detail": "Mit dieser Einstellung startete der Launcher ganz ohne Fenster und ohne Eintrag in der Taskleiste. Zurück kam man nur durch einen zweiten Start.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenordner-nicht-erreichbar",
       "title": "Ein nicht erreichbarer Datenordner sah aus wie ein leerer Launcher",
       "detail": "Lag der Datenordner auf einem abgezogenen Laufwerk oder einer getrennten Netzwerkfreigabe, zeigte der Launcher einfach keine Instanzen, ohne einen Hinweis auf den Grund.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "einrichtung-anzeige-haengt",
       "title": "Nach dem Erstellen einer Instanz blieb „Wird eingerichtet“ stehen",
       "detail": "Die Seite einer neuen Instanz zeigte auch nach fertiger Einrichtung weiter „Wird eingerichtet“, und Spielen, Duplizieren, Löschen und Reparieren blieben gesperrt, bis man die Seite verließ und wieder öffnete.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "log-reiter-springt",
       "title": "Der Reiter Log sprang beim Lesen immer wieder nach unten",
       "detail": "Wer im Log nach oben scrollte, um etwas zu lesen, wurde bei jeder neuen Zeile wieder ans Ende gesetzt. Außerdem fielen zwei gleiche Zeilen kurz hintereinander zu einer zusammen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufgaben-fertig-wiederholt",
       "title": "Fertige Aufgaben tauchten im Aufgabenbereich immer wieder auf",
       "detail": "Lief eine Aufgabe weiter, während eine andere fertig war, blinkte die fertige Aufgabe alle paar Sekunden erneut auf, bis zu 20 Sekunden lang.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "mods-uebersicht-veraltet",
       "title": "Die Mod-Übersicht zeigte veraltete Sperren und leerte sich bei einem einzigen Fehler",
       "detail": "Die Knöpfe zum Aktualisieren richteten sich nach dem Stand beim Öffnen der Übersicht, nicht danach, ob ein Spiel gerade läuft. Bei duplizierten Instanzen drehte sich die Anzeige in beiden Zeilen, und eine einzige nicht ladbare Instanz ließ die ganze Liste leer erscheinen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "kleinere-anzeigefehler-oktober",
       "title": "Kleinere Anzeigefehler beim Suchen, Aktualisieren und in den Einstellungen",
       "detail": "„Mehr laden“ übersprang nach einem Fehler Ergebnisse. Das Projektfenster zeigte nach einer Installation die alte Version. Bei zwei Updates gleichzeitig verschwand eine Anzeige zu früh. Auf Home konnte das Hintergrundbild einer anderen Instanz stehen bleiben. Ein ungespeicherter CurseForge-Schlüssel ging beim Speichern der Anwendungs-ID verloren. „Sichern“ und „Exportieren“ ließen sich doppelt auslösen.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "suche-fehler-wie-leer",
       "title": "Eine fehlgeschlagene Suche sah aus wie „Nichts gefunden“",
       "detail": "Antwortete Modrinth oder CurseForge nicht, zeigte die Suche „Nichts gefunden“, und ein Projekt, das sich nicht laden ließ, hieß „Keine passende Version“. Beides klang, als gäbe es den Inhalt nicht.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "netzwerkfehler-englisch",
       "title": "Ohne Verbindung erschienen technische englische Meldungen wie „fetch failed“",
       "detail": "Fehlte die Internetverbindung oder antwortete ein Server zu langsam, zeigten Suche, Installation und Update-Prüfung nur „fetch failed“ oder „This operation was aborted“.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "updatepruefung-offline",
       "title": "Ohne Internet dauerte die Update-Prüfung sehr lange und meldete dann keine Updates",
       "detail": "Die Prüfung versuchte jeden Mod einzeln mehrmals. Bei vielen Mods dauerte das Minuten, und am Ende hieß es, es gebe keine Updates, statt dass sie nicht prüfbar waren.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-schluessel-abgelehnt",
       "title": "Ein falscher CurseForge-Schlüssel zeigte nur „HTTP 403“ mit einer Adresse",
       "detail": "Lehnte CurseForge den eingetragenen Schlüssel ab, erschien eine technische Meldung mit einer langen Adresse, ohne Hinweis, dass der Schlüssel das Problem ist.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modpack-vorabversion",
       "title": "Ein Modpack direkt aus der Suche konnte eine Vorabversion installieren und ließ sich nicht abbrechen",
       "detail": "Ohne ausgewählte Version nahm der Launcher die neueste Datei, auch wenn sie eine Alpha oder Beta war. „Abbrechen“ stoppte den Download des Modpacks nicht.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "deutsche-texte-uneinheitlich",
       "title": "Uneinheitliche Begriffe und kleine Sprachfehler in deutschen Texten",
       "detail": "Dasselbe hieß an verschiedenen Stellen anders, etwa „Backups“ und „Sicherungen“, „Mod Loader“ und „Mod-Loader“, „Pre-Launch-Befehl“ und „Befehl vor dem Start“ oder „Protokoll“ und „Log“. Einige Meldungen verwiesen auf Knöpfe oder Reiter, die anders heißen, und bei genau einer Zeile, Sekunde oder Datei stand die Mehrzahl.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "automatische-sicherung-still",
       "title": "Eine fehlgeschlagene automatische Sicherung nach dem Spielen blieb unbemerkt",
       "detail": "Nach jeder Spielsitzung sichert der Launcher die Welten, wenn das eingeschaltet ist. Schlug das fehl, etwa weil das Spiel die Dateien noch kurz festhielt, stand das nur im Log. Man ging davon aus, gesichert zu sein.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherungsliste-beschaedigt",
@@ -3685,560 +3785,639 @@ footer .grow { flex: 1; }
       "id": "modpack-aus-suche-unvollstaendig",
       "title": "Ein Modpack direkt aus „Entdecken“ blieb ohne seine Einstellungen und Konfigurationen",
       "detail": "Beim Installieren eines Modpacks direkt aus der Suche löschte der Launcher die heruntergeladene Datei, während der Import noch lief. Die Mods wurden geladen, aber Konfigurationen, Einstellungen und weitere mitgelieferte Dateien des Modpacks fehlten, und die Instanz galt nicht als fertig installiert.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abgleich-waehrend-wiederherstellung",
       "title": "Während einer Wiederherstellung konnten die Angaben zu allen Mods verloren gehen",
       "detail": "Stellte man eine Sicherung mit Mods wieder her und blieb dabei auf der Seite der Instanz, glich der Launcher den Mod-Ordner ab, während dieser kurz beiseitegelegt war. Er hielt alle Mods für entfernt. Danach kamen die Dateien zurück, aber ohne Herkunft und Version, und Updates wurden für sie nicht mehr gefunden.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "mods-aenderbar-waehrend-reparatur",
       "title": "Während einer Wiederherstellung oder Reparatur ließen sich Mods ändern",
       "detail": "Mods konnten installiert, entfernt oder an- und ausgeschaltet werden, während eine Sicherung eingespielt oder die Instanz repariert wurde. Die Änderung konnte dabei verloren gehen oder nur halb ausgeführt bleiben, sodass Mod-Ordner und Mod-Liste nicht mehr zusammenpassten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abgleich-ueberschreibt-aenderung",
       "title": "Eine gerade gemachte Änderung an den Mods konnte zurückgesetzt werden",
       "detail": "Der Launcher gleicht die Mod-Liste regelmäßig mit dem Mod-Ordner ab, zum Beispiel beim Öffnen einer Instanz. Lief eine Installation oder ein Update genau in diesem Moment, konnte der Abgleich danach seinen älteren Stand speichern. Ein frisch installierter Mod stand dann ohne Herkunft und Version in der Liste, und Updates wurden für ihn nicht mehr gefunden.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "loeschen-waehrend-sicherung",
       "title": "Eine Instanz ließ sich löschen, während sie gesichert oder exportiert wurde",
       "detail": "Die Sicherung oder der Export lief danach mit teilweise gelöschten Dateien weiter und konnte als scheinbar vollständige Datei gespeichert werden, der in Wahrheit Welten oder Mods fehlten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenordner-wechsel-waehrend-arbeit",
       "title": "Der Datenordner ließ sich wechseln, während an einer Instanz gearbeitet wurde",
       "detail": "Lief gerade das Duplizieren einer Instanz oder eine Änderung an Mods, etwa eine Installation aus der Suche, war der Wechsel trotzdem erlaubt, weil beides nicht als Aufgabe zählte. Diese Arbeit schrieb dann weiter in den alten Ordner, und ihr Ergebnis fehlte im neuen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplikat-ohne-letzte-aenderung",
       "title": "Beim Duplizieren gingen Änderungen verloren, die während des Kopierens gemacht wurden",
       "detail": "Die Kopie bekam die Einstellungen der Instanz von dem Moment, in dem das Duplizieren begann. Wer während des Kopierens zum Beispiel den Arbeitsspeicher oder die Java-Einstellungen änderte, fand diese Änderung nur im Original, nicht in der Kopie.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "import-zu-frueh-fertig",
       "title": "Ein Import galt als fertig, bevor er es war",
       "detail": "Sobald Minecraft selbst eingerichtet war, zeigte eine importierte Instanz „Spielen“, auch wenn Mods und Dateien noch kopiert oder geladen wurden. Ein Start in diesem Moment lief mit einem halben Modpack. Scheiterte der Import, konnte die Instanz danach trotzdem als fertig installiert gelten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ordner-import-fehler-verschwiegen",
       "title": "Beim Import eines Ordners konnten Dateien fehlen, ohne dass es gemeldet wurde",
       "detail": "Dateien, die sich nicht kopieren ließen, etwa weil die Festplatte voll war oder ein anderes Programm sie gesperrt hielt, wurden still übersprungen, und der Import meldete Erfolg. Verknüpfte Ordner in der Quelle kamen als defekte Verknüpfung an, und übersprungene Verknüpfungen standen nur in der Protokolldatei.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "minecraft-ordner-falsche-version",
       "title": "Beim Import eines .minecraft-Ordners wurde manchmal die falsche Version erkannt",
       "detail": "Lagen dort mehrere Versionen, gewann die alphabetisch erste mit Mod-Loader, nicht die zuletzt gespielte. Ältere Forge-Ordner wie „1.12.2-forge1.12.2-14.23.5.2860“ wurden gar nicht als Forge erkannt, und die Instanz entstand ohne Mod-Loader.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "import-gdlauncher-modrinth-forge",
       "title": "Forge-Instanzen aus GDLauncher und der Modrinth App ließen sich nicht einrichten",
       "detail": "Beide Programme speichern die Forge-Version zusammen mit der Minecraft-Version. Der Launcher übernahm das unverändert und suchte danach eine Forge-Version, die es nicht gibt, sodass die Einrichtung nach dem Import scheiterte.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-import-ohne-mods",
       "title": "Ein CurseForge-Modpack konnte ohne einen einzigen Mod als fertig gelten",
       "detail": "War CurseForge während des Imports nicht erreichbar, scheiterte jede Abfrage der Mod-Liste. Der Import lief trotzdem weiter und meldete am Ende Erfolg, mit einer Instanz ganz ohne Mods.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-datapacks-in-mods",
       "title": "Datenpakete aus CurseForge-Modpacks landeten im Mod-Ordner",
       "detail": "Ein CurseForge-Modpack, das Datenpakete mitbringt, legte sie in den Mod-Ordner. Dort wirkten sie nicht und tauchten auch nicht als Datenpaket in der Instanz auf.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modpack-archiv-backslash",
       "title": "Manche Modpack-Archive wurden ohne ihre Konfigurationen entpackt",
       "detail": "Einige Programme schreiben Zip-Dateien mit umgekehrten Schrägstrichen in den Pfaden. Bei solchen Modpacks fehlten nach dem Import Konfigurationen, Einstellungen und weitere mitgelieferte Dateien, obwohl die Vorschau sie noch gezählt hatte. Außerdem konnte eine Datei aus einem anderen Ordner mit gleichem Namen die Angaben eines Mods erhalten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplikat-handabgelegt-unerkannt",
       "title": "Ein von Hand abgelegter Mod wurde nicht als doppelt erkannt",
       "detail": "Lag ein Mod aus der Suche und dieselbe Mod-Datei von Hand im Mod-Ordner, sah die Kompatibilitätsprüfung keinen Konflikt, weil die Datei nur unter ihrem Dateinamen erfasst war. Sie meldete „Start möglich“, und der Mod-Loader brach den Start dann wegen des doppelten Mods ab.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abhaengigkeit-handabgelegt-fehlt",
       "title": "Eine von Hand abgelegte Abhängigkeit galt als fehlend",
       "detail": "Lag eine benötigte Abhängigkeit wie Fabric API als von Hand abgelegte Datei im Mod-Ordner, meldete die Prüfung sie trotzdem als fehlend und blockierte den Start. Der Knopf zum Beheben installierte dann eine zweite Kopie, die den Start erst recht verhinderte.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "falsche-unterversion-installiert",
       "title": "Mods für eine andere Unterversion wurden ohne Hinweis installiert",
       "detail": "Gab es für die Minecraft-Version einer Instanz keine passende Mod-Version, nahm der Launcher eine beliebige aus derselben Reihe, zum Beispiel eine für 1.20.6 in einer Instanz mit 1.20.1. Solche Mods laden meist nicht, und die Kompatibilitätsprüfung nannte sie trotzdem passend. Dasselbe galt für Abhängigkeiten, Updates und „Passende Version suchen“.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abhaengigkeit-ausgeschaltet-unbehebbar",
       "title": "Eine ausgeschaltete Abhängigkeit ließ sich nicht per Knopf beheben",
       "detail": "War eine benötigte Abhängigkeit installiert, aber ausgeschaltet, lud der Knopf zum Beheben sie neu herunter und ließ sie ausgeschaltet. Er meldete Erfolg, und derselbe Fehler kam sofort wieder.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "handabgelegt-falscher-loader-unerkannt",
       "title": "Von Hand abgelegte Mods für einen anderen Mod-Loader wurden nicht erkannt",
       "detail": "Eine von Hand in den Mod-Ordner gelegte Datei wurde ohne jede Angabe zu Mod-Loader und Version erfasst. Ein Forge-Mod in einer Fabric-Instanz fiel der Kompatibilitätsprüfung deshalb nicht auf, und in der Liste stand nur der Dateiname statt des Mod-Namens.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "unvertraeglich-nur-eine-version",
       "title": "Eine Unverträglichkeit mit nur einer Version eines Mods blockierte jeden Start",
       "detail": "Manche Mods vertragen sich nur mit einer bestimmten Version eines anderen Mods nicht. Die Prüfung behandelte das, als wäre jede Version betroffen, und blockierte den Start auch mit Versionen, die einwandfrei funktionieren.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-mods-neoforge-1201-blockiert",
       "title": "Forge-Mods in einer NeoForge-Instanz für 1.20.1 blockierten den Start",
       "detail": "NeoForge für Minecraft 1.20.1 lädt die meisten Forge-Mods dieser Version. Die Prüfung nannte sie trotzdem unpassend und ließ das Spiel nicht starten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenpaket-von-hand-geloescht",
       "title": "Ein von Hand abgelegtes Datenpaket konnte vom Launcher gelöscht werden",
       "detail": "Lag dasselbe Datenpaket schon von Hand in einer Welt und ordnete man es im Launcher dieser Welt zu, hielt der Launcher die vorhandene Datei für seine eigene. Beim Ausschalten oder Entfernen des Pakets löschte er sie dann mit.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-loader-dateien-fehlen",
       "title": "„Reparieren“ half nicht, wenn vom Mod-Loader erzeugte Dateien fehlten",
       "detail": "Forge und NeoForge erzeugen bei der Installation eigene Dateien, etwa einen angepassten Minecraft-Client. Fehlte eine davon, etwa nach einem Virenscanner, meldete der Start fehlende Bibliotheken und verwies auf „Reparieren“. Die Reparatur prüfte genau diese Dateien aber nicht, meldete alles in Ordnung, und der Start scheiterte wieder.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neoforge-1201-jeder-start-neu",
       "title": "NeoForge für Minecraft 1.20.1 wurde vor jedem Start neu eingerichtet",
       "detail": "Der Launcher erkannte eine schon installierte NeoForge-Version für 1.20.1 nicht wieder, weil sie unter einem Forge-Namen gespeichert wird. Vor jedem Start und jeder Reparatur lief deshalb die ganze Installation erneut, was den Start um Minuten verzögern konnte. Hatten eine Forge- und eine NeoForge-Instanz zufällig dieselbe Build-Nummer, überschrieben sie sich gegenseitig ihre Versionsdatei.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fabric-profil-fehlt-start-unmoeglich",
       "title": "Fehlte das Fabric- oder Quilt-Profil, startete die Instanz nicht mehr",
       "detail": "War die erste Einrichtung von Fabric oder Quilt gescheitert oder der Versionsordner aufgeräumt worden, holte der Launcher das Profil beim Start nicht nach, wie er es bei Forge tut. Der Start brach mit „Minecraft-Version ist unbekannt“ ab.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-installiert-forge-unsichtbar",
       "title": "Die Reparatur installierte Forge oder NeoForge unsichtbar neu",
       "detail": "Fehlte die Versionsdatei von Forge oder NeoForge, lief die Neuinstallation in der Reparatur ohne Fortschrittsanzeige und ohne Möglichkeit zum Abbrechen, oft mehrere Minuten lang. Danach meldete die Reparatur den Mod-Loader als vorhanden, als wäre nichts gewesen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-abbruch-trifft-spielstart",
       "title": "Ein abgebrochener Vorgang konnte einen laufenden Spielstart mit abbrechen",
       "detail": "Brauchten ein Spielstart und eine Einrichtung oder Reparatur gleichzeitig dieselbe Forge-Installation und wurde die Einrichtung abgebrochen, brach auch der Spielstart ab und meldete „Vorgang abgebrochen“, obwohl ihn niemand abgebrochen hatte.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-fuer-jede-instanz-neu",
       "title": "Forge und NeoForge wurden für jede neue Instanz erneut installiert",
       "detail": "Auch wenn eine andere Instanz dieselbe Forge- oder NeoForge-Version schon installiert hatte, lief beim Anlegen einer neuen Instanz die ganze Installation noch einmal, oft mehrere Minuten. Lief die andere Instanz gerade, konnte die Einrichtung unter Windows an gesperrten Dateien scheitern.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neoforge-beta-als-empfohlen",
       "title": "NeoForge schlug eine Beta-Version als empfohlen vor",
       "detail": "Als empfohlene NeoForge-Version galt einfach die neueste, auch wenn sie eine Beta war und stabile Versionen bereitstanden. Neue Instanzen bekamen dann ohne Hinweis eine Beta. Die Reihenfolge der Versionen war außerdem nicht nach Nummern sortiert.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "wiederherstellung-loescht-originale",
       "title": "Eine gescheiterte Wiederherstellung konnte die aktuellen Welten löschen",
       "detail": "Konnte der Launcher beim Einspielen einer Sicherung einen Ordner nicht beiseitelegen, etwa weil der Explorer oder ein Virenscanner gerade darin war, sollte er alles zurückdrehen. Dabei löschte er aber die noch vorhandenen Originalordner, als wären sie neu hinzugekommen, und meldete trotzdem, der vorherige Stand sei zurück. Die automatische Sicherheitskopie vor der Wiederherstellung blieb erhalten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "leere-sicherungen-verdraengen-echte",
       "title": "Leere Sicherungen galten als erfolgreich und verdrängten echte",
       "detail": "Eine Instanz ohne eigene Welten, etwa nur auf Servern gespielt, ergab eine leere Sicherung, die als erfolgreich gemeldet wurde und sich später nicht einspielen ließ. Mit automatischen Sicherungen nach dem Spielen verdrängten solche leeren Sicherungen nach wenigen Sitzungen die älteren, in denen die Welten wirklich steckten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beschaedigte-instanzdatei-wird-vanilla",
       "title": "Eine beschädigte Instanzdatei machte aus der Instanz eine leere Vanilla-Instanz",
       "detail": "War die Datei einer Instanz beschädigt, etwa nach einem Stromausfall, legte der Launcher sie beiseite und zeigte stattdessen eine unbenannte Instanz mit Vanilla und der neuesten Minecraft-Version. Ein Klick auf „Spielen“ startete diese Version dann mit den vorhandenen Welten, die Minecraft dabei auf die neue Version umstellen kann. Spielzeit und die Herkunft der Mods fehlten ebenfalls, und „Reparieren“ half nicht, weil es die ursprüngliche Version nicht kennt. Am häufigsten passiert das, wenn der PC kurz nach dem Ende eines Spiels hart ausgeht, denn dann speichert der Launcher die Instanz.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beschaedigte-einstellungen-datenordner-weg",
       "title": "Eine beschädigte Einstellungsdatei setzte den Datenordner zurück",
       "detail": "War die Einstellungsdatei beschädigt, startete der Launcher wie bei einer Neuinstallation, mit dem Standard-Datenordner und der Einrichtung von vorn. Wer einen eigenen Datenordner nutzte, sah danach keine Instanzen mehr, obwohl sie noch da waren.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "verknuepfung-ueberschreibt-andere-instanz",
       "title": "Eine Desktop-Verknüpfung konnte die einer anderen Instanz überschreiben",
       "detail": "Trugen zwei Instanzen denselben Namen, konnte die Verknüpfung der einen die bereits vorhandene der anderen ersetzen, weil der Launcher die beiden nur am Anfang ihrer Kennung unterschied. Außerdem erschien die Erfolgsmeldung beim Anlegen doppelt.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-verwaist-bei-gesperrter-liste",
       "title": "Bei gesperrter Sicherungsliste blieb eine fertige Sicherung unsichtbar liegen",
       "detail": "War die Liste der Sicherungen gerade von einem anderen Programm gesperrt, scheiterte die Sicherung erst nach dem Packen. Die fertige Datei blieb dann im Ordner liegen, ohne in der Liste aufzutauchen oder je aufgeräumt zu werden.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-loeschen-ohne-wirkung",
       "title": "Das Löschen einer Sicherung meldete Erfolg, ohne etwas zu löschen",
       "detail": "War die Liste der Sicherungen beim Löschen gerade gesperrt, fand der Launcher die Sicherung nicht und meldete trotzdem „Sicherung gelöscht“. Die Datei blieb vollständig erhalten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abbruch-als-fehler-gemeldet",
       "title": "Ein Abbruch durch den Nutzer wurde als Fehler gemeldet",
       "detail": "Brach man eine Sicherung, einen Export oder eine Wiederherstellung selbst ab, erschien eine rote Fehlermeldung wie „Sicherung fehlgeschlagen“, als wäre etwas schiefgegangen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplizieren-hinterlaesst-kopie",
       "title": "Ein gescheitertes Duplizieren konnte eine unsichtbare Kopie hinterlassen",
       "detail": "Ließ sich die neue Instanz nach dem Kopieren nicht speichern, etwa wegen einer gesperrten Datei, blieb der vollständig kopierte Ordner liegen, ohne in der Liste aufzutauchen. Er belegte Speicherplatz und wurde nie aufgeräumt.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-fehler-als-leer",
       "title": "Ließen sich die Welten nicht lesen, hieß es „Noch keine Welten“",
       "detail": "Scheiterte das Auflisten der Welten einer Instanz, zeigte der Reiter „Welten“ dieselbe Ansicht wie bei einer Instanz ohne Welten, statt den Fehler zu nennen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-geloeschter-instanz",
       "title": "Sicherungen gelöschter Instanzen ließen sich weder einspielen noch öffnen",
       "detail": "Sicherungen einer gelöschten Instanz standen weiter in der Liste, mit den Knöpfen zum Wiederherstellen und zum Öffnen des Ordners. Beide scheiterten mit „Instanz existiert nicht“.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "export-datei-gleichen-namens-fehlt",
       "title": "Beim Modpack-Export konnte eine Datei mit gleichem Namen fehlen",
       "detail": "Trug eine eigene Datei, etwa ein Datenpaket, denselben Dateinamen wie ein Ressourcenpaket von Modrinth, ließ der Export sie weg, weil er nur den Namen verglich und nicht den Ordner. Im fertigen Modpack fehlte sie ohne Hinweis.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "bat-befehl-spawn-einval",
       "title": "Eine .bat- oder .cmd-Datei als Befehl vor dem Start oder als Wrapper scheiterte",
       "detail": "Unter Windows lehnt das System das direkte Starten von .bat- und .cmd-Dateien seit einer Sicherheitsänderung ab. Ein solches Skript als Befehl vor dem Start oder als Wrapper brach den Spielstart deshalb mit der unverständlichen Meldung „spawn EINVAL“ ab.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "stopp-uebernommenes-spiel-gibt-frei",
       "title": "„Stoppen“ bei einem Spiel aus einer früheren Sitzung gab die Instanz frei, obwohl es weiterlief",
       "detail": "Lief Minecraft noch, als der Launcher neu startete, zeigte die Instanz zwar „Läuft“, aber ein Klick auf „Stoppen“ entfernte nur den Eintrag. Das Spiel lief weiter, die Instanz galt als frei, und ein zweiter Start auf derselben Welt war möglich.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neustart-pc-instanz-gesperrt",
       "title": "Nach einem Neustart des PCs konnte eine Instanz bis zu 18 Stunden gesperrt sein",
       "detail": "Ging der PC aus, während Minecraft lief, hielt der Launcher beim nächsten Start ein beliebiges anderes Programm mit derselben Prozessnummer für das alte Spiel. Die Instanz meldete dann „Minecraft läuft noch aus einer früheren Sitzung“ und ließ sich nicht starten.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "spielzeit-ohne-launcher-verloren",
       "title": "Spielzeit ging verloren, wenn das Spiel endete, während der Launcher geschlossen war",
       "detail": "Überlebte Minecraft den Launcher, etwa nach einem Absturz oder Update des Launchers, und endete, bevor er wieder lief, wurde diese Sitzung nie gezählt. Die Spielzeit der Instanz fehlte dann ohne Hinweis.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "startpruefung-falsches-java",
       "title": "Die Prüfung vor dem Start zeigte ein anderes Java als der Start benutzte",
       "detail": "Mit automatischer Java-Verwaltung zeigte die Übersicht vor dem Start ein vorhandenes, neueres Java an, während der Start selbst das passende Java herunterlud und verwendete. Fehlte Java ganz oder musste ein eigener Pfad noch bestätigt werden, stand dort dauerhaft „Wird geladen“, obwohl nichts geladen wurde.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "log-zeigt-alte-sitzung",
       "title": "Das Log eines neuen Starts begann mit den Zeilen des vorigen",
       "detail": "Nach einem Absturz und erneutem Start zeigte das Live-Log zuerst den alten Absturz und erst darunter die neue Sitzung. Ob das Spiel wieder abgestürzt war, ließ sich so nicht auf einen Blick erkennen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "apostroph-in-befehlen",
       "title": "Ein Apostroph in Pfaden oder Argumenten zerlegte den Befehl",
       "detail": "Ein einzelnes Apostroph, etwa in „C:\\Users\\O'Brien\\…“ als Befehl vor dem Start oder in einem Java-Argument, teilte den Wert an dieser Stelle in zwei. Zwei Apostrophe in verschiedenen Teilen verschluckten sogar den Text dazwischen.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "spielzeit-zaehlt-standby",
       "title": "Standby und Ruhezustand zählten als Spielzeit",
       "detail": "Ging ein Laptop mit offenem Spiel in den Standby, zählte die ganze Zeit bis zum Aufwachen als gespielt. Eine Nacht im Standby ergab so eine achtstündige Sitzung.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beenden-waehrend-reparatur-mod-weg",
       "title": "Den Launcher während einer Reparatur zu schließen konnte einen Mod verschwinden lassen",
       "detail": "Eine Reparatur legt einen beschädigten Mod kurz beiseite, während sie ihn neu lädt. Wurde der Launcher genau dann geschlossen oder stürzte ab, blieb der Mod unter einem fremden Namen liegen, fehlte im Spiel und verschwand beim nächsten Abgleich aus der Liste. Der Launcher fragte beim Schließen auch nicht nach, ob noch Aufgaben laufen.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-laedt-neueste-version",
       "title": "Die Reparatur ersetzte einen Mod durch die neueste statt durch die installierte Version",
       "detail": "Fehlte ein Mod oder war er beschädigt, lud die Reparatur die neueste passende Version, auch wenn bewusst eine ältere installiert war. In der Liste stand danach weiter die alte Version. Ein ausgeschalteter Mod wurde dabei wieder eingeschaltet, und ein Abbruch mitten in der Reparatur konnte die Angaben schon ersetzter Mods verlieren.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-ressourcenpakete",
       "title": "Die Reparatur konnte Ressourcenpakete, Shader und Datenpakete nicht reparieren",
       "detail": "In Instanzen mit Mod-Loader fand die Reparatur für beschädigte Ressourcenpakete, Shader und Datenpakete nie eine passende Version und meldete sie als inkompatibel.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-laedt-nicht-unsichtbar",
       "title": "Konnte die Oberfläche nicht geladen werden, blieb ein unsichtbarer Launcher zurück",
       "detail": "Fehlte eine Datei der Oberfläche, etwa weil ein Virenscanner sie entfernt hatte, erschien eine Fehlermeldung. Danach lief der Launcher unsichtbar weiter, und jeder neue Start zeigte nur ein leeres Fenster, bis man ihn im Task-Manager beendete.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-neulade-schleife",
       "title": "Eine immer wieder abstürzende Oberfläche lud endlos neu",
       "detail": "Stürzte die Oberfläche beim Laden ab, etwa wegen eines Grafiktreibers, lud der Launcher sie sofort neu, ohne Begrenzung. Das Fenster flackerte dann dauerhaft, und es wurde jedes Mal ein Fehlerbericht erzeugt.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufnahmetaste-still",
       "title": "Die Aufnahmetaste blieb bei einem Fehler stumm",
       "detail": "Ließ sich eine Aufnahme nicht starten, etwa weil der Aufnahmeordner nicht beschreibbar war, passierte beim Drücken der Taste einfach nichts. Lief die Aufnahme über den ganzen Bildschirm, weil das Spielfenster nicht gefunden wurde, sagte der Hinweis das nicht.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alle-beheben-loescht-mods",
       "title": "„Alle automatisch beheben“ konnte von Hand abgelegte Mods löschen",
       "detail": "Trugen zwei von Hand abgelegte Mods denselben Namen, schlug die Prüfung vor, das selbst nachzusehen, weil es auch zwei verschiedene Mods sein können. „Alle automatisch beheben“ löschte trotzdem einen davon. Außerdem brach das Beheben ab, sobald ein Fehler sich durch einen vorherigen schon erledigt hatte.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-pruefung-fehler-verschwiegen",
       "title": "Gescheiterte Update-Prüfungen erschienen als „Alles aktuell“",
       "detail": "Ließ sich ein Mod nicht auf Updates prüfen, etwa wegen eines fehlenden CurseForge-Schlüssels oder weil Modrinth zu viele Anfragen ablehnte, zeigte der Launcher trotzdem „Alles aktuell“. Updates wurden so ohne Hinweis übersehen.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-auswahl-geloeschte-welt",
       "title": "Eine gelöschte Welt blockierte die Welten-Auswahl eines Datenpakets",
       "detail": "War eine Welt, der ein Datenpaket zugeordnet war, inzwischen gelöscht, ließ sich die Auswahl nicht mehr speichern. Die Meldung nannte die gelöschte Welt, die sich aber nicht abwählen ließ.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "versionswahl-zu-streng",
       "title": "„Version wählen“ zeigte passende Versionen als unpassend",
       "detail": "Die Versionsauswahl eines Mods verlangte eine exakt gleiche Minecraft-Version und zeigte eine Version für 1.21 in einer Instanz mit 1.21.1 als unpassend, obwohl die Installation sie selbst gewählt hatte. Bei ausgeschalteten Mods wurde die installierte Version nicht markiert.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "version-waehlen-paket-abgewaehlt",
       "title": "Nach „Version wählen“ war ein Ressourcenpaket oder Shader im Spiel abgewählt",
       "detail": "Wurde ein ausgewähltes Ressourcenpaket oder ein Shader über „Version wählen“ gegen eine andere Version getauscht, stand im Spiel noch der alte Dateiname. Das Paket war beim nächsten Start ohne Hinweis ausgeschaltet.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datei-hinzufuegen-meldet-fehler",
       "title": "„Datei hinzufügen“ meldete einen Fehler, obwohl die Datei schon kopiert war",
       "detail": "Erkannte Modrinth eine hinzugefügte Datei, scheiterte aber das Laden ihrer Angaben, erschien „Import fehlgeschlagen“. Die Datei lag trotzdem im Ordner und tauchte später als unbekannter Mod auf. Der Knopf war außerdem auch bei laufendem Spiel aktiv.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "umschalten-gesperrte-datei",
       "title": "Ein- und Ausschalten scheiterte an kurz gesperrten Dateien",
       "detail": "Hielt ein Virenscanner einen Mod gerade kurz geöffnet, scheiterte das Ein- oder Ausschalten sofort mit einer technischen Meldung, die den Windows-Benutzernamen enthielt. Andere Aktionen versuchen es in diesem Fall kurz darauf noch einmal.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "download-nicht-abbrechbar",
       "title": "Downloads beim Installieren und Aktualisieren ließen sich nicht abbrechen",
       "detail": "„Abbrechen“ wartete bei einer Installation oder einem Update, bis die laufende Datei fertig geladen war. Bei einer hängenden Verbindung konnte das mehrere Minuten dauern. Brach die Verbindung ab, erschien eine englische technische Meldung.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "entdecken-modpacks-gefiltert",
       "title": "„Entdecken“ zeigte Modpacks nur für die Version der ersten Instanz",
       "detail": "Modpacks bringen ihre eigene Instanz mit, wurden aber nach Minecraft-Version und Mod-Loader der gerade gewählten Instanz gefiltert. Die meisten Modpacks fehlten so auf der ersten Seite. Ohne Instanz ließen sich Modpacks gar nicht installieren, obwohl der Hinweis das versprach.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "entdecken-installieren-bei-laufendem-spiel",
       "title": "Installieren-Knöpfe waren bei laufendem Spiel aktiv",
       "detail": "In „Entdecken“ und im Projektfenster blieb „Installieren“ aktiv, während die Zielinstanz lief, und scheiterte erst nach dem Klick. Im Mods-Reiter verschwanden die Knöpfe stattdessen ohne Erklärung.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "startbildschirm-alte-versionen",
       "title": "Die eigene Startseite wurde bei Minecraft 1.6 bis 1.12 nie aktiviert",
       "detail": "Minecraft vor 1.13 führt Ressourcenpakete unter einem anderen Namen als neuere Versionen. Die eigene Startseite wurde dort zwar angelegt, aber nie eingeschaltet.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anmeldefehler-bei-einrichtung-unsichtbar",
       "title": "Anmeldefehler bei der ersten Einrichtung wurden nicht angezeigt",
       "detail": "Scheiterte die Anmeldung mit Microsoft während der ersten Einrichtung, schloss sich das Anmeldefenster einfach wieder, ohne Fehlermeldung. Auch Erfolgsmeldungen fehlten dort. Tastenkürzel wie Strg+N wirkten während der Einrichtung und öffneten danach unerwartet Fenster.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "snapshot-einstellung-ohne-wirkung",
       "title": "Die Einstellung „Snapshots in der Versionsliste zeigen“ wirkte nicht",
       "detail": "Der Assistent für neue Instanzen startete immer ohne Snapshots, egal was in den Einstellungen gewählt war.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-kleinere-anzeigefehler",
       "title": "Mehrere Anzeigen sagten etwas anderes, als tatsächlich galt",
       "detail": "Die Startseite zeigte „STARTET…“, während eine Instanz nur eingerichtet wurde, und ihr kleiner Spielen-Knopf blieb dabei aktiv. „Wiederherstellen“ war bei laufenden Instanzen aktiv und scheiterte erst nach der Rückfrage. Viele fehlgeschlagene Aufgaben verdeckten eine neue, laufende. Aufnahmen und Versionslisten, die sich nicht laden ließen, sahen aus wie leer. Bindestriche verschwanden aus Beschreibungen, und Fensterbreiten unter 640 wurden ohne Hinweis zu 854.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fehlerbericht-ip-hinweis-falsch",
       "title": "Der Hinweis zu Fehlerberichten versprach, die IP-Adresse werde nicht gespeichert",
       "detail": "Wer Fehlerberichte erlaubt, sendet sie auch an den Launch-Gabi-Server, und der speichert die IP-Adresse zu jedem Bericht. Der Hinweis sagte das Gegenteil und nannte die Empfänger nicht. Außerdem konnten Namen von Instanzen und Welten sowie Pfade außerhalb des Benutzerordners in Berichten stehen.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ordnerimport-verknuepfungskette",
       "title": "Ein Ordner-Import konnte über verkettete Verknüpfungen fremde Dateien mitkopieren",
       "detail": "Enthielt ein importierter Ordner eine Verknüpfung, die über eine zweite Verknüpfung nach außen zeigte, kopierte der Import unter Windows ohne Verknüpfungsrecht die Dateien am Ziel mit, etwa aus dem eigenen Dokumente-Ordner. Sie landeten so in der Instanz und später in Sicherungen und Exporten.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "linux-kein-menueeintrag",
       "title": "Unter Linux fehlt der Eintrag im Anwendungsmenü, und das Symbol in der Leiste verschwindet nach jedem Update",
       "detail": "Launch Gabi ließ sich unter Linux nur starten, indem man die AppImage-Datei selbst öffnete, denn der Launcher legte keinen Eintrag im Anwendungsmenü an. Außerdem trägt die Datei die Versionsnummer im Namen. Jedes Update löscht sie und legt sie unter neuem Namen wieder ab, deshalb verschwand ein an die Leiste angeheftetes Symbol nach jedem Update.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-20",
       "platforms": [
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.23"
     },
     {
       "id": "linux-verknuepfung-temporaerer-pfad",
       "title": "Unter Linux starteten Desktop-Verknüpfungen von Instanzen nicht",
       "detail": "Eine Verknüpfung oder ein Startskript (start.sh) für eine Instanz zeigte unter Linux auf einen Ordner, den es nur gibt, solange der Launcher läuft. Nach dem Schließen des Launchers tat ein Klick darauf nichts mehr.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-20",
       "platforms": [
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-anmeldung-vor-zustimmung",
       "title": "Die Seite Sicherungen meldete sich bei der Cloud an, bevor man dem Hinweis zugestimmt hatte",
       "detail": "Schon beim Öffnen von Sicherungen bestätigte der Launcher mit einem Microsoft-Konto die Anmeldung bei Mojang und meldete sich mit dem Minecraft-Namen bei der Launch-Gabi-Cloud an. Dort entstand dabei ein Eintrag für das Konto, auch wenn man Cloud-Backups nie nutzen wollte und den Hinweis dazu noch nicht gesehen hatte. Hochgeladen wurde dabei nichts.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-herunterladen-falsches-ziel",
       "title": "Beim Herunterladen eines Cloud-Backups war eine fremde Instanz mit gleichem Namen vorausgewählt",
       "detail": "Hatte eine Instanz auf diesem PC zufällig denselben Namen wie die im Cloud-Backup, schlug der Launcher vor, das Backup dort einzuspielen, ohne Minecraft-Version und Mod-Loader zu vergleichen. Eine schon getroffene Wahl „Als neue Instanz anlegen“ konnte außerdem von selbst zurückspringen. Lief die Instanz gerade, kam die Meldung dazu erst, nachdem das ganze Backup heruntergeladen war.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-webseite-ordner-fehlen",
       "title": "Ein auf cloud.launchgabi.com hochgeladenes Backup konnte beim Einspielen Welten und Einstellungen beiseiteräumen",
       "detail": "Über die Webseite hochgeladene Backups tragen keine Liste ihrer Ordner. Der Launcher spielte sie deshalb ein, als enthielten sie Welten und Einstellungen: Er räumte diese beiden Ordner der Instanz beiseite, entpackte aber nur, was im Archiv wirklich unter diesen Namen lag. Steckte im Archiv etwas anderes, fehlten danach Welten und Einstellungen. Die automatische Sicherheitskopie davor enthielt sie noch.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-downloads-sammeln-sich",
       "title": "Heruntergeladene Cloud-Backups blieben für immer auf dem PC liegen",
       "detail": "Jedes Herunterladen legte eine vollständige Kopie des Cloud-Backups in die Sicherungen der Instanz. Anders als automatische Sicherungen wurden diese Kopien nie aufgeräumt.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "instanz-loeschen-verschwindet",
       "title": "Nach einem fehlgeschlagenen Löschen verschwand die Instanz aus der Liste, ihre Welten blieben aber liegen",
       "detail": "Hielt beim Löschen ein anderes Programm eine Datei der Instanz fest, war die Datei mit den Einstellungen der Instanz oft schon weg. Der Launcher meldete richtig, dass das Löschen nicht vollständig geklappt hat, zeigte die Instanz danach aber gar nicht mehr an. Ein zweiter Versuch war so nicht möglich, und Welten und Mods blieben unsichtbar auf der Festplatte.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "uebernommenes-spiel-fremde-pid",
       "title": "Eine Instanz konnte als „läuft noch aus früherer Sitzung“ hängen bleiben",
       "detail": "Lief ein Spiel beim Neustart des Launchers noch, merkte er es sich anhand der Prozessnummer. Gab Windows diese Nummer nach dem Ende des Spiels an ein anderes Programm weiter, galt die Instanz weiter als laufend, bis dieses Programm endete. Starten ließ sie sich so lange nicht, und auch Updates des Launchers warteten. „Beenden“ hob die Sperre auf.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     }
   ];
   var ISSUE_LABEL = {
@@ -6549,365 +6728,417 @@ footer .grow { flex: 1; }
       "id": "neoforge-installer-bei-jedem-start",
       "title": "NeoForge instances set up NeoForge again before every start",
       "detail": "For NeoForge on Minecraft 1.20.2 and newer the launcher did not recognise the NeoForge version that was already installed and ran the installer again before every start, every repair and every pre-launch check. Starting took much longer, did not work at all without internet and could disturb a second NeoForge game that was running.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-mods-gleicher-name-doppelt",
       "title": "Two different Forge mods with the same name counted as installed twice",
       "detail": "Since 1.0.21 the pre-launch check reads the mod ID from the files. For Forge and NeoForge it also read the dependency entries. Two different mods with the same name therefore counted as the same mod, the game could not be started, and \"Remove older file\" would have deleted one of them.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-sicherungen-mitgeloescht",
       "title": "Backups before mod updates were deleted along with the automatic backups",
       "detail": "Since 1.0.21 backups taken before mod updates count towards the same limit as the automatic backups after every play session. The first new backup therefore deleted older backups taken before mod updates, and after a few play sessions the newest one as well.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alte-anmeldung-abgemeldet",
       "title": "Accounts from very old versions could be signed out after an update",
       "detail": "Anyone signed in with version 1.0.13 or older who updated straight to a newer version could be signed out at the next game start. The sign-in was renewed with the new Launch Gabi application, although it still belonged to the old one.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "texte-unuebersetzt-falsch",
       "title": "In the German interface, some labels showed in English or were worded wrongly",
       "detail": "Version types such as \"snapshot\", \"release\" or \"beta\" were shown untranslated, after a game it said \"Play time: 1 minutes\", and with a filter but no search term it said \"There is no matching instance for \"\"\".",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "bedienung-kleine-fehler",
       "title": "Minor usability faults: notices vanished too fast, deleting without asking, misleading hints",
       "detail": "Important error notices, for example after the game crashed, vanished after a few seconds. \"Delete all\" for error reports did not ask first. A search without results among installed content said \"Nothing installed\", copying the log gave no feedback, a new backup went to the first instance despite a filter, Enter did not confirm a question, and a single mod update made the mod overview jump back to the top.",
-      "state": "fixing",
-      "since": "2026-10-02"
+      "state": "fixed",
+      "since": "2026-10-02",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modrinth-pakete-ohne-version",
       "title": "Resource packs, shaders and data packs from Modrinth could not be installed in instances with a mod loader",
       "detail": "In an instance with Fabric, Forge, NeoForge or Quilt, \"Install\" found no fitting version for resource packs, shaders and data packs from Modrinth, because the launcher filtered them by mod loader. Only picking a specific version in the project window worked. Updates were never shown for such content.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-pack-abgewaehlt",
       "title": "After updating a resource pack or shader it was no longer selected in the game",
       "detail": "An update replaces the file, and the new file name usually contains the new version number. Minecraft and Iris no longer found the selected pack afterwards and turned it off without a hint.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alle-aktualisieren-fehler-verschwiegen",
       "title": "\"Update all\" kept failed updates quiet",
       "detail": "If single updates failed, for example because of a locked file or a network error, the launcher only reported the number of successful ones. Which ones failed and why was shown nowhere.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherheitskopie-vor-wiederherstellung-geloescht",
       "title": "The safety copy before a restore was deleted after a few play sessions",
       "detail": "Before restoring a backup the launcher saves a copy of the current state. It counted as an automatic backup and was cleaned up after a few play sessions. After that the restore could no longer be undone.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "screenshots-volle-groesse",
       "title": "The Recordings tab loaded screenshots at full size",
       "detail": "For the preview the launcher sent up to 40 screenshots at full resolution to the interface. With large pictures the tab took a long time and used hundreds of megabytes of memory.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "speichern-gesperrt-rohfehler",
       "title": "A briefly locked folder could stop saving with a raw error",
       "detail": "If a virus scanner or OneDrive held one of the launcher's files for a moment, saving an instance or the settings stopped at once with a technical message such as \"EPERM\" instead of retrying briefly.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-liste-abweichend",
       "title": "The Worlds tab showed folders without a world and left out linked worlds",
       "detail": "Every folder in \"saves\" appeared as a world, even one with no save in it. A world placed in \"saves\" as a link was missing instead, although Minecraft shows it. The same applied to choosing worlds for data packs.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufnahme-loeschen-rohfehler",
       "title": "An open recording could not be deleted and only reported a technical error",
       "detail": "If a recording was open in another program, such as a video player, \"Delete\" failed with a message like \"EBUSY\" without saying why.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "texte-mehrzahl-englisch",
       "title": "Counts with the wrong plural and clumsy English texts",
       "detail": "With exactly one item it said, for example, \"1 files OK\" or \"1 compatibility notes\". In the English interface some texts read like literal translations, such as \"taken over\" instead of \"imported\", and the question before using a custom Java path called it a command.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "screenreader-seite-reiter-fortschritt",
       "title": "Screen readers were not told which page and tab are selected",
       "detail": "The current page in the sidebar, the selected tab of an instance and the progress of downloads were only shown by color. Some selection and search fields had no name, and the focus ring in input fields was hard to see on dark backgrounds.",
-      "state": "fixing",
-      "since": "2026-10-04"
+      "state": "fixed",
+      "since": "2026-10-04",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "accounts-datei-gesperrt",
       "title": "A briefly locked accounts file could delete all saved accounts",
       "detail": "If a virus scanner or OneDrive was holding the file with the accounts, the launcher read it as empty. If something was saved at that moment, such as a new offline profile, switching accounts or a renewed sign-in, all other accounts were gone and had to be signed in again.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "start-ohne-internet-abgelaufen",
       "title": "Without internet the game would not start at all once the sign-in had expired",
       "detail": "The Minecraft sign-in is valid for about a day. Once it had expired and Microsoft could not be reached, the launch stopped, although singleplayer works without internet.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anmeldung-serverfehler-abbruch",
       "title": "A single server error at Microsoft aborted the sign-in",
       "detail": "If Microsoft answered with a server error just once during the sign-in with the code, the whole sign-in was lost and only a technical message such as \"HTTP 503\" appeared.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anwendungs-id-feld",
       "title": "A cleared application ID field made signing in impossible",
       "detail": "Clearing the field for a custom Microsoft application ID, as a hint suggested, made signing in impossible afterwards. A space at the end of a pasted ID led to a confusing error, and the text in the settings still described the old default.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "xbox-sperre-hinweis",
       "title": "Banned or restricted Xbox accounts got a wrong hint",
       "detail": "If an account was banned by Xbox, restricted from online play by parental controls, or had not yet accepted the Xbox terms of use, the hint only said to sign in on xbox.com. That helped in none of these cases.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "skin-anzeige-verzoegert",
       "title": "A new skin only showed in the launcher after a restart",
       "detail": "When renewing the sign-in, the launcher also fetches the current skin. The display in the launcher only learned about it at the next start of the program.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "natives-zweite-instanz",
       "title": "A second instance of the same version up to 1.16 would not start while the first was running",
       "detail": "With two instances on the same Minecraft version up to and including 1.16, starting the second one tried to overwrite files the running game was using. Windows refuses that, and the launch stopped with a technical message.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-tmp-in-welten",
       "title": "Repair also deleted .tmp and .part files in worlds and settings",
       "detail": "When cleaning up old download leftovers, the repair searched the whole game folder of an instance, worlds and mod settings included, and deleted every older file ending in .tmp or .part there, even if it belonged to a world or a mod.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-ueber-1gb-datei",
       "title": "Backups containing a single file over 1 GB could not be restored",
       "detail": "If a world contained a single very large file, such as the Distant Horizons database, the backup could be created but not restored. This only showed when it was needed.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "export-fehlende-dateien",
       "title": "Exporting as a modpack left out locked files without a hint",
       "detail": "If another program held a file during the export, or a link was in the folder, it was missing from the finished modpack. The launcher still reported a successful export.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datapack-fremde-datei",
       "title": "A data pack could delete your own file with the same name in a world",
       "detail": "If a world already held a different file with the same name as a data pack from the launcher, the launcher still remembered the world. Turning the data pack off, removing or updating it later then deleted that other file.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ausschalten-ueberschreibt",
       "title": "Turning a mod off could overwrite a disabled file with the same name",
       "detail": "If a mod and a disabled file with the same name (ending in .disabled) were in the folder, turning the mod off overwrote the existing file without asking.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "stopp-ohne-speichern",
       "title": "\"Stop\" ended Minecraft on Windows at once, without saving the world",
       "detail": "On Windows, \"Stop\" forced the game to end immediately. Minecraft got no chance to save the world, and progress since the last automatic save could be lost.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "versionsdatei-beschaedigt",
       "title": "A damaged version file only gave a confusing message at launch",
       "detail": "If the description file of a Minecraft version was damaged, for example after a crash or with a full disk, the launch only showed \"Unexpected end of JSON input\". The launcher did not download the file again and did not say that \"Repair\" helps.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "vorschau-installiert-loader",
       "title": "Opening a Forge or NeoForge instance could install the loader without notice",
       "detail": "If the installed loader of a Forge or NeoForge instance was missing, just opening its page started the installation in the background, with nothing shown and no way to cancel.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fremde-instanz-argumente",
       "title": "Java arguments and environment variables of a foreign instance ran without asking",
       "detail": "Commands before launch, wrappers and custom Java paths ask before they first run. Java arguments that load extra program code, and environment variables, did not. An instance taken over from someone else could thereby run its own code at launch.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "umleitung-schluessel",
       "title": "On a redirect, access keys could go to a different server",
       "detail": "If a server redirected a request to a different address, the launcher sent the CurseForge key or the Minecraft sign-in along, and a redirect to an unencrypted address was followed as well.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fehlerbericht-pfad-doppelt",
       "title": "Error reports could contain the name of the Windows user folder",
       "detail": "Error reports hide the name of the user folder. If a path appeared in the report in a particular technical notation with doubled backslashes, the name stayed visible.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "einstellungen-gesperrt-zurueckgesetzt",
       "title": "A briefly locked settings file could reset all settings",
       "detail": "If a virus scanner or OneDrive held the settings file at startup, the launcher ran on the defaults and wrote them into the file shortly after. A custom data folder, the CurseForge key and all other settings were then gone, and the instances seemed to have vanished.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "zuruecksetzen-ersteinrichtung",
       "title": "\"Reset settings\" restarted the first-run setup and deleted the CurseForge key",
       "detail": "After a reset, the first-run setup appeared again, the questions about error reports and the custom start screen came back, and an entered CurseForge key was deleted. The dialog had only said that the settings return to their defaults.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "wichtige-hinweise-verdraengt",
       "title": "Notices meant to stay could be pushed out by newer ones",
       "detail": "Some notices are meant to stay, for example after the game crashed or when an update is ready. When several notices arrived at once, they still disappeared.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "launcher-update-hinweise",
       "title": "Notices about launcher updates were missing or misleading",
       "detail": "Without automatic download, a found update was announced nowhere. Turning on automatic updates only took effect after a restart. The notice \"installed on the next start\" also appeared when automatic installation was off, and every error said \"update server not reachable\".",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "minimiert-unsichtbar",
       "title": "\"Start minimized\" made the launcher invisible",
       "detail": "With this setting the launcher started without any window and without a taskbar entry. The only way back was starting it a second time.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenordner-nicht-erreichbar",
       "title": "An unreachable data folder looked like an empty launcher",
       "detail": "If the data folder was on an unplugged drive or a disconnected network share, the launcher simply showed no instances, without any hint at the reason.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "einrichtung-anzeige-haengt",
       "title": "After creating an instance, \"Setting up\" stayed on screen",
       "detail": "The page of a new instance kept showing \"Setting up\" after setup had finished, and Play, Duplicate, Delete and Repair stayed locked until the page was left and opened again.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "log-reiter-springt",
       "title": "The Log tab kept jumping to the bottom while reading",
       "detail": "Anyone scrolling up in the log to read something was put back at the end with every new line. Also, two identical lines in quick succession were merged into one.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufgaben-fertig-wiederholt",
       "title": "Finished tasks kept reappearing in the task area",
       "detail": "While one task was still running after another had finished, the finished task flashed up again every few seconds, for up to 20 seconds.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "mods-uebersicht-veraltet",
       "title": "The mod overview showed outdated locks and emptied on a single error",
       "detail": "The update buttons followed the state from when the overview was opened, not whether a game is running right now. With duplicated instances the spinner showed in both rows, and a single instance that could not be loaded made the whole list look empty.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "kleinere-anzeigefehler-oktober",
       "title": "Smaller display errors in search, updates and the settings",
       "detail": "\"Load more\" skipped results after an error. The project window showed the old version after an install. With two updates at once, one spinner disappeared too early. On Home the background picture of another instance could stay. An unsaved CurseForge key was lost when saving the application ID. \"Back up\" and \"Export\" could be triggered twice.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "suche-fehler-wie-leer",
       "title": "A failed search looked like \"Nothing found\"",
       "detail": "If Modrinth or CurseForge did not answer, the search showed \"Nothing found\", and a project that could not be loaded said \"No matching version\". Both sounded as if the content did not exist.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "netzwerkfehler-englisch",
       "title": "Without a connection, technical English messages such as \"fetch failed\" appeared",
       "detail": "Without an internet connection, or with a server answering too slowly, search, installation and the update check only showed \"fetch failed\" or \"This operation was aborted\".",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "updatepruefung-offline",
       "title": "Without internet the update check took very long and then reported no updates",
       "detail": "The check tried every mod several times on its own. With many mods this took minutes, and in the end it said there were no updates, instead of that they could not be checked.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-schluessel-abgelehnt",
       "title": "A wrong CurseForge key only showed \"HTTP 403\" with an address",
       "detail": "If CurseForge rejected the entered key, a technical message with a long address appeared, without a hint that the key is the problem.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modpack-vorabversion",
       "title": "A modpack straight from the search could install a pre-release and could not be cancelled",
       "detail": "Without a chosen version the launcher took the newest file, even if it was an alpha or beta. \"Cancel\" did not stop the modpack download.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "deutsche-texte-uneinheitlich",
       "title": "Inconsistent terms and small language errors in German texts",
       "detail": "In the German interface, the same thing had different names in different places, and some messages referred to buttons or tabs that are named differently. With exactly one line, second or file, the plural was used.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "automatische-sicherung-still",
       "title": "A failed automatic backup after playing went unnoticed",
       "detail": "After every play session the launcher backs up the worlds when this is turned on. If that failed, for example because the game still held the files for a moment, it was only written to the log. You assumed you were backed up.",
-      "state": "fixing",
-      "since": "2026-10-05"
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherungsliste-beschaedigt",
@@ -6920,560 +7151,639 @@ footer .grow { flex: 1; }
       "id": "modpack-aus-suche-unvollstaendig",
       "title": "A modpack installed straight from \"Discover\" was left without its settings and configs",
       "detail": "When installing a modpack straight from the search, the launcher deleted the downloaded file while the import was still running. The mods were downloaded, but configs, settings and other files shipped with the modpack were missing, and the instance did not count as fully installed.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abgleich-waehrend-wiederherstellung",
       "title": "During a restore the details of all mods could be lost",
       "detail": "When restoring a backup with mods while staying on the instance page, the launcher compared the mods folder while it was briefly set aside. It took all mods as removed. Afterwards the files came back, but without their source and version, and updates were no longer found for them.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "mods-aenderbar-waehrend-reparatur",
       "title": "Mods could be changed during a restore or a repair",
       "detail": "Mods could be installed, removed or switched on and off while a backup was being restored or the instance was being repaired. The change could get lost or stay half done, leaving the mods folder and the mod list out of step.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abgleich-ueberschreibt-aenderung",
       "title": "A change just made to the mods could be undone",
       "detail": "The launcher regularly compares the mod list with the mods folder, for example when an instance is opened. If an install or an update finished at exactly that moment, the comparison could afterwards save its older state. A freshly installed mod then showed up without its source and version, and updates were no longer found for it.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "loeschen-waehrend-sicherung",
       "title": "An instance could be deleted while it was being backed up or exported",
       "detail": "The backup or export then carried on with partly deleted files and could be saved as a seemingly complete file that was in fact missing worlds or mods.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenordner-wechsel-waehrend-arbeit",
       "title": "The data folder could be switched while an instance was being worked on",
       "detail": "If an instance was being duplicated or a change to mods was running, for example an install from the search, the switch was still allowed, because neither counted as a task. That work then kept writing into the old folder, and its result was missing from the new one.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplikat-ohne-letzte-aenderung",
       "title": "Changes made while duplicating were missing from the copy",
       "detail": "The copy took the instance settings from the moment duplicating started. Anyone who changed for example the memory or the Java settings while the copy was running found that change only in the original, not in the copy.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "import-zu-frueh-fertig",
       "title": "An import counted as finished before it was",
       "detail": "As soon as Minecraft itself was set up, an imported instance showed \"Play\", even while mods and files were still being copied or downloaded. Starting it at that moment ran with half a modpack. If the import failed, the instance could still count as fully installed afterwards.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ordner-import-fehler-verschwiegen",
       "title": "Importing a folder could leave files out without saying so",
       "detail": "Files that could not be copied, for example because the disk was full or another program kept them locked, were skipped silently, and the import reported success. Linked folders in the source arrived as broken links, and skipped links were only mentioned in the log file.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "minecraft-ordner-falsche-version",
       "title": "Importing a .minecraft folder sometimes detected the wrong version",
       "detail": "If several versions were there, the alphabetically first one with a mod loader won, not the one played last. Older Forge folders like \"1.12.2-forge1.12.2-14.23.5.2860\" were not recognised as Forge at all, and the instance was created without a mod loader.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "import-gdlauncher-modrinth-forge",
       "title": "Forge instances from GDLauncher and the Modrinth App could not be set up",
       "detail": "Both programs store the Forge version together with the Minecraft version. The launcher took that over unchanged and then looked for a Forge version that does not exist, so setting up the instance after the import failed.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-import-ohne-mods",
       "title": "A CurseForge modpack could count as finished without a single mod",
       "detail": "If CurseForge could not be reached during the import, every request for the mod list failed. The import still carried on and reported success in the end, with an instance that had no mods at all.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "curseforge-datapacks-in-mods",
       "title": "Data packs from CurseForge modpacks ended up in the mods folder",
       "detail": "A CurseForge modpack that ships data packs put them into the mods folder. They had no effect there and did not show up as data packs in the instance either.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "modpack-archiv-backslash",
       "title": "Some modpack archives were unpacked without their configs",
       "detail": "Some programs write zip files with backslashes in the paths. For such modpacks configs, settings and other included files were missing after the import, although the preview had still counted them. On top of that a file from another folder with the same name could receive the details of a mod.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplikat-handabgelegt-unerkannt",
       "title": "A mod placed by hand was not recognised as a duplicate",
       "detail": "If a mod from the search and the same mod file placed by hand were both in the mods folder, the compatibility check saw no conflict, because the file was only recorded under its file name. It said the game could start, and the mod loader then stopped the start over the duplicate mod.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abhaengigkeit-handabgelegt-fehlt",
       "title": "A dependency placed by hand counted as missing",
       "detail": "If a required dependency such as Fabric API was in the mods folder as a file placed by hand, the check still reported it as missing and blocked the start. The fix button then installed a second copy, which really did stop the game from starting.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "falsche-unterversion-installiert",
       "title": "Mods for a different patch version were installed without a word",
       "detail": "If there was no mod version for an instance's Minecraft version, the launcher took any one from the same line, for example one for 1.20.6 in an instance with 1.20.1. Such mods mostly do not load, and the compatibility check still called them compatible. The same applied to dependencies, updates and \"Find matching version\".",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abhaengigkeit-ausgeschaltet-unbehebbar",
       "title": "A dependency that was switched off could not be fixed with the button",
       "detail": "If a required dependency was installed but switched off, the fix button downloaded it again and left it switched off. It reported success, and the same error came straight back.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "handabgelegt-falscher-loader-unerkannt",
       "title": "Mods placed by hand for a different mod loader were not recognised",
       "detail": "A file placed into the mods folder by hand was recorded without any details about mod loader and version. A Forge mod in a Fabric instance therefore went unnoticed by the compatibility check, and the list showed just the file name instead of the mod's name.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "unvertraeglich-nur-eine-version",
       "title": "An incompatibility with one version of a mod blocked every start",
       "detail": "Some mods are incompatible with one specific version of another mod only. The check treated that as if every version were affected, and blocked the start even with versions that work fine.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-mods-neoforge-1201-blockiert",
       "title": "Forge mods in a NeoForge instance for 1.20.1 blocked the start",
       "detail": "NeoForge for Minecraft 1.20.1 loads most Forge mods of that version. The check still called them unsuitable and did not let the game start.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datenpaket-von-hand-geloescht",
       "title": "A data pack placed by hand could be deleted by the launcher",
       "detail": "If the same data pack had already been placed in a world by hand and was then assigned to that world in the launcher, the launcher took the existing file for its own. Switching the pack off or removing it then deleted that file too.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-loader-dateien-fehlen",
       "title": "\"Repair\" did not help when files produced by the mod loader were missing",
       "detail": "Forge and NeoForge produce files of their own during installation, such as a patched Minecraft client. If one of them was missing, for example after a virus scanner, the start reported missing libraries and pointed to \"Repair\". The repair did not check exactly those files, though, reported everything as fine, and the start failed again.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neoforge-1201-jeder-start-neu",
       "title": "NeoForge for Minecraft 1.20.1 was set up again before every start",
       "detail": "The launcher did not recognise an already installed NeoForge version for 1.20.1, because it is stored under a Forge name. The whole installation therefore ran again before every start and every repair, which could delay the start by minutes. If a Forge and a NeoForge instance happened to have the same build number, they overwrote each other's version file.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fabric-profil-fehlt-start-unmoeglich",
       "title": "If the Fabric or Quilt profile was missing, the instance no longer started",
       "detail": "If the first setup of Fabric or Quilt had failed or the versions folder had been cleaned up, the launcher did not fetch the profile again on start, as it does for Forge. The start stopped with \"Minecraft version is unknown\".",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-installiert-forge-unsichtbar",
       "title": "The repair reinstalled Forge or NeoForge invisibly",
       "detail": "If the version file of Forge or NeoForge was missing, the reinstall inside the repair ran without any progress and without a way to cancel, often for several minutes. Afterwards the repair reported the mod loader as present, as if nothing had happened.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-abbruch-trifft-spielstart",
       "title": "A cancelled task could cancel a running game start along with it",
       "detail": "If a game start and a setup or repair needed the same Forge installation at the same time and the setup was cancelled, the game start stopped as well and reported \"Cancelled\", although nobody had cancelled it.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "forge-fuer-jede-instanz-neu",
       "title": "Forge and NeoForge were installed again for every new instance",
       "detail": "Even if another instance had already installed the same Forge or NeoForge version, creating a new instance ran the whole installation once more, often for several minutes. If the other instance was running at the time, the setup could fail on Windows over locked files.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neoforge-beta-als-empfohlen",
       "title": "NeoForge suggested a beta version as recommended",
       "detail": "The recommended NeoForge version was simply the newest one, even if it was a beta while stable versions were available. New instances then got a beta without a word. The order of the versions was not sorted by number either.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "wiederherstellung-loescht-originale",
       "title": "A failed restore could delete the current worlds",
       "detail": "If the launcher could not set a folder aside while restoring a backup, for example because Explorer or a virus scanner was inside it, it was meant to roll everything back. Instead it deleted the original folders still in place, as if they were new, and still reported that the previous state was back. The automatic safety copy taken before the restore was kept.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "leere-sicherungen-verdraengen-echte",
       "title": "Empty backups counted as successful and pushed out real ones",
       "detail": "An instance without worlds of its own, for example one only played on servers, produced an empty backup that was reported as successful and could not be restored later. With automatic backups after playing, such empty backups pushed out the older ones that really held the worlds after a few sessions.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beschaedigte-instanzdatei-wird-vanilla",
       "title": "A damaged instance file turned the instance into an empty vanilla instance",
       "detail": "If an instance's file was damaged, for example after a power cut, the launcher set it aside and showed an unnamed instance with vanilla and the newest Minecraft version instead. Clicking \"Play\" then started that version with the existing worlds, which Minecraft may convert to the new version on the way. Play time and where the mods came from were missing too, and \"Repair\" did not help, because it does not know the original version. It happens most often when the PC goes off hard shortly after a game ends, because that is when the launcher saves the instance.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beschaedigte-einstellungen-datenordner-weg",
       "title": "A damaged settings file reset the data folder",
       "detail": "If the settings file was damaged, the launcher started as on a fresh install, with the default data folder and the setup from the beginning. Anyone using a data folder of their own then saw no instances, although they were still there.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "verknuepfung-ueberschreibt-andere-instanz",
       "title": "A desktop shortcut could overwrite the one of another instance",
       "detail": "If two instances had the same name, the shortcut of one could replace the existing one of the other, because the launcher only told them apart by the start of their ID. On top of that the success message appeared twice when creating one.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-verwaist-bei-gesperrter-liste",
       "title": "With a locked backup list, a finished backup stayed behind invisibly",
       "detail": "If the list of backups was locked by another program at that moment, the backup failed only after packing. The finished file then stayed in the folder without showing up in the list or ever being cleaned up.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-loeschen-ohne-wirkung",
       "title": "Deleting a backup reported success without deleting anything",
       "detail": "If the list of backups was locked while deleting, the launcher did not find the backup and still reported \"Backup deleted\". The file stayed fully in place.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "abbruch-als-fehler-gemeldet",
       "title": "A cancel by the user was reported as an error",
       "detail": "Cancelling a backup, an export or a restore yourself showed a red error message such as \"Backup failed\", as if something had gone wrong.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "duplizieren-hinterlaesst-kopie",
       "title": "A failed duplicate could leave an invisible copy behind",
       "detail": "If the new instance could not be saved after copying, for example because of a locked file, the fully copied folder stayed behind without showing up in the list. It took up disk space and was never cleaned up.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-fehler-als-leer",
       "title": "If the worlds could not be read, it said \"No worlds yet\"",
       "detail": "If listing the worlds of an instance failed, the \"Worlds\" tab showed the same view as for an instance without worlds instead of naming the error.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "sicherung-geloeschter-instanz",
       "title": "Backups of deleted instances could neither be restored nor opened",
       "detail": "Backups of a deleted instance stayed in the list, with the buttons to restore them and to open their folder. Both failed with \"Instance does not exist\".",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "export-datei-gleichen-namens-fehlt",
       "title": "A file with the same name could be missing from a modpack export",
       "detail": "If a file of your own, for example a data pack, had the same file name as a resource pack from Modrinth, the export left it out, because it compared only the name and not the folder. It was missing from the finished modpack without any notice.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "bat-befehl-spawn-einval",
       "title": "A .bat or .cmd file as pre-launch command or wrapper failed",
       "detail": "On Windows the system refuses to start .bat and .cmd files directly since a security change. Such a script as pre-launch command or wrapper therefore stopped the game start with the cryptic message \"spawn EINVAL\".",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "stopp-uebernommenes-spiel-gibt-frei",
       "title": "\"Stop\" on a game from an earlier session freed the instance while it kept running",
       "detail": "If Minecraft was still running when the launcher restarted, the instance did show \"Running\", but clicking \"Stop\" only removed the entry. The game kept running, the instance counted as free, and a second start on the same world was possible.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "neustart-pc-instanz-gesperrt",
       "title": "After restarting the PC an instance could be locked for up to 18 hours",
       "detail": "If the PC went off while Minecraft was running, the launcher took any other program with the same process number for the old game on its next start. The instance then reported \"Minecraft is still running from an earlier session\" and could not be started.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "spielzeit-ohne-launcher-verloren",
       "title": "Play time was lost if the game ended while the launcher was closed",
       "detail": "If Minecraft outlived the launcher, for example after a launcher crash or update, and ended before it was running again, that session was never counted. The instance's play time then lacked it without any notice.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "startpruefung-falsches-java",
       "title": "The pre-launch check showed a different Java than the launch used",
       "detail": "With automatic Java management the overview before launch showed an installed, newer Java, while the launch itself downloaded and used the matching one. If Java was missing entirely or a custom path still needed approval, it said \"Loading\" for good, although nothing was loading.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "log-zeigt-alte-sitzung",
       "title": "The log of a new start began with the lines of the previous one",
       "detail": "After a crash and a new start the live log first showed the old crash and only below it the new session. Whether the game had crashed again could not be told at a glance.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "apostroph-in-befehlen",
       "title": "An apostrophe in paths or arguments broke the command apart",
       "detail": "A single apostrophe, for example in \"C:\\Users\\O'Brien\\...\" as pre-launch command or in a Java argument, split the value in two at that point. Two apostrophes in different parts even swallowed the text in between.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "spielzeit-zaehlt-standby",
       "title": "Standby and hibernation counted as play time",
       "detail": "If a laptop went into standby with the game open, all the time until it woke up counted as played. A night in standby turned into an eight-hour session that way.",
-      "state": "fixing",
-      "since": "2026-10-06"
+      "state": "fixed",
+      "since": "2026-10-06",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "beenden-waehrend-reparatur-mod-weg",
       "title": "Closing the launcher during a repair could make a mod disappear",
       "detail": "A repair briefly sets a damaged mod aside while it downloads it again. If the launcher was closed or crashed at exactly that moment, the mod stayed behind under another name, was missing in the game and vanished from the list on the next scan. The launcher also did not ask on closing whether tasks were still running.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-laedt-neueste-version",
       "title": "The repair replaced a mod with the newest instead of the installed version",
       "detail": "If a mod was missing or damaged, the repair downloaded the newest matching version, even if an older one had been installed on purpose. The list still showed the old version afterwards. A mod that was switched off got switched on again in the process, and cancelling in the middle of a repair could lose the details of mods already replaced.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "reparatur-ressourcenpakete",
       "title": "The repair could not fix resource packs, shaders or data packs",
       "detail": "In instances with a mod loader the repair never found a matching version for damaged resource packs, shaders and data packs, and reported them as incompatible.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-laedt-nicht-unsichtbar",
       "title": "If the interface could not load, an invisible launcher stayed behind",
       "detail": "If a file of the interface was missing, for example because a virus scanner removed it, an error message appeared. The launcher then kept running invisibly, and every new start only showed an empty window until it was ended in the Task Manager.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-neulade-schleife",
       "title": "An interface that kept crashing reloaded endlessly",
       "detail": "If the interface crashed while loading, for example because of a graphics driver, the launcher reloaded it right away, without any limit. The window then flickered for good, and an error report was created every time.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "aufnahmetaste-still",
       "title": "The recording key stayed silent on an error",
       "detail": "If a recording could not start, for example because the recordings folder was not writable, pressing the key simply did nothing. If the recording covered the whole screen because the game window was not found, the notice did not say so.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "alle-beheben-loescht-mods",
       "title": "\"Fix all automatically\" could delete mods placed by hand",
       "detail": "If two mods placed by hand had the same name, the check suggested looking at it yourself, because they can also be two different mods. \"Fix all automatically\" still deleted one of them. On top of that, fixing stopped as soon as a problem had already been solved by an earlier fix.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "update-pruefung-fehler-verschwiegen",
       "title": "Failed update checks showed up as \"All up to date\"",
       "detail": "If a mod could not be checked for updates, for example because of a missing CurseForge key or because Modrinth refused too many requests, the launcher still showed \"All up to date\". Updates were missed that way without any notice.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "welten-auswahl-geloeschte-welt",
       "title": "A deleted world blocked the world selection of a data pack",
       "detail": "If a world a data pack was assigned to had been deleted meanwhile, the selection could no longer be saved. The message named the deleted world, which could not be unticked.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "versionswahl-zu-streng",
       "title": "\"Choose version\" showed matching versions as unsuitable",
       "detail": "The version picker of a mod required exactly the same Minecraft version and showed a version for 1.21 in an instance with 1.21.1 as unsuitable, although the install had picked it itself. For mods that were switched off the installed version was not marked.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "version-waehlen-paket-abgewaehlt",
       "title": "After \"Choose version\" a resource pack or shader was deselected in the game",
       "detail": "If a selected resource pack or shader was swapped for another version through \"Choose version\", the game still had the old file name. The pack was switched off without notice on the next start.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "datei-hinzufuegen-meldet-fehler",
       "title": "\"Add file\" reported an error although the file was already copied",
       "detail": "If Modrinth recognised an added file but loading its details failed, \"Import failed\" appeared. The file was in the folder anyway and showed up later as an unknown mod. The button was also active while the game was running.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "umschalten-gesperrte-datei",
       "title": "Switching on and off failed on briefly locked files",
       "detail": "If a virus scanner briefly held a mod open, switching it on or off failed right away with a technical message that contained the Windows user name. Other actions try again a moment later in that case.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "download-nicht-abbrechbar",
       "title": "Downloads during install and update could not be cancelled",
       "detail": "\"Cancel\" waited during an install or an update until the file being downloaded was finished. With a stalled connection that could take several minutes. If the connection dropped, an English technical message appeared.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "entdecken-modpacks-gefiltert",
       "title": "\"Discover\" showed modpacks only for the version of the first instance",
       "detail": "Modpacks bring their own instance, but were filtered by the Minecraft version and mod loader of the instance chosen at the moment. Most modpacks were missing from the first page that way. Without any instance modpacks could not be installed at all, although the notice promised it.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "entdecken-installieren-bei-laufendem-spiel",
       "title": "Install buttons were active while the game was running",
       "detail": "In \"Discover\" and in the project window \"Install\" stayed active while the target instance was running, and only failed after the click. In the mods tab the buttons vanished without explanation instead.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "startbildschirm-alte-versionen",
       "title": "The custom start screen was never activated on Minecraft 1.6 to 1.12",
       "detail": "Minecraft before 1.13 lists resource packs under a different name than newer versions. The custom start screen was created there, but never switched on.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "anmeldefehler-bei-einrichtung-unsichtbar",
       "title": "Sign-in errors during the first setup were not shown",
       "detail": "If signing in with Microsoft failed during the first setup, the sign-in window simply went back without an error message. Success messages were missing there too. Shortcuts like Ctrl+N worked during the setup and opened windows unexpectedly afterwards.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "snapshot-einstellung-ohne-wirkung",
       "title": "The setting \"Show snapshots in the version list\" had no effect",
       "detail": "The wizard for new instances always started without snapshots, whatever was chosen in the settings.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "oberflaeche-kleinere-anzeigefehler",
       "title": "Several displays said something other than what actually applied",
       "detail": "The home page showed \"STARTING...\" while an instance was only being set up, and its small play button stayed active. \"Restore\" was active for running instances and only failed after the confirmation. Many failed tasks hid a new, running one. Recordings and version lists that could not be loaded looked empty. Hyphens vanished from descriptions, and window widths below 640 became 854 without notice.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "fehlerbericht-ip-hinweis-falsch",
       "title": "The notice on error reports promised the IP address would not be stored",
       "detail": "Anyone who allows error reports also sends them to the Launch Gabi server, and it stores the IP address with every report. The notice said the opposite and did not name the recipients. On top of that, names of instances and worlds as well as paths outside the user folder could appear in reports.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "ordnerimport-verknuepfungskette",
       "title": "A folder import could copy outside files through chained links",
       "detail": "If an imported folder contained a link that pointed outside through a second link, the import on Windows without link permission copied the files at the target along, for example from your own Documents folder. They ended up in the instance and later in backups and exports.",
-      "state": "fixing",
-      "since": "2026-10-08"
+      "state": "fixed",
+      "since": "2026-10-08",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "linux-kein-menueeintrag",
       "title": "On Linux there is no entry in the application menu, and the icon in the panel disappears after every update",
       "detail": "On Linux, Launch Gabi could only be started by opening the AppImage file itself, because the launcher created no entry in the application menu. On top of that, the file carries the version number in its name. Every update deletes it and puts it back under a new name, so an icon pinned to the panel disappeared after every update.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-20",
       "platforms": [
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.23"
     },
     {
       "id": "linux-verknuepfung-temporaerer-pfad",
       "title": "On Linux, desktop shortcuts to instances did not start",
       "detail": "A shortcut or start script (start.sh) for an instance pointed on Linux to a folder that only exists while the launcher is running. Once the launcher was closed, clicking it did nothing.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-20",
       "platforms": [
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-anmeldung-vor-zustimmung",
       "title": "The Backups page signed in to the cloud before you had accepted the note",
       "detail": "Just opening Backups with a Microsoft account made the launcher confirm the sign-in with Mojang and sign in to the Launch Gabi cloud with the Minecraft name. That created an entry for the account there, even if you never wanted to use cloud backups and had not seen the note about them yet. Nothing was uploaded.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-herunterladen-falsches-ziel",
       "title": "When downloading a cloud backup, an unrelated instance with the same name was preselected",
       "detail": "If an instance on this PC happened to have the same name as the one in the cloud backup, the launcher suggested restoring the backup into it without comparing the Minecraft version and mod loader. A choice already made, \"Create as a new instance\", could also jump back on its own. If the instance was running, the message about it only came after the whole backup had been downloaded.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-webseite-ordner-fehlen",
       "title": "A backup uploaded on cloud.launchgabi.com could clear away worlds and settings when restored",
       "detail": "Backups uploaded through the website carry no list of their folders. The launcher therefore restored them as if they held worlds and settings: it moved those two folders of the instance aside but only unpacked what really sat under those names in the archive. If the archive held something else, worlds and settings were missing afterwards. The automatic safety copy taken before still had them.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "cloud-downloads-sammeln-sich",
       "title": "Downloaded cloud backups stayed on the PC forever",
       "detail": "Every download put a full copy of the cloud backup into the backups of the instance. Unlike automatic backups, these copies were never cleaned up.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "instanz-loeschen-verschwindet",
       "title": "After a failed delete, the instance vanished from the list while its worlds stayed behind",
       "detail": "If another program held a file of the instance while deleting it, the file with the settings of the instance was often already gone. The launcher rightly reported that deleting did not fully work, but then no longer showed the instance at all. A second attempt was impossible that way, and worlds and mods stayed invisible on the disk.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     },
     {
       "id": "uebernommenes-spiel-fremde-pid",
       "title": "An instance could get stuck as \"still running from an earlier session\"",
       "detail": "If a game was still running when the launcher restarted, the launcher remembered it by its process number. If Windows handed that number to another program after the game ended, the instance kept counting as running until that program ended. It could not be started meanwhile, and launcher updates waited too. \"Stop\" lifted the block.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.23"
     }
   ];
   var ISSUE_LABEL_EN = {
