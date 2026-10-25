@@ -194,17 +194,24 @@
 
   <h3>Empfänger und Übermittlung</h3>
   <p>
-    Die Berichte werden über eine sogenannte Webhook-Schnittstelle an einen Kanal auf
-    der Plattform Discord gesendet. Anbieter für Nutzer im Europäischen
-    Wirtschaftsraum ist die Discord Netherlands B.V., Niederlande, ein Unternehmen der
-    Discord Inc. mit Sitz in den Vereinigten Staaten. Eine Übermittlung in die USA
-    findet statt.
+    <strong>Ab Version 1.0.23</strong> sendet Launch Gabi die Berichte an unseren
+    eigenen Server unter <em>admin.launchgabi.com</em>, der unter Punkt 4 genannt ist.
+    Dort wird Ihre IP-Adresse nicht gespeichert: Der Webserver führt für diese Adresse
+    kein Zugriffsprotokoll, und der Dienst zählt eingehende Berichte je IP-Adresse nur
+    kurz im Arbeitsspeicher, um Missbrauch zu begrenzen. Von dort wird der Bericht ohne
+    Ihre IP-Adresse an einen Kanal auf der Plattform Discord weitergeleitet, damit wir
+    ihn sehen.
   </p>
   <p>
-    <strong>Hinweis zur IP-Adresse:</strong> Wir speichern Ihre IP-Adresse nicht und
-    erhalten sie auch nicht. Technisch unvermeidbar ist jedoch, dass Ihr Rechner beim
-    Senden eine Verbindung zu den Servern von Discord aufbaut und Discord dabei Ihre
-    IP-Adresse verarbeitet. Im Bericht selbst ist sie nicht enthalten.
+    <strong>Versionen bis 1.0.22</strong> senden die Berichte noch über eine sogenannte
+    Webhook-Schnittstelle direkt an diesen Kanal. Dabei baut Ihr Rechner eine Verbindung
+    zu den Servern von Discord auf, und Discord verarbeitet Ihre IP-Adresse. Im Bericht
+    selbst ist sie nicht enthalten.
+  </p>
+  <p>
+    Anbieter von Discord für Nutzer im Europäischen Wirtschaftsraum ist die Discord
+    Netherlands B.V., Niederlande, ein Unternehmen der Discord Inc. mit Sitz in den
+    Vereinigten Staaten. Eine Übermittlung in die USA findet statt.
   </p>
   <p>
     Die Datenschutzerklärung von Discord finden Sie unter
@@ -369,7 +376,7 @@
 
   <h2>14. Stand</h2>
   <p>
-    Diese Datenschutzerklärung hat den Stand 20. Oktober 2026 und
+    Diese Datenschutzerklärung hat den Stand 25. Oktober 2026 und
     wird angepasst, sobald sich die Verarbeitung ändert.
   </p>
 
