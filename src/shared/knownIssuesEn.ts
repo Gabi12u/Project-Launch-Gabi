@@ -3090,6 +3090,35 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'process number. If Windows handed that number to another program after the game ended, the ' +
       'instance kept counting as running until that program ended. It could not be started meanwhile, ' +
       'and launcher updates waited too. "Stop" lifted the block.'
+  },
+  'anmeldung-xbox-ausfall-kein-start': {
+    title: 'If Xbox Live briefly failed while renewing the sign-in, the game would not start at all',
+    detail:
+      'When the sign-in has expired, the launcher renews it in several steps before starting. If ' +
+      'Microsoft did not answer, the game still started with the stored session, so at least ' +
+      'singleplayer worked. If only the later steps at Xbox Live or Minecraft did not answer, the ' +
+      'start was aborted with a technical error message instead.'
+  },
+  'bat-wrapper-sonderzeichen': {
+    title: 'A .bat or .cmd script as a wrapper could alter paths and arguments',
+    detail:
+      'A script used as a wrapper or as a command before launch runs through cmd.exe on Windows. If a ' +
+      'path or an argument contained a percent sign, a quote, a ^ or a !, it reached Java changed. A ' +
+      'folder name like "100%" could prevent the start that way.'
+  },
+  'mrpack-updates-fehlen': {
+    title: 'After importing a Modrinth modpack, updates of its mods that were already out were not found',
+    detail:
+      'When importing an .mrpack file, the launcher did not keep track of when the bundled mod versions ' +
+      'were released. The update check therefore treated everything published before the day of the ' +
+      'import as up to date and only reported updates released afterwards.'
+  },
+  'curseforge-import-pakete-in-mods': {
+    title: 'When importing a CurseForge modpack, resource packs and shaders could end up in the mods folder',
+    detail:
+      'Whether a file from a CurseForge modpack is a mod, a resource pack or a shader, the launcher asks ' +
+      'CurseForge. If that one request failed, for example because CurseForge was overloaded, every file ' +
+      'landed in the mods folder without a word. Resource packs and shaders then had no effect in game.'
   }
 }
 

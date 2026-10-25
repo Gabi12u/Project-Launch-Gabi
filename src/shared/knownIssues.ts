@@ -4926,6 +4926,49 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-10-25',
     fixedIn: '1.0.23'
+  },
+  {
+    id: 'anmeldung-xbox-ausfall-kein-start',
+    title: 'Fiel Xbox Live beim Erneuern der Anmeldung kurz aus, ließ sich das Spiel gar nicht starten',
+    detail:
+      'Ist die Anmeldung abgelaufen, erneuert der Launcher sie vor dem Start in mehreren Schritten. ' +
+      'Antwortete dabei Microsoft nicht, startete das Spiel trotzdem mit der gespeicherten Sitzung, ' +
+      'sodass wenigstens Einzelspieler ging. Antworteten erst die späteren Schritte bei Xbox Live ' +
+      'oder Minecraft nicht, brach der Start dagegen mit einer technischen Fehlermeldung ab.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'bat-wrapper-sonderzeichen',
+    title: 'Ein .bat- oder .cmd-Skript als Wrapper konnte Pfade und Argumente verfälschen',
+    detail:
+      'Ein Skript als Wrapper oder als Befehl vor dem Start läuft unter Windows über cmd.exe. ' +
+      'Enthielt ein Pfad oder ein Argument ein Prozentzeichen, ein Anführungszeichen, ein ^ oder ein ' +
+      '!, kam es bei Java verändert an. Ein Ordnername wie „100%“ konnte so den Start verhindern.',
+    state: 'fixing',
+    since: '2026-10-25',
+    platforms: ['Windows']
+  },
+  {
+    id: 'mrpack-updates-fehlen',
+    title: 'Nach dem Import eines Modrinth-Modpacks wurden schon erschienene Updates seiner Mods nicht gefunden',
+    detail:
+      'Beim Import einer .mrpack-Datei merkte sich der Launcher nicht, wann die mitgelieferten ' +
+      'Versionen der Mods erschienen waren. Die Update-Prüfung hielt deshalb alles für aktuell, was ' +
+      'vor dem Tag des Imports veröffentlicht wurde, und meldete erst Updates, die danach erschienen.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'curseforge-import-pakete-in-mods',
+    title: 'Beim Import eines CurseForge-Modpacks konnten Resourcepacks und Shader im Mod-Ordner landen',
+    detail:
+      'Ob eine Datei aus einem CurseForge-Modpack ein Mod, ein Resourcepack oder ein Shader ist, fragt ' +
+      'der Launcher bei CurseForge nach. Scheiterte diese eine Abfrage, etwa weil CurseForge gerade ' +
+      'überlastet war, landeten alle Dateien ohne Hinweis im Mod-Ordner. Resourcepacks und Shader ' +
+      'wirkten dann im Spiel nicht.',
+    state: 'fixing',
+    since: '2026-10-25'
   }
 ]
 

@@ -4418,6 +4418,37 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-10-25",
       "fixedIn": "1.0.23"
+    },
+    {
+      "id": "anmeldung-xbox-ausfall-kein-start",
+      "title": "Fiel Xbox Live beim Erneuern der Anmeldung kurz aus, ließ sich das Spiel gar nicht starten",
+      "detail": "Ist die Anmeldung abgelaufen, erneuert der Launcher sie vor dem Start in mehreren Schritten. Antwortete dabei Microsoft nicht, startete das Spiel trotzdem mit der gespeicherten Sitzung, sodass wenigstens Einzelspieler ging. Antworteten erst die späteren Schritte bei Xbox Live oder Minecraft nicht, brach der Start dagegen mit einer technischen Fehlermeldung ab.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "bat-wrapper-sonderzeichen",
+      "title": "Ein .bat- oder .cmd-Skript als Wrapper konnte Pfade und Argumente verfälschen",
+      "detail": "Ein Skript als Wrapper oder als Befehl vor dem Start läuft unter Windows über cmd.exe. Enthielt ein Pfad oder ein Argument ein Prozentzeichen, ein Anführungszeichen, ein ^ oder ein !, kam es bei Java verändert an. Ein Ordnername wie „100%“ konnte so den Start verhindern.",
+      "state": "fixing",
+      "since": "2026-10-25",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "mrpack-updates-fehlen",
+      "title": "Nach dem Import eines Modrinth-Modpacks wurden schon erschienene Updates seiner Mods nicht gefunden",
+      "detail": "Beim Import einer .mrpack-Datei merkte sich der Launcher nicht, wann die mitgelieferten Versionen der Mods erschienen waren. Die Update-Prüfung hielt deshalb alles für aktuell, was vor dem Tag des Imports veröffentlicht wurde, und meldete erst Updates, die danach erschienen.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "curseforge-import-pakete-in-mods",
+      "title": "Beim Import eines CurseForge-Modpacks konnten Resourcepacks und Shader im Mod-Ordner landen",
+      "detail": "Ob eine Datei aus einem CurseForge-Modpack ein Mod, ein Resourcepack oder ein Shader ist, fragt der Launcher bei CurseForge nach. Scheiterte diese eine Abfrage, etwa weil CurseForge gerade überlastet war, landeten alle Dateien ohne Hinweis im Mod-Ordner. Resourcepacks und Shader wirkten dann im Spiel nicht.",
+      "state": "fixing",
+      "since": "2026-10-25"
     }
   ];
   var ISSUE_LABEL = {
@@ -7784,6 +7815,37 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-10-25",
       "fixedIn": "1.0.23"
+    },
+    {
+      "id": "anmeldung-xbox-ausfall-kein-start",
+      "title": "If Xbox Live briefly failed while renewing the sign-in, the game would not start at all",
+      "detail": "When the sign-in has expired, the launcher renews it in several steps before starting. If Microsoft did not answer, the game still started with the stored session, so at least singleplayer worked. If only the later steps at Xbox Live or Minecraft did not answer, the start was aborted with a technical error message instead.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "bat-wrapper-sonderzeichen",
+      "title": "A .bat or .cmd script as a wrapper could alter paths and arguments",
+      "detail": "A script used as a wrapper or as a command before launch runs through cmd.exe on Windows. If a path or an argument contained a percent sign, a quote, a ^ or a !, it reached Java changed. A folder name like \"100%\" could prevent the start that way.",
+      "state": "fixing",
+      "since": "2026-10-25",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "mrpack-updates-fehlen",
+      "title": "After importing a Modrinth modpack, updates of its mods that were already out were not found",
+      "detail": "When importing an .mrpack file, the launcher did not keep track of when the bundled mod versions were released. The update check therefore treated everything published before the day of the import as up to date and only reported updates released afterwards.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "curseforge-import-pakete-in-mods",
+      "title": "When importing a CurseForge modpack, resource packs and shaders could end up in the mods folder",
+      "detail": "Whether a file from a CurseForge modpack is a mod, a resource pack or a shader, the launcher asks CurseForge. If that one request failed, for example because CurseForge was overloaded, every file landed in the mods folder without a word. Resource packs and shaders then had no effect in game.",
+      "state": "fixing",
+      "since": "2026-10-25"
     }
   ];
   var ISSUE_LABEL_EN = {
