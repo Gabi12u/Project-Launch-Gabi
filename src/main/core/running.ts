@@ -5,7 +5,7 @@ import { statSync } from 'node:fs'
 import { uptime } from 'node:os'
 import { paths } from '../paths'
 import type { LaunchStatus } from '@shared/types'
-import { readJson, writeJsonAtomic } from '../store'
+import { readJsonResult, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 
 const logger = log('running')
@@ -55,6 +55,15 @@ function stateFile(): string {
 }
 
 /**
+ * Environment for `ps`. Its date output follows the system language, and a
+ * German "Sa Okt 24 10:00:00 2026" does not parse: the start time then read
+ * as unknown, a game from an earlier session could not be stopped, and its
+ * guard against a second start on the same world was dropped while it still
+ * ran.
+ */
+const C_LOCALE = { ...process.env, LC_ALL: 'C', LANG: 'C' }
+
+/**
  * File name of the program running under a pid, or null when that cannot be
  * told (gone, or the lookup failed).
  */
@@ -69,7 +78,7 @@ function processImage(pid: number): string | null {
       const row = /^"([^"]+)","(\d+)"/m.exec(out)
       return row && Number(row[2]) === pid ? row[1] : null
     }
-    const out = execFileSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8', timeout: 5000 }).trim()
+    const out = execFileSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8', timeout: 5000, env: C_LOCALE }).trim()
     return out ? basename(out) : null
   } catch {
     return null
@@ -124,7 +133,7 @@ function processStartTime(pid: number): Promise<number | null> {
         (err, out) => done(err, out)
       )
     } else {
-      execFile('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000 }, (err, out) => done(err, out))
+      execFile('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', timeout: 5000, env: C_LOCALE }, (err, out) => done(err, out))
     }
   })
 }
@@ -214,7 +223,15 @@ const ADOPTED_MAX_AGE_MS = 18 * 60 * 60 * 1000
  * user can clear one from the UI through the normal stop button.
  */
 export function adoptRunningFromDisk(): void {
-  const stored = readJson<AdoptedGame[]>(stateFile(), [])
+  const read = readJsonResult<AdoptedGame[]>(stateFile())
+  // Held by a virus scanner for a moment: left alone. Read as empty, the
+  // `persist()` below wrote that over the real file, and a game still running
+  // from the last session lost its guard against a second start.
+  if (!read.ok && read.reason === 'unreadable') {
+    logger.warn('Laufende Spiele der letzten Sitzung nicht lesbar, die Datei bleibt unangetastet')
+    return
+  }
+  const stored = read.ok ? read.value : []
   if (!Array.isArray(stored)) return
 
   adopted.clear()
@@ -346,9 +363,59 @@ const ADOPTED_CHECK_INTERVAL_MS = 5_000
 let adoptedCheckTimer: NodeJS.Timeout | null = null
 
 /** Starts the sweep if there is now something for it to watch. */
+/** How often an adopted game's pid is checked for still being the same program. */
+const ADOPTED_IDENTITY_INTERVAL_MS = 60_000
+let lastIdentityCheck = 0
+let identityCheckRunning = false
+
+/**
+ * Drops adopted games whose pid now belongs to another program.
+ *
+ * `alive()` alone cannot tell, and a pid Windows had handed to an unrelated
+ * process kept the instance "still running from an earlier session", unable
+ * to start and holding back launcher updates, until that process ended. Only
+ * a definite answer drops a record; a lookup that fails keeps it.
+ */
+async function dropRecycledPids(): Promise<void> {
+  if (identityCheckRunning) return
+  identityCheckRunning = true
+  try {
+    let removed = false
+    for (const game of [...adopted.values()]) {
+      let recycled = isSameProgram(game) === false
+      if (!recycled) {
+        const startedAt = await processStartTime(game.pid)
+        recycled = startedAt !== null && Math.abs(startedAt - game.startedAt) > 60_000
+      }
+      // Re-checked after the wait: the game may have ended or been stopped.
+      if (!recycled || adopted.get(game.instanceId)?.pid !== game.pid) continue
+      logger.info(`PID ${game.pid} von ${game.instanceId} gehört inzwischen einem anderen Programm, Eintrag verworfen`)
+      adopted.delete(game.instanceId)
+      removed = true
+      const endedAt = lastSignOfLife(game)
+      if (endedAt !== null) adoptedEnded(game, endedAt)
+    }
+    if (removed) {
+      persist()
+      stopAdoptedCheckIfIdle()
+      announce()
+    }
+  } catch (err) {
+    logger.warn('Prüfung übernommener Spiele fehlgeschlagen:', err)
+  } finally {
+    identityCheckRunning = false
+  }
+}
+
 function ensureAdoptedCheck(): void {
   if (adoptedCheckTimer || adopted.size === 0) return
-  adoptedCheckTimer = setInterval(() => listAdopted(), ADOPTED_CHECK_INTERVAL_MS)
+  adoptedCheckTimer = setInterval(() => {
+    listAdopted()
+    if (adopted.size > 0 && Date.now() - lastIdentityCheck > ADOPTED_IDENTITY_INTERVAL_MS) {
+      lastIdentityCheck = Date.now()
+      void dropRecycledPids()
+    }
+  }, ADOPTED_CHECK_INTERVAL_MS)
   // Must never be the reason the process stays alive.
   adoptedCheckTimer.unref()
 }

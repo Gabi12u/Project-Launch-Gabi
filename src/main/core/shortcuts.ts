@@ -6,7 +6,7 @@ import { log } from '../logger'
 import { getInstance } from './instances'
 import { icoFromDataUrls } from './ico'
 import { tr } from '@shared/i18n'
-import { appIconPng, appImagePath } from './linuxDesktop'
+import { appIconPng, appImagePath, execArgument } from './linuxDesktop'
 
 const logger = log('shortcuts')
 
@@ -125,6 +125,15 @@ function joinArgs(args: string[]): string {
 }
 
 /**
+ * A command line for `sh`, every part in single quotes. Plain double quotes
+ * left `$`, backticks and backslashes in a path to the shell, which expanded
+ * them or broke the line.
+ */
+function shellCommand(parts: string[]): string {
+  return parts.map((part) => `'${part.replace(/'/g, `'\\''`)}'`).join(' ')
+}
+
+/**
  * Falls back to the Launch Gabi application icon.
  *
  * The first candidate is the packaged one — `extraResources` in
@@ -237,7 +246,9 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
       'Type=Application',
       `Name=${fileName}`,
       `Comment=${singleLine(instance.name)}: Minecraft ${instance.mcVersion}`,
-      `Exec="${target}" ${args}`,
+      // Quoted by the rules of the desktop entry format: a path holding `%`,
+      // `$`, a backtick or a quote broke the line with plain double quotes.
+      `Exec=${[target, ...baseArgs, `--launch=${instanceId}`].map(execArgument).join(' ')}`,
       ...(iconFile ? [`Icon=${iconFile}`] : []),
       'Terminal=false',
       'Categories=Game;'
@@ -250,7 +261,7 @@ export function createDesktopShortcut(instanceId: string, iconImages: string[] =
 
   // macOS: a small shell script is the closest thing to a one-click shortcut.
   const scriptPath = resolveLinkPath(desktop, fileName, '.command', instanceId)
-  writeFileSync(scriptPath, `#!/bin/sh\n"${target}" ${args}\n`, { mode: 0o755 })
+  writeFileSync(scriptPath, `#!/bin/sh\n${shellCommand([target, ...baseArgs, `--launch=${instanceId}`])}\n`, { mode: 0o755 })
   logger.info(`Startskript erstellt: ${scriptPath}`)
   return scriptPath
 }
@@ -358,7 +369,7 @@ export function writeLaunchScript(instanceId: string): string {
   const file = join(dir, 'start.sh')
   writeFileSync(
     file,
-    `#!/bin/sh\n# Startet ${singleLine(instance.name)} direkt\n"${target}" ${joinArgs([...baseArgs, `--launch=${instanceId}`])}\n`,
+    `#!/bin/sh\n# Startet ${singleLine(instance.name)} direkt\n${shellCommand([target, ...baseArgs, `--launch=${instanceId}`])}\n`,
     { mode: 0o755 }
   )
   return file

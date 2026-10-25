@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { basename, isAbsolute, join } from 'node:path'
 import { getMainWindow } from '../events'
 import { log } from '../logger'
-import { readJson, writeJsonAtomic } from '../store'
+import { readJsonResult, writeJsonAtomic } from '../store'
 import { tr } from '@shared/i18n'
 
 const logger = log('commandApproval')
@@ -149,8 +149,13 @@ function loadApprovals(): Record<string, number> {
     // A file holding valid JSON of the wrong shape (null, a number) came back
     // as is, and the `in` checks below then threw on every launch of an
     // instance with a Java path, wrapper or pre-launch command.
-    const raw = readJson<unknown>(approvalsFile(), {})
-    cache = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, number>) : {}
+    const read = readJsonResult<unknown>(approvalsFile())
+    const raw = read.ok ? read.value : {}
+    const approvals = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, number>) : {}
+    // Not kept when the file was only held by another program for a moment:
+    // cached as empty, the next approval was written over every earlier one.
+    if (!read.ok && read.reason === 'unreadable') return approvals
+    cache = approvals
   }
   return cache
 }
@@ -221,6 +226,13 @@ export async function ensureApproved(
     throw new Error(tr('Start abgebrochen: der Befehl wurde nicht erlaubt.', 'Launch cancelled: the command was not allowed.'))
   }
 
+  const current = readJsonResult<unknown>(approvalsFile())
+  if (!current.ok && current.reason === 'unreadable') {
+    // Allowed for this start, but not written: a write now would replace
+    // every earlier approval the unreadable file still holds.
+    logger.warn(`Befehl für ${instanceId} (${kind}) erlaubt, aber nicht gemerkt: die Datei ist gerade gesperrt`)
+    return
+  }
   const approvals = { ...loadApprovals(), [key]: Date.now() }
   writeJsonAtomic(approvalsFile(), approvals)
   cache = approvals

@@ -4769,8 +4769,8 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'cloud-downloads-sammeln-sich',
     title: 'Heruntergeladene Cloud-Backups blieben für immer auf dem PC liegen',
     detail:
-      'Jedes Herunterladen legte eine Kopie des Cloud-Backups von bis zu 1,5 GB in die Sicherungen ' +
-      'der Instanz. Anders als automatische Sicherungen wurden diese Kopien nie aufgeräumt.',
+      'Jedes Herunterladen legte eine vollständige Kopie des Cloud-Backups in die Sicherungen der ' +
+      'Instanz. Anders als automatische Sicherungen wurden diese Kopien nie aufgeräumt.',
     state: 'fixing',
     since: '2026-10-25'
   },

@@ -88,6 +88,22 @@ export const BACKUP_TARGETS = [
 const BACKUP_TARGET_KEYS = new Set<string>(BACKUP_TARGETS.map((t) => t.key))
 
 /**
+ * The backup folders an archive really holds, judged by its top-level
+ * folders. For archives that bring no list of their own, such as a backup
+ * uploaded on the cloud website: restored as "worlds and settings" by
+ * default, those two folders were moved aside even when the archive held
+ * something else entirely, and came back empty.
+ */
+export async function foldersInArchive(file: string): Promise<string[]> {
+  const roots = new Set<string>()
+  for (const entry of await listEntriesStreaming(file)) {
+    const parts = entry.name.replace(/\\/g, '/').split('/')
+    if (parts.length > 1 && BACKUP_TARGET_KEYS.has(parts[0])) roots.add(parts[0])
+  }
+  return BACKUP_TARGETS.map((t) => t.key).filter((key) => roots.has(key))
+}
+
+/**
  * Keeps only the folder keys this feature actually knows about.
  *
  * `includes` reaches `createBackupUnlocked` straight from `instance:update`'s
@@ -104,6 +120,12 @@ function sanitizeIncludes(includes: readonly string[]): string[] {
 
 /** How many safety copies from before a repair or a restore are kept per kind. */
 const SAFETY_COPIES_KEPT = 5
+
+/**
+ * How many backups downloaded from the cloud are kept per instance. Each is
+ * a full copy of several gigabytes, and the cloud still holds the newest one.
+ */
+const CLOUD_COPIES_KEPT = 2
 
 function indexFile(instanceId: string): string {
   return join(paths.instanceBackups(instanceId), 'backups.json')
@@ -271,7 +293,24 @@ export async function addDownloadedBackup(
       copyFileSync(sourceFile, target)
       rmSync(sourceFile, { force: true })
     }
-    const includes = sanitizeIncludes(meta.includes)
+    // A backup uploaded on the website brings no folder list; the archive
+    // itself then says which folders it holds.
+    let includes = sanitizeIncludes(meta.includes)
+    try {
+      if (includes.length === 0) includes = await foldersInArchive(target)
+    } catch (err) {
+      rmSync(target, { force: true })
+      throw err
+    }
+    if (includes.length === 0) {
+      rmSync(target, { force: true })
+      throw new Error(
+        tr(
+          'Dieses Cloud-Backup enthält keinen Ordner, den der Launcher einspielen kann, etwa saves, config oder mods.',
+          'This cloud backup holds no folder the launcher can restore, such as saves, config or mods.'
+        )
+      )
+    }
     const entry: BackupEntry = {
       id: randomUUID(),
       instanceId,
@@ -281,7 +320,7 @@ export async function addDownloadedBackup(
       createdAt: Number.isFinite(meta.createdAt) ? meta.createdAt : Date.now(),
       size: statSync(target).size,
       reason: 'cloud',
-      includes: includes.length > 0 ? includes : ['saves', 'config']
+      includes
     }
     try {
       writeIndex(instanceId, [entry, ...readIndex(instanceId, true)])
@@ -289,6 +328,7 @@ export async function addDownloadedBackup(
       rmSync(target, { force: true })
       throw err
     }
+    pruneAutomatic(instanceId)
     return entry
   })
 }
@@ -549,7 +589,10 @@ function pruneAutomatic(instanceId: string): void {
     // Taken before a repair or a restore. These were never cleaned up and
     // piled up for good; the most recent few are all an undo ever needs.
     ...newestFirst('pre-repair').slice(SAFETY_COPIES_KEPT),
-    ...newestFirst('pre-restore').slice(SAFETY_COPIES_KEPT)
+    ...newestFirst('pre-restore').slice(SAFETY_COPIES_KEPT),
+    // Downloads from the cloud were never cleaned up either, each one a full
+    // copy of up to several gigabytes.
+    ...newestFirst('cloud').slice(CLOUD_COPIES_KEPT)
   ].filter((e) => !inUse.has(e.id))
 
   if (excess.length === 0) return
@@ -840,7 +883,12 @@ export async function restoreBackup(instanceId: string, backupId: string): Promi
   )
 }
 
-async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
+/**
+ * Everything that must hold before a restore may touch an instance's folders.
+ * Also asked before a cloud backup is downloaded into an instance, so a
+ * running game is said before the whole backup comes down rather than after.
+ */
+export function assertRestorable(instanceId: string): void {
   // Unlike `listBackups`/`deleteBackup`, which only need `instanceId` to stay
   // inside the backups root (see `assertBackupIdSafe`), this one genuinely
   // needs a live instance: it is about to move that instance's own game
@@ -880,6 +928,10 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
       tr('An den Mods dieser Instanz wird gerade gearbeitet. Warte, bis das abgeschlossen ist.', 'The mods of this instance are being worked on right now. Wait until that is done.')
     )
   }
+}
+
+async function restoreBackupUnlocked(instanceId: string, backupId: string): Promise<void> {
+  assertRestorable(instanceId)
 
   const entry = readIndex(instanceId).find((e) => e.id === backupId)
   if (!entry) throw new Error(tr('Sicherung nicht gefunden', 'Backup not found'))
@@ -894,7 +946,17 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
   // filters a fresh request, for the same reason: every `join(gameDir, key)`
   // and `join(parked, key)` below trusts `key` completely.
   const sanitized = entry.includes?.length ? sanitizeIncludes(entry.includes) : []
-  const includes = sanitized.length > 0 ? sanitized : ['saves', 'config']
+  // Without a usable list, the archive itself says what it holds. Assuming
+  // "worlds and settings" moved those aside even when it held neither.
+  const includes = sanitized.length > 0 ? sanitized : await foldersInArchive(archive)
+  if (includes.length === 0) {
+    throw new Error(
+      tr(
+        'Diese Sicherung enthält keinen Ordner, den der Launcher einspielen kann, etwa saves, config oder mods.',
+        'This backup holds no folder the launcher can restore, such as saves, config or mods.'
+      )
+    )
+  }
 
   // Held for the whole restore, not just the safety-copy step: the archive is
   // not opened until `extractAll` near the end.

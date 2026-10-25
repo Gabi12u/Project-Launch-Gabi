@@ -132,13 +132,19 @@ export interface CloudBackup {
 export interface CloudOverview {
   /** False without a Microsoft account; then nothing else is filled in. */
   available: boolean
+  /**
+   * True while the note on cloud backups has not been accepted. Nothing was
+   * asked of Mojang or the cloud then, so `backups` and `account` are empty.
+   */
+  consentNeeded?: boolean
   playerName?: string
   backups: CloudBackup[]
   account?: {
     usedBytes: number
     lastSeen: number | null
     deleteAfter: number | null
-    limits: { maxInstances: number; maxBackupBytes: number }
+    /** `maxAccountBytes` is shared by all cloud backups of the account together. */
+    limits: { maxInstances: number; maxBackupBytes: number; maxAccountBytes?: number }
   }
   website?: string
 }

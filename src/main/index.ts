@@ -501,7 +501,10 @@ function bootstrap(): void {
     }
     try {
       loadInstances()
-      const previousBehaviour = takeInstanceBehaviourMigration()
+      // Skipped while the settings file could not be read: the migration
+      // would compare against the defaults instead of the real setting, and
+      // rewrite instances that were never meant to change.
+      const previousBehaviour = isSettingsUnreadable() ? null : takeInstanceBehaviourMigration()
       if (previousBehaviour && migrateInstanceLaunchBehaviour(previousBehaviour)) {
         try {
           // Also writes the new global value getSettings holds in memory.

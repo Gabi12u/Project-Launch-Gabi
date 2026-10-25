@@ -423,8 +423,8 @@ export function InstanceDetailView({
             // A double click opened two save dialogs and ran two exports.
             setExporting(true)
             try {
-              const file = await window.gabi.modpacks.export(instanceId)
-              if (file) toast('success', tr('Modpack exportiert', 'Modpack exported'), file)
+              // The main process announces a finished export itself.
+              await window.gabi.modpacks.export(instanceId)
             } catch (err) {
               toastError(err, tr('Export fehlgeschlagen', 'Export failed'))
             } finally {

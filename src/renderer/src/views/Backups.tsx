@@ -26,10 +26,10 @@ const FOLDER_LABELS: Record<string, string> = {
 }
 
 /** What is waiting for the user to accept the cloud note first. */
-type Pending = { kind: 'upload'; backup: BackupEntry } | { kind: 'download'; cloud: CloudBackup }
+type Pending = { kind: 'upload'; backup: BackupEntry } | { kind: 'download'; cloud: CloudBackup } | { kind: 'setup' }
 
 export function BackupsView(): JSX.Element {
-  const { instances, tasks, settings } = useStore()
+  const { instances, tasks, settings, accounts } = useStore()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,8 +85,15 @@ export function BackupsView(): JSX.Element {
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  // Again whenever the active account changes: the panel otherwise kept
+  // showing the cloud backups of the account signed in before, and
+  // downloading or deleting then hit the wrong account.
+  const activeAccountId = accounts.find((a) => a.active)?.id
+  useEffect(() => {
     void loadCloud()
-  }, [load, loadCloud])
+  }, [loadCloud, activeAccountId])
 
   const filtered = useMemo(
     () => (filter === 'all' ? backups : backups.filter((b) => b.instanceId === filter)),
@@ -94,7 +101,13 @@ export function BackupsView(): JSX.Element {
   )
 
   const totalSize = backups.reduce((sum, b) => sum + b.size, 0)
-  const cloudReady = cloud?.available === true
+  // Includes the state before the note was accepted: offering "To the cloud"
+  // then leads to the note first, and nothing reaches the cloud before it.
+  const cloudReady = cloud?.available === true && settings.cloudBackups !== 'off'
+
+  const turnOffCloud = async (): Promise<void> => {
+    if (await saveSettings({ cloudBackups: 'off' })) await loadCloud()
+  }
 
   /* --- Cloud actions ------------------------------------------------ */
 
@@ -168,6 +181,8 @@ export function BackupsView(): JSX.Element {
         onRetry={loadCloud}
         onDownload={startDownload}
         onDelete={setDeletingCloud}
+        onSetup={() => setConsentFor({ kind: 'setup' })}
+        onTurnOff={turnOffCloud}
       />
 
       {instances.length > 1 && (
@@ -355,12 +370,14 @@ export function BackupsView(): JSX.Element {
 
       <CloudConsentModal
         open={consentFor !== null}
-        maxBackupBytes={cloud?.account?.limits.maxBackupBytes}
+        maxAccountBytes={cloud?.account?.limits.maxAccountBytes}
         onCancel={() => setConsentFor(null)}
         onAccept={async () => {
           const pending = consentFor
           setConsentFor(null)
           if (!(await saveSettings({ cloudBackups: 'on' }))) return
+          // Only now may the cloud be asked what it holds.
+          void loadCloud()
           if (pending?.kind === 'upload') void upload(pending.backup)
           if (pending?.kind === 'download') setDownloadFor(pending.cloud)
         }}
@@ -505,7 +522,9 @@ function CloudPanel({
   loading,
   onRetry,
   onDownload,
-  onDelete
+  onDelete,
+  onSetup,
+  onTurnOff
 }: {
   cloud: CloudOverview | null
   error: string | null
@@ -513,6 +532,8 @@ function CloudPanel({
   onRetry: () => Promise<void>
   onDownload: (backup: CloudBackup) => void
   onDelete: (backup: CloudBackup) => void
+  onSetup: () => void
+  onTurnOff: () => Promise<void>
 }): JSX.Element {
   const header = (
     <div className="row-between wrap gap-8">
@@ -523,19 +544,38 @@ function CloudPanel({
         </h2>
         {cloud?.available && cloud.account && (
           <span className="hint">
-            {tr(
-              `${cloud.backups.length} von ${cloud.account.limits.maxInstances} Instanzen · ${formatBytes(cloud.account.usedBytes)}`,
-              `${cloud.backups.length} of ${cloud.account.limits.maxInstances} instances · ${formatBytes(cloud.account.usedBytes)}`
-            )}
+            {cloud.account.limits.maxAccountBytes
+              ? tr(
+                  `${cloud.backups.length} von ${cloud.account.limits.maxInstances} Instanzen · ${formatBytes(cloud.account.usedBytes)} von ${formatBytes(cloud.account.limits.maxAccountBytes)}`,
+                  `${cloud.backups.length} of ${cloud.account.limits.maxInstances} instances · ${formatBytes(cloud.account.usedBytes)} of ${formatBytes(cloud.account.limits.maxAccountBytes)}`
+                )
+              : tr(
+                  `${cloud.backups.length} von ${cloud.account.limits.maxInstances} Instanzen · ${formatBytes(cloud.account.usedBytes)}`,
+                  `${cloud.backups.length} of ${cloud.account.limits.maxInstances} instances · ${formatBytes(cloud.account.usedBytes)}`
+                )}
           </span>
         )}
       </div>
-      {cloud?.available && cloud.website && (
-        <button className="btn ghost sm" onClick={() => void window.gabi.app.openExternal(cloud.website as string)}>
-          <IconExternal size={13} />
-          {tr('Im Browser öffnen', 'Open in browser')}
-        </button>
-      )}
+      <div className="row gap-8">
+        {cloud?.available && cloud.website && (
+          <button className="btn ghost sm" onClick={() => void window.gabi.app.openExternal(cloud.website as string)}>
+            <IconExternal size={13} />
+            {tr('Im Browser öffnen', 'Open in browser')}
+          </button>
+        )}
+        {cloud?.available && !cloud.consentNeeded && (
+          <button
+            className="btn ghost sm"
+            onClick={() => void onTurnOff()}
+            title={tr(
+              'Der Launcher meldet sich dann nicht mehr bei der Cloud an. Deine Cloud-Backups bleiben gespeichert, bis du sie auf cloud.launchgabi.com löschst.',
+              'The launcher then no longer signs in to the cloud. Your cloud backups stay stored until you delete them on cloud.launchgabi.com.'
+            )}
+          >
+            {tr('Ausschalten', 'Turn off')}
+          </button>
+        )}
+      </div>
     </div>
   )
 
@@ -553,7 +593,7 @@ function CloudPanel({
       <section className="card col gap-12">
         {header}
         <p className="hint" style={{ margin: 0 }}>
-          {tr(`Die Cloud ist gerade nicht erreichbar: ${error}`, `The cloud cannot be reached right now: ${error}`)}
+          {tr(`Cloud-Backups konnten nicht geladen werden: ${error}`, `Cloud backups could not be loaded: ${error}`)}
         </p>
         <div>
           <button className="btn sm" onClick={() => void onRetry()}>
@@ -574,6 +614,26 @@ function CloudPanel({
             'With a Microsoft account you can save up to three instances in the cloud and download them on every PC where you sign in with the same account. Sign in with Microsoft in the sidebar for that.'
           )}
         </p>
+      </section>
+    )
+  }
+
+  if (cloud.consentNeeded) {
+    return (
+      <section className="card col gap-12">
+        {header}
+        <p className="hint" style={{ margin: 0 }}>
+          {tr(
+            'Lege bis zu drei Instanzen in die Cloud und lade sie auf jedem PC herunter, auf dem du dich mit demselben Microsoft-Konto anmeldest. Bevor etwas an die Cloud geht, zeigt dir der Launcher einmal, was dabei gespeichert wird.',
+            'Put up to three instances into the cloud and download them on every PC where you sign in with the same Microsoft account. Before anything goes to the cloud, the launcher shows you once what is stored.'
+          )}
+        </p>
+        <div>
+          <button className="btn sm primary" onClick={onSetup}>
+            <IconCloud size={13} />
+            {tr('Cloud-Backups einrichten', 'Set up cloud backups')}
+          </button>
+        </div>
       </section>
     )
   }
@@ -642,12 +702,12 @@ function CloudPanel({
 /** The note shown once before anything goes to or comes from the cloud. */
 function CloudConsentModal({
   open,
-  maxBackupBytes,
+  maxAccountBytes,
   onCancel,
   onAccept
 }: {
   open: boolean
-  maxBackupBytes?: number
+  maxAccountBytes?: number
   onCancel: () => void
   onAccept: () => Promise<void>
 }): JSX.Element {
@@ -689,11 +749,11 @@ function CloudConsentModal({
           )}
         </li>
         <li>
+          {/* Before the note was accepted the cloud has not been asked yet,
+              so its own limit is not known; 5 GB is what it hands out. */}
           {tr(
-            'Pro Instanz gibt es ein Cloud-Backup, ein neues ersetzt das alte. Insgesamt passen drei Instanzen hinein' +
-              (maxBackupBytes ? `, jedes Backup höchstens ${formatBytes(maxBackupBytes)}.` : '.'),
-            'There is one cloud backup per instance, a new one replaces the old one. Three instances fit in total' +
-              (maxBackupBytes ? `, each backup at most ${formatBytes(maxBackupBytes)}.` : '.')
+            `Pro Instanz gibt es ein Cloud-Backup, ein neues ersetzt das alte. Insgesamt passen drei Instanzen mit zusammen höchstens ${formatBytes(maxAccountBytes ?? 5 * 1024 ** 3)} hinein.`,
+            `There is one cloud backup per instance, a new one replaces the old one. Three instances fit in total, with at most ${formatBytes(maxAccountBytes ?? 5 * 1024 ** 3)} together.`
           )}
         </li>
         <li>
@@ -791,10 +851,19 @@ function DownloadModal({
   const { instances } = useStore()
   const [busy, setBusy] = useState(false)
   const existing = backup ? instances.find((i) => i.id === backup.instanceKey) : undefined
-  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  // Only offered first when it also runs the same game: two PCs can each have
+  // their own, unrelated "Survival", and one click replaced its worlds.
+  const matches =
+    existing !== undefined && backup !== null && existing.mcVersion === backup.mcVersion && existing.loader === backup.loader
+  const [mode, setMode] = useState<'existing' | 'new'>('new')
+  // Set once per backup. Depending on `existing` too, every instance event (a
+  // task ending, another game starting) replaced that object and reset a
+  // choice the user had already made.
   useEffect(() => {
-    if (backup) setMode(existing ? 'existing' : 'new')
-  }, [backup, existing])
+    if (backup) setMode(matches ? 'existing' : 'new')
+  }, [backup])
+  // Checked here, before a whole backup is downloaded for nothing.
+  const blocked = mode === 'existing' && existing ? contentBlockedReason(existing) : null
 
   const run = async (): Promise<void> => {
     if (!backup) return
@@ -830,7 +899,7 @@ function DownloadModal({
           <button className="btn ghost" onClick={onClose} disabled={busy}>
             {tr('Abbrechen', 'Cancel')}
           </button>
-          <button className="btn primary" onClick={run} disabled={busy}>
+          <button className="btn primary" onClick={run} disabled={busy || blocked !== null} title={blocked ?? undefined}>
             {busy ? <span className="spinner" /> : <IconDownload size={15} />}
             {tr('Herunterladen und einspielen', 'Download and restore')}
           </button>
@@ -845,11 +914,29 @@ function DownloadModal({
               <div className="grow">
                 <div className="content-name">{tr(`In ${existing.name} einspielen`, `Restore into ${existing.name}`)}</div>
                 <div className="hint">
-                  {tr(
-                    `${folders} dieser Instanz werden ersetzt. Der aktuelle Stand wird vorher automatisch gesichert.`,
-                    `${folders} of this instance are replaced. The current state is backed up automatically first.`
-                  )}
+                  {folders
+                    ? tr(
+                        `${folders} dieser Instanz werden ersetzt. Der aktuelle Stand wird vorher automatisch gesichert.`,
+                        `${folders} of this instance are replaced. The current state is backed up automatically first.`
+                      )
+                    : tr(
+                        'Die Ordner, die im Backup stecken, werden in dieser Instanz ersetzt. Der aktuelle Stand wird vorher automatisch gesichert.',
+                        'The folders in the backup are replaced in this instance. The current state is backed up automatically first.'
+                      )}
                 </div>
+                {!matches && (
+                  <div className="hint" style={{ color: 'var(--warn)' }}>
+                    {tr(
+                      `Achtung: ${existing.name} ist Minecraft ${existing.mcVersion} mit ${LOADER_LABELS[existing.loader] ?? existing.loader}, das Cloud-Backup ist Minecraft ${backup.mcVersion} mit ${LOADER_LABELS[backup.loader] ?? backup.loader}.`,
+                      `Note: ${existing.name} is Minecraft ${existing.mcVersion} with ${LOADER_LABELS[existing.loader] ?? existing.loader}, the cloud backup is Minecraft ${backup.mcVersion} with ${LOADER_LABELS[backup.loader] ?? backup.loader}.`
+                    )}
+                  </div>
+                )}
+                {mode === 'existing' && blocked && (
+                  <div className="hint" style={{ color: 'var(--warn)' }}>
+                    {blocked}
+                  </div>
+                )}
               </div>
             </label>
           )}

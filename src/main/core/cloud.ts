@@ -25,8 +25,8 @@ import { getSettings } from '../store'
 import { isValidVersionString, paths } from '../paths'
 import { log } from '../logger'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
-import { addDownloadedBackup, backupArchive, restoreBackup } from './backups'
-import { createInstance, getInstance, tryGetInstance } from './instances'
+import { addDownloadedBackup, assertRestorable, backupArchive, restoreBackup } from './backups'
+import { createInstance, deleteInstance, getInstance, tryGetInstance } from './instances'
 import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('cloud')
@@ -43,7 +43,24 @@ const SERVER_ERRORS: Record<string, () => string> = {
   checksum: () => tr('Das Backup kam beschädigt in der Cloud an. Bitte noch einmal versuchen.', 'The backup arrived damaged in the cloud. Please try again.'),
   incomplete: () => tr('Das Backup kam nicht vollständig in der Cloud an. Bitte noch einmal versuchen.', 'The backup did not arrive completely in the cloud. Please try again.'),
   'not-found': () => tr('Dieses Cloud-Backup gibt es nicht mehr.', 'This cloud backup no longer exists.'),
-  'not-verified': () => tr('Mojang hat die Anmeldung bei der Cloud nicht bestätigt.', 'Mojang did not confirm the sign-in to the cloud.')
+  'not-verified': () => tr('Mojang hat die Anmeldung bei der Cloud nicht bestätigt.', 'Mojang did not confirm the sign-in to the cloud.'),
+  // The server writes its own texts in German only; every code it can send is
+  // answered here in the user's language instead.
+  full: () => tr('In der Cloud sind schon drei Instanzen gespeichert.', 'Three instances are already stored in the cloud.'),
+  quota: () =>
+    tr(
+      'In der Cloud ist für dieses Backup nicht mehr genug Platz frei. Lösche erst ein anderes Cloud-Backup.',
+      'There is not enough space left in the cloud for this backup. Delete another cloud backup first.'
+    ),
+  internal: () => tr('Auf dem Cloud-Server ist etwas schiefgegangen. Bitte später noch einmal versuchen.', 'Something went wrong on the cloud server. Please try again later.'),
+  account: () => tr('Die Cloud kennt dieses Konto noch nicht. Bitte noch einmal versuchen.', 'The cloud does not know this account yet. Please try again.'),
+  'signed-out': () => tr('Die Anmeldung bei der Cloud ist abgelaufen. Bitte noch einmal versuchen.', 'The sign-in to the cloud has expired. Please try again.'),
+  key: () => tr('Der Name dieser Instanz ist für die Cloud ungültig.', 'The name of this instance is not valid for the cloud.'),
+  meta: () => tr('Die Angaben zur Instanz fehlen oder sind ungültig.', 'The details of the instance are missing or invalid.'),
+  length: () => tr('Die Größe des Backups fehlt.', 'The size of the backup is missing.'),
+  csrf: () => tr('Die Cloud hat die Anfrage abgelehnt.', 'The cloud refused the request.'),
+  body: () => tr('Die Anfrage an die Cloud war zu groß.', 'The request to the cloud was too large.'),
+  json: () => tr('Die Anfrage an die Cloud war ungültig.', 'The request to the cloud was invalid.')
 }
 
 class CloudHttpError extends Error {
@@ -101,7 +118,7 @@ interface CloudSession {
 }
 
 let session: CloudSession | null = null
-let signingIn: Promise<CloudSession> | null = null
+let signingIn: { accountId: string; promise: Promise<CloudSession> } | null = null
 
 /** The signed-in Microsoft account, or a sentence saying why there is none. */
 function cloudAccount(): { id: string; username: string; uuid: string } {
@@ -159,15 +176,20 @@ async function signIn(account: { id: string; username: string; uuid: string }): 
 async function cloudSession(): Promise<CloudSession> {
   const account = cloudAccount()
   if (session && session.accountId === account.id && session.expiresAt - 60_000 > Date.now()) return session
-  // One sign-in at a time: the overview and an upload asking together must
-  // not both start their own.
-  if (!signingIn) {
-    signingIn = signIn(account).finally(() => {
-      signingIn = null
+  // One sign-in at a time per account: the overview and an upload asking
+  // together must not both start their own. Keyed by account, because a
+  // switch to another account mid sign-in otherwise received the first
+  // account's session and acted on its cloud backups.
+  if (!signingIn || signingIn.accountId !== account.id) {
+    const promise = signIn(account).finally(() => {
+      if (signingIn?.promise === promise) signingIn = null
     })
+    signingIn = { accountId: account.id, promise }
   }
-  session = await signingIn
-  return session
+  const fresh = await signingIn.promise
+  if (fresh.accountId !== cloudAccount().id) return cloudSession()
+  session = fresh
+  return fresh
 }
 
 /** A JSON call with the session, signing in again once if it has expired on the server. */
@@ -190,6 +212,11 @@ async function authed<T>(method: string, path: string, body?: unknown): Promise<
 export async function cloudOverview(): Promise<CloudOverview> {
   const account = getActiveAccount()
   if (!account || account.type !== 'microsoft') return { available: false, backups: [] }
+  // Nothing goes to Mojang or the cloud before the note was accepted. Just
+  // opening Backups used to sign in and create an account entry there.
+  if (getSettings().cloudBackups !== 'on') {
+    return { available: true, consentNeeded: true, playerName: account.username, backups: [], website: CLOUD_URL }
+  }
   const result = await authed<{ backups: CloudBackup[]; account: CloudOverview['account'] }>('GET', '/api/backups')
   return { available: true, playerName: account.username, backups: result.backups, account: result.account, website: CLOUD_URL }
 }
@@ -222,8 +249,9 @@ function sha256File(file: string, task: Task): Promise<string> {
   })
 }
 
-function megabytes(bytes: number): string {
-  return `${formatNumber(bytes / 1024 / 1024, 1)} MB`
+/** A size for messages, in GB from one gigabyte on. */
+function sizeText(bytes: number): string {
+  return bytes >= 1024 ** 3 ? `${formatNumber(bytes / 1024 ** 3, 1)} GB` : `${formatNumber(bytes / 1024 / 1024, 1)} MB`
 }
 
 /** Streams a file to the cloud with progress. Resolves with the parsed answer. */
@@ -266,7 +294,7 @@ function putFile(
         if (Date.now() - lastReport > 200) {
           lastReport = Date.now()
           task.update(
-            tr(`${megabytes(sent)} von ${megabytes(size)} hochgeladen`, `${megabytes(sent)} of ${megabytes(size)} uploaded`),
+            tr(`${sizeText(sent)} von ${sizeText(size)} hochgeladen`, `${sizeText(sent)} of ${sizeText(size)} uploaded`),
             sent / size
           )
         }
@@ -307,11 +335,28 @@ export async function uploadToCloud(instanceId: string, backupId: string, replac
   if (!taken && overview.backups.length >= overview.account.limits.maxInstances && !replace) {
     return { status: 'full', backups: overview.backups }
   }
+  // All cloud backups of an account share one space. The instance's own old
+  // backup and the one making room do not count: both are replaced.
+  const space = overview.account.limits.maxAccountBytes
+  if (space) {
+    const used = overview.backups
+      .filter((b) => b.instanceKey !== instanceId && b.instanceKey !== replace)
+      .reduce((sum, b) => sum + b.size, 0)
+    if (used + size > space) {
+      const free = Math.max(0, space - used)
+      throw new Error(
+        tr(
+          `Dieses Backup ist ${sizeText(size)} groß, in der Cloud sind aber nur noch ${sizeText(free)} von ${sizeText(space)} frei. Lösche erst ein anderes Cloud-Backup, oder erstelle ein kleineres Backup, etwa ohne Mods oder Screenshots.`,
+          `This backup is ${sizeText(size)}, but only ${sizeText(free)} of ${sizeText(space)} are free in the cloud. Delete another cloud backup first, or create a smaller backup, for example without mods or screenshots.`
+        )
+      )
+    }
+  }
   if (size > overview.account.limits.maxBackupBytes) {
     throw new Error(
       tr(
-        `Dieses Backup ist ${megabytes(size)} groß. In die Cloud passen höchstens ${megabytes(overview.account.limits.maxBackupBytes)} pro Backup. Ein Backup ohne Mods oder Screenshots ist meist deutlich kleiner.`,
-        `This backup is ${megabytes(size)}. The cloud takes at most ${megabytes(overview.account.limits.maxBackupBytes)} per backup. A backup without mods or screenshots is usually much smaller.`
+        `Dieses Backup ist ${sizeText(size)} groß. In die Cloud passen höchstens ${sizeText(overview.account.limits.maxBackupBytes)} pro Backup. Ein Backup ohne Mods oder Screenshots ist meist deutlich kleiner.`,
+        `This backup is ${sizeText(size)}. The cloud takes at most ${sizeText(overview.account.limits.maxBackupBytes)} per backup. A backup without mods or screenshots is usually much smaller.`
       )
     )
   }
@@ -325,7 +370,7 @@ export async function uploadToCloud(instanceId: string, backupId: string, replac
     createdAt: entry.createdAt
   }
 
-  const backup = await withTask(
+  const outcome = await withTask(
     tr(`${instance.name} in die Cloud`, `${instance.name} to the cloud`),
     tr('Prüfsumme wird berechnet…', 'Computing checksum…'),
     instanceId,
@@ -343,16 +388,23 @@ export async function uploadToCloud(instanceId: string, backupId: string, replac
         session = null
         answer = await putFile(path, file, size, headers, (await cloudSession()).token, task)
       }
+      if (answer.status === 409 && answer.json.code === 'full' && Array.isArray(answer.json.backups)) {
+        // Another PC or the website took the last place in the meantime: the
+        // same question as before the upload, not a failed task.
+        task.update(tr('Kein Platz mehr in der Cloud', 'No room left in the cloud'), 1)
+        return { status: 'full' as const, backups: answer.json.backups as CloudBackup[] }
+      }
       if (answer.status !== 201) {
         const code = typeof answer.json.code === 'string' ? answer.json.code : 'http'
         throw new Error(SERVER_ERRORS[code]?.() ?? (typeof answer.json.error === 'string' ? answer.json.error : tr(`Die Cloud antwortete mit HTTP ${answer.status}.`, `The cloud answered with HTTP ${answer.status}.`)))
       }
       task.update(tr('In der Cloud gespeichert', 'Saved in the cloud'), 1)
-      return answer.json.backup as CloudBackup
+      return { status: 'uploaded' as const, backup: answer.json.backup as CloudBackup }
     }
   )
-  logger.info(`Backup von ${instanceId} in die Cloud geladen (${megabytes(size)})`)
-  return { status: 'uploaded', backup }
+  if (outcome.status === 'full') return outcome
+  logger.info(`Backup von ${instanceId} in die Cloud geladen (${sizeText(size)})`)
+  return outcome
 }
 
 /* ------------------------------------------------------------------ *
@@ -378,7 +430,7 @@ function downloadTo(instanceKey: string, target: string, expected: CloudBackup, 
           if (Date.now() - lastReport > 200) {
             lastReport = Date.now()
             task.update(
-              tr(`${megabytes(received)} von ${megabytes(expected.size)} geladen`, `${megabytes(received)} of ${megabytes(expected.size)} downloaded`),
+              tr(`${sizeText(received)} von ${sizeText(expected.size)} geladen`, `${sizeText(received)} of ${sizeText(expected.size)} downloaded`),
               received / Math.max(expected.size, 1)
             )
           }
@@ -424,6 +476,9 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
   const backup = backups.find((b) => b.instanceKey === instanceKey)
   if (!backup) throw new Error(SERVER_ERRORS['not-found']())
   if (into && !tryGetInstance(into)) throw new Error(tr('Diese Instanz gibt es auf diesem PC nicht mehr.', 'This instance no longer exists on this PC.'))
+  // Asked before the download: a running game used to be reported only once
+  // the whole backup had come down, which was then thrown away.
+  if (into) assertRestorable(into)
   if (!into && (!isValidVersionString(backup.mcVersion) || (backup.loaderVersion && !isValidVersionString(backup.loaderVersion)))) {
     throw new Error(tr('Die Angaben zur Version in diesem Cloud-Backup sind ungültig.', 'The version details in this cloud backup are invalid.'))
   }
@@ -449,27 +504,39 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
 
     let instanceId = into
     let created = false
-    if (!instanceId) {
-      const instance = await createInstance({
-        name: backup.instanceName,
-        mcVersion: backup.mcVersion,
-        loader: backup.loader,
-        loaderVersion: backup.loaderVersion || undefined,
-        description: tr('Aus der Launch-Gabi-Cloud', 'From the Launch Gabi cloud')
-      })
-      instanceId = instance.id
-      created = true
-    }
+    try {
+      if (!instanceId) {
+        const instance = await createInstance({
+          name: backup.instanceName,
+          mcVersion: backup.mcVersion,
+          loader: backup.loader,
+          loaderVersion: backup.loaderVersion || undefined,
+          description: tr('Aus der Launch-Gabi-Cloud', 'From the Launch Gabi cloud')
+        })
+        instanceId = instance.id
+        created = true
+      }
 
-    const entry = await addDownloadedBackup(instanceId, temp, {
-      name: tr(
-        `Aus der Cloud, hochgeladen am ${new Date(backup.uploadedAt).toLocaleDateString()}`,
-        `From the cloud, uploaded on ${new Date(backup.uploadedAt).toLocaleDateString()}`
-      ),
-      includes: backup.includes,
-      createdAt: backup.createdAt
-    })
-    await restoreBackup(instanceId, entry.id)
+      const entry = await addDownloadedBackup(instanceId, temp, {
+        name: tr(
+          `Aus der Cloud, hochgeladen am ${new Date(backup.uploadedAt).toLocaleDateString()}`,
+          `From the cloud, uploaded on ${new Date(backup.uploadedAt).toLocaleDateString()}`
+        ),
+        includes: backup.includes,
+        createdAt: backup.createdAt
+      })
+      await restoreBackup(instanceId, entry.id)
+    } catch (err) {
+      // A new instance that never got its backup would stay behind empty.
+      if (created && instanceId) {
+        try {
+          deleteInstance(instanceId)
+        } catch (cleanupErr) {
+          logger.warn(`Leere Instanz ${instanceId} nach fehlgeschlagenem Download nicht entfernt:`, cleanupErr)
+        }
+      }
+      throw err
+    }
     logger.info(`Cloud-Backup ${instanceKey} in ${instanceId} eingespielt${created ? ' (neue Instanz)' : ''}`)
     return { instanceId, created }
   } finally {
@@ -482,10 +549,12 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
  * ------------------------------------------------------------------ */
 
 export async function deleteFromCloud(instanceKey: string): Promise<void> {
+  assertConsent()
   await authed('DELETE', `/api/backups/${encodeURIComponent(instanceKey)}`)
 }
 
 export async function deleteCloudAccount(): Promise<void> {
+  assertConsent()
   await authed('DELETE', '/api/account')
   session = null
 }

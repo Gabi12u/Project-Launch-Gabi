@@ -804,6 +804,25 @@ function assertInstanceIdle(id: string, actionPastParticiple: string): void {
   }
 }
 
+/**
+ * Removes an instance folder with its settings file last.
+ *
+ * Removed in one go, `instance.json` went first (it sorts before `media` and
+ * `minecraft`), and a file another program held further down then left a
+ * folder without it. The instance list skips such a folder, so the instance
+ * vanished while its worlds stayed on disk, and a second attempt to delete it
+ * was impossible.
+ */
+function removeInstanceFolder(dir: string): void {
+  const retry = { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }
+  if (existsSync(dir)) {
+    for (const name of readdirSync(dir)) {
+      if (name !== 'instance.json') rmSync(join(dir, name), retry)
+    }
+  }
+  rmSync(dir, retry)
+}
+
 export function deleteInstance(id: string): void {
   assertInstanceIdle(id, tr('gelöscht', 'deleted'))
   // Only for deleting: a backup or an export only reads, so duplicating
@@ -841,7 +860,7 @@ export function deleteInstance(id: string): void {
     // `maxRetries`/`retryDelay` retry on EBUSY/ENOTEMPTY/EPERM, the transient
     // codes a virus scanner or the search indexer briefly holding a file
     // produce, without touching the ENOENT case `force` already covers.
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    removeInstanceFolder(dir)
   } catch (err) {
     deleted.delete(id)
     // Retries exhausted: the folder may now be only half removed, so disk and

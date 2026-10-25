@@ -173,7 +173,9 @@ export function CompatibilityPanel({ report, instanceId, onChanged, loading, fai
   }
 
   const errors = report.issues.filter((i) => i.severity === 'error').length
-  const fixable = report.issues.filter((i) => i.fix).length
+  // Counted the way "fix all" works. Counting every issue with a fix showed
+  // the button for fixes it then deliberately leaves alone.
+  const fixable = report.issues.filter(isSafeAutoFix).length
 
   return (
     <div className="col gap-12">
@@ -263,7 +265,7 @@ export function CompatibilityGate(): JSX.Element | null {
   }
 
   const errors = current.issues.filter((i) => i.severity === 'error')
-  const fixable = current.issues.filter((i) => i.fix).length
+  const fixable = current.issues.filter(isSafeAutoFix).length
 
   return (
     <Modal

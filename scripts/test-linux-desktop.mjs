@@ -161,7 +161,8 @@ try {
     const moved = existsSync(entryPath) ? readFileSync(entryPath, 'utf8') : ''
     check(moved.includes(`Exec="${process.env.APPIMAGE}" %U`), 'Eintrag folgt der umbenannten Datei nicht')
 
-    // Next to an entry another tool made, the launcher adds none.
+    // Next to an entry another tool made, the launcher adds only a hidden one,
+    // which launchgabi:// links still need.
     const otherHome = join(work, 'share-foreign')
     mkdirSync(join(otherHome, 'applications'), { recursive: true })
     writeFileSync(
@@ -170,7 +171,11 @@ try {
     )
     process.env.XDG_DATA_HOME = otherHome
     desktop.integrateLinuxDesktop()
-    check(!existsSync(join(otherHome, 'applications', 'launch-gabi.desktop')), 'zweiter Eintrag neben einem fremden angelegt')
+    const hiddenPath = join(otherHome, 'applications', 'launch-gabi.desktop')
+    const hidden = existsSync(hiddenPath) ? readFileSync(hiddenPath, 'utf8') : ''
+    check(hidden.includes('NoDisplay=true'), 'Eintrag neben einem fremden fehlt oder steht sichtbar im Menü')
+    check(hidden.includes('MimeType=x-scheme-handler/launchgabi;'), 'versteckter Eintrag ohne launchgabi://')
+    check(!first.includes('NoDisplay=true'), 'eigener Eintrag ohne fremden ist versteckt')
 
     // Outside an AppImage nothing is written at all.
     const plainHome = join(work, 'share-plain')

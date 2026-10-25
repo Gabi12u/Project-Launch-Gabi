@@ -3072,8 +3072,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
   'cloud-downloads-sammeln-sich': {
     title: 'Downloaded cloud backups stayed on the PC forever',
     detail:
-      'Every download put a copy of the cloud backup of up to 1.5 GB into the backups of the instance. ' +
-      'Unlike automatic backups, these copies were never cleaned up.'
+      'Every download put a full copy of the cloud backup into the backups of the instance. Unlike ' +
+      'automatic backups, these copies were never cleaned up.'
   },
   'instanz-loeschen-verschwindet': {
     title: 'After a failed delete, the instance vanished from the list while its worlds stayed behind',

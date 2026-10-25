@@ -119,7 +119,11 @@ export function readJsonResult<T>(file: string, quarantine = false): JsonReadRes
   for (let attempt = 0; ; attempt++) {
     try {
       if (!existsSync(file)) return { ok: false, reason: 'missing' }
-      return { ok: true, value: JSON.parse(readFileSync(file, 'utf8')) as T }
+      // A byte order mark, as older Notepad versions write, is not part of
+      // the JSON. Left in, a hand edited file counted as damaged and was set
+      // aside.
+      const text = readFileSync(file, 'utf8')
+      return { ok: true, value: JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) as T }
     } catch (err) {
       // A file that simply is not there yet (or vanished between the check
       // above and the read, a narrow race) is not corruption, just nothing to read.

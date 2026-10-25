@@ -69,8 +69,12 @@ export function execArgument(value: string): string {
   return entryString(quoted).replace(/%/g, '%%')
 }
 
-/** The menu entry for the launcher running from `appImage`. */
-export function desktopEntry(options: { appImage: string; icon: string | null; comment: string }): string {
+/**
+ * The menu entry for the launcher running from `appImage`. `hidden` keeps it
+ * out of the menu while it still names the program for launchgabi:// links
+ * and for linking the window to its icon.
+ */
+export function desktopEntry(options: { appImage: string; icon: string | null; comment: string; hidden?: boolean }): string {
   return [
     '[Desktop Entry]',
     'Type=Application',
@@ -87,6 +91,7 @@ export function desktopEntry(options: { appImage: string; icon: string | null; c
     // goes by the file name instead, see DESKTOP_ID.
     'StartupWMClass=Launch Gabi',
     'MimeType=x-scheme-handler/launchgabi;',
+    ...(options.hidden ? ['NoDisplay=true'] : []),
     OWN_MARKER,
     ''
   ].join('\n')
@@ -169,18 +174,15 @@ export function integrateLinuxDesktop(): void {
   const directory = join(home, 'applications')
   const entryPath = join(directory, `${DESKTOP_ID}.desktop`)
   try {
-    if (!existsSync(entryPath)) {
-      const foreign = foreignEntryFor(directory, appImage)
-      if (foreign) {
-        logger.info(`Menüeintrag kommt schon von ${foreign}, der Launcher legt keinen zweiten an`)
-        return
-      }
-    }
-
+    // Next to an entry another tool made, ours is still written but hidden:
+    // Electron registers launchgabi:// by naming exactly this file, and links
+    // did nothing when it was left out.
+    const foreign = foreignEntryFor(directory, appImage)
     const contents = desktopEntry({
       appImage,
       icon: installIcon(home),
-      comment: tr('Minecraft-Launcher mit getrennten Instanzen', 'Minecraft launcher with separate instances')
+      comment: tr('Minecraft-Launcher mit getrennten Instanzen', 'Minecraft launcher with separate instances'),
+      hidden: foreign !== null
     })
     let current = ''
     try {
@@ -192,7 +194,11 @@ export function integrateLinuxDesktop(): void {
 
     mkdirSync(directory, { recursive: true })
     writeFileSync(entryPath, contents, { mode: 0o644 })
-    logger.info(`Menüeintrag geschrieben: ${entryPath}`)
+    logger.info(
+      foreign
+        ? `Versteckter Eintrag für launchgabi:// geschrieben, im Menü steht schon ${foreign}: ${entryPath}`
+        : `Menüeintrag geschrieben: ${entryPath}`
+    )
     // Refreshes which program opens launchgabi:// links. Not every system has
     // the tool, and without it the desktop simply notices a little later.
     execFile('update-desktop-database', [directory], { timeout: 10_000 }, () => {})

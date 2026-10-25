@@ -130,7 +130,15 @@ const logger = log('ipc')
  * below are not gated: minimize, maximize and close act on the sending window
  * itself, and `window:show-launcher` exists for the log window's own button.
  */
-const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([IPC.launchLogs, IPC.launchStop, IPC.launchStatus, IPC.settingsGet])
+// The report channel too: an error in the log window's own interface was
+// otherwise refused and never recorded.
+const GAME_LOG_ALLOWED_CHANNELS = new Set<string>([
+  IPC.launchLogs,
+  IPC.launchStop,
+  IPC.launchStatus,
+  IPC.settingsGet,
+  IPC.reportsFromRenderer
+])
 
 /** Wraps a handler so renderer-side errors arrive as readable messages. */
 function handle<T extends unknown[], R>(
