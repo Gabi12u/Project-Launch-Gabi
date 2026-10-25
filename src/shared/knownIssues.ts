@@ -4729,6 +4729,72 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixing',
     since: '2026-10-20',
     platforms: ['Linux']
+  },
+  {
+    id: 'cloud-anmeldung-vor-zustimmung',
+    title: 'Die Seite Sicherungen meldete sich bei der Cloud an, bevor man dem Hinweis zugestimmt hatte',
+    detail:
+      'Schon beim Öffnen von Sicherungen bestätigte der Launcher mit einem Microsoft-Konto die ' +
+      'Anmeldung bei Mojang und meldete sich mit dem Minecraft-Namen bei der Launch-Gabi-Cloud an. ' +
+      'Dort entstand dabei ein Eintrag für das Konto, auch wenn man Cloud-Backups nie nutzen wollte ' +
+      'und den Hinweis dazu noch nicht gesehen hatte. Hochgeladen wurde dabei nichts.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'cloud-herunterladen-falsches-ziel',
+    title: 'Beim Herunterladen eines Cloud-Backups war eine fremde Instanz mit gleichem Namen vorausgewählt',
+    detail:
+      'Hatte eine Instanz auf diesem PC zufällig denselben Namen wie die im Cloud-Backup, schlug der ' +
+      'Launcher vor, das Backup dort einzuspielen, ohne Minecraft-Version und Mod-Loader zu ' +
+      'vergleichen. Eine schon getroffene Wahl „Als neue Instanz anlegen“ konnte außerdem von selbst ' +
+      'zurückspringen. Lief die Instanz gerade, kam die Meldung dazu erst, nachdem das ganze Backup ' +
+      'heruntergeladen war.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'cloud-webseite-ordner-fehlen',
+    title: 'Ein auf cloud.launchgabi.com hochgeladenes Backup konnte beim Einspielen Welten und Einstellungen beiseiteräumen',
+    detail:
+      'Über die Webseite hochgeladene Backups tragen keine Liste ihrer Ordner. Der Launcher spielte ' +
+      'sie deshalb ein, als enthielten sie Welten und Einstellungen: Er räumte diese beiden Ordner der ' +
+      'Instanz beiseite, entpackte aber nur, was im Archiv wirklich unter diesen Namen lag. Steckte im ' +
+      'Archiv etwas anderes, fehlten danach Welten und Einstellungen. Die automatische Sicherheitskopie ' +
+      'davor enthielt sie noch.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'cloud-downloads-sammeln-sich',
+    title: 'Heruntergeladene Cloud-Backups blieben für immer auf dem PC liegen',
+    detail:
+      'Jedes Herunterladen legte eine Kopie des Cloud-Backups von bis zu 1,5 GB in die Sicherungen ' +
+      'der Instanz. Anders als automatische Sicherungen wurden diese Kopien nie aufgeräumt.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'instanz-loeschen-verschwindet',
+    title: 'Nach einem fehlgeschlagenen Löschen verschwand die Instanz aus der Liste, ihre Welten blieben aber liegen',
+    detail:
+      'Hielt beim Löschen ein anderes Programm eine Datei der Instanz fest, war die Datei mit den ' +
+      'Einstellungen der Instanz oft schon weg. Der Launcher meldete richtig, dass das Löschen nicht ' +
+      'vollständig geklappt hat, zeigte die Instanz danach aber gar nicht mehr an. Ein zweiter Versuch ' +
+      'war so nicht möglich, und Welten und Mods blieben unsichtbar auf der Festplatte.',
+    state: 'fixing',
+    since: '2026-10-25'
+  },
+  {
+    id: 'uebernommenes-spiel-fremde-pid',
+    title: 'Eine Instanz konnte als „läuft noch aus früherer Sitzung“ hängen bleiben',
+    detail:
+      'Lief ein Spiel beim Neustart des Launchers noch, merkte er es sich anhand der Prozessnummer. ' +
+      'Gab Windows diese Nummer nach dem Ende des Spiels an ein anderes Programm weiter, galt die ' +
+      'Instanz weiter als laufend, bis dieses Programm endete. Starten ließ sie sich so lange nicht, ' +
+      'und auch Updates des Launchers warteten. „Beenden“ hob die Sperre auf.',
+    state: 'fixing',
+    since: '2026-10-25'
   }
 ]
 

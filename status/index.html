@@ -4197,6 +4197,48 @@ footer .grow { flex: 1; }
       "platforms": [
         "Linux"
       ]
+    },
+    {
+      "id": "cloud-anmeldung-vor-zustimmung",
+      "title": "Die Seite Sicherungen meldete sich bei der Cloud an, bevor man dem Hinweis zugestimmt hatte",
+      "detail": "Schon beim Öffnen von Sicherungen bestätigte der Launcher mit einem Microsoft-Konto die Anmeldung bei Mojang und meldete sich mit dem Minecraft-Namen bei der Launch-Gabi-Cloud an. Dort entstand dabei ein Eintrag für das Konto, auch wenn man Cloud-Backups nie nutzen wollte und den Hinweis dazu noch nicht gesehen hatte. Hochgeladen wurde dabei nichts.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-herunterladen-falsches-ziel",
+      "title": "Beim Herunterladen eines Cloud-Backups war eine fremde Instanz mit gleichem Namen vorausgewählt",
+      "detail": "Hatte eine Instanz auf diesem PC zufällig denselben Namen wie die im Cloud-Backup, schlug der Launcher vor, das Backup dort einzuspielen, ohne Minecraft-Version und Mod-Loader zu vergleichen. Eine schon getroffene Wahl „Als neue Instanz anlegen“ konnte außerdem von selbst zurückspringen. Lief die Instanz gerade, kam die Meldung dazu erst, nachdem das ganze Backup heruntergeladen war.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-webseite-ordner-fehlen",
+      "title": "Ein auf cloud.launchgabi.com hochgeladenes Backup konnte beim Einspielen Welten und Einstellungen beiseiteräumen",
+      "detail": "Über die Webseite hochgeladene Backups tragen keine Liste ihrer Ordner. Der Launcher spielte sie deshalb ein, als enthielten sie Welten und Einstellungen: Er räumte diese beiden Ordner der Instanz beiseite, entpackte aber nur, was im Archiv wirklich unter diesen Namen lag. Steckte im Archiv etwas anderes, fehlten danach Welten und Einstellungen. Die automatische Sicherheitskopie davor enthielt sie noch.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-downloads-sammeln-sich",
+      "title": "Heruntergeladene Cloud-Backups blieben für immer auf dem PC liegen",
+      "detail": "Jedes Herunterladen legte eine Kopie des Cloud-Backups von bis zu 1,5 GB in die Sicherungen der Instanz. Anders als automatische Sicherungen wurden diese Kopien nie aufgeräumt.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "instanz-loeschen-verschwindet",
+      "title": "Nach einem fehlgeschlagenen Löschen verschwand die Instanz aus der Liste, ihre Welten blieben aber liegen",
+      "detail": "Hielt beim Löschen ein anderes Programm eine Datei der Instanz fest, war die Datei mit den Einstellungen der Instanz oft schon weg. Der Launcher meldete richtig, dass das Löschen nicht vollständig geklappt hat, zeigte die Instanz danach aber gar nicht mehr an. Ein zweiter Versuch war so nicht möglich, und Welten und Mods blieben unsichtbar auf der Festplatte.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "uebernommenes-spiel-fremde-pid",
+      "title": "Eine Instanz konnte als „läuft noch aus früherer Sitzung“ hängen bleiben",
+      "detail": "Lief ein Spiel beim Neustart des Launchers noch, merkte er es sich anhand der Prozessnummer. Gab Windows diese Nummer nach dem Ende des Spiels an ein anderes Programm weiter, galt die Instanz weiter als laufend, bis dieses Programm endete. Starten ließ sie sich so lange nicht, und auch Updates des Launchers warteten. „Beenden“ hob die Sperre auf.",
+      "state": "fixing",
+      "since": "2026-10-25"
     }
   ];
   var ISSUE_LABEL = {
@@ -7390,6 +7432,48 @@ footer .grow { flex: 1; }
       "platforms": [
         "Linux"
       ]
+    },
+    {
+      "id": "cloud-anmeldung-vor-zustimmung",
+      "title": "The Backups page signed in to the cloud before you had accepted the note",
+      "detail": "Just opening Backups with a Microsoft account made the launcher confirm the sign-in with Mojang and sign in to the Launch Gabi cloud with the Minecraft name. That created an entry for the account there, even if you never wanted to use cloud backups and had not seen the note about them yet. Nothing was uploaded.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-herunterladen-falsches-ziel",
+      "title": "When downloading a cloud backup, an unrelated instance with the same name was preselected",
+      "detail": "If an instance on this PC happened to have the same name as the one in the cloud backup, the launcher suggested restoring the backup into it without comparing the Minecraft version and mod loader. A choice already made, \"Create as a new instance\", could also jump back on its own. If the instance was running, the message about it only came after the whole backup had been downloaded.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-webseite-ordner-fehlen",
+      "title": "A backup uploaded on cloud.launchgabi.com could clear away worlds and settings when restored",
+      "detail": "Backups uploaded through the website carry no list of their folders. The launcher therefore restored them as if they held worlds and settings: it moved those two folders of the instance aside but only unpacked what really sat under those names in the archive. If the archive held something else, worlds and settings were missing afterwards. The automatic safety copy taken before still had them.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "cloud-downloads-sammeln-sich",
+      "title": "Downloaded cloud backups stayed on the PC forever",
+      "detail": "Every download put a copy of the cloud backup of up to 1.5 GB into the backups of the instance. Unlike automatic backups, these copies were never cleaned up.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "instanz-loeschen-verschwindet",
+      "title": "After a failed delete, the instance vanished from the list while its worlds stayed behind",
+      "detail": "If another program held a file of the instance while deleting it, the file with the settings of the instance was often already gone. The launcher rightly reported that deleting did not fully work, but then no longer showed the instance at all. A second attempt was impossible that way, and worlds and mods stayed invisible on the disk.",
+      "state": "fixing",
+      "since": "2026-10-25"
+    },
+    {
+      "id": "uebernommenes-spiel-fremde-pid",
+      "title": "An instance could get stuck as \"still running from an earlier session\"",
+      "detail": "If a game was still running when the launcher restarted, the launcher remembered it by its process number. If Windows handed that number to another program after the game ended, the instance kept counting as running until that program ended. It could not be started meanwhile, and launcher updates waited too. \"Stop\" lifted the block.",
+      "state": "fixing",
+      "since": "2026-10-25"
     }
   ];
   var ISSUE_LABEL_EN = {
