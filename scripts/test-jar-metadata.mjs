@@ -172,7 +172,14 @@ try {
     ['1.21.1', '1.21.4', false],
     ['1.21.1', '1.21.10', false],
     ['1.21.8', '1.21.7', true],
-    ['1.21.4', '1.21', false]
+    ['1.21.4', '1.21', false],
+    // Year-based versions: the third number is a hotfix of the same drop.
+    ['26.1.1', '26.1', true],
+    ['26.1', '26.1.2', true],
+    ['26.1.1', '26.1.2', true],
+    ['26.2', '26.1', false],
+    ['26.2.1', '26.1.1', false],
+    ['27.1', '26.1', false]
   ]
   for (const [target, candidate, expected] of cases) {
     const got = versions.gameVersionMatches(target, candidate)

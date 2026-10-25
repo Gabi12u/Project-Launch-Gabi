@@ -36,7 +36,13 @@ let timer: NodeJS.Timeout | null = null
 let announcedAvailable: string | null = null
 let checking = false
 
+/** How long a download may go without progress before it counts as stuck. */
+const DOWNLOAD_STALL_MS = 10 * 60 * 1000
+/** The last time a running download showed a sign of life. */
+let lastDownloadSign = 0
+
 function setStatus(patch: Partial<UpdateStatus>): void {
+  if (patch.state === 'downloading') lastDownloadSign = Date.now()
   status = { ...status, ...patch, currentVersion: app.getVersion() }
 
   // The patch is merged, so `error` outlived the failure that set it: a check
@@ -327,6 +333,12 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
   // `!manual`; the "Jetzt suchen" button had no such guard at all, so
   // pressing it while an update sat ready could make it, and the restart
   // button with it, disappear, even though the download itself never changed.
+  // A download that stopped without an error kept the state at "downloading"
+  // for good, and every later check returned right here until a restart.
+  if (status.state === 'downloading' && Date.now() - lastDownloadSign > DOWNLOAD_STALL_MS) {
+    logger.warn('Update-Download kommt seit Minuten nicht voran, Sperre wird gelöst')
+    setStatus({ state: 'idle', percent: undefined })
+  }
   if (status.state === 'ready' || status.state === 'downloading') {
     if (manual) {
       notify(

@@ -32,7 +32,7 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'en
 // module path replaces the real one, and a folder shipped with an imported
 // instance could be loaded from there without a word.
 const CODE_LOADING_JVM_ARG =
-  /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile|-Dminecraft\.api\.|-Dhttps?\.proxy|-DsocksProxy|-Djava\.net\.useSystemProxies|-Djavax\.net\.ssl\.)/i
+  /^(-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile|-Dminecraft\.api\.|-Dhttps?\.proxy|-DsocksProxy|-Djava\.net\.useSystemProxies|-Djavax\.net\.ssl\.|-Djava\.security\.|-Dfabric\.gameJarPath|-Dfabric\.systemLibraries|-Dfml\.coreMods)/i
 
 /**
  * Takes the arguments already split the way they reach Java. Checked on the

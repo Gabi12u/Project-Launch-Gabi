@@ -16,6 +16,7 @@
  * Snapshots und Vorabversionen ("1.21.5-pre1", "1.21.5-rc1") werden jetzt vor
  * dem Zerlegen erkannt.
  */
+import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -146,11 +147,28 @@ try {
   const exe = userCommand(['C:\\tools\\wrap.exe', '-a'])
   check(exe.file === 'C:\\tools\\wrap.exe' && !exe.verbatim, `userCommand(.exe) ergab ${JSON.stringify(exe)}`)
   if (process.platform === 'win32') {
-    const bat = userCommand(['C:\\A B\\prep.bat', 'x y'])
+    // Really run through cmd.exe and a batch file: the arguments have to reach
+    // the program unchanged, also with %, quotes, ^, ! and a trailing
+    // backslash, and from a folder with a space in its name.
+    const batDir = mkdtempSync(join(tmpdir(), 'lg wrap '))
+    const echo = join(batDir, 'echo.js')
+    writeFileSync(echo, 'process.stdout.write(JSON.stringify(process.argv.slice(2)))')
+    const batFile = join(batDir, 'pre launch.bat')
+    writeFileSync(batFile, `@"${process.execPath}" "${echo}" %*\r\n`)
+    const tricky = ['100%', '%PATH%', 'a"b', 'x^y', 'z!w', 'C:\\A B\\', '-Dk=v w', '(x)&|<>', 'plain']
+    const bat = userCommand([batFile, ...tricky])
+    check(bat.verbatim && /cmd\.exe$/i.test(bat.file), `userCommand(.bat) startet nicht ueber cmd.exe: ${JSON.stringify(bat)}`)
+    let received = null
+    try {
+      received = JSON.parse(execFileSync(bat.file, bat.args, { windowsVerbatimArguments: bat.verbatim, encoding: 'utf8' }))
+    } catch (err) {
+      received = `Fehler: ${err?.message || err}`
+    }
     check(
-      bat.verbatim && /cmd\.exe$/i.test(bat.file) && bat.args[3] === '""C:\\A B\\prep.bat" "x y""',
-      `userCommand(.bat) ergab ${JSON.stringify(bat)}`
+      JSON.stringify(received) === JSON.stringify(tricky),
+      `Ueber .bat kam ${JSON.stringify(received)} statt ${JSON.stringify(tricky)} an`
     )
+    rmSync(batDir, { recursive: true, force: true })
   }
 
   notes.push(`splitUserArgs: ${JSON.stringify(jvmArgQuoted)}, ${JSON.stringify(javaAgentQuoted)}, ${JSON.stringify(barePathQuoted)}`)

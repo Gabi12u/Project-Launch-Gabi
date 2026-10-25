@@ -6,7 +6,7 @@ import { StringDecoder } from 'node:string_decoder'
 import { app } from 'electron'
 import { EVENTS } from '@shared/ipc'
 import type { Account, Instance, LaunchPhase, LaunchPreflight, LaunchStatus, LogLine } from '@shared/types'
-import { paths } from '../paths'
+import { paths, safeJoin } from '../paths'
 import { getSettings } from '../store'
 import { emit, getMainWindow, navigate, notify } from '../events'
 import { closeGameLogWindow, hasGameLogWindow, openGameLogWindow } from '../gameLogWindow'
@@ -258,17 +258,34 @@ export function splitUserArgs(raw: string): string[] {
 }
 
 /**
+ * cmd.exe's special characters, each escaped with ^. cmd expands %VAR% (and
+ * !VAR!) even inside quotes, so quoting alone let a folder named "100%" or an
+ * argument holding "!" arrive changed. The same escaping cross-spawn uses.
+ */
+const CMD_META = /([()\][%!^"`<>&|;, *?])/g
+
+/** One argument for a program started through cmd.exe and a batch file. */
+function cmdArgument(arg: string): string {
+  // Quoted by the rules Java and most programs read their command line with:
+  // backslashes before a quote are doubled and the quote gets a backslash.
+  // `""`, used before, is not an escaped quote to Java.
+  const quoted = `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`
+  // Twice: cmd reads the line once, and the batch file's %* reads it again.
+  return quoted.replace(CMD_META, '^$1').replace(CMD_META, '^$1')
+}
+
+/**
  * How to start a command the user typed in. Node refuses to start a .bat or
  * .cmd file directly since a security fix in 2024 ("spawn EINVAL"), and
  * scripts are what most people put into these fields on Windows. Those run
- * through cmd.exe instead, every part quoted.
+ * through cmd.exe instead, every part escaped for it.
  */
 export function userCommand(parts: string[]): { file: string; args: string[]; verbatim: boolean } {
   const [first = '', ...rest] = parts
   if (process.platform !== 'win32' || !/\.(bat|cmd)$/i.test(first)) {
     return { file: first, args: rest, verbatim: false }
   }
-  const line = parts.map((part) => `"${part.replace(/"/g, '""')}"`).join(' ')
+  const line = [first.replace(CMD_META, '^$1'), ...rest.map(cmdArgument)].join(' ')
   // cmd.exe takes at most 8191 characters, and the full Java command of a
   // modded instance is often longer than that.
   if (line.length > 8000) {
@@ -772,7 +789,9 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     const logConfig = versionJson.logging?.client
     if (logConfig?.file) {
-      const configFile = join(paths.assets(), 'log_configs', logConfig.file.id)
+      // Pinned into its folder: the name comes from a version file, which a
+      // mod loader writes too.
+      const configFile = safeJoin(join(paths.assets(), 'log_configs'), logConfig.file.id)
       if (existsSync(configFile)) {
         jvmArgs.push(substitute(logConfig.argument, { path: configFile }))
       }

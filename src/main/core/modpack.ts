@@ -418,6 +418,15 @@ async function installMrpackFiles(
   const baseSetupOk = await waitForInstanceSetup(instanceId, task.signal)
   task.throwIfCancelled()
 
+  // When the pinned versions came out. Without it the update check could only
+  // compare against the day of the import, and every update released before
+  // that day counted as already installed.
+  const pinnedVersions = clientFiles
+    .map((f) => modrinthIdsFromUrl(f.downloads?.[0] ?? '')?.versionId)
+    .filter((id): id is string => typeof id === 'string')
+  const released = await modrinth.releaseDates(pinnedVersions)
+  task.throwIfCancelled()
+
   const instance = getInstance(instanceId)
   const enriched: ContentItem[] = instance.content.map((item) => {
     // By folder as well as name: a resource pack and a mod can share a file
@@ -439,6 +448,7 @@ async function installMrpackFiles(
       // bundled binary. The ids sit right there in the CDN path.
       projectId: ids?.projectId ?? item.projectId,
       versionId: ids?.versionId ?? item.versionId,
+      releasedAt: (ids?.versionId ? released.get(ids.versionId) : undefined) ?? item.releasedAt,
       sha1: match.hashes?.sha1 ?? item.sha1,
       size: typeof match.fileSize === 'number' ? match.fileSize : item.size,
       type: contentTypeFromPath(match.path)

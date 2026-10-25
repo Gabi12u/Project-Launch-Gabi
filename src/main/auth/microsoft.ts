@@ -5,7 +5,7 @@ import { DEFAULT_LAUNCHER_SETTINGS, LEGACY_MICROSOFT_CLIENT_ID } from '@shared/d
 import { EVENTS } from '@shared/ipc'
 import { emit, notify } from '../events'
 import { getSettings, readAccounts, writeAccounts, type StoredAccount } from '../store'
-import { fetchJson, httpRequest, HttpError } from '../core/net'
+import { fetchJson, httpRequest, HttpError, NetworkError } from '../core/net'
 import { log } from '../logger'
 import { reportError, scrub } from '../core/reports'
 import { tr } from '@shared/i18n'
@@ -380,7 +380,10 @@ async function pollForToken(
 ): Promise<TokenResponse> {
   const startedAt = Date.now()
   const deadline = startedAt + device.expires_in * 1000
-  let interval = Math.max(device.interval, 1) * 1000
+  // Microsoft's default when the answer names no interval. Without one,
+  // Math.max(undefined, 1) was NaN, and the loop asked again at once, over
+  // and over, until Microsoft answered "slow_down".
+  let interval = Math.max(Number(device.interval) || 5, 1) * 1000
   let unreadableErrors = 0
   let networkErrors = 0
   let serverErrors = 0
@@ -1043,17 +1046,44 @@ async function refreshAccessToken(accountId: string): Promise<string> {
     }
   }
 
-  const xbl = await xboxLogin(token.access_token)
-  const xsts = await xstsAuthorize(xbl.token)
+  // An outage here counts the same as one at Microsoft above: the launch
+  // falls back to the stored session, and singleplayer still works. Only the
+  // first step used to be covered, so an Xbox Live or Minecraft hiccup after
+  // a successful refresh stopped the start with a raw HTTP error.
+  let xsts: { token: string; uhs: string }
   let mc: MinecraftLoginResponse
   try {
-    mc = await fetchJson<MinecraftLoginResponse>(
-      MC_LOGIN_URL,
-      json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
-    )
+    const xbl = await xboxLogin(token.access_token)
+    xsts = await xstsAuthorize(xbl.token)
+    try {
+      mc = await fetchJson<MinecraftLoginResponse>(
+        MC_LOGIN_URL,
+        json({ identityToken: `XBL3.0 x=${xsts.uhs};${xsts.token}` })
+      )
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 403) {
+        throw new Error(explainMinecraftForbidden(clientId) + technicalSuffix(err.status))
+      }
+      throw err
+    }
   } catch (err) {
-    if (err instanceof HttpError && err.status === 403) {
-      throw new Error(explainMinecraftForbidden(clientId) + technicalSuffix(err.status))
+    if (err instanceof HttpError && (err.status >= 500 || err.status === 429)) {
+      throw new SignInUnavailableError(
+        tr(
+          'Xbox Live oder Minecraft antworten gerade nicht. Versuche es gleich noch einmal.',
+          'Xbox Live or Minecraft is not responding right now. Try again in a moment.'
+        ),
+        { cause: err }
+      )
+    }
+    if (err instanceof NetworkError) {
+      throw new SignInUnavailableError(
+        tr(
+          'Die Anmeldung konnte nicht erneuert werden, weil keine Verbindung zu Xbox Live besteht. Prüfe deine Internetverbindung.',
+          'The sign-in could not be renewed because there is no connection to Xbox Live. Check your internet connection.'
+        ),
+        { cause: err }
+      )
     }
     throw err
   }

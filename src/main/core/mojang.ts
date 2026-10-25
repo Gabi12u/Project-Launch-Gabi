@@ -506,7 +506,9 @@ export async function installVersion(
     const file = version.logging.client.file
     items.push({
       url: file.url,
-      path: join(paths.assets(), 'log_configs', file.id),
+      // Pinned into its folder like every library: a version file a mod
+      // loader wrote could otherwise name a path outside it.
+      path: safeJoin(join(paths.assets(), 'log_configs'), file.id),
       sha1: file.sha1,
       size: file.size
     })

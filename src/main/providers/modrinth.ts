@@ -426,6 +426,31 @@ export async function bestVersionFor(
   return null
 }
 
+/**
+ * When each of these versions was released, by version id. Asked in batches
+ * of 100, the most one request carries. Versions the answer leaves out, or a
+ * request that fails, are simply missing from the result.
+ */
+export async function releaseDates(versionIds: string[]): Promise<Map<string, string>> {
+  const dates = new Map<string, string>()
+  const ids = [...new Set(versionIds.filter(Boolean))]
+  for (let i = 0; i < ids.length; i += 100) {
+    try {
+      const batch = JSON.stringify(ids.slice(i, i + 100))
+      const fetched = await fetchJson<{ id?: string; date_published?: string }[]>(
+        `${API}/versions?ids=${encodeURIComponent(batch)}`
+      )
+      if (!Array.isArray(fetched)) continue
+      for (const entry of fetched) {
+        if (entry?.id && entry.date_published) dates.set(entry.id, entry.date_published)
+      }
+    } catch (err) {
+      logger.warn('Erscheinungsdaten von Versionen nicht abrufbar:', err)
+    }
+  }
+  return dates
+}
+
 /** Looks a file up by hash — used to identify manually added jars. */
 export async function lookupByHash(sha1: string): Promise<ProjectVersion | null> {
   try {

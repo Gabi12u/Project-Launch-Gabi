@@ -508,25 +508,42 @@ export async function getFiles(fileIds: number[]): Promise<ProjectVersion[]> {
 /**
  * The content type of each project, by project id, for a modpack manifest.
  * A manifest lists files only, and a file does not say whether it is a mod,
- * a resource pack or a shader. Missing entries mean "unknown"; the caller
- * then treats the file as a mod, as before.
+ * a resource pack or a shader. A project CurseForge leaves out of its answer
+ * counts as unknown, and the caller treats it as a mod.
+ *
+ * A request that fails is tried once more and then stops the import. Taken
+ * as "unknown" for every file, it put all resource packs and shaders into
+ * mods/ without a word, where they did nothing.
  */
 export async function getProjectTypes(projectIds: string[]): Promise<Map<string, ContentType | 'modpack'>> {
   const types = new Map<string, ContentType | 'modpack'>()
   const ids = [...new Set(projectIds.map(Number).filter((id) => Number.isInteger(id) && id > 0))]
   for (let i = 0; i < ids.length; i += 100) {
-    try {
-      const response = await fetchJson<CfListResponse<{ id: number; classId: number }>>(`${API}/mods`, {
-        method: 'POST',
-        headers: { ...headers(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modIds: ids.slice(i, i + 100) })
-      })
-      if (!Array.isArray(response?.data)) continue
-      for (const mod of response.data) {
-        if (typeof mod?.id === 'number' && typeof mod.classId === 'number') types.set(String(mod.id), toContentType(mod.classId))
+    const batch = ids.slice(i, i + 100)
+    let response: CfListResponse<{ id: number; classId: number }> | null = null
+    for (let attempt = 0; attempt < 2 && !response; attempt++) {
+      try {
+        response = await fetchJson<CfListResponse<{ id: number; classId: number }>>(`${API}/mods`, {
+          method: 'POST',
+          headers: { ...headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ modIds: batch })
+        })
+      } catch (err) {
+        logger.warn('Projektarten für den Modpack-Import nicht abrufbar:', err)
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 2000))
       }
-    } catch (err) {
-      logger.warn('Projektarten für den Modpack-Import nicht abrufbar:', err)
+    }
+    if (!response) {
+      throw new Error(
+        tr(
+          'CurseForge hat nicht verraten, welche Dateien des Modpacks Mods und welche Resourcepacks oder Shader sind. Bitte den Import gleich noch einmal starten.',
+          'CurseForge did not say which files of the modpack are mods and which are resource packs or shaders. Please start the import again in a moment.'
+        )
+      )
+    }
+    if (!Array.isArray(response.data)) continue
+    for (const mod of response.data) {
+      if (typeof mod?.id === 'number' && typeof mod.classId === 'number') types.set(String(mod.id), toContentType(mod.classId))
     }
   }
   return types

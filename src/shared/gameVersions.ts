@@ -26,9 +26,19 @@ const SAME_RELEASE: string[][] = [
   ['1.21.9', '1.21.10']
 ]
 
+/**
+ * A version in the year-based scheme Mojang uses since 2026, such as "26.1"
+ * or its hotfix "26.1.1". Its third number is the hotfix by definition, so
+ * no hand-kept list is needed for these.
+ */
+const YEAR_BASED = /^(\d{2})\.(\d+)(?:\.(\d+))?$/
+
 /** True when a build tagged `candidate` belongs on Minecraft `target`. */
 export function gameVersionMatches(target: string, candidate: string): boolean {
   if (candidate === target) return true
+  const a = YEAR_BASED.exec(target)
+  const b = YEAR_BASED.exec(candidate)
+  if (a && b && Number(a[1]) >= 26) return a[1] === b[1] && a[2] === b[2]
   return SAME_RELEASE.some((group) => group.includes(target) && group.includes(candidate))
 }
 
