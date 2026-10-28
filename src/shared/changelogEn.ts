@@ -22,6 +22,14 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.24': {
+    headline: 'Change the version and mod loader of an instance, and Java 25 starts on macOS and Linux.',
+    changes: [
+      'Change version: right-click an instance, or use the button on its page, to move it to another Minecraft version or mod loader. Every mod, resource pack, shader and data pack gets the matching version, and beforehand you see what happens to each one.',
+      'Anything that has no version for the new game is switched off, not deleted. New dependencies are added on their own, and your worlds are backed up before the change.',
+      'On macOS and Linux, a Java the launcher downloads by itself starts again. Until now it failed with "Java 25 was downloaded but cannot be started", above all on Minecraft 26.1 and newer.'
+    ]
+  },
   '1.0.23': {
     headline: 'More room in the cloud, Launch Gabi in the Linux menu and over 130 bugs fixed.',
     changes: [

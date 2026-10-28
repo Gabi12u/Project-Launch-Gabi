@@ -34,6 +34,25 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.24',
+    date: '2026-10-28',
+    headline: 'Version und Mod-Loader einer Instanz ändern, und Java 25 startet unter macOS und Linux.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Version ändern: Per Rechtsklick auf eine Instanz oder auf ihrer Seite wechselst du auf eine andere Minecraft-Version oder einen anderen Mod-Loader. Jeder Mod, jedes Ressourcenpaket, jeder Shader und jedes Data Pack bekommt dabei die passende Version, und vorher siehst du, was mit jedem Eintrag passiert.'
+      },
+      {
+        kind: 'new',
+        text: 'Was es für die neue Version nicht gibt, wird ausgeschaltet und nicht gelöscht. Neue Abhängigkeiten kommen von selbst dazu, und deine Welten werden vor dem Wechsel gesichert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Unter macOS und Linux startet ein Java, das der Launcher selbst herunterlädt, wieder. Bisher scheiterte es mit „Java 25 wurde geladen, lässt sich aber nicht starten“, vor allem bei Minecraft 26.1 und neuer.'
+      }
+    ]
+  },
+  {
     version: '1.0.23',
     date: '2026-10-25',
     headline: 'Mehr Platz in der Cloud, Launch Gabi im Linux-Menü und über 130 Fehler behoben.',
