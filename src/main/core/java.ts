@@ -166,18 +166,24 @@ export function isUncPath(value: string): boolean {
 }
 
 /** Runs `java -XshowSettings:properties -version` and parses the result. */
-export async function probeJava(executable: string): Promise<JavaRuntime | null> {
+export async function probeJava(
+  executable: string,
+  options: { timeout?: number; onFailure?: (reason: string) => void } = {}
+): Promise<JavaRuntime | null> {
   if (isUncPath(executable)) return null
   if (!existsSync(executable)) return null
   try {
     const { stdout, stderr } = await execFileAsync(
       executable,
       ['-XshowSettings:properties', '-version'],
-      { timeout: 12_000, windowsHide: true }
+      { timeout: options.timeout ?? 12_000, windowsHide: true }
     )
     // The properties block goes to stderr on most JVMs.
     const parsed = parseJavaProperties(`${stderr}\n${stdout}`)
-    if (!parsed) return null
+    if (!parsed) {
+      options.onFailure?.(`keine java.version in der Ausgabe: ${firstLine(`${stderr}\n${stdout}`)}`)
+      return null
+    }
 
     return {
       path: executable,
@@ -189,8 +195,24 @@ export async function probeJava(executable: string): Promise<JavaRuntime | null>
     }
   } catch (err) {
     logger.debug(`Java-Test fehlgeschlagen für ${executable}:`, err)
+    options.onFailure?.(probeFailureReason(err))
     return null
   }
+}
+
+function firstLine(text: string): string {
+  return text.trim().split(/\r?\n/)[0]?.slice(0, 200) || 'leer'
+}
+
+/** Why `java -version` failed, short enough for a log line and a message. */
+function probeFailureReason(err: unknown): string {
+  const failed = err as { code?: unknown; killed?: boolean; signal?: unknown; stderr?: unknown }
+  if (failed?.killed) return 'Zeitlimit überschritten'
+  if (typeof failed?.code === 'string') return failed.code
+  const output = typeof failed?.stderr === 'string' ? firstLine(failed.stderr) : ''
+  if (typeof failed?.code === 'number') return `Exitcode ${failed.code}${output ? `: ${output}` : ''}`
+  if (failed?.signal) return `Signal ${String(failed.signal)}`
+  return err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200)
 }
 
 function candidateRoots(): string[] {
@@ -762,9 +784,27 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
     // wrong architecture, so `targetDir` only ever receives a runtime that
     // provably starts.
     task?.update(tr(`Java ${major} wird geprüft…`, `Checking Java ${major}…`), null)
-    const probed = await probeJava(staged)
+    // The archive's own modes are honoured on extraction now; this covers an
+    // archive that carries none, which would otherwise fail the probe below.
+    if (process.platform !== 'win32') {
+      try {
+        chmodSync(staged, 0o755)
+      } catch {
+        // the probe below reports what is wrong
+      }
+    }
+    // A JVM's first run right after unpacking is the one a virus scanner
+    // inspects file by file, so it gets far more time than a routine probe.
+    let reason = ''
+    const probed = await probeJava(staged, { timeout: 60_000, onFailure: (why) => (reason = why) })
     if (!probed) {
-      throw new Error(tr(`Java ${major} wurde geladen, lässt sich aber nicht starten.`, `Java ${major} was downloaded but cannot be started.`))
+      logger.warn(`Frisch entpacktes Java ${major} startet nicht (${staged}): ${reason}`)
+      throw new Error(
+        tr(
+          `Java ${major} wurde geladen, lässt sich aber nicht starten. (${reason})`,
+          `Java ${major} was downloaded but cannot be started. (${reason})`
+        )
+      )
     }
     if (probed.major !== major) {
       throw new Error(
