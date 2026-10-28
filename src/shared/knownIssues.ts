@@ -5064,6 +5064,17 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Deutsch.',
     state: 'fixing',
     since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-unterbrochen',
+    title: 'Wurde der Launcher während „Version ändern“ geschlossen, blieb die Instanz halb umgestellt zurück',
+    detail:
+      'Endete der Launcher, während „Version ändern“ die Mods austauschte, etwa durch einen Absturz oder ' +
+      'einen ausgeschalteten PC, stand die Instanz weiter auf der alten Version, ein Teil der Mods aber schon ' +
+      'auf der neuen. Das Spiel stürzte dann beim Start ab, ohne Hinweis auf den Grund. Ein zweiter Wechsel ' +
+      'auf dieselbe Version schließt ihn ab. Außerdem blieb dabei ein Zwischenordner im Cache liegen.',
+    state: 'fixing',
+    since: '2026-10-29'
   }
 ]
 

@@ -3185,6 +3185,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'not be switched off. If the lookup of the current mod loader failed, the dialog silently jumped to ' +
       'Vanilla. A newer beta of a mod could be swapped for an older release. Also, the reason why a ' +
       'downloaded Java does not start was shown in German in the English interface.'
+  },
+  'versionswechsel-unterbrochen': {
+    title: 'If the launcher was closed during "Change version", the instance was left half changed',
+    detail:
+      'If the launcher ended while "Change version" was swapping the mods, for example through a crash or a ' +
+      'PC switched off, the instance stayed on the old version while some mods were already for the new ' +
+      'one. The game then crashed on start, with no hint at why. A second change to the same version ' +
+      'completes it. A staging folder was also left behind in the cache.'
   }
 }
 

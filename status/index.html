@@ -4463,6 +4463,13 @@ footer .grow { flex: 1; }
       "detail": "Die Seite der Instanz zeigte nach einem Versionswechsel neu installierte Abhängigkeiten erst nach erneutem Öffnen. Die Meldung am Ende zählte auch Mods als ausgeschaltet, die schon aus waren oder sich nicht ausschalten ließen. Schlug die Abfrage des aktuellen Mod-Loaders fehl, sprang der Dialog still auf Vanilla. Eine neuere Beta eines Mods konnte gegen eine ältere Vollversion getauscht werden. Außerdem stand der Grund, warum ein geladenes Java nicht startet, in der englischen Oberfläche auf Deutsch.",
       "state": "fixing",
       "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-unterbrochen",
+      "title": "Wurde der Launcher während „Version ändern“ geschlossen, blieb die Instanz halb umgestellt zurück",
+      "detail": "Endete der Launcher, während „Version ändern“ die Mods austauschte, etwa durch einen Absturz oder einen ausgeschalteten PC, stand die Instanz weiter auf der alten Version, ein Teil der Mods aber schon auf der neuen. Das Spiel stürzte dann beim Start ab, ohne Hinweis auf den Grund. Ein zweiter Wechsel auf dieselbe Version schließt ihn ab. Außerdem blieb dabei ein Zwischenordner im Cache liegen.",
+      "state": "fixing",
+      "since": "2026-10-29"
     }
   ];
   var ISSUE_LABEL = {
@@ -7922,6 +7929,13 @@ footer .grow { flex: 1; }
       "detail": "After a version change, the instance page only showed newly installed dependencies once it was opened again. The final message also counted mods as switched off that were already off or could not be switched off. If the lookup of the current mod loader failed, the dialog silently jumped to Vanilla. A newer beta of a mod could be swapped for an older release. Also, the reason why a downloaded Java does not start was shown in German in the English interface.",
       "state": "fixing",
       "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-unterbrochen",
+      "title": "If the launcher was closed during \"Change version\", the instance was left half changed",
+      "detail": "If the launcher ended while \"Change version\" was swapping the mods, for example through a crash or a PC switched off, the instance stayed on the old version while some mods were already for the new one. The game then crashed on start, with no hint at why. A second change to the same version completes it. A staging folder was also left behind in the cache.",
+      "state": "fixing",
+      "since": "2026-10-29"
     }
   ];
   var ISSUE_LABEL_EN = {
