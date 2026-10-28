@@ -4926,6 +4926,20 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-10-25',
     fixedIn: '1.0.23'
+  },
+  {
+    id: 'java-download-macos-linux-startet-nicht',
+    title: 'Unter macOS und Linux ließ sich ein vom Launcher geladenes Java nicht starten',
+    detail:
+      'Fehlt die passende Java-Version auf dem Rechner, lädt der Launcher sie selbst herunter. Unter ' +
+      'macOS und Linux entpackte er sie dabei ohne das Recht, die Programmdatei auszuführen, und ' +
+      'probierte sie gleich danach aus. Das scheiterte immer mit „Java 25 wurde geladen, lässt sich aber ' +
+      'nicht starten“ oder derselben Meldung für eine andere Version. Besonders betroffen ist Minecraft ' +
+      '26.1 und neuer, weil kaum jemand Java 25 schon installiert hat. Bis zur Reparatur hilft es, Java ' +
+      '25 selbst zu installieren und in den Instanz-Einstellungen auszuwählen.',
+    state: 'fixing',
+    since: '2026-10-28',
+    platforms: ['macOS', 'Linux']
   }
 ]
 

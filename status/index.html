@@ -4418,6 +4418,17 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-10-25",
       "fixedIn": "1.0.23"
+    },
+    {
+      "id": "java-download-macos-linux-startet-nicht",
+      "title": "Unter macOS und Linux ließ sich ein vom Launcher geladenes Java nicht starten",
+      "detail": "Fehlt die passende Java-Version auf dem Rechner, lädt der Launcher sie selbst herunter. Unter macOS und Linux entpackte er sie dabei ohne das Recht, die Programmdatei auszuführen, und probierte sie gleich danach aus. Das scheiterte immer mit „Java 25 wurde geladen, lässt sich aber nicht starten“ oder derselben Meldung für eine andere Version. Besonders betroffen ist Minecraft 26.1 und neuer, weil kaum jemand Java 25 schon installiert hat. Bis zur Reparatur hilft es, Java 25 selbst zu installieren und in den Instanz-Einstellungen auszuwählen.",
+      "state": "fixing",
+      "since": "2026-10-28",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
     }
   ];
   var ISSUE_LABEL = {
@@ -7784,6 +7795,17 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-10-25",
       "fixedIn": "1.0.23"
+    },
+    {
+      "id": "java-download-macos-linux-startet-nicht",
+      "title": "On macOS and Linux, a Java downloaded by the launcher could not be started",
+      "detail": "If the right Java version is missing, the launcher downloads it itself. On macOS and Linux it unpacked it without the permission to run the program file and tried it out right afterwards. That always failed with \"Java 25 was downloaded but cannot be started\" or the same message for another version. Minecraft 26.1 and newer is hit hardest, because hardly anyone has Java 25 installed already. Until the fix, installing Java 25 yourself and choosing it in the instance settings helps.",
+      "state": "fixing",
+      "since": "2026-10-28",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
     }
   ];
   var ISSUE_LABEL_EN = {

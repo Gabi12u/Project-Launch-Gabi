@@ -3090,6 +3090,16 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'process number. If Windows handed that number to another program after the game ended, the ' +
       'instance kept counting as running until that program ended. It could not be started meanwhile, ' +
       'and launcher updates waited too. "Stop" lifted the block.'
+  },
+  'java-download-macos-linux-startet-nicht': {
+    title: 'On macOS and Linux, a Java downloaded by the launcher could not be started',
+    detail:
+      'If the right Java version is missing, the launcher downloads it itself. On macOS and Linux it ' +
+      'unpacked it without the permission to run the program file and tried it out right afterwards. ' +
+      'That always failed with "Java 25 was downloaded but cannot be started" or the same message for ' +
+      'another version. Minecraft 26.1 and newer is hit hardest, because hardly anyone has Java 25 ' +
+      'installed already. Until the fix, installing Java 25 yourself and choosing it in the instance ' +
+      'settings helps.'
   }
 }
 
