@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react'
 import type {
+  GameVersionTarget,
   InstanceSettings,
   LoaderId,
   LoaderVersion,
@@ -18,7 +19,14 @@ type Step = 0 | 1 | 2
 
 interface Props {
   open: boolean
-  instance: { id: string; name: string; mcVersion: string; loader: LoaderId; loaderVersion: string }
+  instance: {
+    id: string
+    name: string
+    mcVersion: string
+    loader: LoaderId
+    loaderVersion: string
+    pendingVersionChange?: GameVersionTarget
+  }
   onClose: () => void
   /** Called once the change has ended, including the dependencies installed after it. */
   onDone?: () => void
@@ -46,8 +54,11 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
   const [showSnapshots, setShowSnapshots] = useState(() => settings.showSnapshots === true)
   const [versionAttempt, setVersionAttempt] = useState(0)
 
-  const [mcVersion, setMcVersion] = useState(instance.mcVersion)
-  const [loader, setLoader] = useState<LoaderId>(instance.loader)
+  // An interrupted change starts out on its own target, so finishing it is
+  // only a matter of clicking through.
+  const pending = instance.pendingVersionChange
+  const [mcVersion, setMcVersion] = useState(pending?.mcVersion ?? instance.mcVersion)
+  const [loader, setLoader] = useState<LoaderId>(pending?.loader ?? instance.loader)
   const [loaderVersions, setLoaderVersions] = useState<Record<string, LoaderVersion[] | 'error'>>({})
   const [loaderVersion, setLoaderVersion] = useState('')
   const [checkingLoaders, setCheckingLoaders] = useState(false)
@@ -65,8 +76,8 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
     if (!open) return
     setStep(0)
     setVersionSearch('')
-    setMcVersion(instance.mcVersion)
-    setLoader(instance.loader)
+    setMcVersion(pending?.mcVersion ?? instance.mcVersion)
+    setLoader(pending?.loader ?? instance.loader)
     setLoaderVersion('')
     setPlan(null)
     setPlanError(null)
@@ -149,9 +160,11 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
     if (!loaderChanged && builds.some((v) => v.version === loaderVersion)) return
     // Staying on the same game version and loader keeps the build that is
     // installed, so only what was actually changed changes.
-    const keep = mcVersion === instance.mcVersion && loader === instance.loader
-      ? builds.find((v) => v.version === instance.loaderVersion)
-      : undefined
+    const keep = pending && mcVersion === pending.mcVersion && loader === pending.loader
+      ? builds.find((v) => v.version === pending.loaderVersion)
+      : mcVersion === instance.mcVersion && loader === instance.loader
+        ? builds.find((v) => v.version === instance.loaderVersion)
+        : undefined
     const best = keep ?? builds.find((v) => v.recommended) ?? builds.find((v) => v.stable) ?? builds[0]
     setLoaderVersion(best?.version ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -164,6 +177,7 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
 
   const loaderReady = loader === 'vanilla' || (selectedLoaderVersions.length > 0 && Boolean(loaderVersion))
   const unchanged =
+    !pending &&
     mcVersion === instance.mcVersion &&
     loader === instance.loader &&
     (loader === 'vanilla' || loaderVersion === instance.loaderVersion)
@@ -291,6 +305,14 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
 
       {step === 0 && (
         <div className="col gap-16">
+          {pending && (
+            <Note>
+              {tr(
+                `Der Wechsel auf ${targetLabel(pending.mcVersion, pending.loader, pending.loaderVersion)} wurde unterbrochen. Er ist schon ausgewählt, geh einfach weiter, um ihn abzuschließen.`,
+                `The change to ${targetLabel(pending.mcVersion, pending.loader, pending.loaderVersion)} was cut off. It is already selected, just go on to complete it.`
+              )}
+            </Note>
+          )}
           <div className="row gap-12">
             <div className="search">
               <IconSearch size={16} />

@@ -968,6 +968,18 @@ async function runRepair(
     })
     report.repairedFiles += restored
 
+    // A version change cut off halfway: the step above lined the mods up
+    // with the version the instance is recorded on again, so it can start as
+    // that version.
+    const afterContent = getInstance(instanceId)
+    if (afterContent.pendingVersionChange && !contentStepError && failed.length === 0) {
+      persist({ ...afterContent, pendingVersionChange: undefined })
+      repairLog(instanceId, 'fix', tr(
+        `Unterbrochener Wechsel auf ${afterContent.pendingVersionChange.mcVersion} aufgelöst, die Instanz bleibt bei ${afterContent.mcVersion}`,
+        `Interrupted change to ${afterContent.pendingVersionChange.mcVersion} resolved, the instance stays on ${afterContent.mcVersion}`
+      ))
+    }
+
     // Refreshed after the restoration above has already settled, so this
     // reads the repaired list rather than racing its own persist against it.
     let outdated = 0

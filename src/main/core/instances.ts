@@ -7,6 +7,7 @@ import { EVENTS } from '@shared/ipc'
 import type {
   ContentItem,
   CreateInstanceOptions,
+  GameVersionTarget,
   Instance,
   InstancePatch,
   InstanceSummary,
@@ -86,8 +87,17 @@ function normalise(raw: Partial<Instance>, id: string): Instance {
     sessions: Array.isArray(raw.sessions) ? raw.sessions : [],
     favorite: raw.favorite ?? false,
     installing: false, // never restore a stale "installing" flag
-    installed: raw.installed ?? false
+    installed: raw.installed ?? false,
+    pendingVersionChange: pendingTarget(raw.pendingVersionChange)
   }
+}
+
+/** A recorded interrupted version change, only when it is well formed. */
+function pendingTarget(raw: unknown): Instance['pendingVersionChange'] {
+  const value = raw as Partial<GameVersionTarget> | null | undefined
+  if (!value || typeof value.mcVersion !== 'string' || typeof value.loader !== 'string') return undefined
+  if (!['vanilla', 'fabric', 'forge', 'neoforge', 'quilt'].includes(value.loader)) return undefined
+  return { mcVersion: value.mcVersion, loader: value.loader, loaderVersion: typeof value.loaderVersion === 'string' ? value.loaderVersion : '' }
 }
 
 export function loadInstances(force = false): Instance[] {
@@ -294,6 +304,7 @@ export function toSummary(instance: Instance): InstanceSummary {
     running: isRunning(instance.id),
     starting: isStarting(instance.id),
     contentBusy: isContentBusy(instance.id),
+    pendingVersionChange: instance.pendingVersionChange,
     updateCount: content.filter((c) => c?.update).length
   }
 }

@@ -460,6 +460,20 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     )
   }
 
+  // "Version ändern" was cut off while swapping the mods: some are already
+  // for the new version, the record still names the old one, and the game
+  // would crash over the mix with nothing pointing at why.
+  const pending = getInstance(instanceId).pendingVersionChange
+  if (pending) {
+    const current = getInstance(instanceId).mcVersion
+    throw new Error(
+      tr(
+        `Der Wechsel auf Minecraft ${pending.mcVersion} wurde unterbrochen, die Mods passen gerade nur zum Teil. Wechsle über „Version ändern“ erneut auf ${pending.mcVersion}, oder repariere die Instanz, um bei ${current} zu bleiben.`,
+        `The change to Minecraft ${pending.mcVersion} was cut off, the mods only partly fit right now. Change to ${pending.mcVersion} again with "Change version", or repair the instance to stay on ${current}.`
+      )
+    )
+  }
+
   // A restore moves the worlds aside and unpacks an archive over the folder.
   // Launching into that reads half written saves, and the game holding those
   // files open is itself a good way to make the restore fail and trigger its

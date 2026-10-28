@@ -568,6 +568,27 @@ function bootstrap(): void {
         )
       }
 
+      // A version change the launcher was closed in the middle of. The
+      // instance refuses to start until it is finished or repaired, and this
+      // is where the user learns why.
+      try {
+        for (const instance of loadInstances()) {
+          const pending = instance.pendingVersionChange
+          if (!pending) continue
+          notify(
+            'warning',
+            tr('Versionswechsel unterbrochen', 'Version change interrupted'),
+            tr(
+              `Der Wechsel von „${instance.name}“ auf Minecraft ${pending.mcVersion} wurde nicht fertig. Starte „Version ändern“ erneut, um ihn abzuschließen, oder repariere die Instanz, um bei ${instance.mcVersion} zu bleiben.`,
+              `The change of "${instance.name}" to Minecraft ${pending.mcVersion} did not finish. Run "Change version" again to complete it, or repair the instance to stay on ${instance.mcVersion}.`
+            ),
+            { route: `/instances/${instance.id}`, timeout: 0 }
+          )
+        }
+      } catch (err) {
+        logger.warn('Prüfung auf unterbrochene Versionswechsel fehlgeschlagen:', err)
+      }
+
       // Each step stands alone. These write files and talk to the OS, so any
       // of them can throw on a machine with a locked config or a hostile
       // virus scanner, and an escaping error used to abandon everything

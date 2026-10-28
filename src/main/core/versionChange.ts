@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   ContentItem,
@@ -232,7 +232,10 @@ export async function changeInstanceVersion(id: string, raw: VersionChangeTarget
   const target = checkTarget(raw)
   assertIdle(id)
   const before = getInstance(id)
+  // After an interrupted change the recorded version is a valid target: it
+  // lines the half swapped mods up with it again.
   if (
+    !before.pendingVersionChange &&
     before.mcVersion === target.mcVersion &&
     before.loader === target.loader &&
     (!target.loaderVersion || before.loaderVersion === target.loaderVersion)
@@ -256,8 +259,30 @@ export async function changeInstanceVersion(id: string, raw: VersionChangeTarget
   })
 }
 
+/** Staging folders of changes running right now, which a sweep leaves alone. */
+const liveStaging = new Set<string>()
+
+/**
+ * Removes staging folders a change left behind when the launcher was closed
+ * or killed mid-download. Nothing else ever cleans them out of the cache.
+ */
+function sweepStaging(): void {
+  try {
+    if (!existsSync(paths.cache())) return
+    for (const name of readdirSync(paths.cache())) {
+      if (!name.startsWith('version-change-') || liveStaging.has(name)) continue
+      rmSync(join(paths.cache(), name), { recursive: true, force: true })
+    }
+  } catch (err) {
+    logger.debug('Alte Zwischenordner nicht entfernt:', err)
+  }
+}
+
 async function runChange(id: string, target: Required<VersionChangeTarget>, task: Task): Promise<VersionChangeResult> {
-  const staging = join(paths.cache(), `version-change-${randomUUID().slice(0, 8)}`)
+  sweepStaging()
+  const stagingName = `version-change-${randomUUID().slice(0, 8)}`
+  const staging = join(paths.cache(), stagingName)
+  liveStaging.add(stagingName)
   // Shown as being set up, so Play stays disabled until the change is through.
   persist({ ...getInstance(id), installing: true })
 
@@ -332,7 +357,11 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
     task.throwIfCancelled()
 
     // 5. From here on the change goes through to the end. Only local file
-    // moves are left, nothing that waits on the network.
+    // moves are left, nothing that waits on the network. Noted first: cut off
+    // in the middle (the launcher closed, the PC went off), the instance
+    // holds mods for both versions, and the next start has to say so instead
+    // of launching the old version with half of them swapped.
+    persist({ ...getInstance(id), pendingVersionChange: game })
     task.span(0.95, 1)
     task.update(tr('Mods werden ausgetauscht…', 'Swapping mods…'), null)
     for (const entry of items) {
@@ -394,6 +423,7 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
       loaderVersion: game.loaderVersion,
       installing: false,
       installed: true,
+      pendingVersionChange: undefined,
       content: now.content.map((item) => ({ ...item, update: null }))
     })
     logger.info(`${now.name} auf ${label(game)} umgestellt`)
@@ -458,8 +488,9 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
     try {
       rmSync(staging, { recursive: true, force: true })
     } catch {
-      // the cache folder is swept with the rest of the cache
+      // swept by the next change
     }
+    liveStaging.delete(stagingName)
     // Cleared on every way out. On a failure before step 6 nothing in the
     // instance changed, it is simply the old version again.
     const left = tryGetInstance(id)

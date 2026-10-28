@@ -188,6 +188,20 @@ export interface Instance {
   installing: boolean
   /** True once the full install has completed at least once. */
   installed: boolean
+  /**
+   * Set while "Version ändern" swaps the mods, cleared once the instance is
+   * recorded on the new version. Still set means the change was cut off
+   * halfway (the launcher closed, the PC went off): some mods are already
+   * for the target, the record still names the old version.
+   */
+  pendingVersionChange?: GameVersionTarget
+}
+
+/** A Minecraft version with its mod loader build. */
+export interface GameVersionTarget {
+  mcVersion: string
+  loader: LoaderId
+  loaderVersion: string
 }
 
 /**
@@ -275,6 +289,8 @@ export interface InstanceSummary {
   starting: boolean
   /** True while mods are being installed, updated, removed or imported. */
   contentBusy: boolean
+  /** A version change that was cut off halfway, see `Instance.pendingVersionChange`. */
+  pendingVersionChange?: GameVersionTarget
   updateCount: number
 }
 
