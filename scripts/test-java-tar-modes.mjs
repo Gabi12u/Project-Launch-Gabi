@@ -17,9 +17,9 @@
  * Release-Pipeline, die auf allen drei Systemen baut.
  */
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
@@ -34,8 +34,12 @@ function check(ok, message) {
   if (!ok) problems.push(message)
 }
 
-/** One ustar header plus padded content, as Adoptium's archives carry it. */
-function tarEntry(name, { mode = 0o644, type = '0', content = '' } = {}) {
+/**
+ * One tar header plus padded content. POSIX ("ustar" plus NUL) by default;
+ * `gnu` writes the GNU magic Adoptium's archives carry, with access and
+ * change times in the bytes POSIX uses for the path prefix.
+ */
+function tarEntry(name, { mode = 0o644, type = '0', content = '', gnu = false } = {}) {
   const data = Buffer.from(content, 'utf8')
   const header = Buffer.alloc(512)
   header.write(name, 0, 100, 'utf8')
@@ -46,8 +50,15 @@ function tarEntry(name, { mode = 0o644, type = '0', content = '' } = {}) {
   header.write('00000000000\0', 136, 12, 'utf8')
   header.write('        ', 148, 8, 'utf8')
   header.write(type, 156, 1, 'utf8')
-  header.write('ustar\0', 257, 6, 'utf8')
-  header.write('00', 263, 2, 'utf8')
+  if (gnu) {
+    header.write('ustar ', 257, 6, 'utf8')
+    header.write(' \0', 263, 2, 'utf8')
+    header.write('15123456701\0', 345, 12, 'utf8')
+    header.write('15123456702\0', 357, 12, 'utf8')
+  } else {
+    header.write('ustar\0', 257, 6, 'utf8')
+    header.write('00', 263, 2, 'utf8')
+  }
   let sum = 0
   for (const byte of header) sum += byte
   header.write(sum.toString(8).padStart(6, '0') + '\0 ', 148, 8, 'utf8')
@@ -139,6 +150,40 @@ try {
   } else {
     notes.push('Ausführrechte lassen sich nur unter macOS und Linux prüfen, hier nur Inhalt und Ordneraufbau')
   }
+
+  // --- 2b. Header formats ------------------------------------------------------
+  // GNU headers carry times where POSIX has the path prefix; they must not
+  // end up in the path. A pax extended header carries a path too long for
+  // the plain header and must not become a file of its own.
+  const longPath = 'jdk-25.0.5+8-jre/lib/' + 'ein-sehr-langer-ordnername/'.repeat(5) + 'datei.txt'
+  const paxBody = (key, value) => {
+    const body = ` ${key}=${value}\n`
+    let length = body.length + 2
+    if (String(length).length + body.length !== length) length = String(length + 1).length + body.length
+    return `${length}${body}`
+  }
+  const formats = join(work, 'formats.tar.gz')
+  writeFileSync(
+    formats,
+    gzipSync(
+      Buffer.concat([
+        tarEntry('jdk-25.0.5+8-jre/', { mode: 0o755, type: '5', gnu: true }),
+        tarEntry('jdk-25.0.5+8-jre/release', { content: 'JAVA_VERSION="25.0.5"', gnu: true }),
+        tarEntry('PaxHeaders/datei.txt', { type: 'x', content: paxBody('path', longPath) }),
+        tarEntry('jdk-25.0.5+8-jre/lib/ein-sehr-langer-ordnername/abgeschnitten', { content: 'tief' }),
+        tarEntry('pax_global_header', { type: 'g', content: paxBody('comment', 'egal') }),
+        Buffer.alloc(1024)
+      ])
+    )
+  )
+  const formatDir = join(work, 'formats')
+  await archive.extractTarGz(formats, formatDir)
+  const listed = (dir) => readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => relative(formatDir, join(e.parentPath ?? e.path, e.name)).split(sep).join('/'))
+  const unpacked = listed(formatDir).sort()
+  notes.push(`Kopfformate entpackt: ${unpacked.join(', ')}`)
+  check(unpacked.includes('jdk-25.0.5+8-jre/release'), 'Eine Datei mit GNU-Kopf landete nicht unter ihrem Pfad')
+  check(unpacked.includes(longPath), 'Der lange Pfad aus dem pax-Kopf wurde nicht benutzt')
+  check(unpacked.length === 2, `Kopfdaten wurden als eigene Dateien geschrieben: ${unpacked.join(', ')}`)
 
   // --- 3. A failed probe names its reason -------------------------------------
   const broken = join(work, 'broken', 'bin', posix ? 'java' : 'java.exe')

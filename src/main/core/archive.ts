@@ -751,6 +751,26 @@ function extractLink(type: string, link: string, dest: string, targetDir: string
 }
 
 /** Extracts a tar.gz archive (used by the Linux/macOS Java runtimes). */
+/**
+ * The records of a pax extended header: "<length> <key>=<value>\n", where
+ * the length counts the whole record including itself and the newline.
+ */
+function parsePaxRecords(data: Buffer): Record<string, string> {
+  const records: Record<string, string> = {}
+  let offset = 0
+  while (offset < data.length) {
+    const space = data.indexOf(0x20, offset)
+    if (space < 0) break
+    const length = parseInt(data.subarray(offset, space).toString('ascii'), 10)
+    if (!Number.isFinite(length) || length <= space - offset + 1 || offset + length > data.length) break
+    const record = data.subarray(space + 1, offset + length - 1).toString('utf8')
+    const equals = record.indexOf('=')
+    if (equals > 0) records[record.slice(0, equals)] = record.slice(equals + 1)
+    offset += length
+  }
+  return records
+}
+
 export async function extractTarGz(archivePath: string, targetDir: string): Promise<void> {
   const { createGunzip } = await import('node:zlib')
   const { createReadStream } = await import('node:fs')
@@ -773,6 +793,10 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   let paddingRemaining = 0
   let sink: Buffer[] = []
   let longName: string | null = null
+  // Path and link target from a POSIX (pax) extended header, which carries
+  // them for the entry right after it when they do not fit the plain header.
+  let paxPath: string | null = null
+  let paxLink: string | null = null
   // Counted as headers are parsed, since a tar stream carries no upfront
   // index the way a zip's central directory does; the same limit as the zip
   // functions below, checked as early as the format allows.
@@ -784,8 +808,24 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
 
   const flushFile = (): void => {
     if (!pendingHeader) return
-    const name = longName ?? pendingHeader.path
+    // Extended headers describe the next entry and are not files of their
+    // own. Written out as files, a long path ended up split across a stray
+    // header file and a directory of the same name, and unpacking failed.
+    if (pendingHeader.type === 'x' || pendingHeader.type === 'g') {
+      if (pendingHeader.type === 'x') {
+        const records = parsePaxRecords(Buffer.concat(sink))
+        paxPath = records.path ?? null
+        paxLink = records.linkpath ?? null
+      }
+      sink = []
+      pendingHeader = null
+      return
+    }
+    const name = paxPath ?? longName ?? pendingHeader.path
+    const link = paxLink ?? pendingHeader.link
     longName = null
+    paxPath = null
+    paxLink = null
     // A literal backslash or ':' in the entry name is either an NTFS
     // alternate data stream in disguise ("legit.jar:hidden.exe") or, since
     // `join` treats a backslash as its own path separator on Windows, a
@@ -801,7 +841,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
     } else if (pendingHeader.type === 'L') {
       longName = Buffer.concat(sink).toString('utf8').replace(/\0+$/, '')
     } else if (pendingHeader.type === '1' || pendingHeader.type === '2') {
-      extractLink(pendingHeader.type, pendingHeader.link, dest, targetDir)
+      extractLink(pendingHeader.type, link, dest, targetDir)
     } else {
       mkdirSync(dirname(dest), { recursive: true })
       writeFileSync(dest, Buffer.concat(sink))
@@ -864,7 +904,12 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
           const type = String.fromCharCode(header[156]) || '0'
           // `linkname`, only populated for link entries.
           const link = header.subarray(157, 257).toString('utf8').replace(/\0.*$/, '')
-          const prefix = header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '')
+          // The prefix field only exists in POSIX headers ("ustar" plus NUL).
+          // GNU headers ("ustar" plus a space, the format Adoptium uses) keep
+          // access and change times at the same bytes, which read as a path
+          // would put files somewhere else entirely.
+          const posix = header.subarray(257, 263).toString('latin1') === 'ustar\0'
+          const prefix = posix ? header.subarray(345, 500).toString('utf8').replace(/\0.*$/, '') : ''
 
           entryCount++
           if (entryCount > MAX_ARCHIVE_ENTRIES) {
