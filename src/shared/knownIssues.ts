@@ -4998,6 +4998,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-01',
     fixedIn: '1.0.23'
+  },
+  {
+    id: 'lokale-mods-ohne-updates',
+    title: 'Mods, die nicht über die Suche installiert wurden, bekamen nie Updates und blieben beim Versionswechsel alt',
+    detail:
+      'Ein Mod, der von Hand in den Ordner gelegt oder aus einem anderen Launcher übernommen wurde, steht ' +
+      'unter Installiert als „Lokal“. Für solche Mods suchte der Launcher nie nach Updates, auch wenn es ' +
+      'sie auf Modrinth gibt, und „Version ändern“ ließ sie unverändert. Nach einem Wechsel auf 26.2 blieb ' +
+      'so etwa ein Mod für 1.21.11 in der Instanz, ohne Hinweis, dass er veraltet ist. Auch „Reparieren“ ' +
+      'konnte ihn nicht ersetzen.',
+    state: 'fixing',
+    since: '2026-10-28'
   }
 ]
 

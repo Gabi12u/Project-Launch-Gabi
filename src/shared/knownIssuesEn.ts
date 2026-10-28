@@ -3139,6 +3139,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'size. The change on the server was finished but not yet put in place. Since 1 November 2026 it applies ' +
       'on the server, for every version from 1.0.23. The launcher needs no update for this, it follows ' +
       'whatever the server allows.'
+  },
+  'lokale-mods-ohne-updates': {
+    title: 'Mods not installed through the search never got updates and stayed old on a version change',
+    detail:
+      'A mod placed in the folder by hand or taken over from another launcher shows as "Local" under ' +
+      'Installed. For such mods the launcher never looked for updates, even when they are on Modrinth, ' +
+      'and "Change version" left them unchanged. After a move to 26.2, a mod for 1.21.11 could stay in ' +
+      'the instance this way, with no sign that it is out of date. "Repair" could not replace it either.'
   }
 }
 
