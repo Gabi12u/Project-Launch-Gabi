@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
+  ContentItem,
   LoaderId,
   ProjectVersion,
   VersionChangeItem,
@@ -16,7 +17,7 @@ import { notify } from '../events'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { bestVersionFor } from '../providers'
 import { resolveLatestLoaderVersion } from '../loaders'
-import { downloadFile, NetworkError } from './net'
+import { downloadFile, HttpError, NetworkError } from './net'
 import { getInstance, installGameFiles, persist, syncContentWithDisk, toggleContent, tryGetInstance } from './instances'
 import { applyPreparedUpdate, identifyLocalContent, installNewDependencies, type PreparedUpdate } from './content'
 import { createBackup, NothingToBackUpError } from './backups'
@@ -109,10 +110,13 @@ async function eachLimited<T>(list: T[], limit: number, work: (entry: T) => Prom
 /**
  * Looks up every item for the target version. Writes nothing.
  *
- * A lookup that fails is reported per item rather than ending everything, so
- * a missing CurseForge key does not block a change for a pack that is mostly
- * from Modrinth. Only when not a single lookup got an answer is that the
- * connection, and the whole thing stops.
+ * Two kinds of failure are told apart. No connection, a rate limit or a
+ * server error passes, and a single one stops the whole change: counted as
+ * "nothing fits", it switched off every mod a busy Modrinth did not answer
+ * for while the change went through anyway. A failure that will not pass
+ * by retrying, such as a missing CurseForge key, is reported for that item,
+ * which is then left exactly as it is, so a pack mostly from Modrinth can
+ * still move.
  */
 async function lookUp(
   id: string,
@@ -132,7 +136,17 @@ async function lookUp(
   const pending = items.filter((_, index) => content[index].provider !== 'local' && content[index].projectId)
   let looked = 0
   let answered = 0
-  let offline = 0
+  let passing = 0
+
+  // Already made for the target and newer than what was found: a beta the
+  // user chose over the latest release is not swapped back to an older file.
+  const fitsAlready = (item: ContentItem, candidate: ProjectVersion): boolean =>
+    item.gameVersions.includes(target.mcVersion) &&
+    (item.type !== 'mod' ||
+      item.loaders.includes(target.loader) ||
+      (target.loader === 'quilt' && item.loaders.includes('fabric'))) &&
+    Boolean(item.releasedAt) &&
+    new Date(candidate.releasedAt).getTime() < new Date(item.releasedAt as string).getTime()
 
   await eachLimited(pending, LOOKUPS_AT_ONCE, async (entry) => {
     task?.throwIfCancelled()
@@ -155,15 +169,18 @@ async function lookUp(
         if (!candidate) {
           entry.outcome = 'disable'
           entry.reason = tr(`Keine Version für ${label(target)}`, `No version for ${label(target)}`)
-        } else if (candidate.versionId === item.versionId) {
+        } else if (candidate.versionId === item.versionId || fitsAlready(item, candidate)) {
           entry.outcome = 'keep'
         } else {
           entry.outcome = 'update'
           entry.toVersion = candidate.versionNumber
           versions.set(item.id, candidate)
         }
+        if ((entry.outcome === 'keep' || entry.outcome === 'update') && item.disabledByVersionChange && !item.enabled) {
+          entry.reenable = true
+        }
       } catch (err) {
-        if (err instanceof NetworkError) offline++
+        if (isPassing(err)) passing++
         else answered++
         entry.outcome = 'unchecked'
         entry.reason = err instanceof Error ? err.message : String(err)
@@ -174,18 +191,33 @@ async function lookUp(
     task?.update(tr(`Mods werden geprüft… ${looked} von ${pending.length}`, `Checking mods… ${looked} of ${pending.length}`), looked / pending.length)
   })
 
-  if (answered === 0 && offline > 0) {
+  if (passing > 0) {
     throw new Error(
-      tr(
-        'Keine Verbindung zu Modrinth oder CurseForge. Prüfe deine Internetverbindung und versuche es erneut.',
-        'No connection to Modrinth or CurseForge. Check your internet connection and try again.'
-      )
+      answered === 0
+        ? tr(
+            'Keine Verbindung zu Modrinth oder CurseForge. Prüfe deine Internetverbindung und versuche es erneut.',
+            'No connection to Modrinth or CurseForge. Check your internet connection and try again.'
+          )
+        : tr(
+            `Modrinth oder CurseForge hat für ${passing} ${passing === 1 ? 'Eintrag' : 'Einträge'} gerade nicht geantwortet. An der Instanz wurde nichts geändert. Versuche es in ein paar Minuten erneut.`,
+            `Modrinth or CurseForge did not answer for ${passing} ${passing === 1 ? 'item' : 'items'} right now. Nothing in the instance was changed. Try again in a few minutes.`
+          )
     )
   }
   return { items, versions }
 }
 
-/** What a change to `target` would do with each item, without changing anything. */
+/** No connection, a rate limit or a server error: worth trying again shortly. */
+function isPassing(err: unknown): boolean {
+  if (err instanceof NetworkError) return true
+  return err instanceof HttpError && (err.status === 429 || err.status >= 500)
+}
+
+/**
+ * What a change to `target` would do with each item. Nothing in the game
+ * folder changes; only local files Modrinth recognises are recorded as such,
+ * the same way the update check records them.
+ */
 export async function planVersionChange(id: string, raw: VersionChangeTarget): Promise<VersionChangePlan> {
   const target = checkTarget(raw)
   await syncContentWithDisk(id)
@@ -208,18 +240,20 @@ export async function changeInstanceVersion(id: string, raw: VersionChangeTarget
     throw new Error(tr('Die Instanz hat diese Version schon.', 'The instance already has this version.'))
   }
 
-  // Files added or removed by hand count before anything is decided. Done
-  // before the lock below, which the folder scan would otherwise wait out.
-  await syncContentWithDisk(id)
-
-  return withContentLock(id, () =>
-    withTask(
+  // Taken right after the checks above, with nothing awaited in between. The
+  // folder scan used to run first, and for the seconds it took on a big pack
+  // a second change, a launch or a repair could still get in.
+  return withContentLock(id, async () => {
+    // Files added or removed by hand count before anything is decided.
+    // Forced, since the scan otherwise waits out the lock held here.
+    await syncContentWithDisk(id, { force: true })
+    return withTask(
       tr(`${before.name} wechselt auf ${label(target)}`, `${before.name} moves to ${label(target)}`),
       tr('Wird vorbereitet…', 'Preparing…'),
       id,
       (task) => runChange(id, target, task)
     )
-  )
+  })
 }
 
 async function runChange(id: string, target: Required<VersionChangeTarget>, task: Task): Promise<VersionChangeResult> {
@@ -272,8 +306,20 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
         prepared.set(entry.contentId, { file, version })
       } catch (err) {
         if (err instanceof TaskCancelledError || task.signal.aborted) throw err
+        // Nothing in the instance has changed yet, so a failure that passes
+        // stops here rather than leaving this one mod switched off.
+        if (isPassing(err)) {
+          throw new Error(
+            tr(
+              `${entry.name} ließ sich gerade nicht herunterladen. An der Instanz wurde nichts geändert. Versuche es gleich noch einmal.`,
+              `${entry.name} could not be downloaded right now. Nothing in the instance was changed. Try again in a moment.`
+            ),
+            { cause: err }
+          )
+        }
         logger.warn(`${entry.name} für ${label(game)} nicht geladen:`, err)
         entry.outcome = 'disable'
+        entry.reenable = false
         entry.toVersion = undefined
         entry.reason = tr(
           `Download fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`,
@@ -297,17 +343,44 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
       } catch (err) {
         logger.warn(`${entry.name} konnte nicht ausgetauscht werden:`, err)
         entry.outcome = 'disable'
+        entry.reenable = false
         entry.toVersion = undefined
         entry.reason = err instanceof Error ? err.message : String(err)
       }
     }
+    // Switched off is only what nothing fits. An item that could not be
+    // checked is left exactly as it is.
+    const switchedOff: VersionChangeItem[] = []
+    const stuckOn: VersionChangeItem[] = []
     for (const entry of items) {
-      if (entry.outcome !== 'disable' && entry.outcome !== 'unchecked') continue
+      if (entry.outcome !== 'disable') continue
       if (!getInstance(id).content.find((c) => c.id === entry.contentId)?.enabled) continue
       try {
         await toggleContent(id, entry.contentId, false)
+        switchedOff.push(entry)
       } catch (err) {
         logger.warn(`${entry.name} konnte nicht ausgeschaltet werden:`, err)
+        stuckOn.push(entry)
+      }
+    }
+    // Remembered, so going back to a version they fit switches them on again.
+    if (switchedOff.length > 0) {
+      const off = new Set(switchedOff.map((entry) => entry.contentId))
+      const current = getInstance(id)
+      persist({
+        ...current,
+        content: current.content.map((item) => (off.has(item.id) ? { ...item, disabledByVersionChange: true } : item))
+      })
+    }
+    // Switched off by an earlier change and fitting again now.
+    for (const entry of items) {
+      if (!entry.reenable || (entry.outcome !== 'keep' && entry.outcome !== 'update')) continue
+      if (getInstance(id).content.find((c) => c.id === entry.contentId)?.enabled !== false) continue
+      try {
+        await toggleContent(id, entry.contentId, true)
+      } catch (err) {
+        logger.warn(`${entry.name} konnte nicht wieder eingeschaltet werden:`, err)
+        entry.reenable = false
       }
     }
 
@@ -333,7 +406,8 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
       if (item) await installNewDependencies(id, item)
     }
 
-    const switchedOff = items.filter((entry) => entry.outcome === 'disable' || entry.outcome === 'unchecked')
+    const names = (list: VersionChangeItem[], more: string): string =>
+      list.slice(0, 3).map((e) => e.name).join(', ') + (list.length > 3 ? more : '')
     if (switchedOff.length > 0) {
       notify(
         'warning',
@@ -342,8 +416,37 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
           `${switchedOff.length} ${switchedOff.length === 1 ? 'item was' : 'items were'} switched off`
         ),
         tr(
-          `Für ${label(game)} gibt es keine passende Version von ${switchedOff.slice(0, 3).map((e) => e.name).join(', ')}${switchedOff.length > 3 ? ' und weiteren' : ''}. Sie bleiben ausgeschaltet in der Instanz.`,
-          `There is no matching version of ${switchedOff.slice(0, 3).map((e) => e.name).join(', ')}${switchedOff.length > 3 ? ' and others' : ''} for ${label(game)}. They stay in the instance, switched off.`
+          `Für ${label(game)} gibt es keine passende Version von ${names(switchedOff, ' und weiteren')}. Sie bleiben ausgeschaltet in der Instanz und gehen wieder an, wenn du auf eine Version wechselst, zu der sie passen.`,
+          `There is no matching version of ${names(switchedOff, ' and others')} for ${label(game)}. They stay in the instance, switched off, and come back on when you change to a version they fit.`
+        ),
+        { route: `/instances/${id}?tab=content` }
+      )
+    }
+    if (stuckOn.length > 0) {
+      notify(
+        'error',
+        tr(
+          `${stuckOn.length} ${stuckOn.length === 1 ? 'Eintrag ließ' : 'Einträge ließen'} sich nicht ausschalten`,
+          `${stuckOn.length} ${stuckOn.length === 1 ? 'item' : 'items'} could not be switched off`
+        ),
+        tr(
+          `${names(stuckOn, ' und weitere')} ${stuckOn.length === 1 ? 'passt' : 'passen'} nicht zu ${label(game)}, ${stuckOn.length === 1 ? 'ist' : 'sind'} aber noch eingeschaltet. Schalte sie unter Installiert selbst aus.`,
+          `${names(stuckOn, ' and others')} ${stuckOn.length === 1 ? 'does' : 'do'} not fit ${label(game)} but ${stuckOn.length === 1 ? 'is' : 'are'} still switched on. Switch ${stuckOn.length === 1 ? 'it' : 'them'} off under Installed yourself.`
+        ),
+        { route: `/instances/${id}?tab=content` }
+      )
+    }
+    const unchecked = items.filter((entry) => entry.outcome === 'unchecked')
+    if (unchecked.length > 0) {
+      notify(
+        'warning',
+        tr(
+          `${unchecked.length} ${unchecked.length === 1 ? 'Eintrag konnte' : 'Einträge konnten'} nicht geprüft werden`,
+          `${unchecked.length} ${unchecked.length === 1 ? 'item' : 'items'} could not be checked`
+        ),
+        tr(
+          `${names(unchecked, ' und weitere')} ${unchecked.length === 1 ? 'bleibt' : 'bleiben'} unverändert. ${unchecked[0].reason ?? ''}`,
+          `${names(unchecked, ' and others')} ${unchecked.length === 1 ? 'stays' : 'stay'} unchanged. ${unchecked[0].reason ?? ''}`
         ),
         { route: `/instances/${id}?tab=content` }
       )

@@ -170,8 +170,10 @@ export async function probeJava(
   executable: string,
   options: { timeout?: number; onFailure?: (reason: string) => void } = {}
 ): Promise<JavaRuntime | null> {
-  if (isUncPath(executable)) return null
-  if (!existsSync(executable)) return null
+  if (isUncPath(executable) || !existsSync(executable)) {
+    options.onFailure?.(tr('Datei nicht gefunden', 'file not found'))
+    return null
+  }
   try {
     const { stdout, stderr } = await execFileAsync(
       executable,
@@ -181,7 +183,8 @@ export async function probeJava(
     // The properties block goes to stderr on most JVMs.
     const parsed = parseJavaProperties(`${stderr}\n${stdout}`)
     if (!parsed) {
-      options.onFailure?.(`keine java.version in der Ausgabe: ${firstLine(`${stderr}\n${stdout}`)}`)
+      const output = firstLine(`${stderr}\n${stdout}`)
+      options.onFailure?.(tr(`keine java.version in der Ausgabe: ${output}`, `no java.version in the output: ${output}`))
       return null
     }
 
@@ -201,16 +204,16 @@ export async function probeJava(
 }
 
 function firstLine(text: string): string {
-  return text.trim().split(/\r?\n/)[0]?.slice(0, 200) || 'leer'
+  return text.trim().split(/\r?\n/)[0]?.slice(0, 200) || tr('leer', 'empty')
 }
 
 /** Why `java -version` failed, short enough for a log line and a message. */
 function probeFailureReason(err: unknown): string {
   const failed = err as { code?: unknown; killed?: boolean; signal?: unknown; stderr?: unknown }
-  if (failed?.killed) return 'Zeitlimit überschritten'
+  if (failed?.killed) return tr('Zeitlimit überschritten', 'timed out')
   if (typeof failed?.code === 'string') return failed.code
   const output = typeof failed?.stderr === 'string' ? firstLine(failed.stderr) : ''
-  if (typeof failed?.code === 'number') return `Exitcode ${failed.code}${output ? `: ${output}` : ''}`
+  if (typeof failed?.code === 'number') return tr(`Exitcode ${failed.code}`, `exit code ${failed.code}`) + (output ? `: ${output}` : '')
   if (failed?.signal) return `Signal ${String(failed.signal)}`
   return err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200)
 }

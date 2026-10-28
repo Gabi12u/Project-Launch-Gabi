@@ -200,8 +200,10 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     if (fit === 'no') {
       // A hand-dropped jar's loaders come from its own metadata files. They
       // say what it was built for, a strong hint, but not a promise that the
-      // loader refuses it, so it does not block the start.
-      const local = mod.provider === 'local'
+      // loader refuses it, so it does not block the start. The same once
+      // Modrinth recognised it: the user put it there on purpose, and it
+      // did not block the start before it was recognised either.
+      const local = mod.provider === 'local' || Boolean(mod.recognisedFrom)
       issues.push({
         id: `loader-${mod.id}`,
         severity: local ? 'warning' : 'error',

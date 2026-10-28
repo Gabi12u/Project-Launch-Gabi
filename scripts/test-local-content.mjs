@@ -48,8 +48,16 @@ globalThis.fetch = async (url) => {
   return new Response(body, { status: 200, headers: { 'content-length': String(Buffer.byteLength(body)) } })
 }
 
+/** A small but real jar: a recognised file is checked as a zip by the repair. */
+function jarBytes(text) {
+  const AdmZip = createRequire(import.meta.url)('adm-zip')
+  const zip = new AdmZip()
+  zip.addFile('fabric.mod.json', Buffer.from(JSON.stringify({ id: 'testmod', name: text, version: '1.0' })))
+  return zip.toBuffer()
+}
+
 function version(projectId, versionId, fileName, gameVersions, released) {
-  const body = `jar ${versionId}`
+  const body = jarBytes(versionId)
   served.set(`/${fileName}`, body)
   return {
     provider: 'modrinth',
@@ -138,9 +146,9 @@ try {
          lookupByHashes: async (hashes) => {
            if (globalThis.__lgOffline) throw new NetworkError('Keine Verbindung (Test)')
            globalThis.__lgAsked.push(...hashes)
-           const out = new Map()
-           for (const h of hashes) if (globalThis.__lgKnown[h]) out.set(h, globalThis.__lgKnown[h])
-           return out
+           const found = new Map()
+           for (const h of hashes) if (globalThis.__lgKnown[h]) found.set(h, globalThis.__lgKnown[h])
+           return { found, answered: new Set(hashes) }
          },
          projectBasics: async (ids) => new Map(ids.map((id) => [id, { name: 'Erkannt: ' + id, pageUrl: 'https://modrinth.com/mod/' + id }]))
        },
@@ -226,7 +234,11 @@ try {
   const chgMods = makeInstance('wechsel', '1.21.11')
   const repMods = makeInstance('reparatur', '26.2')
   const offMods = makeInstance('offline', '26.2')
+  const swapMods = makeInstance('getauscht', '26.2')
+  const extraMods = makeInstance('zweitdatei', '26.2')
+  const noFitMods = makeInstance('ohne-ersatz', '1.21.5')
   void chgMods
+  void noFitMods
 
   // --- 1. Update check --------------------------------------------------------
   await content.checkUpdates('nach-wechsel', undefined, false)
@@ -277,6 +289,37 @@ try {
   const second = await repair.repairInstance('reparatur')
   const secondStep = second.steps?.find((s) => /Mods/.test(s.name ?? s.label ?? ''))
   check(!JSON.stringify(secondStep ?? {}).includes('getauscht'), `Eine zweite Reparatur tauschte erneut: ${JSON.stringify(secondStep)}`)
+
+  // --- 5. A recognised file swapped by hand -----------------------------------------
+  await content.checkUpdates('getauscht', undefined, false)
+  const swapItem = () => instances.getInstance('getauscht').content.find((c) => c.fileName === 'knownmod-1.21.11.jar')
+  check(swapItem()?.provider === 'modrinth' && Boolean(swapItem()?.recognisedFrom), `Vor dem Austausch nicht erkannt: ${JSON.stringify(swapItem())}`)
+  // The user drops their own build in under the same name.
+  writeFileSync(join(swapMods, 'knownmod-1.21.11.jar'), realJar('eigene Fassung'))
+  const later2 = new Date(Date.now() + 9000)
+  utimesSync(join(swapMods, 'knownmod-1.21.11.jar'), later2, later2)
+  const ownBuild = readFileSync(join(swapMods, 'knownmod-1.21.11.jar'))
+  await repair.repairInstance('getauscht')
+  check(Buffer.compare(readFileSync(join(swapMods, 'knownmod-1.21.11.jar')), ownBuild) === 0, 'Die Reparatur hat eine von Hand getauschte Datei überschrieben')
+  check(swapItem()?.provider === 'local', `Die getauschte Datei gilt noch als die erkannte Modrinth-Fassung: ${JSON.stringify(swapItem())}`)
+
+  // --- 6. A version's extra file is not taken for the version ---------------------
+  const extra = jarBytes('zusatzdatei')
+  writeFileSync(join(extraMods, 'knownmod-api.jar'), extra)
+  globalThis.__lgKnown[sha1(extra)] = old // Modrinth answers for the extra file with the whole version
+  await content.checkUpdates('zweitdatei', undefined, false)
+  const extraItem = instances.getInstance('zweitdatei').content.find((c) => c.fileName === 'knownmod-api.jar')
+  check(extraItem?.provider === 'local', `Eine Zusatzdatei wurde als die Version selbst erfasst: ${JSON.stringify(extraItem)}`)
+  const sameProject = instances.getInstance('zweitdatei').content.filter((c) => c.projectId === 'knownmod')
+  check(sameProject.length === 1, `${sameProject.length} Einträge für dasselbe Projekt`)
+
+  // --- 7. No replacement for a neighbouring version is not a failed repair -------
+  globalThis.__lgVersions.knownmod = (mc) => (mc === '26.2' ? for262 : mc === '1.21.11' ? old : null)
+  const noFit = await repair.repairInstance('ohne-ersatz')
+  const noFitStep = noFit.steps?.find((s) => /Mods/.test(s.label ?? ''))
+  notes.push(`Reparatur ohne Ersatz: ${JSON.stringify(noFitStep)}`)
+  check(noFitStep?.status !== 'failed', `Ein Mod ohne Ersatz machte die Reparatur rot: ${JSON.stringify(noFitStep)}`)
+  check(readdirSync(noFitMods).includes('knownmod-1.21.11.jar'), 'Ein Mod ohne Ersatz wurde entfernt')
 
   // --- 4. No answer from Modrinth -------------------------------------------------
   globalThis.__lgOffline = true

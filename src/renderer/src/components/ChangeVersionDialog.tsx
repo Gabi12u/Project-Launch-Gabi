@@ -20,6 +20,8 @@ interface Props {
   open: boolean
   instance: { id: string; name: string; mcVersion: string; loader: LoaderId; loaderVersion: string }
   onClose: () => void
+  /** Called once the change has ended, including the dependencies installed after it. */
+  onDone?: () => void
 }
 
 function targetLabel(mcVersion: string, loader: LoaderId, loaderVersion = ''): string {
@@ -34,7 +36,7 @@ function targetLabel(mcVersion: string, loader: LoaderId, loaderVersion = ''): s
  * learn, plus an overview of what happens to every mod before anything is
  * changed. The change itself runs as a task in the background.
  */
-export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Element {
+export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props): JSX.Element {
   const { settings } = useStore()
   const [step, setStep] = useState<Step>(0)
 
@@ -122,10 +124,13 @@ export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Ele
         setLoaderVersions(found)
         // The current loader stays picked when it exists for the new version,
         // which is what most people want: same mods, newer game.
+        // Only an answer that there is no build moves the choice to Vanilla.
+        // A failed lookup keeps it, "Weiter" stays locked and the banner
+        // offers a retry, instead of silently planning a move to Vanilla.
         setLoader((current) => {
           if (current === 'vanilla') return current
           const list = found[current]
-          return Array.isArray(list) && list.length > 0 ? current : 'vanilla'
+          return list === 'error' || (Array.isArray(list) && list.length > 0) ? current : 'vanilla'
         })
       })
       .finally(() => {
@@ -199,8 +204,10 @@ export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Ele
       items.filter((item) => outcomes.includes(item.outcome))
     return {
       update: of('update'),
-      keep: of('keep'),
-      off: of('disable', 'unchecked'),
+      keep: of('keep').filter((item) => !item.reenable),
+      back: items.filter((item) => item.reenable),
+      off: of('disable'),
+      unchecked: of('unchecked'),
       local: of('local')
     }
   }, [plan])
@@ -222,10 +229,12 @@ export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Ele
       .then(async () => {
         toast('success', tr('Version geändert', 'Version changed'), tr(`${instance.name} ist jetzt auf ${label}.`, `${instance.name} is now on ${label}.`))
         await refreshInstances()
+        onDone?.()
       })
       .catch(async (err) => {
         toastError(err, tr('Version konnte nicht geändert werden', 'Version could not be changed'))
         await refreshInstances()
+        onDone?.()
       })
   }
 
@@ -501,6 +510,21 @@ export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Ele
                   items={groups.keep}
                 />
               )}
+              {groups.back.length > 0 && (
+                <PlanGroup
+                  tone="ok"
+                  title={tr(
+                    `${groups.back.length} ${groups.back.length === 1 ? 'Eintrag wird' : 'Einträge werden'} wieder eingeschaltet`,
+                    `${groups.back.length} ${groups.back.length === 1 ? 'item is' : 'items are'} switched back on`
+                  )}
+                  note={tr(
+                    'Ein früherer Versionswechsel hat sie ausgeschaltet, zur neuen Version passen sie wieder.',
+                    'An earlier version change switched them off, they fit the new version again.'
+                  )}
+                  items={groups.back}
+                  detail={(item) => (item.toVersion ? `${item.fromVersion} → ${item.toVersion}` : item.fromVersion)}
+                />
+              )}
               {groups.off.length > 0 && (
                 <PlanGroup
                   tone="warn"
@@ -509,10 +533,25 @@ export function ChangeVersionDialog({ open, instance, onClose }: Props): JSX.Ele
                     `${groups.off.length} ${groups.off.length === 1 ? 'item is' : 'items are'} switched off`
                   )}
                   note={tr(
-                    'Sie bleiben in der Instanz und lassen sich jederzeit wieder einschalten, etwa wenn es später eine passende Version gibt.',
-                    'They stay in the instance and can be switched on again at any time, for example once a matching version comes out.'
+                    'Sie bleiben in der Instanz und gehen von selbst wieder an, wenn du auf eine Version wechselst, zu der sie passen. Einschalten lassen sie sich auch jederzeit von Hand.',
+                    'They stay in the instance and come back on by themselves when you change to a version they fit. You can also switch them on by hand at any time.'
                   )}
                   items={groups.off}
+                  detail={(item) => item.reason ?? ''}
+                />
+              )}
+              {groups.unchecked.length > 0 && (
+                <PlanGroup
+                  tone="warn"
+                  title={tr(
+                    `${groups.unchecked.length} ${groups.unchecked.length === 1 ? 'Eintrag konnte' : 'Einträge konnten'} nicht geprüft werden und ${groups.unchecked.length === 1 ? 'bleibt' : 'bleiben'} unverändert`,
+                    `${groups.unchecked.length} ${groups.unchecked.length === 1 ? 'item could not be checked and stays' : 'items could not be checked and stay'} unchanged`
+                  )}
+                  note={tr(
+                    'Der Launcher fasst sie nicht an. Prüfe nach dem Wechsel selbst, ob sie zur neuen Version passen.',
+                    'The launcher leaves them alone. Check after the change whether they fit the new version.'
+                  )}
+                  items={groups.unchecked}
                   detail={(item) => item.reason ?? ''}
                 />
               )}

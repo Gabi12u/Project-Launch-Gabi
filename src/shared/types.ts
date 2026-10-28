@@ -107,6 +107,20 @@ export interface ContentItem {
    * its checksum, so it is only asked again once the file changes.
    */
   unrecognisedFrom?: string
+  /**
+   * Size and modification time of the hand-placed file this entry was
+   * recognised from. Such a file was put there by the user, not the
+   * launcher: changed on disk it is looked up again rather than "repaired",
+   * and it keeps the softer checks of a local file. Cleared once the
+   * launcher writes the file itself.
+   */
+  recognisedFrom?: string
+  /**
+   * Switched off by "Version ändern" because nothing fit the new version.
+   * A later change that finds a fitting file switches it back on; switching
+   * it by hand clears this.
+   */
+  disabledByVersionChange?: boolean
   /** Disabled content keeps a `.disabled` suffix on disk. */
   enabled: boolean
   gameVersions: string[]
@@ -209,10 +223,13 @@ export interface VersionChangeItem {
    * `update`: a file made for the new version replaces it.
    * `keep`: the installed file already fits the new version.
    * `disable`: nothing fits the new version, it is switched off and kept.
-   * `unchecked`: the lookup failed, it is switched off and kept as well.
+   * `unchecked`: the lookup failed for good (a missing CurseForge key, say),
+   *   it is left exactly as it is.
    * `local`: added by hand, nothing to look it up by, left as it is.
    */
   outcome: 'update' | 'keep' | 'disable' | 'unchecked' | 'local'
+  /** Switched off by an earlier version change and fitting again now: switched back on. */
+  reenable?: boolean
   fromVersion: string
   toVersion?: string
   reason?: string

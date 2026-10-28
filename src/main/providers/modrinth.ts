@@ -452,30 +452,49 @@ export async function releaseDates(versionIds: string[]): Promise<Map<string, st
 }
 
 /**
- * Looks many files up by sha1 in one request per hundred, keyed by hash.
- * A hash Modrinth does not know is simply missing from the map. Throws only
- * when the request itself fails, so a caller can tell "unknown file" apart
- * from "no answer".
+ * Looks many files up by sha1 in one request per hundred.
+ *
+ * `found` maps a hash to its version, `answered` holds every hash Modrinth
+ * actually gave an answer about: a hash in `answered` but not in `found` is
+ * a file Modrinth does not know, one missing from both got no answer (a
+ * failed batch, an odd reply) and must not be taken as unknown. Throws only
+ * when not a single batch was answered.
  */
-export async function lookupByHashes(hashes: string[]): Promise<Map<string, ProjectVersion>> {
+export async function lookupByHashes(
+  hashes: string[],
+  retries = 3
+): Promise<{ found: Map<string, ProjectVersion>; answered: Set<string> }> {
   const found = new Map<string, ProjectVersion>()
+  const answered = new Set<string>()
   const unique = [...new Set(hashes.map((h) => h.toLowerCase()))]
+  let lastError: unknown = null
   for (let i = 0; i < unique.length; i += 100) {
-    const answer = await fetchJson<Record<string, ModrinthVersion>>(`${API}/version_files`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ hashes: unique.slice(i, i + 100), algorithm: 'sha1' })
-    })
-    if (!answer || typeof answer !== 'object' || Array.isArray(answer)) {
-      logger.warn('Unerwartete Antwort bei der Sammelabfrage von Prüfsummen')
-      continue
-    }
-    for (const [hash, version] of Object.entries(answer)) {
-      const mapped = version ? mapVersion(version) : null
-      if (mapped) found.set(hash.toLowerCase(), mapped)
+    const batch = unique.slice(i, i + 100)
+    try {
+      const answer = await fetchJson<Record<string, ModrinthVersion>>(
+        `${API}/version_files`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hashes: batch, algorithm: 'sha1' })
+        },
+        retries
+      )
+      if (!answer || typeof answer !== 'object' || Array.isArray(answer)) {
+        throw new Error('Unerwartete Antwort bei der Sammelabfrage von Prüfsummen')
+      }
+      for (const hash of batch) answered.add(hash)
+      for (const [hash, version] of Object.entries(answer)) {
+        const mapped = version ? mapVersion(version) : null
+        if (mapped) found.set(hash.toLowerCase(), mapped)
+      }
+    } catch (err) {
+      lastError = err
+      logger.warn('Sammelabfrage von Prüfsummen fehlgeschlagen:', err)
     }
   }
-  return found
+  if (answered.size === 0 && lastError) throw lastError
+  return { found, answered }
 }
 
 /** Name, icon, summary and page of several projects, without the per-project team lookup. */

@@ -1604,7 +1604,11 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
       }
 
       const content = instance.content.map((c) =>
-        c.id === contentId ? { ...c, fileName: nextName, enabled, ...(keptWorlds ? { worlds: keptWorlds } : {}) } : c
+        // Switched by hand: whatever a version change once switched off is
+        // now the user's own decision and is no longer switched back on.
+        c.id === contentId
+          ? { ...c, fileName: nextName, enabled, disabledByVersionChange: undefined, ...(keptWorlds ? { worlds: keptWorlds } : {}) }
+          : c
       )
       return persist({ ...instance, content })
     })

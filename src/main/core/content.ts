@@ -644,6 +644,12 @@ async function importContentFileOnce(
  * Recognising local files
  * ------------------------------------------------------------------ */
 
+/** Size and modification time, the cheap way to tell a file changed. */
+function fileStamp(file: string): string {
+  const stats = statSync(file)
+  return `${stats.size}:${Math.round(stats.mtimeMs)}`
+}
+
 /**
  * Turns local files Modrinth knows into ordinary Modrinth entries.
  *
@@ -654,22 +660,29 @@ async function importContentFileOnce(
  * old Minecraft version for good, even when it is on Modrinth. Its checksum
  * says exactly which file it is.
  *
+ * Only a version's main file counts. Modrinth also answers for a version's
+ * extra files, and two files of one version recorded as the same project
+ * looked like a mod installed twice, so the repair deleted one of them.
+ *
+ * An entry recognised this way is looked at again once its file changes on
+ * disk: the user put it there and may swap it by hand, and the record must
+ * follow the file instead of the repair putting the old one back.
+ *
  * One request for all files. A file Modrinth does not know is remembered by
- * size and modification time and only asked about again once it changes.
- * Network trouble is logged and skipped, the next check tries again.
- * Returns how many entries were recognised.
+ * size and modification time and only asked about again once it changes. A
+ * file that got no answer is left as it is. Returns how many entries were
+ * recognised.
  */
 export async function identifyLocalContent(instanceId: string): Promise<number> {
-  const local = getInstance(instanceId).content.filter((c) => c.provider === 'local' || !c.projectId)
-  if (local.length === 0) return 0
+  const candidates = getInstance(instanceId).content.filter((c) => c.provider === 'local' || !c.projectId || c.recognisedFrom)
+  if (candidates.length === 0) return 0
 
   const hashes = new Map<string, { hash: string; stamp: string }>()
-  for (const item of local) {
+  for (const item of candidates) {
     try {
       const file = contentFilePath(instanceId, item)
-      const stats = statSync(file)
-      const stamp = `${stats.size}:${Math.round(stats.mtimeMs)}`
-      if (item.unrecognisedFrom === stamp) continue
+      const stamp = fileStamp(file)
+      if (item.recognisedFrom ? item.recognisedFrom === stamp : item.unrecognisedFrom === stamp) continue
       hashes.set(item.id, { hash: (await sha1File(file)).toLowerCase(), stamp })
     } catch {
       // Missing or locked right now; the folder scan and the next check deal with it.
@@ -677,25 +690,64 @@ export async function identifyLocalContent(instanceId: string): Promise<number> 
   }
   if (hashes.size === 0) return 0
 
-  let found: Map<string, ProjectVersion>
+  let lookup: Awaited<ReturnType<typeof modrinth.lookupByHashes>>
   try {
-    found = await modrinth.lookupByHashes([...hashes.values()].map((h) => h.hash))
+    // One retry only: this runs before the update check and the version
+    // change, and without a connection those should not wait on it.
+    lookup = await modrinth.lookupByHashes([...hashes.values()].map((h) => h.hash), 1)
   } catch (err) {
     logger.warn('Lokale Dateien konnten nicht bei Modrinth nachgeschlagen werden:', err)
     return 0
   }
-  const projects = await modrinth.projectBasics([...found.values()].map((v) => v.projectId))
+  const mainFile = (hash: string): ProjectVersion | null => {
+    const version = lookup.found.get(hash)
+    return version && version.sha1?.toLowerCase() === hash ? version : null
+  }
+  const projects = await modrinth.projectBasics(
+    [...hashes.values()].map((h) => mainFile(h.hash)?.projectId ?? '').filter(Boolean)
+  )
 
   return withContentLock(instanceId, async () => {
     const current = getInstance(instanceId)
     let recognised = 0
     const content = current.content.map((item): ContentItem => {
       const looked = hashes.get(item.id)
-      // Changed by something else in the meantime: left for the next check.
-      if (!looked || (item.provider !== 'local' && item.projectId)) return item
-      const version = found.get(looked.hash)
-      if (!version) return { ...item, unrecognisedFrom: looked.stamp }
-      recognised++
+      if (!looked || !lookup.answered.has(looked.hash)) return item
+      // Neither turned into an entry by something else in the meantime nor
+      // swapped on disk while Modrinth was asked.
+      const handPlaced = item.provider === 'local' || !item.projectId
+      if (!handPlaced && !item.recognisedFrom) return item
+      let stamp: string
+      try {
+        stamp = fileStamp(contentFilePath(instanceId, item))
+      } catch {
+        return item
+      }
+      if (stamp !== looked.stamp) return item
+
+      const version = mainFile(looked.hash)
+      if (!version) {
+        if (handPlaced) return { ...item, unrecognisedFrom: stamp }
+        // A recognised file swapped by hand for one Modrinth does not know:
+        // a local file again, nothing about the old version still applies.
+        return {
+          ...item,
+          provider: 'local',
+          projectId: undefined,
+          versionId: undefined,
+          version: '',
+          sha1: undefined,
+          size: Number(stamp.split(':')[0]),
+          gameVersions: [],
+          loaders: [],
+          dependencies: [],
+          releasedAt: undefined,
+          recognisedFrom: undefined,
+          unrecognisedFrom: stamp,
+          update: null
+        }
+      }
+      if (handPlaced || item.versionId !== version.versionId) recognised++
       const project = projects.get(version.projectId)
       return {
         ...item,
@@ -708,11 +760,12 @@ export async function identifyLocalContent(instanceId: string): Promise<number> 
         iconUrl: project?.iconUrl ?? item.iconUrl,
         pageUrl: project?.pageUrl ?? item.pageUrl,
         sha1: looked.hash,
-        size: version.size ?? item.size,
+        size: Number(stamp.split(':')[0]),
         gameVersions: version.gameVersions,
         loaders: version.loaders,
         dependencies: version.dependencies,
         releasedAt: version.releasedAt,
+        recognisedFrom: stamp,
         unrecognisedFrom: undefined,
         update: null
       }
@@ -839,12 +892,18 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
   // items still exist and only the update marker is merged onto them.
   const scanned = new Map(updated.map((item) => [item.id, item]))
   const current = getInstance(instanceId)
+  // Moved to another version or loader while this ran ("Version ändern"):
+  // every marker was looked up for the old game and none of them applies.
+  const sameGame =
+    current.mcVersion === instance.mcVersion &&
+    current.loader === instance.loader &&
+    current.loaderVersion === instance.loaderVersion
 
   const merged = current.content.map((item) => {
     const seen = scanned.get(item.id)
     // A different version on disk means this item changed underneath us; a
     // marker computed against the old one must not be pinned to the new one.
-    if (!seen || seen.versionId !== item.versionId) return item
+    if (!sameGame || !seen || seen.versionId !== item.versionId) return item
     return { ...item, update: seen.update ?? null }
   })
 
@@ -1025,7 +1084,9 @@ async function applyUpdateOnce(
     update: null,
     // Read again from the new jar by the next folder scan.
     modIds: undefined,
-    modIdsFrom: undefined
+    modIdsFrom: undefined,
+    // The launcher wrote this file, it is no longer the one placed by hand.
+    recognisedFrom: undefined
   }
 
   // The file downloaded above always sits under its bare name. If the mod is

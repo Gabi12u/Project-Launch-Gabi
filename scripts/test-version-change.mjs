@@ -116,7 +116,8 @@ try {
   const providersStub = join(work, 'providers-stub.js')
   writeFileSync(
     providersStub,
-    `const { NetworkError } = require(${JSON.stringify(join(root, 'src/main/core/net.ts'))})
+    `const { HttpError, NetworkError } = require(${JSON.stringify(join(root, 'src/main/core/net.ts'))})
+     globalThis.__lgHttpError = HttpError
      const answer = (projectId, mc, loader, type) => {
        if (globalThis.__lgOffline) throw new NetworkError('Keine Verbindung (Test)')
        const pick = globalThis.__lgVersions[projectId]
@@ -128,7 +129,13 @@ try {
        bestVersionFor: async (provider, projectId, mc, loader, type) => answer(projectId, mc, loader, type),
        getVersions: async (provider, projectId) => globalThis.__lgAll[projectId] || [],
        getProject: async (provider, projectId) => project(projectId),
-       modrinth: { getProject: async (id) => project(id), lookupByHash: async () => null },
+       modrinth: {
+         getProject: async (id) => project(id),
+         lookupByHash: async () => null,
+         // Knows none of the hand-placed files here; test-local-content covers recognising them.
+         lookupByHashes: async (hashes) => ({ found: new Map(), answered: new Set(hashes) }),
+         projectBasics: async () => new Map()
+       },
        curseforge: { getProject: async (id) => project(id) }
      }`
   )
@@ -259,7 +266,7 @@ try {
   check(files.includes('sodium-1214.jar') && !files.includes('sodium-1211.jar'), 'Sodium wurde nicht ausgetauscht')
   check(files.includes('fapi-1214.jar') && !files.includes('fapi-1211.jar'), 'Fabric API wurde nicht ausgetauscht')
   check(files.includes('oldmod-1211.jar.disabled') && !files.includes('oldmod-1211.jar'), 'Ein Mod ohne passende Version blieb eingeschaltet')
-  check(files.includes('flaky-1211.jar.disabled'), 'Ein nicht prüfbarer Mod blieb eingeschaltet')
+  check(files.includes('flaky-1211.jar') && !files.includes('flaky-1211.jar.disabled'), 'Ein nicht prüfbarer Mod wurde angefasst statt unverändert zu bleiben')
   check(files.includes('handmade.jar'), 'Ein von Hand abgelegter Mod wurde angefasst')
   check(readFileSync(join(mods, 'handmade.jar'), 'utf8') === 'alt handmade.jar', 'Der Inhalt eines von Hand abgelegten Mods hat sich geändert')
   check(files.includes('off-1214.jar.disabled') && !files.includes('off-1211.jar.disabled'), 'Ein ausgeschalteter Mod wurde nicht ausgeschaltet ausgetauscht')
@@ -307,12 +314,75 @@ try {
   served.delete('/fapi-1214.jar')
   served.delete('/sodium-1214.jar')
   globalThis.__lgVersions.sodium = (mc, loader) => (loader === 'fabric' && mc === '1.21.4' ? version('sodium', 'sodium-1214b', 'sodium-1214b.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'] }) : null)
+  const fapiMissing = version('fabric-api', 'fapi-1214b', 'fapi-1214b.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'], missing: true })
+  globalThis.__lgVersions['fabric-api'] = (mc, loader) => (loader === 'fabric' && mc === '1.21.4' ? fapiMissing : null)
   await change.changeInstanceVersion(id, { mcVersion: '1.21.4', loader: 'fabric' })
   const mixed = readdirSync(mods)
   notes.push(`mods nach gescheitertem Download: ${mixed.sort().join(', ')}`)
   check(mixed.includes('sodium-1214b.jar'), 'Der Mod mit funktionierendem Download wurde nicht ausgetauscht')
-  check(!mixed.some((n) => n.startsWith('fapi-1214.jar') && !n.endsWith('.disabled')), 'Ein Mod mit gescheitertem Download ist eingeschaltet')
+  check(!mixed.some((n) => n.startsWith('fapi-') && !n.endsWith('.disabled')), 'Ein Mod mit gescheitertem Download ist eingeschaltet')
   check(instances.getInstance(id).mcVersion === '1.21.4', 'Ein einzelner gescheiterter Download hat den ganzen Wechsel verhindert')
+
+  // --- 8. A busy server stops the change before anything changes --------------
+  const beforeBusy = readdirSync(mods).sort().join('|')
+  const savedSodium = globalThis.__lgVersions.sodium
+  globalThis.__lgVersions.sodium = () => {
+    throw new globalThis.__lgHttpError(503, 'https://api.modrinth.com/v2/project/sodium/version')
+  }
+  let busyServer = ''
+  try {
+    await change.changeInstanceVersion(id, { mcVersion: '1.21.1', loader: 'fabric' })
+  } catch (err) {
+    busyServer = err?.message ?? String(err)
+  }
+  globalThis.__lgVersions.sodium = savedSodium
+  check(/nicht geantwortet|did not answer/.test(busyServer), `Bei einem Serverfehler: ${busyServer || 'kein Fehler, der Wechsel lief durch'}`)
+  check(instances.getInstance(id).mcVersion === '1.21.4', 'Bei einem Serverfehler wurde die Version trotzdem gewechselt')
+  check(readdirSync(mods).sort().join('|') === beforeBusy, 'Bei einem Serverfehler haben sich Dateien geändert')
+
+  // --- 9. Going back switches on what the change switched off ------------------
+  const back = 'rueckweg'
+  const backMods = p.mods(back)
+  mkdirSync(backMods, { recursive: true })
+  const backContent = [
+    record('b-old', 'oldmod', 'old-1211', 'oldmod-1211.jar'),
+    {
+      ...record('b-beta', 'betamod', 'beta-2', 'betamod-beta-2.jar'),
+      gameVersions: ['1.21.1', '1.21.4'],
+      releasedAt: '2026-10-20T00:00:00Z'
+    }
+  ]
+  for (const item of backContent) writeFileSync(join(backMods, item.fileName), `alt ${item.fileName}`)
+  writeFileSync(p.instanceFile(back), JSON.stringify({ name: 'Rueckweg', mcVersion: '1.21.1', loader: 'fabric', loaderVersion: '0.16.9', installed: true, content: backContent }))
+  instances.invalidateInstanceCache()
+  const old1211 = version('oldmod', 'old-1211', 'oldmod-1211.jar', { gameVersions: ['1.21.1'], loaders: ['fabric'] })
+  const release1 = { ...version('betamod', 'rel-1', 'betamod-rel-1.jar', { gameVersions: ['1.21.1', '1.21.4'], loaders: ['fabric'] }), releasedAt: '2026-09-01T00:00:00Z' }
+  globalThis.__lgVersions.oldmod = (mc, loader) => (mc === '1.21.1' && loader === 'fabric' ? old1211 : null)
+  globalThis.__lgVersions.betamod = () => release1
+
+  // Two changes at once: the second is turned away, not run alongside.
+  const first = change.changeInstanceVersion(back, { mcVersion: '1.21.4', loader: 'fabric' })
+  let second = ''
+  try {
+    await change.changeInstanceVersion(back, { mcVersion: '1.21.4', loader: 'fabric' })
+  } catch (err) {
+    second = err?.message ?? String(err)
+  }
+  await first
+  check(/gearbeitet|worked on/.test(second), `Ein zweiter gleichzeitiger Wechsel: ${second || 'lief mit'}`)
+
+  const there = instances.getInstance(back)
+  const oldThere = there.content.find((c) => c.id === 'b-old')
+  check(oldThere?.enabled === false && oldThere?.disabledByVersionChange === true, `oldmod nach dem Hinweg: ${JSON.stringify(oldThere)}`)
+  check(readdirSync(backMods).includes('betamod-beta-2.jar'), 'Die neuere Beta wurde gegen die ältere Vollversion getauscht')
+
+  const backPlan = await change.planVersionChange(back, { mcVersion: '1.21.1', loader: 'fabric' })
+  check(backPlan.items.find((i) => i.contentId === 'b-old')?.reenable === true, `Die Vorschau für den Rückweg schaltet oldmod nicht wieder ein: ${JSON.stringify(backPlan.items)}`)
+  await change.changeInstanceVersion(back, { mcVersion: '1.21.1', loader: 'fabric' })
+  const home = instances.getInstance(back).content.find((c) => c.id === 'b-old')
+  notes.push(`Rückweg: ${readdirSync(backMods).sort().join(', ')}`)
+  check(home?.enabled === true && !home?.disabledByVersionChange, `oldmod nach dem Rückweg: ${JSON.stringify(home)}`)
+  check(readdirSync(backMods).includes('oldmod-1211.jar'), 'oldmod liegt nach dem Rückweg nicht eingeschaltet im Ordner')
 
   // --- 7. Refusals ------------------------------------------------------------
   let same = ''

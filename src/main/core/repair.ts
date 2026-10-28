@@ -152,7 +152,11 @@ export function findDuplicateContent(content: ContentItem[]): ContentItem[] {
     if (group.length < 2) continue
     // Newest install kept, on the assumption that whichever mod update
     // landed most recently is the one the user actually meant to end up with.
-    stale.push(...[...group].sort((a, b) => b.installedAt - a.installedAt).slice(1))
+    // The newer release first: a file recognised from a hand-placed jar
+    // carries the jar's own date as its install time, often far older than
+    // the copy it duplicates.
+    const released = (item: ContentItem): number => (item.releasedAt ? new Date(item.releasedAt).getTime() || 0 : 0)
+    stale.push(...[...group].sort((a, b) => released(b) - released(a) || b.installedAt - a.installedAt).slice(1))
   }
   return stale
 }
@@ -592,6 +596,7 @@ async function runRepair(
     let incompatible = 0
     let recognised = 0
     let refitted = 0
+    let noFit = 0
     let contentCount = 0
     const failed: string[] = []
     // Set when the step's own bookkeeping (the disk sync or the final save)
@@ -680,14 +685,18 @@ async function runRepair(
 
         const missing = !existsSync(file)
         let corrupt = false
+        // Placed there by the user and only recognised by the launcher: a
+        // different checksum means it was swapped by hand, which the lookup
+        // above follows, not damage to undo with the old version.
+        const handPlaced = Boolean(item.recognisedFrom)
         if (!missing) {
-          if (item.sha1) {
+          if (item.sha1 && !handPlaced) {
             try {
               corrupt = (await sha1File(file)) !== item.sha1.toLowerCase()
             } catch {
               corrupt = true
             }
-          } else if (item.size !== undefined) {
+          } else if (item.size !== undefined && !handPlaced) {
             // No hash to check, but a known size: a mismatch is still a plain
             // signal something went wrong, usually an interrupted write.
             try {
@@ -700,7 +709,7 @@ async function runRepair(
           // point that happens to match its expected size. Anything ending in
           // .jar without a hash gets one more look: it must at least open as
           // a zip.
-          if (!corrupt && !item.sha1 && file.toLowerCase().endsWith('.jar')) {
+          if (!corrupt && (!item.sha1 || handPlaced) && file.toLowerCase().endsWith('.jar')) {
             corrupt = !jarLooksIntact(file)
           }
         }
@@ -788,6 +797,21 @@ async function runRepair(
             // exactly the "offensichtlich inkompatibel" case this is meant to
             // surface, not something to quietly leave broken with no reason
             // given.
+            if (wrongVersion) {
+              // Intact, only tagged for another version, and many such mods
+              // work fine on a neighbouring one. Said, but the step is not
+              // marked failed for it on every repair.
+              noFit++
+              repairLog(
+                instanceId,
+                'info',
+                tr(
+                  `Für ${item.name} gibt es keine Version für Minecraft ${current.mcVersion}, die vorhandene bleibt`,
+                  `There is no version of ${item.name} for Minecraft ${current.mcVersion}, the installed one stays`
+                )
+              )
+              continue
+            }
             incompatible++
             repairLog(
               instanceId,
@@ -875,7 +899,8 @@ async function runRepair(
               dependencies: version.dependencies,
               update: null,
               modIds: undefined,
-              modIdsFrom: undefined
+              modIdsFrom: undefined,
+              recognisedFrom: undefined
             }
             if (wrongVersion) refitted++
             else restored++
@@ -971,6 +996,10 @@ async function runRepair(
               `${refitted} ${refitted === 1 ? 'Mod' : 'Mods'} auf die passende Minecraft-Version getauscht`,
               `${refitted} ${refitted === 1 ? 'mod' : 'mods'} swapped for the matching Minecraft version`
             )] : []),
+        ...(noFit > 0 ? [tr(
+              `${noFit} ${noFit === 1 ? 'Mod ist' : 'Mods sind'} nur für eine andere Minecraft-Version freigegeben, ohne Ersatz`,
+              `${noFit} ${noFit === 1 ? 'mod is' : 'mods are'} only marked for another Minecraft version, with no replacement`
+            )] : []),
         tr(`${restored} neu geladen`, `${restored} downloaded again`),
         tr(
           `${removed} ${removed === 1 ? 'verwaister Eintrag' : 'verwaiste Einträge'} entfernt`,
@@ -996,7 +1025,7 @@ async function runRepair(
               `${parts.join(', ')}, ${failed.length} fehlgeschlagen: ${failed.slice(0, 3).join(', ')}` + (failed.length > 3 ? ' und weitere' : ''),
               `${parts.join(', ')}, ${failed.length} failed: ${failed.slice(0, 3).join(', ')}` + (failed.length > 3 ? ' and more' : '')
             )
-          : changed || unresolved
+          : changed || unresolved || noFit > 0
             ? parts.join(', ')
             : outdated > 0
               ? tr(`${contentCount} ${contentCount === 1 ? 'Datei' : 'Dateien'} in Ordnung, ${parts[parts.length - 1]}`, `${contentCount} ${contentCount === 1 ? 'file' : 'files'} OK, ${parts[parts.length - 1]}`)

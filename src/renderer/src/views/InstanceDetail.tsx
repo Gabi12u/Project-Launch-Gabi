@@ -546,7 +546,19 @@ export function InstanceDetailView({
         <InstanceSettingsPanel instance={instance} onChanged={load} onDirtyChange={setSettingsDirty} />
       )}
 
-      {changingVersion && <ChangeVersionDialog open instance={instance} onClose={() => setChangingVersion(false)} />}
+      {changingVersion && (
+        <ChangeVersionDialog
+          open
+          instance={instance}
+          onClose={() => setChangingVersion(false)}
+          // Dependencies land after the page already reloaded for the end of
+          // the setup, so it reads everything once more when all is done.
+          onDone={() => {
+            void load()
+            void runChecks()
+          }}
+        />
+      )}
 
       <Confirm
         open={confirmDelete}
