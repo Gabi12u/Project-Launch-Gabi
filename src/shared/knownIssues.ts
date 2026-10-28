@@ -4937,9 +4937,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'nicht starten“ oder derselben Meldung für eine andere Version. Besonders betroffen ist Minecraft ' +
       '26.1 und neuer, weil kaum jemand Java 25 schon installiert hat. Bis zur Reparatur hilft es, Java ' +
       '25 selbst zu installieren und in den Instanz-Einstellungen auszuwählen.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-10-28',
-    platforms: ['macOS', 'Linux']
+    platforms: ['macOS', 'Linux'],
+    fixedIn: '1.0.24'
   }
 ]
 

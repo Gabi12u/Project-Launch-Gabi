@@ -967,88 +967,40 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.23",
-    "date": "2026-10-25",
-    "headline": "Mehr Platz in der Cloud, Launch Gabi im Linux-Menü und über 130 Fehler behoben.",
+    "version": "1.0.24",
+    "date": "2026-10-28",
+    "headline": "Version und Mod-Loader einer Instanz ändern, und Java 25 startet unter macOS und Linux.",
     "changes": [
       {
         "kind": "new",
-        "text": "In die Cloud passen jetzt zusammen bis zu 5 GB statt 1,5 GB pro Backup. Eine große Instanz kann den Platz also fast allein nutzen, mehrere kleine teilen ihn sich. Wie viel noch frei ist, steht unter Backups."
-      },
-      {
-        "kind": "fixed",
-        "text": "Der Launcher meldet sich erst bei der Cloud an, wenn du dem Hinweis zu Cloud-Backups zugestimmt hast. Bisher geschah das schon beim Öffnen von Sicherungen. Dort lassen sich Cloud-Backups jetzt auch wieder ausschalten."
-      },
-      {
-        "kind": "fixed",
-        "text": "Beim Herunterladen eines Cloud-Backups ist keine fremde Instanz mit gleichem Namen mehr vorausgewählt, und ob die Instanz gerade läuft, wird vor dem Herunterladen geprüft. Auf cloud.launchgabi.com hochgeladene Backups spielen nur die Ordner ein, die wirklich darin stecken, und heruntergeladene Kopien sammeln sich nicht mehr an."
+        "text": "Version ändern: Per Rechtsklick auf eine Instanz oder auf ihrer Seite wechselst du auf eine andere Minecraft-Version oder einen anderen Mod-Loader. Jeder Mod, jedes Ressourcenpaket, jeder Shader und jedes Data Pack bekommt dabei die passende Version, und vorher siehst du, was mit jedem Eintrag passiert."
       },
       {
         "kind": "new",
-        "text": "Unter Linux trägt sich Launch Gabi beim Start ins Anwendungsmenü ein, mit Logo. Die AppImage-Datei trägt keine Versionsnummer mehr im Namen, deshalb bleibt ein angeheftetes Symbol nach Updates erhalten. Nach diesem Update das Symbol bitte einmal neu anheften."
-      },
-      {
-        "kind": "improved",
-        "text": "Fehlerberichte gehen nicht mehr direkt an Discord, sondern an den Server von Launch Gabi. Deine IP-Adresse wird dabei nicht gespeichert."
+        "text": "Was es für die neue Version nicht gibt, wird ausgeschaltet und nicht gelöscht. Neue Abhängigkeiten kommen von selbst dazu, und deine Welten werden vor dem Wechsel gesichert."
       },
       {
         "kind": "fixed",
-        "text": "Eine beschädigte Instanzdatei, etwa nach einem Stromausfall, macht aus der Instanz keine leere Vanilla-Instanz mehr. Der Launcher speichert sicherer und stellt den letzten Stand von selbst wieder her."
-      },
-      {
-        "kind": "fixed",
-        "text": "Sicherungen sind deutlich robuster: Eine gescheiterte Wiederherstellung löscht keine Welten mehr, leere Sicherungen verdrängen keine echten, und die Sicherheitskopie vor einer Wiederherstellung bleibt erhalten."
-      },
-      {
-        "kind": "fixed",
-        "text": "NeoForge und Forge werden nicht mehr vor jedem Start oder für jede neue Instanz eingerichtet, und „Reparieren“ hilft jetzt auch, wenn Dateien des Mod-Loaders fehlen."
-      },
-      {
-        "kind": "fixed",
-        "text": "Dutzende weitere Fehler sind behoben, etwa beim Import von Modpacks und Ordnern, beim Start ohne Internet und bei „Stopp“, das Minecraft jetzt die Welt speichern lässt. Standby zählt nicht mehr als Spielzeit. Alle stehen einzeln auf der Statusseite."
+        "text": "Unter macOS und Linux startet ein Java, das der Launcher selbst herunterlädt, wieder. Bisher scheiterte es mit „Java 25 wurde geladen, lässt sich aber nicht starten“, vor allem bei Minecraft 26.1 und neuer."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.23",
-    "date": "2026-10-25",
-    "headline": "More room in the cloud, Launch Gabi in the Linux menu and over 130 bugs fixed.",
+    "version": "1.0.24",
+    "date": "2026-10-28",
+    "headline": "Change the version and mod loader of an instance, and Java 25 starts on macOS and Linux.",
     "changes": [
       {
         "kind": "new",
-        "text": "Up to 5 GB now fit into the cloud in total, instead of 1.5 GB per backup. One big instance can use almost all of the room, several small ones share it. How much is still free is shown under Backups."
-      },
-      {
-        "kind": "fixed",
-        "text": "The launcher only signs in to the cloud once you have accepted the note on cloud backups. Until now that already happened when opening Backups. Cloud backups can now also be turned off there again."
-      },
-      {
-        "kind": "fixed",
-        "text": "When downloading a cloud backup, an unrelated instance with the same name is no longer preselected, and whether the instance is running is checked before the download. Backups uploaded on cloud.launchgabi.com only restore the folders they really hold, and downloaded copies no longer pile up."
+        "text": "Change version: right-click an instance, or use the button on its page, to move it to another Minecraft version or mod loader. Every mod, resource pack, shader and data pack gets the matching version, and beforehand you see what happens to each one."
       },
       {
         "kind": "new",
-        "text": "On Linux, Launch Gabi adds itself to the application menu at startup, with its logo. The AppImage file no longer carries the version number in its name, so a pinned icon now survives updates. Please pin the icon again once after this update."
-      },
-      {
-        "kind": "improved",
-        "text": "Error reports no longer go straight to Discord but to the Launch Gabi server. Your IP address is not stored on the way."
+        "text": "Anything that has no version for the new game is switched off, not deleted. New dependencies are added on their own, and your worlds are backed up before the change."
       },
       {
         "kind": "fixed",
-        "text": "A damaged instance file, for example after a power cut, no longer turns the instance into an empty vanilla instance. The launcher saves more safely and restores the last state by itself."
-      },
-      {
-        "kind": "fixed",
-        "text": "Backups are much sturdier: a failed restore no longer deletes worlds, empty backups no longer push out real ones, and the safety copy taken before a restore is kept."
-      },
-      {
-        "kind": "fixed",
-        "text": "NeoForge and Forge are no longer set up again before every start or for every new instance, and \"Repair\" now also helps when files of the mod loader are missing."
-      },
-      {
-        "kind": "fixed",
-        "text": "Dozens of further bugs are fixed, for example when importing modpacks and folders, when starting without internet, and with \"Stop\", which now lets Minecraft save the world. Standby no longer counts as play time. All of them are listed one by one on the status page."
+        "text": "On macOS and Linux, a Java the launcher downloads by itself starts again. Until now it failed with \"Java 25 was downloaded but cannot be started\", above all on Minecraft 26.1 and newer."
       }
     ]
   };
@@ -4423,12 +4375,13 @@ footer .grow { flex: 1; }
       "id": "java-download-macos-linux-startet-nicht",
       "title": "Unter macOS und Linux ließ sich ein vom Launcher geladenes Java nicht starten",
       "detail": "Fehlt die passende Java-Version auf dem Rechner, lädt der Launcher sie selbst herunter. Unter macOS und Linux entpackte er sie dabei ohne das Recht, die Programmdatei auszuführen, und probierte sie gleich danach aus. Das scheiterte immer mit „Java 25 wurde geladen, lässt sich aber nicht starten“ oder derselben Meldung für eine andere Version. Besonders betroffen ist Minecraft 26.1 und neuer, weil kaum jemand Java 25 schon installiert hat. Bis zur Reparatur hilft es, Java 25 selbst zu installieren und in den Instanz-Einstellungen auszuwählen.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-28",
       "platforms": [
         "macOS",
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.24"
     }
   ];
   var ISSUE_LABEL = {
@@ -7800,12 +7753,13 @@ footer .grow { flex: 1; }
       "id": "java-download-macos-linux-startet-nicht",
       "title": "On macOS and Linux, a Java downloaded by the launcher could not be started",
       "detail": "If the right Java version is missing, the launcher downloads it itself. On macOS and Linux it unpacked it without the permission to run the program file and tried it out right afterwards. That always failed with \"Java 25 was downloaded but cannot be started\" or the same message for another version. Minecraft 26.1 and newer is hit hardest, because hardly anyone has Java 25 installed already. Until the fix, installing Java 25 yourself and choosing it in the instance settings helps.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-28",
       "platforms": [
         "macOS",
         "Linux"
-      ]
+      ],
+      "fixedIn": "1.0.24"
     }
   ];
   var ISSUE_LABEL_EN = {
