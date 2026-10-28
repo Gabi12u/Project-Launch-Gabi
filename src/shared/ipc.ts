@@ -38,6 +38,9 @@ export const IPC = {
   instanceOpenFolder: 'instance:open-folder',
   instanceCreateShortcut: 'instance:create-shortcut',
   instanceRepair: 'instance:repair',
+  /** Reports what a move to another version would do with each mod, writing nothing. */
+  instanceVersionPlan: 'instance:version-plan',
+  instanceChangeVersion: 'instance:change-version',
   instanceInstall: 'instance:install',
   instanceSetIconImage: 'instance:set-icon-image',
   instanceSetBackground: 'instance:set-background',

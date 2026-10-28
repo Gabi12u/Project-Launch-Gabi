@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 import type {
+  AvailableUpdate,
   CompatibilityIssue,
   ContentItem,
   ContentType,
@@ -663,6 +664,25 @@ function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
 /** Thrown when an update check stopped because there was no connection at all. */
 export class UpdateCheckOfflineError extends Error {}
 
+export function toAvailableUpdate(candidate: ProjectVersion): AvailableUpdate {
+  return {
+    versionId: candidate.versionId,
+    versionNumber: candidate.versionNumber,
+    fileName: contentFileName(candidate.fileName),
+    downloadUrl: candidate.downloadUrl,
+    sha1: candidate.sha1,
+    size: candidate.size,
+    changelog: candidate.changelog,
+    releasedAt: candidate.releasedAt
+  }
+}
+
+/** A replacement file already downloaded and checked, with the version it is. */
+export interface PreparedUpdate {
+  file: string
+  version: ProjectVersion
+}
+
 export async function checkUpdates(instanceId: string, task?: Task, announceFailures = true): Promise<Instance> {
   await syncContentWithDisk(instanceId)
   const instance = getInstance(instanceId)
@@ -702,19 +722,7 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
       )
 
       if (candidate && isNewer(candidate, item)) {
-        updated.push({
-          ...item,
-          update: {
-            versionId: candidate.versionId,
-            versionNumber: candidate.versionNumber,
-            fileName: contentFileName(candidate.fileName),
-            downloadUrl: candidate.downloadUrl,
-            sha1: candidate.sha1,
-            size: candidate.size,
-            changelog: candidate.changelog,
-            releasedAt: candidate.releasedAt
-          }
-        })
+        updated.push({ ...item, update: toAvailableUpdate(candidate) })
       } else {
         updated.push({ ...item, update: null })
       }
@@ -789,11 +797,22 @@ export async function applyUpdate(instanceId: string, contentId: string, signal?
 }
 
 /**
+ * Swaps in a file a version change already downloaded, by the same steps as
+ * an update. Dependencies are left to the caller, which installs them once
+ * every item is swapped.
+ */
+export function applyPreparedUpdate(instanceId: string, contentId: string, prepared: PreparedUpdate): Promise<ContentItem | null> {
+  return withContentLock(instanceId, () =>
+    withItemLock(contentId, () => applyUpdateOnce(instanceId, contentId, undefined, prepared))
+  )
+}
+
+/**
  * A new version can require something the old one did not. An update only
  * swapped the file, so the game then failed to start with nothing pointing
  * at why. Pulled in the same way a fresh install pulls its dependencies.
  */
-async function installNewDependencies(instanceId: string, item: ContentItem): Promise<void> {
+export async function installNewDependencies(instanceId: string, item: ContentItem): Promise<void> {
   if (!getSettings().autoInstallDependencies) return
   if (item.provider !== 'modrinth' && item.provider !== 'curseforge') return
   const provider = item.provider
@@ -827,30 +846,39 @@ async function installNewDependencies(instanceId: string, item: ContentItem): Pr
   }
 }
 
-async function applyUpdateOnce(instanceId: string, contentId: string, signal?: AbortSignal): Promise<ContentItem | null> {
+async function applyUpdateOnce(
+  instanceId: string,
+  contentId: string,
+  signal?: AbortSignal,
+  prepared?: PreparedUpdate
+): Promise<ContentItem | null> {
   assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
-  if (!item?.update) return null
+  const update = prepared ? toAvailableUpdate(prepared.version) : item?.update
+  if (!item || !update) return null
 
   const dir = targetDir(instanceId, item.type)
   // Downloaded under its bare name first. Whether ".disabled" belongs on it
   // depends on the enabled state as read fresh below, which is not known for
   // sure until after the download, so this is only a staging location.
-  const downloadPath = contentPath(dir, item.update.fileName)
+  const downloadPath = contentPath(dir, update.fileName)
 
   try {
-    await downloadFile(
-      {
-        url: item.update.downloadUrl,
-        path: downloadPath,
-        sha1: item.update.sha1,
-        size: item.update.size
-      },
-      undefined,
-      3,
-      signal
-    )
+    if (prepared) renameSync(prepared.file, downloadPath)
+    else {
+      await downloadFile(
+        {
+          url: update.downloadUrl,
+          path: downloadPath,
+          sha1: update.sha1,
+          size: update.size
+        },
+        undefined,
+        3,
+        signal
+      )
+    }
   } catch (err) {
     // Same distribution lock as on install: an author can disable third-party
     // downloads for a later file of an already installed mod.
@@ -896,14 +924,14 @@ async function applyUpdateOnce(instanceId: string, contentId: string, signal?: A
     // rather than forced to true, so an update cannot silently re-enable a
     // mod the user just switched off.
     fileName: current.enabled
-      ? contentFileName(item.update.fileName)
-      : `${contentFileName(item.update.fileName)}.disabled`,
-    version: item.update.versionNumber,
-    versionId: item.update.versionId,
-    sha1: item.update.sha1,
-    size: item.update.size,
+      ? contentFileName(update.fileName)
+      : `${contentFileName(update.fileName)}.disabled`,
+    version: update.versionNumber,
+    versionId: update.versionId,
+    sha1: update.sha1,
+    size: update.size,
     installedAt: Date.now(),
-    releasedAt: item.update.releasedAt,
+    releasedAt: update.releasedAt,
     update: null,
     // Read again from the new jar by the next folder scan.
     modIds: undefined,
@@ -944,11 +972,11 @@ async function applyUpdateOnce(instanceId: string, contentId: string, signal?: A
 
   // Dependencies can change between versions.
   try {
-    const versions = await getVersions(
-      item.provider as 'modrinth' | 'curseforge',
-      item.projectId as string
-    )
-    const fresh = versions.find((v) => v.versionId === next.versionId)
+    const fresh = prepared
+      ? prepared.version
+      : (await getVersions(item.provider as 'modrinth' | 'curseforge', item.projectId as string)).find(
+          (v) => v.versionId === next.versionId
+        )
     if (fresh) {
       next.dependencies = fresh.dependencies
       next.gameVersions = fresh.gameVersions

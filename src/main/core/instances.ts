@@ -30,7 +30,7 @@ import { guessGameOfFolder } from './instanceFolder'
 import { sleptBetween } from './sleep'
 import { emit, notify } from '../events'
 import { log } from '../logger'
-import { TaskCancelledError, withTask } from '../tasks'
+import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { sha1File } from './net'
 import { installLoader, resolveLatestLoaderVersion } from '../loaders'
 import { installVersion, loadVersionJson } from './mojang'
@@ -546,23 +546,7 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
           persist({ ...getInstance(id), loaderVersion })
         }
 
-        task.span(0, 0.25)
-        // A Forge or NeoForge build another instance already installed is
-        // reused. The installer used to run again for every new instance,
-        // minutes of work rewriting shared library jars, and on Windows it
-        // failed outright while a running game held those jars open. A forced
-        // setup still reinstalls.
-        const reusable =
-          !force && (current.loader === 'forge' || current.loader === 'neoforge')
-            ? findInstalledLoaderVersionId(current, loaderVersion)
-            : null
-        const versionId =
-          reusable ?? (await installLoader(current.loader, current.mcVersion, loaderVersion, task))
-
-        task.span(0.25, 1)
-        const versionJson = await loadVersionJson(versionId)
-        await installVersion(versionJson, current.mcVersion, task)
-        task.span(0, 1)
+        await installGameFiles({ ...current, loaderVersion }, task, force)
 
         if (importing.has(id)) {
           importing.set(id, true)
@@ -586,6 +570,36 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
     persist({ ...getInstance(id), installing: false })
     throw err
   }
+}
+
+/** The game a set of files is installed for. */
+export type GameTarget = Pick<Instance, 'mcVersion' | 'loader' | 'loaderVersion'>
+
+/**
+ * Installs the loader and the game files for a version, into the shared
+ * versions and libraries folders. Nothing inside an instance is touched, so
+ * a version change can run this before it changes anything.
+ */
+export async function installGameFiles(target: GameTarget, task: Task, force = false): Promise<void> {
+  // A Forge or NeoForge build another instance already installed is
+  // reused. The installer used to run again for every new instance,
+  // minutes of work rewriting shared library jars, and on Windows it
+  // failed outright while a running game held those jars open. A forced
+  // setup still reinstalls.
+  const reusable =
+    !force && (target.loader === 'forge' || target.loader === 'neoforge')
+      ? findInstalledLoaderVersionId(target, target.loaderVersion)
+      : null
+  // Nested slices, so a caller that gave this only part of its bar keeps
+  // the rest of it.
+  const versionId =
+    reusable ??
+    (await task.within(0, 0.25, () => installLoader(target.loader, target.mcVersion, target.loaderVersion, task)))
+
+  await task.within(0.25, 1, async () => {
+    const versionJson = await loadVersionJson(versionId)
+    await installVersion(versionJson, target.mcVersion, task)
+  })
 }
 
 /** The version id the launcher should start (loader id, or the MC version). */
@@ -623,7 +637,7 @@ export async function resolveVersionId(instance: Instance, install = true): Prom
   }
 }
 
-function findInstalledLoaderVersionId(instance: Instance, loaderVersion: string): string | null {
+function findInstalledLoaderVersionId(instance: Pick<Instance, 'loader' | 'mcVersion'>, loaderVersion: string): string | null {
   const dir = paths.versions()
   if (!existsSync(dir)) return null
 

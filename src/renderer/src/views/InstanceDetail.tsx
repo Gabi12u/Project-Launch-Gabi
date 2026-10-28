@@ -58,6 +58,7 @@ import {
   IconX} from '../components/Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from '../components/ContextMenu'
 import { VersionPicker } from '../components/VersionPicker'
+import { ChangeVersionDialog } from '../components/ChangeVersionDialog'
 import { locale, tr } from '@shared/i18n'
 
 type Tab = 'overview' | 'content' | 'browse' | 'worlds' | 'recordings' | 'logs' | 'settings'
@@ -111,6 +112,7 @@ export function InstanceDetailView({
   const [confirmRepair, setConfirmRepair] = useState(false)
   const [repairing, setRepairing] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [changingVersion, setChangingVersion] = useState(false)
   // Whether the settings panel has unsaved edits, so a tab switch that would
   // unmount it can ask first instead of silently discarding them.
   const [settingsDirty, setSettingsDirty] = useState(false)
@@ -410,6 +412,19 @@ export function InstanceDetailView({
         </button>
         <button
           className="btn sm"
+          onClick={() => setChangingVersion(true)}
+          disabled={repairing || instanceBusy}
+          title={
+            instanceBusy
+              ? tr('Die Instanz läuft, startet oder wird gerade bearbeitet.', 'The instance is running, starting or being worked on right now.')
+              : tr('Wechselt auf eine andere Minecraft-Version oder einen anderen Mod-Loader, Mods inklusive.', 'Moves to another Minecraft version or mod loader, mods included.')
+          }
+        >
+          <IconCube size={14} />
+          {tr('Version ändern', 'Change version')}
+        </button>
+        <button
+          className="btn sm"
           onClick={duplicate}
           disabled={duplicating || running || busy || instance.installing || repairing}
         >
@@ -530,6 +545,8 @@ export function InstanceDetailView({
       {tab === 'settings' && (
         <InstanceSettingsPanel instance={instance} onChanged={load} onDirtyChange={setSettingsDirty} />
       )}
+
+      {changingVersion && <ChangeVersionDialog open instance={instance} onClose={() => setChangingVersion(false)} />}
 
       <Confirm
         open={confirmDelete}
