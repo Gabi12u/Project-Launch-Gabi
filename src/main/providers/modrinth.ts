@@ -451,6 +451,60 @@ export async function releaseDates(versionIds: string[]): Promise<Map<string, st
   return dates
 }
 
+/**
+ * Looks many files up by sha1 in one request per hundred, keyed by hash.
+ * A hash Modrinth does not know is simply missing from the map. Throws only
+ * when the request itself fails, so a caller can tell "unknown file" apart
+ * from "no answer".
+ */
+export async function lookupByHashes(hashes: string[]): Promise<Map<string, ProjectVersion>> {
+  const found = new Map<string, ProjectVersion>()
+  const unique = [...new Set(hashes.map((h) => h.toLowerCase()))]
+  for (let i = 0; i < unique.length; i += 100) {
+    const answer = await fetchJson<Record<string, ModrinthVersion>>(`${API}/version_files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hashes: unique.slice(i, i + 100), algorithm: 'sha1' })
+    })
+    if (!answer || typeof answer !== 'object' || Array.isArray(answer)) {
+      logger.warn('Unerwartete Antwort bei der Sammelabfrage von Prüfsummen')
+      continue
+    }
+    for (const [hash, version] of Object.entries(answer)) {
+      const mapped = version ? mapVersion(version) : null
+      if (mapped) found.set(hash.toLowerCase(), mapped)
+    }
+  }
+  return found
+}
+
+/** Name, icon, summary and page of several projects, without the per-project team lookup. */
+export async function projectBasics(
+  ids: string[]
+): Promise<Map<string, { name: string; summary?: string; iconUrl?: string; pageUrl: string }>> {
+  const basics = new Map<string, { name: string; summary?: string; iconUrl?: string; pageUrl: string }>()
+  const unique = [...new Set(ids.filter(Boolean))]
+  for (let i = 0; i < unique.length; i += 100) {
+    try {
+      const batch = JSON.stringify(unique.slice(i, i + 100))
+      const projects = await fetchJson<ModrinthProject[]>(`${API}/projects?ids=${encodeURIComponent(batch)}`)
+      if (!Array.isArray(projects)) continue
+      for (const project of projects) {
+        if (!project?.id || typeof project.title !== 'string') continue
+        basics.set(project.id, {
+          name: project.title,
+          summary: project.description,
+          iconUrl: project.icon_url,
+          pageUrl: `https://modrinth.com/${project.project_type}/${project.slug}`
+        })
+      }
+    } catch (err) {
+      logger.warn('Projektangaben nicht abrufbar:', err)
+    }
+  }
+  return basics
+}
+
 /** Looks a file up by hash — used to identify manually added jars. */
 export async function lookupByHash(sha1: string): Promise<ProjectVersion | null> {
   try {

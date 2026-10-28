@@ -641,6 +641,89 @@ async function importContentFileOnce(
 }
 
 /* ------------------------------------------------------------------ *
+ * Recognising local files
+ * ------------------------------------------------------------------ */
+
+/**
+ * Turns local files Modrinth knows into ordinary Modrinth entries.
+ *
+ * A mod dropped into the folder by hand, or taken over from another
+ * launcher, is registered by the folder scan as "local", with no project
+ * behind it. The update check, a version change and the repair all work
+ * from that project, so such a mod never got an update and stayed on its
+ * old Minecraft version for good, even when it is on Modrinth. Its checksum
+ * says exactly which file it is.
+ *
+ * One request for all files. A file Modrinth does not know is remembered by
+ * size and modification time and only asked about again once it changes.
+ * Network trouble is logged and skipped, the next check tries again.
+ * Returns how many entries were recognised.
+ */
+export async function identifyLocalContent(instanceId: string): Promise<number> {
+  const local = getInstance(instanceId).content.filter((c) => c.provider === 'local' || !c.projectId)
+  if (local.length === 0) return 0
+
+  const hashes = new Map<string, { hash: string; stamp: string }>()
+  for (const item of local) {
+    try {
+      const file = contentFilePath(instanceId, item)
+      const stats = statSync(file)
+      const stamp = `${stats.size}:${Math.round(stats.mtimeMs)}`
+      if (item.unrecognisedFrom === stamp) continue
+      hashes.set(item.id, { hash: (await sha1File(file)).toLowerCase(), stamp })
+    } catch {
+      // Missing or locked right now; the folder scan and the next check deal with it.
+    }
+  }
+  if (hashes.size === 0) return 0
+
+  let found: Map<string, ProjectVersion>
+  try {
+    found = await modrinth.lookupByHashes([...hashes.values()].map((h) => h.hash))
+  } catch (err) {
+    logger.warn('Lokale Dateien konnten nicht bei Modrinth nachgeschlagen werden:', err)
+    return 0
+  }
+  const projects = await modrinth.projectBasics([...found.values()].map((v) => v.projectId))
+
+  return withContentLock(instanceId, async () => {
+    const current = getInstance(instanceId)
+    let recognised = 0
+    const content = current.content.map((item): ContentItem => {
+      const looked = hashes.get(item.id)
+      // Changed by something else in the meantime: left for the next check.
+      if (!looked || (item.provider !== 'local' && item.projectId)) return item
+      const version = found.get(looked.hash)
+      if (!version) return { ...item, unrecognisedFrom: looked.stamp }
+      recognised++
+      const project = projects.get(version.projectId)
+      return {
+        ...item,
+        provider: 'modrinth',
+        projectId: version.projectId,
+        versionId: version.versionId,
+        version: version.versionNumber,
+        name: project?.name ?? item.name,
+        summary: project?.summary ?? item.summary,
+        iconUrl: project?.iconUrl ?? item.iconUrl,
+        pageUrl: project?.pageUrl ?? item.pageUrl,
+        sha1: looked.hash,
+        size: version.size ?? item.size,
+        gameVersions: version.gameVersions,
+        loaders: version.loaders,
+        dependencies: version.dependencies,
+        releasedAt: version.releasedAt,
+        unrecognisedFrom: undefined,
+        update: null
+      }
+    })
+    persist({ ...current, content })
+    if (recognised > 0) logger.info(`${recognised} lokale ${recognised === 1 ? 'Datei' : 'Dateien'} in ${current.name} bei Modrinth erkannt`)
+    return recognised
+  })
+}
+
+/* ------------------------------------------------------------------ *
  * Updates
  * ------------------------------------------------------------------ */
 
@@ -685,6 +768,13 @@ export interface PreparedUpdate {
 
 export async function checkUpdates(instanceId: string, task?: Task, announceFailures = true): Promise<Instance> {
   await syncContentWithDisk(instanceId)
+  // Local files Modrinth knows become normal entries first, or they could
+  // never show an update.
+  try {
+    await identifyLocalContent(instanceId)
+  } catch (err) {
+    logger.warn('Lokale Dateien nicht nachgeschlagen:', err)
+  }
   const instance = getInstance(instanceId)
 
   const managed = instance.content.filter(

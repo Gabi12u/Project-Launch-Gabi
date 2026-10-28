@@ -102,6 +102,11 @@ export interface ContentItem {
   modIds?: string[]
   /** Size and modification time of the jar `modIds` was read from. */
   modIdsFrom?: string
+  /**
+   * Size and modification time of a local file Modrinth did not recognise by
+   * its checksum, so it is only asked again once the file changes.
+   */
+  unrecognisedFrom?: string
   /** Disabled content keeps a `.disabled` suffix on disk. */
   enabled: boolean
   gameVersions: string[]

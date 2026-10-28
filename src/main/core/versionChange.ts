@@ -18,7 +18,7 @@ import { bestVersionFor } from '../providers'
 import { resolveLatestLoaderVersion } from '../loaders'
 import { downloadFile, NetworkError } from './net'
 import { getInstance, installGameFiles, persist, syncContentWithDisk, toggleContent, tryGetInstance } from './instances'
-import { applyPreparedUpdate, installNewDependencies, type PreparedUpdate } from './content'
+import { applyPreparedUpdate, identifyLocalContent, installNewDependencies, type PreparedUpdate } from './content'
 import { createBackup, NothingToBackUpError } from './backups'
 import { isContentBusy, isCopying, withContentLock } from './contentLock'
 import { isRunning, isStarting } from './running'
@@ -189,6 +189,9 @@ async function lookUp(
 export async function planVersionChange(id: string, raw: VersionChangeTarget): Promise<VersionChangePlan> {
   const target = checkTarget(raw)
   await syncContentWithDisk(id)
+  // Files dropped in by hand that Modrinth knows get their matching version
+  // too, instead of staying behind on the old one.
+  await identifyLocalContent(id)
   const { items } = await lookUp(id, target)
   return { items }
 }
@@ -235,8 +238,10 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
     task.span(0, 0.4)
     await installGameFiles(game, task)
 
-    // 2. A matching file for every item.
+    // 2. A matching file for every item, local files Modrinth knows included.
     task.span(0.4, 0.5)
+    task.update(tr('Lokale Dateien werden erkannt…', 'Recognising local files…'), null)
+    await identifyLocalContent(id)
     const { items, versions } = await lookUp(id, game, task)
 
     // 3. The worlds, before anything opens them in another version.

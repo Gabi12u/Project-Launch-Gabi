@@ -10,7 +10,8 @@ import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } f
 import { clientJarPath, installVersion, loadVersionJson, resolveLibraries , type VersionJson } from './mojang'
 import { requiredJavaMajor, resolveJava } from './java'
 import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
-import { checkUpdates, contentFilePath, removeContent } from './content'
+import { checkUpdates, contentFilePath, identifyLocalContent, removeContent } from './content'
+import { gameVersionMatches } from './gameVersions'
 import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor, getVersions } from '../providers'
 import { installLoader } from '../loaders'
@@ -589,6 +590,8 @@ async function runRepair(
     let removed = 0
     let duplicatesRemoved = 0
     let incompatible = 0
+    let recognised = 0
+    let refitted = 0
     let contentCount = 0
     const failed: string[] = []
     // Set when the step's own bookkeeping (the disk sync or the final save)
@@ -634,6 +637,22 @@ async function runRepair(
           rethrowIfCancelled(err)
           logger.warn(`Doppelter Mod ${item.name} konnte nicht entfernt werden:`, err)
         }
+      }
+
+      // Files dropped in by hand or taken over from another launcher have no
+      // source the repair could replace them from. Modrinth knows most of
+      // them by their checksum.
+      try {
+        recognised = await identifyLocalContent(instanceId)
+        if (recognised > 0) {
+          repairLog(instanceId, 'fix', tr(
+            `${recognised} ${recognised === 1 ? 'lokale Datei' : 'lokale Dateien'} bei Modrinth erkannt`,
+            `${recognised} local ${recognised === 1 ? 'file' : 'files'} recognised on Modrinth`
+          ))
+        }
+      } catch (err) {
+        rethrowIfCancelled(err)
+        logger.warn('Lokale Dateien nicht nachgeschlagen:', err)
       }
 
       const current = getInstance(instanceId)
@@ -686,15 +705,33 @@ async function runRepair(
           }
         }
 
-        if (!missing && !corrupt) continue
+        // Intact, but made for another Minecraft version: after a version
+        // change a mod dropped in by hand stayed on the old one and stopped
+        // the game. Only mods, a data pack also lives on in world copies and
+        // packs mostly keep working across versions.
+        const wrongVersion =
+          !missing &&
+          !corrupt &&
+          item.type === 'mod' &&
+          item.provider !== 'local' &&
+          Boolean(item.projectId) &&
+          item.gameVersions.length > 0 &&
+          !item.gameVersions.some((g) => gameVersionMatches(current.mcVersion, g))
+
+        if (!missing && !corrupt && !wrongVersion) continue
 
         repairLog(
           instanceId,
           'warning',
-          tr(
-            `${item.name} ${missing ? 'fehlt' : 'scheint beschädigt zu sein'} (${item.fileName})`,
-            `${item.name} ${missing ? 'is missing' : 'seems to be damaged'} (${item.fileName})`
-          )
+          wrongVersion
+            ? tr(
+                `${item.name} ist für Minecraft ${item.gameVersions.slice(-3).join(', ')} gebaut, nicht für ${current.mcVersion} (${item.fileName})`,
+                `${item.name} is built for Minecraft ${item.gameVersions.slice(-3).join(', ')}, not ${current.mcVersion} (${item.fileName})`
+              )
+            : tr(
+                `${item.name} ${missing ? 'fehlt' : 'scheint beschädigt zu sein'} (${item.fileName})`,
+                `${item.name} ${missing ? 'is missing' : 'seems to be damaged'} (${item.fileName})`
+              )
         )
 
         if (item.provider === 'local' || !item.projectId) {
@@ -732,7 +769,9 @@ async function runRepair(
           // pack) came back as the newest, while the list still showed the
           // old one. The newest matching one only when that version is gone.
           let version: Awaited<ReturnType<typeof bestVersionFor>> = null
-          if (item.versionId) {
+          // For a mod on the wrong Minecraft version the installed version
+          // is exactly what does not fit, so that one is skipped.
+          if (item.versionId && !wrongVersion) {
             try {
               version = (await getVersions(provider, item.projectId)).find((v) => v.versionId === item.versionId) ?? null
             } catch (err) {
@@ -760,6 +799,9 @@ async function runRepair(
             )
             continue
           }
+          // The provider counts the installed file as fitting after all,
+          // so there is nothing better to swap in.
+          if (wrongVersion && version.versionId === item.versionId) continue
 
           repairLog(
             instanceId,
@@ -835,7 +877,8 @@ async function runRepair(
               modIds: undefined,
               modIdsFrom: undefined
             }
-            restored++
+            if (wrongVersion) refitted++
+            else restored++
             repairLog(instanceId, 'success', tr(`${version.fileName} erfolgreich repariert`, `${version.fileName} repaired successfully`))
           } catch (err) {
             if (movedAside && !existsSync(file)) {
@@ -913,12 +956,20 @@ async function runRepair(
     if (contentStepError) {
       step(tr('Mods & Inhalte', 'Mods & content'), 'failed', contentStepError)
     } else {
-      const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0
+      const changed = restored > 0 || removed > 0 || duplicatesRemoved > 0 || recognised > 0 || refitted > 0
       const unresolved = failed.length > 0 || incompatible > 0
       const parts = [
         ...(duplicatesRemoved > 0 ? [tr(
               `${duplicatesRemoved} ${duplicatesRemoved === 1 ? 'doppelt installierte Datei' : 'doppelt installierte Dateien'} entfernt`,
               `${duplicatesRemoved} ${duplicatesRemoved === 1 ? 'duplicate' : 'duplicates'} removed`
+            )] : []),
+        ...(recognised > 0 ? [tr(
+              `${recognised} ${recognised === 1 ? 'lokale Datei' : 'lokale Dateien'} bei Modrinth erkannt`,
+              `${recognised} local ${recognised === 1 ? 'file' : 'files'} recognised on Modrinth`
+            )] : []),
+        ...(refitted > 0 ? [tr(
+              `${refitted} ${refitted === 1 ? 'Mod' : 'Mods'} auf die passende Minecraft-Version getauscht`,
+              `${refitted} ${refitted === 1 ? 'mod' : 'mods'} swapped for the matching Minecraft version`
             )] : []),
         tr(`${restored} neu geladen`, `${restored} downloaded again`),
         tr(

@@ -404,7 +404,7 @@ export function InstanceDetailView({
           title={
             instanceBusy
               ? tr('Die Instanz läuft, startet oder wird gerade bearbeitet.', 'The instance is running, starting or being worked on right now.')
-              : tr('Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods.', 'Checks all game files, downloads damaged ones again and removes mods installed twice.')
+              : tr('Prüft alle Spieldateien, lädt beschädigte neu, tauscht Mods für eine andere Minecraft-Version aus und entfernt doppelt installierte Mods.', 'Checks all game files, downloads damaged ones again, swaps mods made for another Minecraft version and removes mods installed twice.')
           }
         >
           {repairing ? <span className="spinner" /> : <IconWrench size={14} />}
@@ -573,8 +573,8 @@ export function InstanceDetailView({
         message={
           <>
             {tr(
-              'Prüft alle Spieldateien, lädt beschädigte neu und entfernt doppelt installierte Mods. Deine Welten und Einstellungen bleiben erhalten.',
-              'Checks all game files, downloads damaged ones again and removes mods installed twice. Your worlds and settings are kept.'
+              'Prüft alle Spieldateien, lädt beschädigte neu, tauscht Mods für eine andere Minecraft-Version gegen die passende aus und entfernt doppelt installierte Mods. Deine Welten und Einstellungen bleiben erhalten.',
+              'Checks all game files, downloads damaged ones again, swaps mods made for another Minecraft version for the matching one and removes mods installed twice. Your worlds and settings are kept.'
             )}
           </>
         }
