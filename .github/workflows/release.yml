@@ -51,6 +51,11 @@ jobs:
 
       - run: npm run typecheck
 
+      # Execute bits only exist on macOS and Linux, so this is the one place
+      # the unpacked Java is checked on the systems it actually ships to.
+      - name: Java-Archiv mit Ausfuehrrechten entpacken
+        run: node scripts/test-java-tar-modes.mjs
+
       # Cheap, and it runs before three platform builds rather than after them.
       - name: Tag, Version und Changelog vergleichen
         shell: bash

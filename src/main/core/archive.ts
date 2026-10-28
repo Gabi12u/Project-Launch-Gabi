@@ -4,6 +4,7 @@ import { openPromise as openZipForReading, type Entry as ZipReadEntry, type ZipF
 import { pipeline } from 'node:stream/promises'
 import { randomUUID } from 'node:crypto'
 import {
+  chmodSync,
   copyFileSync,
   closeSync,
   createReadStream,
@@ -761,7 +762,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
   // Minimal tar reader: enough for the Adoptium archives, which only contain
   // regular files, directories and the occasional long-name header.
   let buffer = Buffer.alloc(0)
-  let pendingHeader: { path: string; size: number; type: string; link: string } | null = null
+  let pendingHeader: { path: string; size: number; type: string; link: string; mode: number } | null = null
   let remaining = 0
   // Padding is tracked separately from `remaining` rather than folded into it.
   // A file's data can finish exactly at a stream chunk boundary, before any of
@@ -804,6 +805,13 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
     } else {
       mkdirSync(dirname(dest), { recursive: true })
       writeFileSync(dest, Buffer.concat(sink))
+      // A new file gets 0644, so `bin/java` and `lib/jspawnhelper` came out
+      // without their execute bit and every downloaded Java on macOS and
+      // Linux failed its first run. Only the permission bits are carried over,
+      // never setuid or setgid.
+      if (process.platform !== 'win32' && pendingHeader.mode & 0o111) {
+        chmodSync(dest, (pendingHeader.mode & 0o777) | 0o700)
+      }
     }
     sink = []
     pendingHeader = null
@@ -852,6 +860,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
 
           const sizeField = header.subarray(124, 136).toString('utf8').replace(/\0.*$/, '').trim()
           const size = parseInt(sizeField, 8) || 0
+          const mode = parseInt(header.subarray(100, 108).toString('utf8').replace(/\0.*$/, '').trim(), 8) || 0
           const type = String.fromCharCode(header[156]) || '0'
           // `linkname`, only populated for link entries.
           const link = header.subarray(157, 257).toString('utf8').replace(/\0.*$/, '')
@@ -887,7 +896,7 @@ export async function extractTarGz(archivePath: string, targetDir: string): Prom
             )
           }
 
-          pendingHeader = { path: fullPath, size, type, link }
+          pendingHeader = { path: fullPath, size, type, link, mode }
           remaining = size
 
           if (size === 0) flushFile()
