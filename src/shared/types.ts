@@ -187,6 +187,43 @@ export type InstancePatch = Partial<
   Pick<Instance, 'name' | 'description' | 'group' | 'appearance' | 'settings' | 'favorite'>
 >
 
+/** The Minecraft version and mod loader an instance is moved to. */
+export interface VersionChangeTarget {
+  mcVersion: string
+  loader: LoaderId
+  /** Empty picks the recommended build, the way a new instance does. */
+  loaderVersion?: string
+}
+
+/** What a version change does with one installed item. */
+export interface VersionChangeItem {
+  contentId: string
+  name: string
+  type: ContentType
+  /**
+   * `update`: a file made for the new version replaces it.
+   * `keep`: the installed file already fits the new version.
+   * `disable`: nothing fits the new version, it is switched off and kept.
+   * `unchecked`: the lookup failed, it is switched off and kept as well.
+   * `local`: added by hand, nothing to look it up by, left as it is.
+   */
+  outcome: 'update' | 'keep' | 'disable' | 'unchecked' | 'local'
+  fromVersion: string
+  toVersion?: string
+  reason?: string
+}
+
+export interface VersionChangePlan {
+  items: VersionChangeItem[]
+}
+
+export interface VersionChangeResult {
+  mcVersion: string
+  loader: LoaderId
+  loaderVersion: string
+  items: VersionChangeItem[]
+}
+
 /** Lightweight projection used by list views. */
 export interface InstanceSummary {
   id: string

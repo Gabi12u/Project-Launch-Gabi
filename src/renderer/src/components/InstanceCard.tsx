@@ -5,8 +5,9 @@ import { startInstance, stopInstance, toggleFavorite } from '../lib/actions'
 import { useInstanceIcon, useTilt } from '../lib/hooks'
 import { clickable } from '../lib/a11y'
 import { LOADER_LABELS, formatRelative, loaderColor, pluralise } from '../lib/format'
-import { IconCopy, IconExternal, IconFolder, IconPlay, IconStar, IconStarFilled, IconStop, IconTrash } from './Icons'
+import { IconCopy, IconCube, IconExternal, IconFolder, IconPlay, IconStar, IconStarFilled, IconStop, IconTrash } from './Icons'
 import { ContextMenu, useContextMenu, type MenuItem } from './ContextMenu'
+import { ChangeVersionDialog } from './ChangeVersionDialog'
 import { Confirm } from './ui'
 import { tr } from '@shared/i18n'
 
@@ -18,6 +19,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
   const menu = useContextMenu<null>()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [changingVersion, setChangingVersion] = useState(false)
 
   const accent = instance.appearance.accent
   // Mirrors the guards the main process itself has against duplicating: it
@@ -71,11 +73,22 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
       onSelect: () => void window.gabi.instances.openFolder(instance.id)
     },
     {
+      label: tr('Version ändern', 'Change version'),
+      icon: <IconCube size={14} />,
+      // The main process refuses the same states, the change rewrites the
+      // whole mods folder.
+      disabled: duplicateBlocked,
+      disabledReason: instance.running
+        ? tr('Beende die Instanz zuerst.', 'Stop the instance first.')
+        : tr('Die Instanz startet oder wird gerade bearbeitet.', 'The instance is starting or being worked on right now.'),
+      separated: true,
+      onSelect: () => setChangingVersion(true)
+    },
+    {
       label: tr('Duplizieren', 'Duplicate'),
       icon: <IconCopy size={14} />,
       disabled: duplicateBlocked || duplicating,
       disabledReason: tr('Die Instanz läuft gerade oder wird gerade bearbeitet.', 'The instance is running or being worked on right now.'),
-      separated: true,
       onSelect: () => void duplicate()
     },
     {
@@ -199,6 +212,8 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
     </article>
 
     {menu.open && <ContextMenu x={menu.open.x} y={menu.open.y} items={menuItems} onClose={menu.close} />}
+
+    {changingVersion && <ChangeVersionDialog open instance={instance} onClose={() => setChangingVersion(false)} />}
 
     <Confirm
       open={confirmDelete}

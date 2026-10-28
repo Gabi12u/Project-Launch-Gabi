@@ -36,7 +36,10 @@ import type {
   SearchQuery,
   SearchResponse,
   TaskProgress,
-  UpdateStatus
+  UpdateStatus,
+  VersionChangePlan,
+  VersionChangeResult,
+  VersionChangeTarget
 } from './types'
 
 /**
@@ -238,6 +241,10 @@ export interface GabiApi {
     /** `iconImages` are PNG data URLs the renderer draws for the .ico file. */
     createShortcut(id: string, iconImages?: string[]): Promise<string>
     repair(id: string): Promise<RepairReport>
+    /** What moving to `target` would do with each installed item. Changes nothing. */
+    planVersionChange(id: string, target: VersionChangeTarget): Promise<VersionChangePlan>
+    /** Moves the instance to another Minecraft version or mod loader, mods included. */
+    changeVersion(id: string, target: VersionChangeTarget): Promise<VersionChangeResult>
     install(id: string, force?: boolean): Promise<void>
     setIconImage(id: string): Promise<string | null>
     setBackground(id: string): Promise<string | null>

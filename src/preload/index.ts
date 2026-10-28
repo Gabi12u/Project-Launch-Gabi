@@ -70,6 +70,8 @@ const api = {
     openFolder: call(IPC.instanceOpenFolder),
     createShortcut: call(IPC.instanceCreateShortcut),
     repair: call(IPC.instanceRepair),
+    planVersionChange: call(IPC.instanceVersionPlan),
+    changeVersion: call(IPC.instanceChangeVersion),
     install: call(IPC.instanceInstall),
     setIconImage: call(IPC.instanceSetIconImage),
     setBackground: call(IPC.instanceSetBackground),

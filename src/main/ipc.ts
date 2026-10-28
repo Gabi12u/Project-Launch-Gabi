@@ -12,7 +12,8 @@ import type {
   InstancePatch,
   LauncherSettings,
   LoaderId,
-  SearchQuery
+  SearchQuery,
+  VersionChangeTarget
 } from '@shared/types'
 import { ensureRootLayout, paths, safeJoin } from './paths'
 import { getSettings, resetSettings, saveSettings } from './store'
@@ -89,6 +90,7 @@ import {
 } from './core/backups'
 import { cloudOverview, deleteCloudAccount, deleteFromCloud, downloadFromCloud, uploadToCloud } from './core/cloud'
 import { repairInstance } from './core/repair'
+import { changeInstanceVersion, planVersionChange } from './core/versionChange'
 import { anyContentBusy } from './core/contentLock'
 import { anyArchiving, anyRestoring, isRestoring } from './core/restoreLock'
 import { anyRepairing, isRepairing } from './core/repairLock'
@@ -559,6 +561,10 @@ export function registerIpc(): void {
   })
 
   handle(IPC.instanceRepair, (id: string) => repairInstance(id))
+
+  handle(IPC.instanceVersionPlan, (id: string, target: VersionChangeTarget) => planVersionChange(id, target))
+
+  handle(IPC.instanceChangeVersion, (id: string, target: VersionChangeTarget) => changeInstanceVersion(id, target))
 
   handle(IPC.instanceInstall, (id: string, force?: boolean) => installInstance(id, force))
 
