@@ -3119,6 +3119,16 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Whether a file from a CurseForge modpack is a mod, a resource pack or a shader, the launcher asks ' +
       'CurseForge. If that one request failed, for example because CurseForge was overloaded, every file ' +
       'landed in the mods folder without a word. Resource packs and shaders then had no effect in game.'
+  },
+  'java-download-macos-linux-startet-nicht': {
+    title: 'On macOS and Linux, a Java downloaded by the launcher could not be started',
+    detail:
+      'If the right Java version is missing, the launcher downloads it itself. On macOS and Linux it ' +
+      'unpacked it without the permission to run the program file and tried it out right afterwards. ' +
+      'That always failed with "Java 25 was downloaded but cannot be started" or the same message for ' +
+      'another version. Minecraft 26.1 and newer is hit hardest, because hardly anyone has Java 25 ' +
+      'installed already. Until the fix, installing Java 25 yourself and choosing it in the instance ' +
+      'settings helps.'
   }
 }
 
