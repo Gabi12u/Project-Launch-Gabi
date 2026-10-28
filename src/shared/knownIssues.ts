@@ -5010,6 +5010,60 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'konnte ihn nicht ersetzen.',
     state: 'fixing',
     since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-serverfehler-mods-aus',
+    title: 'Antwortete Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, wurden Mods ausgeschaltet',
+    detail:
+      'War Modrinth oder CurseForge während eines Versionswechsels überlastet oder antwortete mit einem ' +
+      'Fehler, galten die betroffenen Mods als nicht prüfbar und wurden ausgeschaltet. Der Wechsel lief ' +
+      'trotzdem durch, und die Instanz stand im schlimmsten Fall ohne ihre Mods auf der neuen Version. ' +
+      'Ausgeschaltete Mods lassen sich unter Installiert wieder einschalten.',
+    state: 'fixing',
+    since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-gleichzeitig',
+    title: 'Kurz nach dem Start von „Version ändern“ konnten ein zweiter Wechsel oder ein Spielstart noch durchgehen',
+    detail:
+      'Zwischen dem Bestätigen und dem eigentlichen Beginn eines Versionswechsels lag ein kurzer Moment, in ' +
+      'dem die Instanz noch nicht als beschäftigt galt. Ein zweiter Wechsel, ein Spielstart oder eine ' +
+      'Reparatur konnte in diesem Moment beginnen und gleichzeitig mit dem Wechsel an den Mods arbeiten.',
+    state: 'fixing',
+    since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-alte-updates',
+    title: 'Nach „Version ändern“ konnten Updates für die alte Minecraft-Version angeboten werden',
+    detail:
+      'Lief während eines Versionswechsels gerade eine Update-Prüfung, etwa weil die Seite der Instanz offen ' +
+      'war, trug sie danach Updates ein, die sie noch für die alte Version gesucht hatte. „Aktualisieren“ ' +
+      'installierte dann eine Fassung für die alte Version.',
+    state: 'fixing',
+    since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-zurueck-bleibt-aus',
+    title: 'Beim Zurückwechseln auf die vorige Version blieben ausgeschaltete Mods aus',
+    detail:
+      'Mods, die „Version ändern“ ausschaltet, weil es sie für die neue Version nicht gibt, blieben auch nach ' +
+      'einem Wechsel zurück auf die alte Version ausgeschaltet. Der Überblick zählte sie dabei zu den ' +
+      'Einträgen, die schon passen.',
+    state: 'fixing',
+    since: '2026-10-28'
+  },
+  {
+    id: 'versionswechsel-kleine-fehler',
+    title: 'Kleinere Fehler bei „Version ändern“ und beim Java-Fehlergrund',
+    detail:
+      'Die Seite der Instanz zeigte nach einem Versionswechsel neu installierte Abhängigkeiten erst nach ' +
+      'erneutem Öffnen. Die Meldung am Ende zählte auch Mods als ausgeschaltet, die schon aus waren oder ' +
+      'sich nicht ausschalten ließen. Schlug die Abfrage des aktuellen Mod-Loaders fehl, sprang der Dialog ' +
+      'still auf Vanilla. Eine neuere Beta eines Mods konnte gegen eine ältere Vollversion getauscht werden. ' +
+      'Außerdem stand der Grund, warum ein geladenes Java nicht startet, in der englischen Oberfläche auf ' +
+      'Deutsch.',
+    state: 'fixing',
+    since: '2026-10-28'
   }
 ]
 

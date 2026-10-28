@@ -3147,6 +3147,44 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Installed. For such mods the launcher never looked for updates, even when they are on Modrinth, ' +
       'and "Change version" left them unchanged. After a move to 26.2, a mod for 1.21.11 could stay in ' +
       'the instance this way, with no sign that it is out of date. "Repair" could not replace it either.'
+  },
+  'versionswechsel-serverfehler-mods-aus': {
+    title: 'If Modrinth or CurseForge answered with an error during "Change version", mods were switched off',
+    detail:
+      'If Modrinth or CurseForge was overloaded or answered with an error during a version change, the ' +
+      'affected mods counted as not checkable and were switched off. The change still went through, and in ' +
+      'the worst case the instance ended up on the new version without its mods. Switched off mods can be ' +
+      'switched on again under Installed.'
+  },
+  'versionswechsel-gleichzeitig': {
+    title: 'Right after "Change version" started, a second change or a game start could still go through',
+    detail:
+      'Between confirming and the actual start of a version change there was a short moment in which the ' +
+      'instance did not count as busy yet. A second change, a game start or a repair could begin in that ' +
+      'moment and work on the mods at the same time as the change.'
+  },
+  'versionswechsel-alte-updates': {
+    title: 'After "Change version", updates for the old Minecraft version could be offered',
+    detail:
+      'If an update check was running during a version change, for example because the instance page was ' +
+      'open, it afterwards recorded updates it had looked up for the old version. "Update" then installed a ' +
+      'build for the old version.'
+  },
+  'versionswechsel-zurueck-bleibt-aus': {
+    title: 'Switching back to the previous version left switched off mods off',
+    detail:
+      'Mods that "Change version" switches off because there is no build for the new version stayed off ' +
+      'even after changing back to the old version. The overview counted them among the items that ' +
+      'already fit.'
+  },
+  'versionswechsel-kleine-fehler': {
+    title: 'Smaller faults in "Change version" and in the Java failure reason',
+    detail:
+      'After a version change, the instance page only showed newly installed dependencies once it was ' +
+      'opened again. The final message also counted mods as switched off that were already off or could ' +
+      'not be switched off. If the lookup of the current mod loader failed, the dialog silently jumped to ' +
+      'Vanilla. A newer beta of a mod could be swapped for an older release. Also, the reason why a ' +
+      'downloaded Java does not start was shown in German in the English interface.'
   }
 }
 

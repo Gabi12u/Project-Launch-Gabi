@@ -4428,6 +4428,41 @@ footer .grow { flex: 1; }
       "detail": "Ein Mod, der von Hand in den Ordner gelegt oder aus einem anderen Launcher übernommen wurde, steht unter Installiert als „Lokal“. Für solche Mods suchte der Launcher nie nach Updates, auch wenn es sie auf Modrinth gibt, und „Version ändern“ ließ sie unverändert. Nach einem Wechsel auf 26.2 blieb so etwa ein Mod für 1.21.11 in der Instanz, ohne Hinweis, dass er veraltet ist. Auch „Reparieren“ konnte ihn nicht ersetzen.",
       "state": "fixing",
       "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-serverfehler-mods-aus",
+      "title": "Antwortete Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, wurden Mods ausgeschaltet",
+      "detail": "War Modrinth oder CurseForge während eines Versionswechsels überlastet oder antwortete mit einem Fehler, galten die betroffenen Mods als nicht prüfbar und wurden ausgeschaltet. Der Wechsel lief trotzdem durch, und die Instanz stand im schlimmsten Fall ohne ihre Mods auf der neuen Version. Ausgeschaltete Mods lassen sich unter Installiert wieder einschalten.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-gleichzeitig",
+      "title": "Kurz nach dem Start von „Version ändern“ konnten ein zweiter Wechsel oder ein Spielstart noch durchgehen",
+      "detail": "Zwischen dem Bestätigen und dem eigentlichen Beginn eines Versionswechsels lag ein kurzer Moment, in dem die Instanz noch nicht als beschäftigt galt. Ein zweiter Wechsel, ein Spielstart oder eine Reparatur konnte in diesem Moment beginnen und gleichzeitig mit dem Wechsel an den Mods arbeiten.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-alte-updates",
+      "title": "Nach „Version ändern“ konnten Updates für die alte Minecraft-Version angeboten werden",
+      "detail": "Lief während eines Versionswechsels gerade eine Update-Prüfung, etwa weil die Seite der Instanz offen war, trug sie danach Updates ein, die sie noch für die alte Version gesucht hatte. „Aktualisieren“ installierte dann eine Fassung für die alte Version.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-zurueck-bleibt-aus",
+      "title": "Beim Zurückwechseln auf die vorige Version blieben ausgeschaltete Mods aus",
+      "detail": "Mods, die „Version ändern“ ausschaltet, weil es sie für die neue Version nicht gibt, blieben auch nach einem Wechsel zurück auf die alte Version ausgeschaltet. Der Überblick zählte sie dabei zu den Einträgen, die schon passen.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-kleine-fehler",
+      "title": "Kleinere Fehler bei „Version ändern“ und beim Java-Fehlergrund",
+      "detail": "Die Seite der Instanz zeigte nach einem Versionswechsel neu installierte Abhängigkeiten erst nach erneutem Öffnen. Die Meldung am Ende zählte auch Mods als ausgeschaltet, die schon aus waren oder sich nicht ausschalten ließen. Schlug die Abfrage des aktuellen Mod-Loaders fehl, sprang der Dialog still auf Vanilla. Eine neuere Beta eines Mods konnte gegen eine ältere Vollversion getauscht werden. Außerdem stand der Grund, warum ein geladenes Java nicht startet, in der englischen Oberfläche auf Deutsch.",
+      "state": "fixing",
+      "since": "2026-10-28"
     }
   ];
   var ISSUE_LABEL = {
@@ -7850,6 +7885,41 @@ footer .grow { flex: 1; }
       "id": "lokale-mods-ohne-updates",
       "title": "Mods not installed through the search never got updates and stayed old on a version change",
       "detail": "A mod placed in the folder by hand or taken over from another launcher shows as \"Local\" under Installed. For such mods the launcher never looked for updates, even when they are on Modrinth, and \"Change version\" left them unchanged. After a move to 26.2, a mod for 1.21.11 could stay in the instance this way, with no sign that it is out of date. \"Repair\" could not replace it either.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-serverfehler-mods-aus",
+      "title": "If Modrinth or CurseForge answered with an error during \"Change version\", mods were switched off",
+      "detail": "If Modrinth or CurseForge was overloaded or answered with an error during a version change, the affected mods counted as not checkable and were switched off. The change still went through, and in the worst case the instance ended up on the new version without its mods. Switched off mods can be switched on again under Installed.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-gleichzeitig",
+      "title": "Right after \"Change version\" started, a second change or a game start could still go through",
+      "detail": "Between confirming and the actual start of a version change there was a short moment in which the instance did not count as busy yet. A second change, a game start or a repair could begin in that moment and work on the mods at the same time as the change.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-alte-updates",
+      "title": "After \"Change version\", updates for the old Minecraft version could be offered",
+      "detail": "If an update check was running during a version change, for example because the instance page was open, it afterwards recorded updates it had looked up for the old version. \"Update\" then installed a build for the old version.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-zurueck-bleibt-aus",
+      "title": "Switching back to the previous version left switched off mods off",
+      "detail": "Mods that \"Change version\" switches off because there is no build for the new version stayed off even after changing back to the old version. The overview counted them among the items that already fit.",
+      "state": "fixing",
+      "since": "2026-10-28"
+    },
+    {
+      "id": "versionswechsel-kleine-fehler",
+      "title": "Smaller faults in \"Change version\" and in the Java failure reason",
+      "detail": "After a version change, the instance page only showed newly installed dependencies once it was opened again. The final message also counted mods as switched off that were already off or could not be switched off. If the lookup of the current mod loader failed, the dialog silently jumped to Vanilla. A newer beta of a mod could be swapped for an older release. Also, the reason why a downloaded Java does not start was shown in German in the English interface.",
       "state": "fixing",
       "since": "2026-10-28"
     }
