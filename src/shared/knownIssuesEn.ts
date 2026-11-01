@@ -3193,6 +3193,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'PC switched off, the instance stayed on the old version while some mods were already for the new ' +
       'one. The game then crashed on start, with no hint at why. A second change to the same version ' +
       'completes it. A staging folder was also left behind in the cache.'
+  },
+  'sicherer-grafikmodus-greift-nicht': {
+    title: 'After repeated interface crashes the launcher did not start without graphics acceleration as announced',
+    detail:
+      'If the interface crashes three times within a minute, the launcher stops reloading it and announces ' +
+      'that the next start runs once without graphics acceleration. That is the usual way out when a graphics ' +
+      'driver makes the interface crash. At the next start, however, reading that note already failed because ' +
+      'of a bug in the program. The launcher therefore started with graphics acceleration again, and the ' +
+      'interface crashed again.'
   }
 }
 

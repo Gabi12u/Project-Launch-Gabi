@@ -4935,8 +4935,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Antwortete dabei Microsoft nicht, startete das Spiel trotzdem mit der gespeicherten Sitzung, ' +
       'sodass wenigstens Einzelspieler ging. Antworteten erst die späteren Schritte bei Xbox Live ' +
       'oder Minecraft nicht, brach der Start dagegen mit einer technischen Fehlermeldung ab.',
-    state: 'fixing',
-    since: '2026-10-25'
+    state: 'fixed',
+    since: '2026-10-25',
+    fixedIn: '1.0.25'
   },
   {
     id: 'bat-wrapper-sonderzeichen',
@@ -4945,8 +4946,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Ein Skript als Wrapper oder als Befehl vor dem Start läuft unter Windows über cmd.exe. ' +
       'Enthielt ein Pfad oder ein Argument ein Prozentzeichen, ein Anführungszeichen, ein ^ oder ein ' +
       '!, kam es bei Java verändert an. Ein Ordnername wie „100%“ konnte so den Start verhindern.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-10-25',
+    fixedIn: '1.0.25',
     platforms: ['Windows']
   },
   {
@@ -4956,8 +4958,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Beim Import einer .mrpack-Datei merkte sich der Launcher nicht, wann die mitgelieferten ' +
       'Versionen der Mods erschienen waren. Die Update-Prüfung hielt deshalb alles für aktuell, was ' +
       'vor dem Tag des Imports veröffentlicht wurde, und meldete erst Updates, die danach erschienen.',
-    state: 'fixing',
-    since: '2026-10-25'
+    state: 'fixed',
+    since: '2026-10-25',
+    fixedIn: '1.0.25'
   },
   {
     id: 'curseforge-import-pakete-in-mods',
@@ -4967,8 +4970,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'der Launcher bei CurseForge nach. Scheiterte diese eine Abfrage, etwa weil CurseForge gerade ' +
       'überlastet war, landeten alle Dateien ohne Hinweis im Mod-Ordner. Resourcepacks und Shader ' +
       'wirkten dann im Spiel nicht.',
-    state: 'fixing',
-    since: '2026-10-25'
+    state: 'fixed',
+    since: '2026-10-25',
+    fixedIn: '1.0.25'
   },
   {
     id: 'java-download-macos-linux-startet-nicht',
@@ -5008,8 +5012,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'sie auf Modrinth gibt, und „Version ändern“ ließ sie unverändert. Nach einem Wechsel auf 26.2 blieb ' +
       'so etwa ein Mod für 1.21.11 in der Instanz, ohne Hinweis, dass er veraltet ist. Auch „Reparieren“ ' +
       'konnte ihn nicht ersetzen.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-serverfehler-mods-aus',
@@ -5019,8 +5024,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Fehler, galten die betroffenen Mods als nicht prüfbar und wurden ausgeschaltet. Der Wechsel lief ' +
       'trotzdem durch, und die Instanz stand im schlimmsten Fall ohne ihre Mods auf der neuen Version. ' +
       'Ausgeschaltete Mods lassen sich unter Installiert wieder einschalten.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-gleichzeitig',
@@ -5029,8 +5035,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Zwischen dem Bestätigen und dem eigentlichen Beginn eines Versionswechsels lag ein kurzer Moment, in ' +
       'dem die Instanz noch nicht als beschäftigt galt. Ein zweiter Wechsel, ein Spielstart oder eine ' +
       'Reparatur konnte in diesem Moment beginnen und gleichzeitig mit dem Wechsel an den Mods arbeiten.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-alte-updates',
@@ -5039,8 +5046,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lief während eines Versionswechsels gerade eine Update-Prüfung, etwa weil die Seite der Instanz offen ' +
       'war, trug sie danach Updates ein, die sie noch für die alte Version gesucht hatte. „Aktualisieren“ ' +
       'installierte dann eine Fassung für die alte Version.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-zurueck-bleibt-aus',
@@ -5049,8 +5057,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Mods, die „Version ändern“ ausschaltet, weil es sie für die neue Version nicht gibt, blieben auch nach ' +
       'einem Wechsel zurück auf die alte Version ausgeschaltet. Der Überblick zählte sie dabei zu den ' +
       'Einträgen, die schon passen.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-kleine-fehler',
@@ -5062,8 +5071,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'still auf Vanilla. Eine neuere Beta eines Mods konnte gegen eine ältere Vollversion getauscht werden. ' +
       'Außerdem stand der Grund, warum ein geladenes Java nicht startet, in der englischen Oberfläche auf ' +
       'Deutsch.',
-    state: 'fixing',
-    since: '2026-10-28'
+    state: 'fixed',
+    since: '2026-10-28',
+    fixedIn: '1.0.25'
   },
   {
     id: 'versionswechsel-unterbrochen',
@@ -5073,8 +5083,22 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'einen ausgeschalteten PC, stand die Instanz weiter auf der alten Version, ein Teil der Mods aber schon ' +
       'auf der neuen. Das Spiel stürzte dann beim Start ab, ohne Hinweis auf den Grund. Ein zweiter Wechsel ' +
       'auf dieselbe Version schließt ihn ab. Außerdem blieb dabei ein Zwischenordner im Cache liegen.',
-    state: 'fixing',
-    since: '2026-10-29'
+    state: 'fixed',
+    since: '2026-10-29',
+    fixedIn: '1.0.25'
+  },
+  {
+    id: 'sicherer-grafikmodus-greift-nicht',
+    title: 'Nach wiederholten Abstürzen der Oberfläche startete der Launcher nicht wie angekündigt ohne Grafikbeschleunigung',
+    detail:
+      'Stürzt die Oberfläche dreimal innerhalb einer Minute ab, hört der Launcher auf, sie neu zu laden, und ' +
+      'kündigt an, beim nächsten Start einmal ohne Grafikbeschleunigung zu starten. Das ist der übliche Ausweg, ' +
+      'wenn ein Grafiktreiber die Oberfläche abstürzen lässt. Beim nächsten Start scheiterte aber schon das ' +
+      'Lesen dieser Vormerkung an einem Fehler im Programm. Der Launcher startete deshalb wieder mit ' +
+      'Grafikbeschleunigung, und die Oberfläche stürzte erneut ab.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.25'
   }
 ]
 

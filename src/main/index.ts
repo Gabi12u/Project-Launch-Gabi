@@ -117,6 +117,14 @@ function consumePendingRoute(): void {
   }
 }
 
+/**
+ * Asks the next start to run without graphics acceleration, see
+ * `reloadAfterFailure`. Declared above the `bootstrap()` call below, which
+ * runs while this module is still loading: further down, reading it there
+ * failed before it existed, and the promised safe start never happened.
+ */
+const SAFE_GRAPHICS_MARKER = 'graphics-safe-mode-once'
+
 /* ------------------------------------------------------------------ *
  * Single instance
  * ------------------------------------------------------------------ */
@@ -351,8 +359,6 @@ function createWindow(): BrowserWindow {
 
 /** Recent reloads after a crash or hang, see `reloadAfterFailure`. */
 const recentReloads: number[] = []
-/** Asks the next start to run without graphics acceleration. */
-const SAFE_GRAPHICS_MARKER = 'graphics-safe-mode-once'
 /** Set once the user confirmed quitting with tasks still running. */
 let quitConfirmed = false
 
