@@ -22,6 +22,22 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.25': {
+    headline: 'Beta programme, report problems yourself with pictures, and mods from other launchers now get updates.',
+    changes: [
+      'Beta programme: with a beta key you get new versions before they come out for everyone. You enter it under Settings, Updates, Beta programme. It is checked that the Minecraft account is yours. While you are in, error reports are sent automatically, and your Minecraft name is stored. You can leave at any time in the same place.',
+      'On Windows and Linux a beta arrives like a normal update. On a Mac the launcher does not install updates by itself, so there you download it with a button in the beta programme.',
+      'Report a problem yourself: under Settings, Error reports you describe a problem in your own words and attach up to three pictures. If you want, the log goes along, without user names, player names and credentials.',
+      'Mods you placed by hand or took over from another launcher now get updates, move along with "Change version" and can be repaired.',
+      'If Modrinth or CurseForge answers "Change version" with an error, the change stops before anything is touched. Until now mods were switched off on the way.',
+      'If the launcher is closed in the middle of "Change version", it notices at the next start and helps to finish. The instance no longer starts half converted.',
+      'Changing back turns switched-off mods on again. A second change or a game start no longer gets in between, and no updates for the old version are offered.',
+      'If Xbox Live drops out briefly while the sign-in is renewed, the game still starts with the saved sign-in, so at least singleplayer works.',
+      'Modrinth modpacks: updates are found even when they came out before the import. CurseForge modpacks no longer quietly put resource packs and shaders into the mods folder.',
+      'Windows: a .bat or .cmd wrapper now gets paths with %, ^, ! or quotation marks unchanged.',
+      'If the interface keeps crashing, the next start now runs without graphics acceleration as announced. Until now that did not happen, and it crashed again.'
+    ]
+  },
   '1.0.24': {
     headline: 'Change the version and mod loader of an instance, and Java 25 starts on macOS and Linux.',
     changes: [

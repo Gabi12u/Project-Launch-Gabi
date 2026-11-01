@@ -967,40 +967,104 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.24",
-    "date": "2026-10-28",
-    "headline": "Version und Mod-Loader einer Instanz ändern, und Java 25 startet unter macOS und Linux.",
+    "version": "1.0.25",
+    "date": "2026-11-02",
+    "headline": "Beta-Programm, Fehler selbst melden mit Bildern, und Mods aus anderen Launchern bekommen jetzt Updates.",
     "changes": [
       {
         "kind": "new",
-        "text": "Version ändern: Per Rechtsklick auf eine Instanz oder auf ihrer Seite wechselst du auf eine andere Minecraft-Version oder einen anderen Mod-Loader. Jeder Mod, jedes Ressourcenpaket, jeder Shader und jedes Data Pack bekommt dabei die passende Version, und vorher siehst du, was mit jedem Eintrag passiert."
+        "text": "Beta-Programm: Mit einem Beta-Key bekommst du neue Versionen, bevor sie für alle erscheinen. Du gibst ihn unter Einstellungen, Updates, Beta-Programm ein. Dabei wird geprüft, dass dir dein Minecraft-Konto gehört. Solange du dabei bist, werden Fehlerberichte automatisch gesendet, und gespeichert wird dein Minecraft-Name. Verlassen geht jederzeit an derselben Stelle."
       },
       {
         "kind": "new",
-        "text": "Was es für die neue Version nicht gibt, wird ausgeschaltet und nicht gelöscht. Neue Abhängigkeiten kommen von selbst dazu, und deine Welten werden vor dem Wechsel gesichert."
+        "text": "Unter Windows und Linux kommt eine Beta wie ein normales Update. Auf dem Mac installiert sich der Launcher nicht von selbst, dort lädst du sie mit einem Knopf im Beta-Programm herunter."
+      },
+      {
+        "kind": "new",
+        "text": "Fehler selbst melden: Unter Einstellungen, Fehlerberichte beschreibst du ein Problem in eigenen Worten und hängst bis zu drei Bilder an. Auf Wunsch geht das Protokoll mit, ohne Benutzernamen, Spielernamen und Zugangsdaten."
       },
       {
         "kind": "fixed",
-        "text": "Unter macOS und Linux startet ein Java, das der Launcher selbst herunterlädt, wieder. Bisher scheiterte es mit „Java 25 wurde geladen, lässt sich aber nicht starten“, vor allem bei Minecraft 26.1 und neuer."
+        "text": "Mods, die du von Hand abgelegt oder aus einem anderen Launcher übernommen hast, bekommen jetzt Updates, wechseln bei „Version ändern“ mit und lassen sich reparieren."
+      },
+      {
+        "kind": "fixed",
+        "text": "Antwortet Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, bricht der Wechsel ab, bevor sich etwas ändert. Bisher wurden Mods dabei ausgeschaltet."
+      },
+      {
+        "kind": "fixed",
+        "text": "Wird der Launcher mitten in „Version ändern“ geschlossen, erkennt er das beim nächsten Start und hilft beim Abschließen. Die Instanz startet nicht halb umgestellt."
+      },
+      {
+        "kind": "fixed",
+        "text": "Beim Wechsel zurück gehen ausgeschaltete Mods wieder an. Ein zweiter Wechsel oder Spielstart kommt nicht mehr dazwischen, und es gibt keine Updates für die alte Version."
+      },
+      {
+        "kind": "fixed",
+        "text": "Fällt Xbox Live beim Erneuern der Anmeldung kurz aus, startet das Spiel trotzdem mit der gespeicherten Anmeldung, sodass wenigstens der Einzelspieler geht."
+      },
+      {
+        "kind": "fixed",
+        "text": "Modrinth-Modpacks: Updates werden auch gefunden, wenn sie vor dem Import erschienen sind. CurseForge-Modpacks legen Resourcepacks und Shader nicht mehr still in den Mod-Ordner."
+      },
+      {
+        "kind": "fixed",
+        "text": "Windows: Ein .bat- oder .cmd-Wrapper bekommt Pfade mit %, ^, ! oder Anführungszeichen jetzt unverändert."
+      },
+      {
+        "kind": "fixed",
+        "text": "Stürzt die Oberfläche immer wieder ab, startet der Launcher beim nächsten Mal wie angekündigt ohne Grafikbeschleunigung. Bisher geschah das nicht, und sie stürzte erneut ab."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.24",
-    "date": "2026-10-28",
-    "headline": "Change the version and mod loader of an instance, and Java 25 starts on macOS and Linux.",
+    "version": "1.0.25",
+    "date": "2026-11-02",
+    "headline": "Beta programme, report problems yourself with pictures, and mods from other launchers now get updates.",
     "changes": [
       {
         "kind": "new",
-        "text": "Change version: right-click an instance, or use the button on its page, to move it to another Minecraft version or mod loader. Every mod, resource pack, shader and data pack gets the matching version, and beforehand you see what happens to each one."
+        "text": "Beta programme: with a beta key you get new versions before they come out for everyone. You enter it under Settings, Updates, Beta programme. It is checked that the Minecraft account is yours. While you are in, error reports are sent automatically, and your Minecraft name is stored. You can leave at any time in the same place."
       },
       {
         "kind": "new",
-        "text": "Anything that has no version for the new game is switched off, not deleted. New dependencies are added on their own, and your worlds are backed up before the change."
+        "text": "On Windows and Linux a beta arrives like a normal update. On a Mac the launcher does not install updates by itself, so there you download it with a button in the beta programme."
+      },
+      {
+        "kind": "new",
+        "text": "Report a problem yourself: under Settings, Error reports you describe a problem in your own words and attach up to three pictures. If you want, the log goes along, without user names, player names and credentials."
       },
       {
         "kind": "fixed",
-        "text": "On macOS and Linux, a Java the launcher downloads by itself starts again. Until now it failed with \"Java 25 was downloaded but cannot be started\", above all on Minecraft 26.1 and newer."
+        "text": "Mods you placed by hand or took over from another launcher now get updates, move along with \"Change version\" and can be repaired."
+      },
+      {
+        "kind": "fixed",
+        "text": "If Modrinth or CurseForge answers \"Change version\" with an error, the change stops before anything is touched. Until now mods were switched off on the way."
+      },
+      {
+        "kind": "fixed",
+        "text": "If the launcher is closed in the middle of \"Change version\", it notices at the next start and helps to finish. The instance no longer starts half converted."
+      },
+      {
+        "kind": "fixed",
+        "text": "Changing back turns switched-off mods on again. A second change or a game start no longer gets in between, and no updates for the old version are offered."
+      },
+      {
+        "kind": "fixed",
+        "text": "If Xbox Live drops out briefly while the sign-in is renewed, the game still starts with the saved sign-in, so at least singleplayer works."
+      },
+      {
+        "kind": "fixed",
+        "text": "Modrinth modpacks: updates are found even when they came out before the import. CurseForge modpacks no longer quietly put resource packs and shaders into the mods folder."
+      },
+      {
+        "kind": "fixed",
+        "text": "Windows: a .bat or .cmd wrapper now gets paths with %, ^, ! or quotation marks unchanged."
+      },
+      {
+        "kind": "fixed",
+        "text": "If the interface keeps crashing, the next start now runs without graphics acceleration as announced. Until now that did not happen, and it crashed again."
       }
     ]
   };
@@ -4375,15 +4439,17 @@ footer .grow { flex: 1; }
       "id": "anmeldung-xbox-ausfall-kein-start",
       "title": "Fiel Xbox Live beim Erneuern der Anmeldung kurz aus, ließ sich das Spiel gar nicht starten",
       "detail": "Ist die Anmeldung abgelaufen, erneuert der Launcher sie vor dem Start in mehreren Schritten. Antwortete dabei Microsoft nicht, startete das Spiel trotzdem mit der gespeicherten Sitzung, sodass wenigstens Einzelspieler ging. Antworteten erst die späteren Schritte bei Xbox Live oder Minecraft nicht, brach der Start dagegen mit einer technischen Fehlermeldung ab.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "bat-wrapper-sonderzeichen",
       "title": "Ein .bat- oder .cmd-Skript als Wrapper konnte Pfade und Argumente verfälschen",
       "detail": "Ein Skript als Wrapper oder als Befehl vor dem Start läuft unter Windows über cmd.exe. Enthielt ein Pfad oder ein Argument ein Prozentzeichen, ein Anführungszeichen, ein ^ oder ein !, kam es bei Java verändert an. Ein Ordnername wie „100%“ konnte so den Start verhindern.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-25",
+      "fixedIn": "1.0.25",
       "platforms": [
         "Windows"
       ]
@@ -4392,15 +4458,17 @@ footer .grow { flex: 1; }
       "id": "mrpack-updates-fehlen",
       "title": "Nach dem Import eines Modrinth-Modpacks wurden schon erschienene Updates seiner Mods nicht gefunden",
       "detail": "Beim Import einer .mrpack-Datei merkte sich der Launcher nicht, wann die mitgelieferten Versionen der Mods erschienen waren. Die Update-Prüfung hielt deshalb alles für aktuell, was vor dem Tag des Imports veröffentlicht wurde, und meldete erst Updates, die danach erschienen.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "curseforge-import-pakete-in-mods",
       "title": "Beim Import eines CurseForge-Modpacks konnten Resourcepacks und Shader im Mod-Ordner landen",
       "detail": "Ob eine Datei aus einem CurseForge-Modpack ein Mod, ein Resourcepack oder ein Shader ist, fragt der Launcher bei CurseForge nach. Scheiterte diese eine Abfrage, etwa weil CurseForge gerade überlastet war, landeten alle Dateien ohne Hinweis im Mod-Ordner. Resourcepacks und Shader wirkten dann im Spiel nicht.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "java-download-macos-linux-startet-nicht",
@@ -4426,50 +4494,65 @@ footer .grow { flex: 1; }
       "id": "lokale-mods-ohne-updates",
       "title": "Mods, die nicht über die Suche installiert wurden, bekamen nie Updates und blieben beim Versionswechsel alt",
       "detail": "Ein Mod, der von Hand in den Ordner gelegt oder aus einem anderen Launcher übernommen wurde, steht unter Installiert als „Lokal“. Für solche Mods suchte der Launcher nie nach Updates, auch wenn es sie auf Modrinth gibt, und „Version ändern“ ließ sie unverändert. Nach einem Wechsel auf 26.2 blieb so etwa ein Mod für 1.21.11 in der Instanz, ohne Hinweis, dass er veraltet ist. Auch „Reparieren“ konnte ihn nicht ersetzen.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-serverfehler-mods-aus",
       "title": "Antwortete Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, wurden Mods ausgeschaltet",
       "detail": "War Modrinth oder CurseForge während eines Versionswechsels überlastet oder antwortete mit einem Fehler, galten die betroffenen Mods als nicht prüfbar und wurden ausgeschaltet. Der Wechsel lief trotzdem durch, und die Instanz stand im schlimmsten Fall ohne ihre Mods auf der neuen Version. Ausgeschaltete Mods lassen sich unter Installiert wieder einschalten.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-gleichzeitig",
       "title": "Kurz nach dem Start von „Version ändern“ konnten ein zweiter Wechsel oder ein Spielstart noch durchgehen",
       "detail": "Zwischen dem Bestätigen und dem eigentlichen Beginn eines Versionswechsels lag ein kurzer Moment, in dem die Instanz noch nicht als beschäftigt galt. Ein zweiter Wechsel, ein Spielstart oder eine Reparatur konnte in diesem Moment beginnen und gleichzeitig mit dem Wechsel an den Mods arbeiten.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-alte-updates",
       "title": "Nach „Version ändern“ konnten Updates für die alte Minecraft-Version angeboten werden",
       "detail": "Lief während eines Versionswechsels gerade eine Update-Prüfung, etwa weil die Seite der Instanz offen war, trug sie danach Updates ein, die sie noch für die alte Version gesucht hatte. „Aktualisieren“ installierte dann eine Fassung für die alte Version.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-zurueck-bleibt-aus",
       "title": "Beim Zurückwechseln auf die vorige Version blieben ausgeschaltete Mods aus",
       "detail": "Mods, die „Version ändern“ ausschaltet, weil es sie für die neue Version nicht gibt, blieben auch nach einem Wechsel zurück auf die alte Version ausgeschaltet. Der Überblick zählte sie dabei zu den Einträgen, die schon passen.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-kleine-fehler",
       "title": "Kleinere Fehler bei „Version ändern“ und beim Java-Fehlergrund",
       "detail": "Die Seite der Instanz zeigte nach einem Versionswechsel neu installierte Abhängigkeiten erst nach erneutem Öffnen. Die Meldung am Ende zählte auch Mods als ausgeschaltet, die schon aus waren oder sich nicht ausschalten ließen. Schlug die Abfrage des aktuellen Mod-Loaders fehl, sprang der Dialog still auf Vanilla. Eine neuere Beta eines Mods konnte gegen eine ältere Vollversion getauscht werden. Außerdem stand der Grund, warum ein geladenes Java nicht startet, in der englischen Oberfläche auf Deutsch.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-unterbrochen",
       "title": "Wurde der Launcher während „Version ändern“ geschlossen, blieb die Instanz halb umgestellt zurück",
       "detail": "Endete der Launcher, während „Version ändern“ die Mods austauschte, etwa durch einen Absturz oder einen ausgeschalteten PC, stand die Instanz weiter auf der alten Version, ein Teil der Mods aber schon auf der neuen. Das Spiel stürzte dann beim Start ab, ohne Hinweis auf den Grund. Ein zweiter Wechsel auf dieselbe Version schließt ihn ab. Außerdem blieb dabei ein Zwischenordner im Cache liegen.",
-      "state": "fixing",
-      "since": "2026-10-29"
+      "state": "fixed",
+      "since": "2026-10-29",
+      "fixedIn": "1.0.25"
+    },
+    {
+      "id": "sicherer-grafikmodus-greift-nicht",
+      "title": "Nach wiederholten Abstürzen der Oberfläche startete der Launcher nicht wie angekündigt ohne Grafikbeschleunigung",
+      "detail": "Stürzt die Oberfläche dreimal innerhalb einer Minute ab, hört der Launcher auf, sie neu zu laden, und kündigt an, beim nächsten Start einmal ohne Grafikbeschleunigung zu starten. Das ist der übliche Ausweg, wenn ein Grafiktreiber die Oberfläche abstürzen lässt. Beim nächsten Start scheiterte aber schon das Lesen dieser Vormerkung an einem Fehler im Programm. Der Launcher startete deshalb wieder mit Grafikbeschleunigung, und die Oberfläche stürzte erneut ab.",
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.25"
     }
   ];
   var ISSUE_LABEL = {
@@ -7841,15 +7924,17 @@ footer .grow { flex: 1; }
       "id": "anmeldung-xbox-ausfall-kein-start",
       "title": "If Xbox Live briefly failed while renewing the sign-in, the game would not start at all",
       "detail": "When the sign-in has expired, the launcher renews it in several steps before starting. If Microsoft did not answer, the game still started with the stored session, so at least singleplayer worked. If only the later steps at Xbox Live or Minecraft did not answer, the start was aborted with a technical error message instead.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "bat-wrapper-sonderzeichen",
       "title": "A .bat or .cmd script as a wrapper could alter paths and arguments",
       "detail": "A script used as a wrapper or as a command before launch runs through cmd.exe on Windows. If a path or an argument contained a percent sign, a quote, a ^ or a !, it reached Java changed. A folder name like \"100%\" could prevent the start that way.",
-      "state": "fixing",
+      "state": "fixed",
       "since": "2026-10-25",
+      "fixedIn": "1.0.25",
       "platforms": [
         "Windows"
       ]
@@ -7858,15 +7943,17 @@ footer .grow { flex: 1; }
       "id": "mrpack-updates-fehlen",
       "title": "After importing a Modrinth modpack, updates of its mods that were already out were not found",
       "detail": "When importing an .mrpack file, the launcher did not keep track of when the bundled mod versions were released. The update check therefore treated everything published before the day of the import as up to date and only reported updates released afterwards.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "curseforge-import-pakete-in-mods",
       "title": "When importing a CurseForge modpack, resource packs and shaders could end up in the mods folder",
       "detail": "Whether a file from a CurseForge modpack is a mod, a resource pack or a shader, the launcher asks CurseForge. If that one request failed, for example because CurseForge was overloaded, every file landed in the mods folder without a word. Resource packs and shaders then had no effect in game.",
-      "state": "fixing",
-      "since": "2026-10-25"
+      "state": "fixed",
+      "since": "2026-10-25",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "java-download-macos-linux-startet-nicht",
@@ -7892,50 +7979,65 @@ footer .grow { flex: 1; }
       "id": "lokale-mods-ohne-updates",
       "title": "Mods not installed through the search never got updates and stayed old on a version change",
       "detail": "A mod placed in the folder by hand or taken over from another launcher shows as \"Local\" under Installed. For such mods the launcher never looked for updates, even when they are on Modrinth, and \"Change version\" left them unchanged. After a move to 26.2, a mod for 1.21.11 could stay in the instance this way, with no sign that it is out of date. \"Repair\" could not replace it either.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-serverfehler-mods-aus",
       "title": "If Modrinth or CurseForge answered with an error during \"Change version\", mods were switched off",
       "detail": "If Modrinth or CurseForge was overloaded or answered with an error during a version change, the affected mods counted as not checkable and were switched off. The change still went through, and in the worst case the instance ended up on the new version without its mods. Switched off mods can be switched on again under Installed.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-gleichzeitig",
       "title": "Right after \"Change version\" started, a second change or a game start could still go through",
       "detail": "Between confirming and the actual start of a version change there was a short moment in which the instance did not count as busy yet. A second change, a game start or a repair could begin in that moment and work on the mods at the same time as the change.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-alte-updates",
       "title": "After \"Change version\", updates for the old Minecraft version could be offered",
       "detail": "If an update check was running during a version change, for example because the instance page was open, it afterwards recorded updates it had looked up for the old version. \"Update\" then installed a build for the old version.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-zurueck-bleibt-aus",
       "title": "Switching back to the previous version left switched off mods off",
       "detail": "Mods that \"Change version\" switches off because there is no build for the new version stayed off even after changing back to the old version. The overview counted them among the items that already fit.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-kleine-fehler",
       "title": "Smaller faults in \"Change version\" and in the Java failure reason",
       "detail": "After a version change, the instance page only showed newly installed dependencies once it was opened again. The final message also counted mods as switched off that were already off or could not be switched off. If the lookup of the current mod loader failed, the dialog silently jumped to Vanilla. A newer beta of a mod could be swapped for an older release. Also, the reason why a downloaded Java does not start was shown in German in the English interface.",
-      "state": "fixing",
-      "since": "2026-10-28"
+      "state": "fixed",
+      "since": "2026-10-28",
+      "fixedIn": "1.0.25"
     },
     {
       "id": "versionswechsel-unterbrochen",
       "title": "If the launcher was closed during \"Change version\", the instance was left half changed",
       "detail": "If the launcher ended while \"Change version\" was swapping the mods, for example through a crash or a PC switched off, the instance stayed on the old version while some mods were already for the new one. The game then crashed on start, with no hint at why. A second change to the same version completes it. A staging folder was also left behind in the cache.",
-      "state": "fixing",
-      "since": "2026-10-29"
+      "state": "fixed",
+      "since": "2026-10-29",
+      "fixedIn": "1.0.25"
+    },
+    {
+      "id": "sicherer-grafikmodus-greift-nicht",
+      "title": "After repeated interface crashes the launcher did not start without graphics acceleration as announced",
+      "detail": "If the interface crashes three times within a minute, the launcher stops reloading it and announces that the next start runs once without graphics acceleration. That is the usual way out when a graphics driver makes the interface crash. At the next start, however, reading that note already failed because of a bug in the program. The launcher therefore started with graphics acceleration again, and the interface crashed again.",
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.25"
     }
   ];
   var ISSUE_LABEL_EN = {

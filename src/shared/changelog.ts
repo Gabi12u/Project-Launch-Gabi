@@ -34,6 +34,57 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.25',
+    date: '2026-11-02',
+    headline: 'Beta-Programm, Fehler selbst melden mit Bildern, und Mods aus anderen Launchern bekommen jetzt Updates.',
+    changes: [
+      {
+        kind: 'new',
+        text: 'Beta-Programm: Mit einem Beta-Key bekommst du neue Versionen, bevor sie für alle erscheinen. Du gibst ihn unter Einstellungen, Updates, Beta-Programm ein. Dabei wird geprüft, dass dir dein Minecraft-Konto gehört. Solange du dabei bist, werden Fehlerberichte automatisch gesendet, und gespeichert wird dein Minecraft-Name. Verlassen geht jederzeit an derselben Stelle.'
+      },
+      {
+        kind: 'new',
+        text: 'Unter Windows und Linux kommt eine Beta wie ein normales Update. Auf dem Mac installiert sich der Launcher nicht von selbst, dort lädst du sie mit einem Knopf im Beta-Programm herunter.'
+      },
+      {
+        kind: 'new',
+        text: 'Fehler selbst melden: Unter Einstellungen, Fehlerberichte beschreibst du ein Problem in eigenen Worten und hängst bis zu drei Bilder an. Auf Wunsch geht das Protokoll mit, ohne Benutzernamen, Spielernamen und Zugangsdaten.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mods, die du von Hand abgelegt oder aus einem anderen Launcher übernommen hast, bekommen jetzt Updates, wechseln bei „Version ändern“ mit und lassen sich reparieren.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Antwortet Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, bricht der Wechsel ab, bevor sich etwas ändert. Bisher wurden Mods dabei ausgeschaltet.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Wird der Launcher mitten in „Version ändern“ geschlossen, erkennt er das beim nächsten Start und hilft beim Abschließen. Die Instanz startet nicht halb umgestellt.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Beim Wechsel zurück gehen ausgeschaltete Mods wieder an. Ein zweiter Wechsel oder Spielstart kommt nicht mehr dazwischen, und es gibt keine Updates für die alte Version.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Fällt Xbox Live beim Erneuern der Anmeldung kurz aus, startet das Spiel trotzdem mit der gespeicherten Anmeldung, sodass wenigstens der Einzelspieler geht.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Modrinth-Modpacks: Updates werden auch gefunden, wenn sie vor dem Import erschienen sind. CurseForge-Modpacks legen Resourcepacks und Shader nicht mehr still in den Mod-Ordner.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Windows: Ein .bat- oder .cmd-Wrapper bekommt Pfade mit %, ^, ! oder Anführungszeichen jetzt unverändert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Stürzt die Oberfläche immer wieder ab, startet der Launcher beim nächsten Mal wie angekündigt ohne Grafikbeschleunigung. Bisher geschah das nicht, und sie stürzte erneut ab.'
+      }
+    ]
+  },
+  {
     version: '1.0.24',
     date: '2026-10-28',
     headline: 'Version und Mod-Loader einer Instanz ändern, und Java 25 startet unter macOS und Linux.',
