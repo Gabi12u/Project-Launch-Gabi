@@ -3136,8 +3136,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Since 1.0.23 up to 5 GB are meant to fit into the cloud in total, even in a single backup. That is ' +
       'what the notes on what is new say. The cloud server, however, still ran with the old limit: the ' +
       'launcher refused a backup over 1.5 GB as too large, and Backups still showed 1.5 GB as the maximum ' +
-      'size. The change on the server was finished but not yet put in place. The launcher itself needs no ' +
-      'update for this, it follows whatever the server allows.'
+      'size. The change on the server was finished but not yet put in place. Since 1 November 2026 it applies ' +
+      'on the server, for every version from 1.0.23. The launcher needs no update for this, it follows ' +
+      'whatever the server allows.'
   }
 }
 

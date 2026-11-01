@@ -4992,10 +4992,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Seit 1.0.23 sollen in die Cloud zusammen bis zu 5 GB passen, auch in einem einzigen Backup. So steht ' +
       'es in den Neuerungen. Der Cloud-Server lief aber noch mit der alten Grenze: Ein Backup über 1,5 GB ' +
       'lehnte der Launcher als zu groß ab, und unter Backups stand weiter 1,5 GB als Höchstgröße. Die ' +
-      'Änderung am Server war fertig, aber noch nicht eingespielt. Der Launcher selbst braucht dafür kein ' +
-      'Update, er richtet sich nach dem, was der Server erlaubt.',
-    state: 'fixing',
-    since: '2026-11-01'
+      'Änderung am Server war fertig, aber noch nicht eingespielt. Seit dem 1. November 2026 gilt sie auf dem ' +
+      'Server, für alle Versionen ab 1.0.23. Ein Update des Launchers braucht es dafür nicht, er richtet sich ' +
+      'nach dem, was der Server erlaubt.',
+    state: 'fixed',
+    since: '2026-11-01',
+    fixedIn: '1.0.23'
   }
 ]
 
