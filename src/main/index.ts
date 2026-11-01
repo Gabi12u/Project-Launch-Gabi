@@ -20,6 +20,7 @@ import { UpdateCheckOfflineError, checkUpdates } from './core/content'
 import { parseDeepLink, parseLaunchArgs, registerProtocol } from './core/shortcuts'
 import { appIconPng, integrateLinuxDesktop } from './core/linuxDesktop'
 import { announceUpdate, disposeUpdater, initUpdater } from './core/updater'
+import { refreshBeta } from './core/beta'
 import {
   disposeRecording,
   flushRecording,
@@ -609,6 +610,9 @@ function bootstrap(): void {
       } catch (err) {
         logger.error('Update-Hinweis fehlgeschlagen:', err)
       }
+      // Once per start whether the beta key still holds, also with automatic
+      // updates switched off: a revoked key is announced either way.
+      void refreshBeta().catch((err) => logger.warn('Beta-Programm nicht geprüft:', err))
       try {
         // Claims the recording hotkey if a game from the previous session is
         // still up, and wires the listener that follows every later launch.

@@ -190,6 +190,12 @@ const api = {
     install: call(IPC.updateInstall)
   },
 
+  beta: {
+    status: call(IPC.betaStatus),
+    join: call(IPC.betaJoin),
+    leave: call(IPC.betaLeave)
+  },
+
   events: {
     onTask: (fn: (payload: never) => void) => on(EVENTS.taskUpdate, fn),
     onTaskRemoved: (fn: (payload: never) => void) => on(EVENTS.taskRemoved, fn),
@@ -206,6 +212,7 @@ const api = {
     onNavigate: (fn: (payload: never) => void) => on(EVENTS.navigate, fn),
     onWindowState: (fn: (payload: never) => void) => on(EVENTS.windowState, fn),
     onUpdateStatus: (fn: (payload: never) => void) => on(EVENTS.updateStatus, fn),
+    onBetaStatus: (fn: (payload: never) => void) => on(EVENTS.betaStatus, fn),
     onRecordingStart: (fn: (payload: never) => void) => on(EVENTS.recordingStart, fn),
     onRecordingStop: (fn: (payload: never) => void) => on(EVENTS.recordingStop, fn),
     onRecordingState: (fn: (payload: never) => void) => on(EVENTS.recordingState, fn)

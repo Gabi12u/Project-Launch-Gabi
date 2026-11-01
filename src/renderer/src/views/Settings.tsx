@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from 'react'
 import type {
+  BetaStatus,
   JavaRuntime,
   LaunchBehaviour,
   RecordingQuality,
@@ -141,6 +142,178 @@ function LanguageSetting(): JSX.Element {
   )
 }
 
+/**
+ * The beta programme: a key from Launch Gabi, redeemed with the signed-in
+ * Microsoft account, and from then on betas arrive like normal updates.
+ */
+function BetaSection(): JSX.Element {
+  const { accounts } = useStore()
+  const [beta, setBeta] = useState<BetaStatus | null>(null)
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [askLeave, setAskLeave] = useState(false)
+
+  useEffect(() => {
+    void window.gabi.beta.status().then(setBeta).catch(() => undefined)
+    return window.gabi.events.onBetaStatus(setBeta)
+  }, [])
+
+  const active = accounts.find((account) => account.active)
+  const microsoft = active?.type === 'microsoft'
+
+  const join = (): void => {
+    setBusy(true)
+    void window.gabi.beta
+      .join(key)
+      .then((next) => {
+        setBeta(next)
+        setKey('')
+        toast(
+          'success',
+          tr('Willkommen im Beta-Programm', 'Welcome to the beta programme'),
+          tr('Sobald eine Beta bereitsteht, kommt sie wie ein normales Update.', 'As soon as a beta is ready, it arrives like a normal update.')
+        )
+      })
+      .catch((err) => toastError(err, tr('Beitritt nicht möglich', 'Could not join')))
+      .finally(() => setBusy(false))
+  }
+
+  const leave = async (): Promise<void> => {
+    setAskLeave(false)
+    try {
+      setBeta(await window.gabi.beta.leave())
+    } catch (err) {
+      toastError(err)
+    }
+  }
+
+  if (!beta) return <></>
+
+  return (
+    <section className="setting-group">
+      <div className="row gap-8">
+        <h3 style={{ margin: 0 }}>{tr('Beta-Programm', 'Beta programme')}</h3>
+        {beta.state === 'active' && <span className="badge accent dot">{tr('Dabei', 'Joined')}</span>}
+        {beta.state === 'ended' && <span className="badge warn">{tr('Beendet', 'Ended')}</span>}
+      </div>
+
+      {beta.state === 'none' && (
+        <>
+          <p className="hint">
+            {tr(
+              'Mit einem Beta-Key bekommst du neue Versionen, bevor sie für alle erscheinen. Betas können noch Fehler haben. Der Key gilt danach nur für dein Minecraft-Konto.',
+              'With a beta key you get new versions before they come out for everyone. Betas can still have bugs. The key then only works for your Minecraft account.'
+            )}
+          </p>
+          {!microsoft && (
+            <p className="hint">
+              {tr(
+                'Dafür musst du mit einem Microsoft-Konto angemeldet sein.',
+                'You need to be signed in with a Microsoft account for this.'
+              )}
+            </p>
+          )}
+          <div className="row gap-8 mt-8">
+            <input
+              className="input mono"
+              placeholder="LGB-XXXX-XXXX-XXXX-XXXX"
+              aria-label={tr('Beta-Key', 'Beta key')}
+              spellCheck={false}
+              autoComplete="off"
+              value={key}
+              disabled={busy || !microsoft}
+              onChange={(event) => setKey(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && key.trim() && !busy) join()
+              }}
+            />
+            <button className="btn primary" disabled={busy || !microsoft || !key.trim()} onClick={join}>
+              {busy ? tr('Wird geprüft…', 'Checking…') : tr('Beitreten', 'Join')}
+            </button>
+          </div>
+          {microsoft && active && (
+            <p className="hint mt-8">
+              {tr(
+                `Der Key wird an ${active.username} gebunden. Dafür bestätigt Mojang einmal, dass dir das Konto gehört, wie beim Betreten eines Servers.`,
+                `The key is bound to ${active.username}. Mojang confirms once that the account is yours, like when joining a server.`
+              )}
+            </p>
+          )}
+        </>
+      )}
+
+      {beta.state === 'active' && (
+        <>
+          <p className="hint">
+            {tr(
+              `Du bist als ${beta.playerName} dabei. Neue Betas kommen wie normale Updates. Erscheint danach die normale Version, bekommst du die.`,
+              `You are in as ${beta.playerName}. New betas arrive like normal updates. When the normal version comes out after that, you get it.`
+            )}
+          </p>
+          <p className="hint">
+            {beta.build?.version
+              ? tr(`Aktuelle Beta: ${beta.build.version}`, `Current beta: ${beta.build.version}`)
+              : tr('Gerade liegt keine Beta bereit.', 'No beta is ready right now.')}
+            {beta.runningBeta ? tr(' Du nutzt gerade eine Beta.', ' You are using a beta right now.') : ''}
+          </p>
+          {beta.accountMissing && (
+            <p className="hint mt-8" style={{ color: 'var(--warn)' }}>
+              <IconWarning />{' '}
+              {tr(
+                `${beta.playerName} ist nicht mehr im Launcher angemeldet. Melde das Konto wieder an, sonst endet dein Beta-Zugang, wenn er das nächste Mal erneuert werden muss.`,
+                `${beta.playerName} is no longer signed in to the launcher. Sign the account in again, otherwise your beta access ends the next time it needs renewing.`
+              )}
+            </p>
+          )}
+          <div className="row gap-8 mt-16">
+            <button className="btn" onClick={() => setAskLeave(true)}>
+              {tr('Beta-Programm verlassen', 'Leave the beta programme')}
+            </button>
+          </div>
+        </>
+      )}
+
+      {beta.state === 'ended' && (
+        <>
+          <p className="hint">
+            {beta.endedReason === 'revoked'
+              ? tr('Dein Beta-Key wurde gesperrt.', 'Your beta key has been revoked.')
+              : tr('Dein Beta-Key gilt nicht mehr.', 'Your beta key is no longer valid.')}{' '}
+            {tr('Du bekommst wieder die normalen Updates.', 'You get the normal updates again.')}
+            {beta.runningBeta &&
+              tr(
+                ' Deine Beta-Version bleibt installiert, bis die nächste normale Version erscheint.',
+                ' Your beta version stays installed until the next normal version comes out.'
+              )}
+            {beta.endedReason === 'revoked' &&
+              tr(
+                ' Wird der Key wieder freigegeben, kannst du ihn danach erneut eingeben.',
+                ' If the key is released again, you can enter it once more afterwards.'
+              )}
+          </p>
+          <div className="row gap-8 mt-16">
+            <button className="btn" onClick={() => void leave()}>
+              {tr('Verstanden', 'Got it')}
+            </button>
+          </div>
+        </>
+      )}
+
+      <Confirm
+        open={askLeave}
+        title={tr('Beta-Programm verlassen?', 'Leave the beta programme?')}
+        confirmLabel={tr('Verlassen', 'Leave')}
+        message={tr(
+          'Du bekommst danach wieder die normalen Updates. Deine Beta-Version bleibt installiert, bis die nächste normale Version erscheint. Mit deinem Key kannst du jederzeit wieder beitreten.',
+          'You get the normal updates again afterwards. Your beta version stays installed until the next normal version comes out. You can join again at any time with your key.'
+        )}
+        onConfirm={leave}
+        onCancel={() => setAskLeave(false)}
+      />
+    </section>
+  )
+}
+
 function UpdatePanel(): JSX.Element {
   const { settings } = useStore()
   const [status, setStatus] = useState<UpdateStatus | null>(null)
@@ -233,6 +406,8 @@ function UpdatePanel(): JSX.Element {
           )}
         </div>
       </section>
+
+      <BetaSection />
 
       <section className="setting-group">
         <h3>{tr('Verhalten', 'Behavior')}</h3>

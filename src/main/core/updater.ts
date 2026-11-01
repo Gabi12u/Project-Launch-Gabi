@@ -10,6 +10,8 @@ import { runningCount } from './running'
 import { startingCount } from './launch'
 import { listTasks } from '../tasks'
 import { getLanguage, tr } from '@shared/i18n'
+import { compareVersions, isPrerelease } from '@shared/versions'
+import { betaFeed, channelFile, type BetaFeed } from './beta'
 
 const logger = log('updater')
 
@@ -73,22 +75,11 @@ function setStatus(patch: Partial<UpdateStatus>): void {
  * Reinstalling an older build is a perfectly ordinary thing to do after a bad
  * release, and comparing only for inequality greeted that with "Update
  * abgeschlossen auf 1.0.11" while the launcher had in fact gone backwards.
+ * Betas count as coming before their release: the step from 1.0.25-beta.2 to
+ * 1.0.25 is an update, which splitting on dots read the other way round.
  */
 function isNewer(next: string, previous: string): boolean {
-  const parts = (value: string): number[] =>
-    value.split('.').map((piece) => {
-      const num = Number.parseInt(piece, 10)
-      return Number.isFinite(num) ? num : 0
-    })
-
-  const a = parts(next)
-  const b = parts(previous)
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const left = a[i] ?? 0
-    const right = b[i] ?? 0
-    if (left !== right) return left > right
-  }
-  return false
+  return compareVersions(next, previous) > 0
 }
 
 export function announceUpdate(): void {
@@ -114,6 +105,16 @@ export function announceUpdate(): void {
   }
 
   logger.info(`Update abgeschlossen: ${previous} -> ${version}`)
+  // A beta has no entry in the list of what is new; it is still being made.
+  if (isPrerelease(version)) {
+    notify(
+      'success',
+      tr(`Beta ${version} installiert`, `Beta ${version} installed`),
+      tr('Danke fürs Testen! Was dir auffällt, kannst du in den Einstellungen unter Fehlerberichte melden.', 'Thanks for testing! Anything you notice can be reported in the settings under Error reports.'),
+      { route: '/settings?section=reports', timeout: 0 }
+    )
+    return
+  }
   const entry = changelogLocalized(getLanguage()).find((release) => release.version === version)
   notify(
     'success',
@@ -129,6 +130,85 @@ export function announceUpdate(): void {
 
 export function getUpdateStatus(): UpdateStatus {
   return status
+}
+
+/* ------------------------------------------------------------------ *
+ * Where updates come from
+ * ------------------------------------------------------------------ */
+
+/** The newest release on GitHub, from the same manifest the updater reads. */
+const STABLE_FEED = 'https://github.com/Gabi12u/Project-Launch-Gabi/releases/latest/download'
+
+/**
+ * Which feed the updater was last pointed at. `packaged` is the one written
+ * into the installed app, and stays untouched for everyone who never joined
+ * the beta programme.
+ */
+let feed: 'packaged' | 'beta' | 'stable' = 'packaged'
+
+async function stableVersion(): Promise<string | null> {
+  try {
+    const res = await fetch(`${STABLE_FEED}/${channelFile('latest')}`, { signal: AbortSignal.timeout(20_000) })
+    if (!res.ok) return null
+    return /^version:\s*['"]?([^'"\s]+)/m.exec(await res.text())?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Points the updater at whichever feed is ahead for this user.
+ *
+ * Everyone gets the GitHub releases. Someone in the beta programme also has
+ * the beta feed on the admin server and gets whichever of the two offers the
+ * newer version: a beta while it is ahead of the last release, and the
+ * release that follows the betas once it is out. Without that second half a
+ * beta tester would sit on the last beta forever.
+ */
+async function pointFeed(): Promise<void> {
+  const beta = await betaFeed().catch((err) => {
+    logger.warn('Beta-Programm nicht abgefragt:', err instanceof Error ? err.message : err)
+    return null
+  })
+  if (beta?.version && compareVersions(beta.version, app.getVersion()) > 0) {
+    const stable = await stableVersion()
+    if (!stable || compareVersions(beta.version, stable) > 0) {
+      useBetaFeed(beta)
+      return
+    }
+  }
+  useStableFeed()
+}
+
+function useBetaFeed(beta: BetaFeed): void {
+  if (feed !== 'beta') logger.info('Update-Quelle: Beta-Programm')
+  autoUpdater.setFeedURL({ provider: 'generic', url: beta.url })
+  feed = 'beta'
+  // In this order: setting the channel switches downgrades on as a side
+  // effect, and a beta feed that is behind must never take anyone back.
+  autoUpdater.channel = 'beta'
+  autoUpdater.allowDowngrade = false
+  autoUpdater.allowPrerelease = true
+  // The token goes to the admin server and nowhere else.
+  autoUpdater.requestHeaders = { 'x-beta-token': beta.token }
+  // The small differential download needs the blockmap of the installed
+  // version from the same feed, which a beta feed does not keep.
+  autoUpdater.disableDifferentialDownload = true
+}
+
+function useStableFeed(): void {
+  if (feed === 'beta') {
+    logger.info('Update-Quelle: GitHub')
+    autoUpdater.setFeedURL({ provider: 'github', owner: 'Gabi12u', repo: 'Project-Launch-Gabi' })
+    feed = 'stable'
+  }
+  // Also for a packaged beta build: its own config names the beta channel,
+  // which does not exist on GitHub.
+  autoUpdater.channel = 'latest'
+  autoUpdater.allowDowngrade = false
+  autoUpdater.allowPrerelease = false
+  autoUpdater.requestHeaders = null
+  autoUpdater.disableDifferentialDownload = false
 }
 
 /**
@@ -360,6 +440,7 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     // "download automatically" unobservable and started a transfer on a metered
     // connection the user had explicitly opted out of.
     autoUpdater.autoDownload = getSettings().autoUpdate !== false
+    await pointFeed()
     await autoUpdater.checkForUpdates()
     if (manual && status.state === 'up-to-date') {
       notify(

@@ -11,6 +11,11 @@ name: Release
 # releases, and the launcher either sees no update at all or cannot use the
 # small differential download. Building into artifacts and assembling one
 # release at the end removes the race entirely.
+#
+# A beta (a tag like v1.0.25-beta.1) takes a different road: no GitHub
+# release and no workflow artifacts, because both are public in this
+# repository. Each platform job copies its files straight to the beta folder
+# on our own server, where only launchers with a beta key can fetch them.
 on:
   push:
     tags:
@@ -58,9 +63,22 @@ jobs:
 
       # Cheap, and it runs before three platform builds rather than after them.
       - name: Tag, Version und Changelog vergleichen
+        id: version
         shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
+
+          # X.Y.Z for a release, X.Y.Z-beta.N for a beta, nothing else. An
+          # "-rc" or "-alpha" would build a manifest no launcher ever reads.
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]; then
+            BETA=true
+          elif [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BETA=false
+          else
+            echo "::error::$VERSION ist weder X.Y.Z noch X.Y.Z-beta.N."
+            exit 1
+          fi
+          echo "beta=$BETA" >> "$GITHUB_OUTPUT"
 
           # The release is assembled from package.json, not from the ref. A tag
           # that says something else therefore does not create the release it
@@ -72,13 +90,14 @@ jobs:
           fi
 
           # Without an entry the launcher points its post-update message at a
-          # version that is missing from the list it opens.
-          if ! grep -q "version: '$VERSION'" src/shared/changelog.ts; then
+          # version that is missing from the list it opens. A beta has none:
+          # its notes are written once the betas are rolled into the release.
+          if [ "$BETA" = "false" ] && ! grep -q "version: '$VERSION'" src/shared/changelog.ts; then
             echo "::error::In src/shared/changelog.ts fehlt ein Eintrag für $VERSION."
             exit 1
           fi
 
-          echo "Version $VERSION, Tag und Changelog passen zusammen."
+          echo "Version $VERSION, Beta: $BETA, Tag und Changelog passen zusammen."
 
       - name: Build ${{ matrix.platform }}
         env:
@@ -101,21 +120,122 @@ jobs:
         shell: bash
         run: |
           mkdir -p upload
-          for pattern in '*.exe' '*.dmg' '*.AppImage' '*.blockmap' 'latest*.yml'; do
+          for pattern in '*.exe' '*.dmg' '*.AppImage' '*.blockmap' 'latest*.yml' 'beta*.yml'; do
             find dist -maxdepth 1 -name "$pattern" -exec cp {} upload/ \; 2>/dev/null || true
           done
+          # The launcher looks for beta.yml, beta-mac.yml and beta-linux.yml on
+          # the beta feed. Should electron-builder have named a beta's manifest
+          # after the stable channel, it is renamed here instead of shipping a
+          # feed nobody reads.
+          if [ "${{ steps.version.outputs.beta }}" = "true" ]; then
+            for manifest in upload/latest*.yml; do
+              [ -f "$manifest" ] || continue
+              target="upload/beta${manifest#upload/latest}"
+              [ -f "$target" ] || mv "$manifest" "$target"
+              rm -f "$manifest"
+            done
+            if ! ls upload/beta*.yml >/dev/null 2>&1; then
+              echo "::error::Keine beta*.yml gebaut."
+              exit 1
+            fi
+          fi
           echo "Hochzuladen:"
           ls -1 upload
 
+      # Straight to our server: an artifact of this public repository would
+      # be downloadable by anyone with a GitHub account for a day. Installers
+      # first and the manifest last, each under a temporary name and then
+      # renamed, so a launcher never reads a manifest whose file is not there
+      # yet.
+      - name: Beta auf den eigenen Server legen
+        if: steps.version.outputs.beta == 'true'
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          BETA_ROOT: ${{ secrets.BETA_ROOT }}
+        run: |
+          DEST="${BETA_ROOT:-/var/lib/launch-gabi-beta}"
+          PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_beta
+          chmod 600 ~/.ssh/id_beta
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          SSH="ssh -i $HOME/.ssh/id_beta -p $PORT -o BatchMode=yes"
+          SCP="scp -i $HOME/.ssh/id_beta -P $PORT -o BatchMode=yes"
+
+          put() {
+            local name
+            name=$(basename "$1")
+            $SCP "$1" "$SSH_USER@$SSH_HOST:$DEST/.upload-$name"
+            $SSH "$SSH_USER@$SSH_HOST" "mv -f '$DEST/.upload-$name' '$DEST/$name'"
+            echo "    $name"
+          }
+          for file in upload/*; do
+            case "$file" in *.yml) ;; *) put "$file" ;; esac
+          done
+          for file in upload/beta*.yml; do put "$file"; done
+
+          # Each manifest names the installer it points at, and that file has
+          # to be there now.
+          for manifest in upload/beta*.yml; do
+            for file in $(grep -oE 'url: [^[:space:]]+' "$manifest" | sed 's/url: //' | sort -u); do
+              $SSH "$SSH_USER@$SSH_HOST" "test -f '$DEST/$file'" || {
+                echo "::error::$manifest verweist auf $file, das auf dem Server fehlt"
+                exit 1
+              }
+            done
+          done
+          rm -f ~/.ssh/id_beta
+
       - uses: actions/upload-artifact@v4
+        if: steps.version.outputs.beta != 'true'
         with:
           name: dist-${{ matrix.platform }}
           path: upload/
           retention-days: 1
           if-no-files-found: error
 
+  # Takes the files of earlier betas off the server once all three platforms
+  # have their new ones there. Skipped when any build failed, so a platform
+  # whose build broke keeps the beta it had.
+  beta-cleanup:
+    needs: build
+    if: contains(github.ref_name, '-beta.')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Alte Betas vom Server nehmen
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          BETA_ROOT: ${{ secrets.BETA_ROOT }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          DEST="${BETA_ROOT:-/var/lib/launch-gabi-beta}"
+          PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_beta
+          chmod 600 ~/.ssh/id_beta
+          ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Only installers and blockmaps of other versions. The manifests are
+          # always the current ones, and anything else in the folder is left
+          # alone.
+          ssh -i ~/.ssh/id_beta -p "$PORT" -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
+            "find '$DEST' -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.blockmap' -o -name '.upload-*' \) ! -name '*-$VERSION-*' ! -name '*-$VERSION.*' -print -delete"
+          rm -f ~/.ssh/id_beta
+
   release:
     needs: build
+    # A beta never becomes a GitHub release, see the top of this file.
+    if: ${{ !contains(github.ref_name, '-beta.') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

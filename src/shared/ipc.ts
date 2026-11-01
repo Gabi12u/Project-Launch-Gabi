@@ -138,7 +138,12 @@ export const IPC = {
   updateStatus: 'update:status',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
-  updateInstall: 'update:install'
+  updateInstall: 'update:install',
+
+  // beta programme
+  betaStatus: 'beta:status',
+  betaJoin: 'beta:join',
+  betaLeave: 'beta:leave'
 } as const
 
 /** Push channels: main -> renderer. */
@@ -157,6 +162,7 @@ export const EVENTS = {
   navigate: 'evt:navigate',
   windowState: 'evt:window-state',
   updateStatus: 'evt:update-status',
+  betaStatus: 'evt:beta-status',
   /** Main asks the renderer to start capturing, carrying the chosen source. */
   recordingStart: 'evt:recording-start',
   /** Main asks the renderer to stop capturing. */

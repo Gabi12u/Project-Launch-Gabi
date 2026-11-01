@@ -596,6 +596,29 @@ export type UpdateState =
   /** Running unpackaged, where there is nothing to update. */
   | 'disabled'
 
+/**
+ * Where this launcher stands in the beta programme.
+ *
+ * `ended` stays until the user has seen it: the key was revoked or removed in
+ * the admin panel, and the settings explain why the beta updates stopped.
+ */
+export interface BetaStatus {
+  state: 'none' | 'active' | 'ended'
+  /** The Minecraft account the key belongs to. */
+  playerName?: string
+  /** Set with `ended`: revoked in the panel, or gone altogether. */
+  endedReason?: 'revoked' | 'removed'
+  /**
+   * The account the key belongs to is no longer signed in to the launcher,
+   * so the beta access cannot be renewed when it runs out.
+   */
+  accountMissing?: boolean
+  /** The newest beta on the server, as of the last check. */
+  build?: { version: string | null; releaseDate: string | null } | null
+  /** The launcher running right now is itself a beta. */
+  runningBeta: boolean
+}
+
 export interface UpdateStatus {
   state: UpdateState
   /** Version of the update, once one is known. */

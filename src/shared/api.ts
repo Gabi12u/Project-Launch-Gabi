@@ -36,6 +36,7 @@ import type {
   SearchQuery,
   SearchResponse,
   TaskProgress,
+  BetaStatus,
   UpdateStatus,
   VersionChangePlan,
   VersionChangeResult,
@@ -380,6 +381,14 @@ export interface GabiApi {
     /** Quits and restarts into the new version. */
     install(): Promise<void>
   }
+  /** Beta updates for whoever has a key from the admin panel. */
+  beta: {
+    status(): Promise<BetaStatus>
+    /** Redeems a key with the signed-in Microsoft account. */
+    join(key: string): Promise<BetaStatus>
+    /** Back to the normal updates; also clears an `ended` notice. */
+    leave(): Promise<BetaStatus>
+  }
   events: {
     onTask(fn: (task: TaskProgress) => void): Unsubscribe
     /** The task is gone for good, id only: drop it from any local list. */
@@ -400,6 +409,7 @@ export interface GabiApi {
     onNavigate(fn: (route: string) => void): Unsubscribe
     onWindowState(fn: (state: { maximized: boolean }) => void): Unsubscribe
     onUpdateStatus(fn: (status: UpdateStatus) => void): Unsubscribe
+    onBetaStatus(fn: (status: BetaStatus) => void): Unsubscribe
     onRecordingStart(fn: (request: RecordingRequest) => void): Unsubscribe
     onRecordingStop(fn: (sessionId: number) => void): Unsubscribe
     onRecordingState(fn: (state: RecordingState) => void): Unsubscribe

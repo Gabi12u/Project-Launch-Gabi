@@ -114,6 +114,7 @@ import {
 } from './auth/microsoft'
 import { getNews, getStats } from './core/news'
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate } from './core/updater'
+import { betaStatus, joinBeta, leaveBeta } from './core/beta'
 import { isGameLogWebContents, showLauncherWindow } from './gameLogWindow'
 
 const logger = log('ipc')
@@ -1003,6 +1004,16 @@ export function registerIpc(): void {
   handle(IPC.updateCheck, () => checkForUpdates(true))
   handle(IPC.updateDownload, () => downloadUpdate())
   handle(IPC.updateInstall, () => installUpdate())
+
+  handle(IPC.betaStatus, () => betaStatus())
+  handle(IPC.betaJoin, async (key: string) => {
+    const result = await joinBeta(key)
+    // Straight away rather than at the next scheduled check, so a beta that
+    // is ready shows up while the settings are still open.
+    void checkForUpdates(false)
+    return result
+  })
+  handle(IPC.betaLeave, () => leaveBeta())
 
   logger.info('IPC-Kanäle registriert')
 }
