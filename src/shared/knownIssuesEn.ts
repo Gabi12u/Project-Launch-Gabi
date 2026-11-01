@@ -3129,6 +3129,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'another version. Minecraft 26.1 and newer is hit hardest, because hardly anyone has Java 25 ' +
       'installed already. Until the fix, installing Java 25 yourself and choosing it in the instance ' +
       'settings helps.'
+  },
+  'cloud-limit-1-5-gb': {
+    title: 'The cloud still took at most 1.5 GB per backup instead of up to 5 GB',
+    detail:
+      'Since 1.0.23 up to 5 GB are meant to fit into the cloud in total, even in a single backup. That is ' +
+      'what the notes on what is new say. The cloud server, however, still ran with the old limit: the ' +
+      'launcher refused a backup over 1.5 GB as too large, and Backups still showed 1.5 GB as the maximum ' +
+      'size. The change on the server was finished but not yet put in place. The launcher itself needs no ' +
+      'update for this, it follows whatever the server allows.'
   }
 }
 
