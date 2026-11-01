@@ -52,7 +52,7 @@ export const CHANGELOG: ChangelogRelease[] = [
       },
       {
         kind: 'fixed',
-        text: 'Mods, die du von Hand abgelegt oder aus einem anderen Launcher übernommen hast, bekommen jetzt Updates, wechseln bei „Version ändern“ mit und lassen sich reparieren.'
+        text: 'Mods, Ressourcenpakete und Shader, die du von Hand abgelegt oder aus einem anderen Launcher übernommen hast, bekommen jetzt Updates und wechseln bei „Version ändern“ mit. Mods für die falsche Minecraft-Version tauscht „Reparieren“ aus.'
       },
       {
         kind: 'fixed',

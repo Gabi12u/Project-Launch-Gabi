@@ -877,7 +877,8 @@ function ContentTab({
     setChecking(true)
     try {
       const count = await window.gabi.content.updateAll(instance.id)
-      toast('success', tr(`${count} ${pluralise(count, 'Mod', 'Mods')} aktualisiert`, `${count} ${pluralise(count, 'mod', 'mods')} updated`))
+      // Not "mods": resource packs, shaders and data packs are in the same batch.
+      toast('success', tr(`${count} ${pluralise(count, 'Update', 'Updates')} installiert`, `${count} ${pluralise(count, 'update', 'updates')} installed`))
       await onChanged()
     } catch (err) {
       toastError(err, tr('Update fehlgeschlagen', 'Update failed'))

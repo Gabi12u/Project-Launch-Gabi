@@ -188,7 +188,7 @@ async function lookUp(
       }
     }
     looked++
-    task?.update(tr(`Mods werden geprüft… ${looked} von ${pending.length}`, `Checking mods… ${looked} of ${pending.length}`), looked / pending.length)
+    task?.update(tr(`Mods und Pakete werden geprüft… ${looked} von ${pending.length}`, `Checking mods and packs… ${looked} of ${pending.length}`), looked / pending.length)
   })
 
   if (passing > 0) {

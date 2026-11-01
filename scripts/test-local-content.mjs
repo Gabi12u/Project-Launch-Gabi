@@ -16,6 +16,9 @@
  * 3. "Reparieren" tauscht einen Mod fuer eine andere Minecraft-Version
  *    gegen die passende aus, auch einen, der vorher lokal war.
  * 4. Ohne Antwort von Modrinth bleibt alles, wie es ist.
+ * 8. Dasselbe fuer von Hand abgelegte Ressourcenpakete und Shader: erkannt,
+ *    Update angeboten, "Updates installieren" tauscht sie aus, und "Version
+ *    aendern" nimmt sie mit.
  *
  * Minecraft, Java, der Mod-Loader und Modrinth sind ersetzt, Dateien,
  * Pruefsummen und Downloads sind echt.
@@ -240,6 +243,33 @@ try {
   void chgMods
   void noFitMods
 
+  // Resource packs and shaders dropped in by hand, for section 8.
+  const packVersion = (projectId, versionId, fileName, gameVersions, released, loaders) => ({
+    ...version(projectId, versionId, fileName, gameVersions, released),
+    loaders
+  })
+  const rpOld = packVersion('faithful', 'rp-12111', 'faithful-1.21.11.zip', ['1.21.11'], '2026-05-01T00:00:00Z', ['minecraft'])
+  const rpNew = packVersion('faithful', 'rp-262', 'faithful-26.2.zip', ['26.2'], '2026-10-01T00:00:00Z', ['minecraft'])
+  const shOld = packVersion('shaderx', 'sh-12111', 'shaderx-1.21.11.zip', ['1.21.11'], '2026-05-01T00:00:00Z', ['iris'])
+  const shNew = packVersion('shaderx', 'sh-262', 'shaderx-26.2.zip', ['26.2'], '2026-10-01T00:00:00Z', ['iris'])
+  globalThis.__lgKnown[rpOld.sha1] = rpOld
+  globalThis.__lgKnown[shOld.sha1] = shOld
+  globalThis.__lgAll.faithful = [rpNew, rpOld]
+  globalThis.__lgAll.shaderx = [shNew, shOld]
+  const seenTypes = []
+  globalThis.__lgVersions.faithful = (mc, loader, type) => (seenTypes.push(type), mc === '26.2' ? rpNew : mc === '1.21.11' ? rpOld : null)
+  globalThis.__lgVersions.shaderx = (mc, loader, type) => (seenTypes.push(type), mc === '26.2' ? shNew : mc === '1.21.11' ? shOld : null)
+
+  const makePacks = (id, mcVersion) => {
+    makeInstance(id, mcVersion)
+    mkdirSync(p.resourcePacks(id), { recursive: true })
+    mkdirSync(p.shaderPacks(id), { recursive: true })
+    writeFileSync(join(p.resourcePacks(id), 'faithful-1.21.11.zip'), served.get('/faithful-1.21.11.zip'))
+    writeFileSync(join(p.shaderPacks(id), 'shaderx-1.21.11.zip'), served.get('/shaderx-1.21.11.zip'))
+  }
+  makePacks('pakete', '26.2')
+  makePacks('pakete-wechsel', '1.21.11')
+
   // --- 1. Update check --------------------------------------------------------
   await content.checkUpdates('nach-wechsel', undefined, false)
   const afterCheck = instances.getInstance('nach-wechsel')
@@ -320,6 +350,32 @@ try {
   notes.push(`Reparatur ohne Ersatz: ${JSON.stringify(noFitStep)}`)
   check(noFitStep?.status !== 'failed', `Ein Mod ohne Ersatz machte die Reparatur rot: ${JSON.stringify(noFitStep)}`)
   check(readdirSync(noFitMods).includes('knownmod-1.21.11.jar'), 'Ein Mod ohne Ersatz wurde entfernt')
+
+  // --- 8. Resource packs and shaders dropped in by hand -----------------------------
+
+  await content.checkUpdates('pakete', undefined, false)
+  const packItem = (id, type) => instances.getInstance(id).content.find((c) => c.type === type)
+  for (const [type, project, label] of [['resourcepack', 'faithful', 'Ressourcenpaket'], ['shaderpack', 'shaderx', 'Shader']]) {
+    const item = packItem('pakete', type)
+    check(item?.provider === 'modrinth' && item?.projectId === project, `${label} von Hand wurde nicht erkannt: ${JSON.stringify(item && { provider: item.provider, projectId: item.projectId })}`)
+    check(item?.update?.versionId === (type === 'resourcepack' ? 'rp-262' : 'sh-262'), `${label}: kein Update auf die Fassung für 26.2: ${JSON.stringify(item?.update)}`)
+  }
+  check(seenTypes.includes('resourcepack') && seenTypes.includes('shaderpack'), `Die Versionssuche kannte die Art nicht: ${seenTypes.join(',')}`)
+
+  const installed = await content.updateAll('pakete')
+  const rpFiles = readdirSync(p.resourcePacks('pakete')).sort()
+  const shFiles = readdirSync(p.shaderPacks('pakete')).sort()
+  notes.push(`Nach "Updates installieren": ${installed} getauscht, Ressourcenpakete ${rpFiles.join(', ')}, Shader ${shFiles.join(', ')}`)
+  check(rpFiles.includes('faithful-26.2.zip') && !rpFiles.includes('faithful-1.21.11.zip'), `Das Ressourcenpaket wurde nicht aktualisiert: ${rpFiles.join(', ')}`)
+  check(shFiles.includes('shaderx-26.2.zip') && !shFiles.includes('shaderx-1.21.11.zip'), `Der Shader wurde nicht aktualisiert: ${shFiles.join(', ')}`)
+  check(installed >= 2, `"Updates installieren" meldete ${installed}`)
+
+  const packPlan = await change.planVersionChange('pakete-wechsel', { mcVersion: '26.2', loader: 'fabric' })
+  notes.push(`Vorschau mit Paketen: ${packPlan.items.map((i) => `${i.name}=${i.outcome}`).join(', ')}`)
+  check(packPlan.items.filter((i) => /faithful|shaderx/.test(i.name) && i.outcome === 'update').length === 2, 'Die Vorschau tauscht Ressourcenpaket und Shader nicht mit aus')
+  await change.changeInstanceVersion('pakete-wechsel', { mcVersion: '26.2', loader: 'fabric' })
+  check(readdirSync(p.resourcePacks('pakete-wechsel')).includes('faithful-26.2.zip'), 'Das Ressourcenpaket wurde beim Versionswechsel nicht getauscht')
+  check(readdirSync(p.shaderPacks('pakete-wechsel')).includes('shaderx-26.2.zip'), 'Der Shader wurde beim Versionswechsel nicht getauscht')
 
   // --- 4. No answer from Modrinth -------------------------------------------------
   globalThis.__lgOffline = true
