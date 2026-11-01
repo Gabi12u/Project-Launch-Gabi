@@ -64,6 +64,8 @@ export const IPC = {
   reportsOpenFolder: 'reports:open-folder',
   reportsStatus: 'reports:status',
   reportsFromRenderer: 'reports:from-renderer',
+  /** A report the user writes themselves, with pictures. */
+  reportsSend: 'reports:send',
 
   // launching
   launchPreflight: 'launch:preflight',

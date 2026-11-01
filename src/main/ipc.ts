@@ -69,6 +69,8 @@ import {
   reportingConfigured,
   reportsFolder
 } from './core/reports'
+import { sendFeedback } from './core/feedback'
+import type { FeedbackInput } from '@shared/api'
 import {
   appendChunk,
   deleteRecording,
@@ -628,6 +630,7 @@ export function registerIpc(): void {
   handle(IPC.reportsClear, () => clearReports())
   handle(IPC.reportsOpenFolder, () => openLauncherPath(reportsFolder()))
   handle(IPC.reportsStatus, () => ({ configured: reportingConfigured() }))
+  handle(IPC.reportsSend, (input: FeedbackInput) => sendFeedback(input))
   handle(IPC.recordingState, () => getRecordingState())
 
   handle(IPC.reportsFromRenderer, (area: string, message: string, detail: string) => {

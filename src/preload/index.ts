@@ -86,7 +86,8 @@ const api = {
     clear: call(IPC.reportsClear),
     openFolder: call(IPC.reportsOpenFolder),
     status: call(IPC.reportsStatus),
-    record: call(IPC.reportsFromRenderer)
+    record: call(IPC.reportsFromRenderer),
+    send: call(IPC.reportsSend)
   },
 
   recording: {

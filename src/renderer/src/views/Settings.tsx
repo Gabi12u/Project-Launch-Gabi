@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react'
+import { useEffect, useRef, useState, type JSX } from 'react'
 import type {
   BetaStatus,
   JavaRuntime,
@@ -21,6 +21,7 @@ import {
   IconDownload,
   IconExternal,
   IconFolder,
+  IconImage,
   IconRefresh,
   IconRecord,
   IconShield,
@@ -1401,6 +1402,206 @@ function ChangelogPanel({ currentVersion }: { currentVersion: string }): JSX.Ele
  * Error reports
  * ------------------------------------------------------------------ */
 
+const MAX_FEEDBACK_IMAGES = 3
+/** Longest side after shrinking; enough to read text in a screenshot. */
+const FEEDBACK_IMAGE_SIDE = 1920
+const FEEDBACK_IMAGE_BYTES = 2.8 * 1024 * 1024
+
+/**
+ * Shrinks and re-encodes a picture. Drawing it onto a canvas and exporting
+ * that keeps only the pixels: location, camera and every other kind of
+ * metadata stay behind, and nothing the browser cannot decode gets through.
+ */
+async function shrinkPicture(file: Blob): Promise<{ data: string; preview: string }> {
+  const url = URL.createObjectURL(file)
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image()
+      element.onload = () => resolve(element)
+      element.onerror = () => reject(new Error(tr('Dieses Bild lässt sich nicht öffnen.', 'This picture cannot be opened.')))
+      element.src = url
+    })
+    const scale = Math.min(1, FEEDBACK_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight, 1))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+    canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height)
+    let quality = 0.9
+    let dataUrl = canvas.toDataURL('image/webp', quality)
+    while (dataUrl.length * 0.75 > FEEDBACK_IMAGE_BYTES && quality > 0.45) {
+      quality -= 0.15
+      dataUrl = canvas.toDataURL('image/webp', quality)
+    }
+    if (dataUrl.length * 0.75 > FEEDBACK_IMAGE_BYTES) throw new Error(tr('Dieses Bild ist zu groß.', 'This picture is too large.'))
+    return { data: dataUrl.slice(dataUrl.indexOf(',') + 1), preview: dataUrl }
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/** A report someone writes themselves: text, pictures, optionally the log. */
+function FeedbackSection({ configured }: { configured: boolean }): JSX.Element {
+  const [message, setMessage] = useState('')
+  const [contact, setContact] = useState('')
+  const [includeLog, setIncludeLog] = useState(false)
+  const [images, setImages] = useState<{ data: string; preview: string }[]>([])
+  const [busy, setBusy] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const picker = useRef<HTMLInputElement>(null)
+
+  const addPictures = async (files: File[]): Promise<void> => {
+    const pictures = files.filter((file) => file.type.startsWith('image/'))
+    if (!pictures.length) return
+    const room = MAX_FEEDBACK_IMAGES - images.length
+    if (room <= 0) {
+      toast('info', tr(`Höchstens ${MAX_FEEDBACK_IMAGES} Bilder`, `At most ${MAX_FEEDBACK_IMAGES} pictures`))
+      return
+    }
+    const added: { data: string; preview: string }[] = []
+    for (const file of pictures.slice(0, room)) {
+      try {
+        added.push(await shrinkPicture(file))
+      } catch (err) {
+        toastError(err)
+      }
+    }
+    setImages((current) => [...current, ...added].slice(0, MAX_FEEDBACK_IMAGES))
+  }
+
+  const send = (): void => {
+    setBusy(true)
+    void window.gabi.reports
+      .send({ message, contact, includeLog, images: images.map((image) => image.data) })
+      .then(() => {
+        toast('success', tr('Danke! Deine Meldung ist angekommen.', 'Thanks! Your report has arrived.'))
+        setMessage('')
+        setContact('')
+        setImages([])
+        setIncludeLog(false)
+      })
+      .catch((err) => toastError(err, tr('Meldung nicht gesendet', 'Report not sent')))
+      .finally(() => setBusy(false))
+  }
+
+  return (
+    <section
+      className={`setting-group ${dragging ? 'feedback-drop' : ''}`}
+      onPaste={(event) => {
+        const files = [...event.clipboardData.files]
+        if (files.some((file) => file.type.startsWith('image/'))) {
+          event.preventDefault()
+          void addPictures(files)
+        }
+      }}
+      onDragOver={(event) => {
+        event.preventDefault()
+        setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault()
+        setDragging(false)
+        void addPictures([...event.dataTransfer.files])
+      }}
+    >
+      <h3>{tr('Fehler melden', 'Report a problem')}</h3>
+      <p className="hint">
+        {tr(
+          'Ist etwas kaputt oder seltsam? Schreib kurz, was passiert ist. Bilder helfen sehr: einfach hineinziehen, mit Strg+V einfügen oder auswählen.',
+          'Is something broken or odd? Write briefly what happened. Pictures help a lot: drag them in, paste them with Ctrl+V or pick them.'
+        )}
+      </p>
+
+      <textarea
+        className="textarea mt-8"
+        style={{ fontFamily: 'inherit', fontSize: 13.5, minHeight: 110 }}
+        maxLength={4000}
+        aria-label={tr('Was ist passiert?', 'What happened?')}
+        placeholder={tr(
+          'Was hast du gemacht, was ist passiert, und was hättest du erwartet?',
+          'What did you do, what happened, and what did you expect?'
+        )}
+        value={message}
+        disabled={busy}
+        onChange={(event) => setMessage(event.target.value)}
+      />
+      <input
+        className="input mt-8"
+        maxLength={120}
+        aria-label={tr('Kontakt', 'Contact')}
+        placeholder={tr('Discord-Name oder E-Mail, falls wir nachfragen dürfen (freiwillig)', 'Discord name or email, in case we may ask back (optional)')}
+        value={contact}
+        disabled={busy}
+        onChange={(event) => setContact(event.target.value)}
+      />
+
+      {images.length > 0 && (
+        <div className="feedback-shots mt-8">
+          {images.map((image, index) => (
+            <div key={index} className="feedback-shot">
+              <img src={image.preview} alt={tr(`Bild ${index + 1}`, `Picture ${index + 1}`)} />
+              <button
+                className="feedback-shot-remove"
+                aria-label={tr('Bild entfernen', 'Remove picture')}
+                disabled={busy}
+                onClick={() => setImages((current) => current.filter((_, i) => i !== index))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="row gap-8 mt-8">
+        <button className="btn" disabled={busy || images.length >= MAX_FEEDBACK_IMAGES} onClick={() => picker.current?.click()}>
+          <IconImage />
+          {tr('Bild hinzufügen', 'Add picture')} ({images.length}/{MAX_FEEDBACK_IMAGES})
+        </button>
+        <input
+          ref={picker}
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(event) => {
+            void addPictures([...(event.target.files ?? [])])
+            event.target.value = ''
+          }}
+        />
+      </div>
+
+      <SettingToggle
+        label={tr('Protokoll des Launchers mitschicken', 'Send the launcher log along')}
+        hint={tr(
+          'Hilft sehr bei der Suche nach dem Fehler. Namen, Pfade und Zugangsdaten werden vorher entfernt.',
+          'Helps a lot with finding the problem. Names, paths and credentials are removed first.'
+        )}
+        checked={includeLog}
+        disabled={busy}
+        onChange={setIncludeLog}
+      />
+
+      <div className="row gap-8 mt-8">
+        <button className="btn primary" disabled={!configured || busy || message.trim().length < 10} onClick={send}>
+          {busy ? tr('Wird gesendet…', 'Sending…') : tr('Meldung senden', 'Send report')}
+        </button>
+      </div>
+      <p className="hint mt-8">
+        {configured
+          ? tr(
+              'Geht an den Launch-Gabi-Server. Bilder werden verkleinert und ohne Ortsangaben oder andere versteckte Angaben gesendet. Deine IP-Adresse wird nicht gespeichert.',
+              'Goes to the Launch Gabi server. Pictures are shrunk and sent without location or other hidden details. Your IP address is not stored.'
+            )
+          : tr(
+              'In dieser Version ist kein Empfänger hinterlegt, Meldungen lassen sich nicht senden.',
+              'This version has no recipient set up, so reports cannot be sent.'
+            )}
+      </p>
+    </section>
+  )
+}
+
 function ReportsPanel(): JSX.Element {
   const { settings } = useStore()
   const [reports, setReports] = useState<ErrorReport[] | null>(null)
@@ -1423,8 +1624,10 @@ function ReportsPanel(): JSX.Element {
 
   return (
     <>
+      <FeedbackSection configured={configured} />
+
       <section className="setting-group">
-        <h3>{tr('Fehler melden', 'Report errors')}</h3>
+        <h3>{tr('Automatische Fehlerberichte', 'Automatic error reports')}</h3>
         <p className="hint">
           {tr(
             'Geht im Launcher etwas schief, wird der Fehler hier festgehalten. Auf Wunsch geht er zusätzlich an die Entwicklung, damit Fehler auffallen, von denen sonst niemand erfährt.',

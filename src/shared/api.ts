@@ -133,6 +133,16 @@ export interface CloudBackup {
   sha256: string
 }
 
+/** A report written by the user, see Settings, error reports. */
+export interface FeedbackInput {
+  message: string
+  contact?: string
+  /** Sends the end of the launcher log along, scrubbed. */
+  includeLog: boolean
+  /** Base64, already shrunk and re-encoded in the renderer. */
+  images: string[]
+}
+
 export interface CloudOverview {
   /** False without a Microsoft account; then nothing else is filled in. */
   available: boolean
@@ -262,6 +272,8 @@ export interface GabiApi {
     status(): Promise<{ configured: boolean }>
     /** The renderer hands its own uncaught errors over here. */
     record(area: string, message: string, detail: string): Promise<void>
+    /** Sends a report the user wrote themselves. */
+    send(input: FeedbackInput): Promise<{ id: string }>
   }
   recording: {
     /** Current state, for painting the indicator on first render. */

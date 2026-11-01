@@ -518,6 +518,11 @@ export function reportingConfigured(): boolean {
   return PANEL_URL.length > 0 && PANEL_TOKEN.length > 0
 }
 
+/** The build's token, for reports the user writes themselves (feedback.ts). */
+export function reportToken(): string {
+  return PANEL_TOKEN
+}
+
 export function reportsFolder(): string {
   const dir = reportsDir()
   // Created on the way out, because the button in the settings opens this path
