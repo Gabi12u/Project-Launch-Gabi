@@ -145,7 +145,8 @@ export const IPC = {
   // beta programme
   betaStatus: 'beta:status',
   betaJoin: 'beta:join',
-  betaLeave: 'beta:leave'
+  betaLeave: 'beta:leave',
+  betaDownload: 'beta:download'
 } as const
 
 /** Push channels: main -> renderer. */

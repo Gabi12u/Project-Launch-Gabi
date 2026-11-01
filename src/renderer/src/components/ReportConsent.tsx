@@ -19,6 +19,9 @@ import { tr } from '@shared/i18n'
 export function ReportConsent(): JSX.Element | null {
   const { settings, ready } = useStore()
   const [configured, setConfigured] = useState<boolean | null>(null)
+  // The beta programme sends reports either way, and joining said so. Asking
+  // here as well would offer a "no" that changes nothing.
+  const [inBeta, setInBeta] = useState(false)
   // Escape, the backdrop and the X are a dismissal, not a decision: only the
   // two buttons below are meant to be final. Without this, closing the
   // window any other way silently saved "off" for good, and the question
@@ -30,7 +33,10 @@ export function ReportConsent(): JSX.Element | null {
   useEffect(() => {
     void window.gabi.reports
       .status()
-      .then((status) => setConfigured(status.configured))
+      .then((status) => {
+        setConfigured(status.configured)
+        setInBeta(status.beta)
+      })
       .catch(() => setConfigured(false))
   }, [])
 
@@ -38,7 +44,7 @@ export function ReportConsent(): JSX.Element | null {
   // we cannot act on would collect an answer under false pretences.
   if (!ready || !settings.onboarded || settings.crashReports !== 'unset') return null
   if (configured !== true) return null
-  if (dismissed) return null
+  if (dismissed || inBeta) return null
 
   const answer = (allowed: boolean): void => {
     void saveSettings({ crashReports: allowed ? 'on' : 'off' })

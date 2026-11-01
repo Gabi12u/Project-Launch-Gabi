@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { accountsSnapshot, getSettings } from '../store'
 import { paths } from '../paths'
 import { log } from '../logger'
+import { inBetaProgramme } from './betaMembership'
 
 const logger = log('reports')
 
@@ -369,7 +370,9 @@ export function reportError(area: string, error: unknown, extra?: string): void 
 
 function shouldSend(): boolean {
   if (!reportingConfigured()) return false
-  return getSettings().crashReports === 'on'
+  // Sending them is part of the beta programme, and the settings say so
+  // while someone is in it. Leaving brings back the user's own choice.
+  return getSettings().crashReports === 'on' || inBetaProgramme()
 }
 
 /**

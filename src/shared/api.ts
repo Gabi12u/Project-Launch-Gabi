@@ -268,8 +268,11 @@ export interface GabiApi {
     list(): Promise<ErrorReport[]>
     clear(): Promise<void>
     openFolder(): Promise<string>
-    /** Whether a destination is configured at all. */
-    status(): Promise<{ configured: boolean }>
+    /**
+     * Whether a destination is configured at all, and whether the beta
+     * programme sends reports regardless of the setting.
+     */
+    status(): Promise<{ configured: boolean; beta: boolean }>
     /** The renderer hands its own uncaught errors over here. */
     record(area: string, message: string, detail: string): Promise<void>
     /** Sends a report the user wrote themselves. */
@@ -400,6 +403,8 @@ export interface GabiApi {
     join(key: string): Promise<BetaStatus>
     /** Back to the normal updates; also clears an `ended` notice. */
     leave(): Promise<BetaStatus>
+    /** macOS only: saves the current beta to Downloads and opens it. Resolves to the file. */
+    download(): Promise<string>
   }
   events: {
     onTask(fn: (task: TaskProgress) => void): Unsubscribe

@@ -19,7 +19,12 @@
  * 7. Zurueckgesetzt (401): neu einloesen und weiter.
  * 8. Gesperrt (403): einmal Bescheid, zurueck auf GitHub.
  * 9. Geloescht: einmal Bescheid, als "gilt nicht mehr".
+ * 10. Wer dabei ist, sendet Fehlerberichte, auch mit ausgeschalteter
+ *     Einstellung. Nach dem Verlassen gilt wieder die Einstellung.
+ * 11. Mac: der Knopf laedt die passende Beta, prueft die Pruefsumme und
+ *     oeffnet sie. Eine beschaedigte Datei bleibt nicht liegen.
  */
+import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -50,6 +55,8 @@ const server = {
   joins: new Map(),
   betaVersion: '1.0.25-beta.1',
   stableVersion: '1.0.24',
+  macDownloads: [],
+  damageMac: false,
   tokenDays: 30,
   counter: 0,
   requests: []
@@ -115,8 +122,26 @@ globalThis.fetch = async (input, init = {}) => {
     if (!server.betaVersion) return json(404, { error: 'nicht da' })
     return new Response(`version: ${server.betaVersion}\npath: launch-gabi-${server.betaVersion}-setup.exe\nreleaseDate: '2026-11-01T10:00:00.000Z'\n`, { status: 200 })
   }
+  if (path === '/feed/beta-mac.yml') {
+    const lines = [`version: ${server.betaVersion}`, 'files:']
+    for (const arch of ['x64', 'arm64']) {
+      lines.push(`  - url: ${macName(arch)}`, `    sha512: ${sha512(macImage(arch))}`, `    size: ${macImage(arch).length}`)
+    }
+    lines.push(`path: ${macName('x64')}`, `releaseDate: '2026-11-01T10:00:00.000Z'`)
+    return new Response(lines.join('\n') + '\n', { status: 200 })
+  }
+  for (const arch of ['x64', 'arm64']) {
+    if (path === `/feed/${macName(arch)}`) {
+      server.macDownloads.push(arch)
+      return new Response(server.damageMac ? Buffer.from('kaputt') : macImage(arch), { status: 200 })
+    }
+  }
   return json(404, {})
 }
+
+const macName = (arch) => `launch-gabi-${server.betaVersion}-mac-${arch}.dmg`
+const macImage = (arch) => Buffer.from(`Disk-Image ${server.betaVersion} fuer ${arch} `.repeat(4000))
+const sha512 = (data) => createHash('sha512').update(data).digest('base64')
 
 try {
   const require = createRequire(import.meta.url)
@@ -138,7 +163,11 @@ try {
          encryptString: (text) => Buffer.from('ENC:' + Buffer.from(text).toString('hex')),
          decryptString: (buf) => Buffer.from(buf.toString().slice(4), 'hex').toString()
        },
-       shell: {}, dialog: {}, BrowserWindow: { getAllWindows: () => [] },
+       shell: {
+         openPath: async (file) => { globalThis.__lgOpened.push(file); return '' },
+         showItemInFolder: (file) => globalThis.__lgShown.push(file)
+       },
+       dialog: {}, BrowserWindow: { getAllWindows: () => [] },
        ipcMain: { handle() {}, on() {} },
        desktopCapturer: {}, globalShortcut: {}, Notification: class {}, net: {}
      }`
@@ -177,6 +206,25 @@ try {
   )
   const launchStub = join(work, 'launch-stub.js')
   writeFileSync(launchStub, 'module.exports = { startingCount: () => 0 }')
+  // Error reports leave through node:https; recorded here instead.
+  const httpsStub = join(work, 'https-stub.js')
+  writeFileSync(
+    httpsStub,
+    `module.exports = {
+       request(url, options, callback) {
+         const sent = { url, headers: options.headers, body: '' }
+         return {
+           on() { return this },
+           destroy() {},
+           end(body) {
+             sent.body = String(body || '')
+             globalThis.__lgPanel.push(sent)
+             setImmediate(() => callback({ statusCode: 202, resume() {} }))
+           }
+         }
+       }
+     }`
+  )
 
   const entry = join(work, 'entry.js')
   writeFileSync(
@@ -185,10 +233,12 @@ try {
        beta: require(${JSON.stringify(join(root, 'src/main/core/beta.ts'))}),
        updater: require(${JSON.stringify(join(root, 'src/main/core/updater.ts'))}),
        versions: require(${JSON.stringify(join(root, 'src/shared/versions.ts'))}),
-       store: require(${JSON.stringify(join(root, 'src/main/store.ts'))})
+       store: require(${JSON.stringify(join(root, 'src/main/store.ts'))}),
+       reports: require(${JSON.stringify(join(root, 'src/main/core/reports.ts'))}),
+       membership: require(${JSON.stringify(join(root, 'src/main/core/betaMembership.ts'))})
      }`
   )
-  const stubs = { 'electron-updater': updaterStub, './launch': launchStub }
+  const stubs = { 'electron-updater': updaterStub, './launch': launchStub, 'node:https': httpsStub }
   const out = join(work, 'bundle.cjs')
   await esbuild.build({
     entryPoints: [entry],
@@ -197,11 +247,12 @@ try {
     platform: 'node',
     outfile: out,
     alias: { '@shared': join(root, 'src/shared'), electron: shim },
+    define: { 'process.env.LG_REPORT_PANEL_TOKEN': JSON.stringify('test-berichtswort') },
     plugins: [
       {
         name: 'stubs',
         setup(build) {
-          build.onResolve({ filter: /^(electron-updater|\.\/launch)$/ }, (args) => ({ path: stubs[args.path] }))
+          build.onResolve({ filter: /^(electron-updater|\.\/launch|node:https)$/ }, (args) => ({ path: stubs[args.path] }))
           build.onResolve({ filter: /^\.\.?\/events$/ }, () => ({ path: eventsStub }))
         }
       }
@@ -216,7 +267,10 @@ try {
   globalThis.__lgChecks = []
   globalThis.__lgEmits = []
   globalThis.__lgNotes = []
-  const { beta, updater, versions, store } = require(out)
+  globalThis.__lgPanel = []
+  globalThis.__lgOpened = []
+  globalThis.__lgShown = []
+  const { beta, updater, versions, store, reports, membership } = require(out)
 
   const account = (who, active, type = 'microsoft') => ({
     id: who.id, type, username: who.name, uuid: who.uuid, active,
@@ -366,6 +420,86 @@ try {
   check(seen.feed?.provider === 'github' && seen.headers === null, `Nach dem Loeschen: ${JSON.stringify(seen)}`)
   check(globalThis.__lgNotes.length === 1 && /gilt nicht mehr|no longer valid/.test(globalThis.__lgNotes[0].message),
     `Meldung nach dem Loeschen: ${JSON.stringify(globalThis.__lgNotes)}`)
+
+  // --- 10. In the programme, error reports are sent ---------------------
+  store.saveSettings({ crashReports: 'off' })
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
+  check(!membership.inBetaProgramme(), 'Mit beendetem Beta-Programm gilt man noch als dabei')
+  reports.reportError('test', new Error('Fehler nach dem Ende'))
+  await settle()
+  check(globalThis.__lgPanel.length === 0, 'Nach dem Ende ging ein Fehlerbericht raus, obwohl sie aus sind')
+
+  beta.leaveBeta()
+  addKey('LGB-EEEE-FFFF-GGGG-HHHH')
+  await beta.joinBeta('LGB-EEEE-FFFF-GGGG-HHHH')
+  check(membership.inBetaProgramme(), 'Nach dem Beitritt gilt man nicht als dabei')
+  reports.reportError('test', new Error('Fehler in der Beta'))
+  await settle()
+  const sent = globalThis.__lgPanel.at(-1)
+  check(globalThis.__lgPanel.length === 1 && sent?.headers?.['x-report-token'] === 'test-berichtswort',
+    `Im Beta-Programm kam kein Fehlerbericht an: ${JSON.stringify(globalThis.__lgPanel)}`)
+  check(sent && !sent.body.includes('Alice'), 'Der Fehlerbericht enthaelt den Spielernamen')
+
+  beta.leaveBeta()
+  reports.reportError('test', new Error('Fehler nach dem Verlassen'))
+  await settle()
+  check(globalThis.__lgPanel.length === 1, 'Nach dem Verlassen ging trotz ausgeschalteter Einstellung ein Bericht raus')
+  store.saveSettings({ crashReports: 'on' })
+  reports.reportError('test', new Error('Fehler mit eigener Zustimmung'))
+  await settle()
+  check(globalThis.__lgPanel.length === 2, 'Mit eingeschalteter Einstellung ging nach dem Verlassen nichts raus')
+  notes.push(`Fehlerberichte: im Beta-Programm gesendet, danach wieder nach Einstellung (${globalThis.__lgPanel.length} gesendet)`)
+
+  // --- 11. Mac: download, check, open ------------------------------------
+  const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+  const realArch = Object.getOwnPropertyDescriptor(process, 'arch')
+  try {
+    failure = ''
+    try { await beta.downloadBetaForMac() } catch (err) { failure = err.message }
+    check(/nur auf dem Mac|only needed on a Mac/.test(failure), `Ausserhalb des Macs: ${failure || 'geladen'}`)
+
+    Object.defineProperty(process, 'platform', { value: 'darwin' })
+    Object.defineProperty(process, 'arch', { value: 'arm64' })
+    failure = ''
+    try { await beta.downloadBetaForMac() } catch (err) { failure = err.message }
+    check(/nicht im Beta-Programm|not in the beta programme/.test(failure), `Ohne Beta-Programm: ${failure || 'geladen'}`)
+
+    addKey('LGB-JJJJ-KKKK-LLLL-MMMM')
+    const onMac = await beta.joinBeta('LGB-JJJJ-KKKK-LLLL-MMMM')
+    check(onMac.manualInstall === true && onMac.buildIsNewer === true, `Status auf dem Mac: ${JSON.stringify(onMac)}`)
+
+    globalThis.__lgEmits = []
+    const saved = await beta.downloadBetaForMac()
+    const expected = join(userData, macName('arm64'))
+    check(saved === expected, `Gespeichert unter ${saved}`)
+    check(existsSync(expected) && readFileSync(expected).equals(macImage('arm64')), 'Die Mac-Beta liegt nicht vollstaendig im Download-Ordner')
+    check(server.macDownloads.join(',') === 'arm64', `Geladen fuer: ${server.macDownloads.join(',')}`)
+    check(globalThis.__lgOpened.at(-1) === expected, 'Die Mac-Beta wurde nicht geoeffnet')
+    check(!existsSync(`${expected}.part`), 'Eine .part-Datei ist liegen geblieben')
+    const progress = globalThis.__lgEmits.map((e) => e.payload?.downloadPercent).filter((p) => p !== undefined)
+    check(progress.length >= 2 && progress[0] === 0 && Math.max(...progress) <= 99, `Fortschritt: ${progress.join(',')}`)
+    check(beta.betaStatus().downloadPercent === undefined, 'Nach dem Download steht noch ein Fortschritt im Status')
+    notes.push(`Mac: ${macName('arm64')} geladen, geprueft und geoeffnet (${progress.length} Fortschrittsmeldungen)`)
+
+    rmSync(expected, { force: true })
+    server.damageMac = true
+    globalThis.__lgOpened = []
+    failure = ''
+    try { await beta.downloadBetaForMac() } catch (err) { failure = err.message }
+    check(/beschädigt|damaged/.test(failure), `Beschaedigte Datei: ${failure || 'angenommen'}`)
+    check(!existsSync(expected) && !existsSync(`${expected}.part`), 'Eine beschaedigte Mac-Beta blieb liegen')
+    check(globalThis.__lgOpened.length === 0, 'Eine beschaedigte Mac-Beta wurde geoeffnet')
+    server.damageMac = false
+
+    globalThis.__lgVersion = server.betaVersion
+    failure = ''
+    try { await beta.downloadBetaForMac() } catch (err) { failure = err.message }
+    check(/schon|already/.test(failure), `Schon auf der Beta: ${failure || 'geladen'}`)
+    globalThis.__lgVersion = '1.0.24'
+  } finally {
+    Object.defineProperty(process, 'platform', realPlatform)
+    Object.defineProperty(process, 'arch', realArch)
+  }
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {

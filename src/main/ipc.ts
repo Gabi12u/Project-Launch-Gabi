@@ -69,6 +69,7 @@ import {
   reportingConfigured,
   reportsFolder
 } from './core/reports'
+import { inBetaProgramme } from './core/betaMembership'
 import { sendFeedback } from './core/feedback'
 import type { FeedbackInput } from '@shared/api'
 import {
@@ -116,7 +117,7 @@ import {
 } from './auth/microsoft'
 import { getNews, getStats } from './core/news'
 import { checkForUpdates, downloadUpdate, getUpdateStatus, installUpdate } from './core/updater'
-import { betaStatus, joinBeta, leaveBeta } from './core/beta'
+import { betaStatus, downloadBetaForMac, joinBeta, leaveBeta } from './core/beta'
 import { isGameLogWebContents, showLauncherWindow } from './gameLogWindow'
 
 const logger = log('ipc')
@@ -629,7 +630,7 @@ export function registerIpc(): void {
   handle(IPC.reportsList, () => listReports())
   handle(IPC.reportsClear, () => clearReports())
   handle(IPC.reportsOpenFolder, () => openLauncherPath(reportsFolder()))
-  handle(IPC.reportsStatus, () => ({ configured: reportingConfigured() }))
+  handle(IPC.reportsStatus, () => ({ configured: reportingConfigured(), beta: inBetaProgramme() }))
   handle(IPC.reportsSend, (input: FeedbackInput) => sendFeedback(input))
   handle(IPC.recordingState, () => getRecordingState())
 
@@ -1017,6 +1018,7 @@ export function registerIpc(): void {
     return result
   })
   handle(IPC.betaLeave, () => leaveBeta())
+  handle(IPC.betaDownload, () => downloadBetaForMac())
 
   logger.info('IPC-Kanäle registriert')
 }

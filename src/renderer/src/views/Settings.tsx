@@ -172,11 +172,29 @@ function BetaSection(): JSX.Element {
         toast(
           'success',
           tr('Willkommen im Beta-Programm', 'Welcome to the beta programme'),
-          tr('Sobald eine Beta bereitsteht, kommt sie wie ein normales Update.', 'As soon as a beta is ready, it arrives like a normal update.')
+          next.manualInstall
+            ? tr('Sobald eine Beta bereitsteht, lädst du sie hier herunter.', 'As soon as a beta is ready, you download it here.')
+            : tr('Sobald eine Beta bereitsteht, kommt sie wie ein normales Update.', 'As soon as a beta is ready, it arrives like a normal update.')
         )
       })
       .catch((err) => toastError(err, tr('Beitritt nicht möglich', 'Could not join')))
       .finally(() => setBusy(false))
+  }
+
+  const download = (): void => {
+    void window.gabi.beta
+      .download()
+      .then(() =>
+        toast(
+          'success',
+          tr('Beta geladen', 'Beta downloaded'),
+          tr(
+            'Sie liegt in deinem Download-Ordner und ist geöffnet. Beende Launch Gabi und ziehe es wie gewohnt in Programme.',
+            'It is in your Downloads folder and has been opened. Quit Launch Gabi and drag it into Applications as usual.'
+          )
+        )
+      )
+      .catch((err) => toastError(err, tr('Beta nicht geladen', 'Beta not downloaded')))
   }
 
   const leave = async (): Promise<void> => {
@@ -240,16 +258,28 @@ function BetaSection(): JSX.Element {
               )}
             </p>
           )}
+          <p className="hint mt-8">
+            {tr(
+              'Solange du dabei bist, werden Fehlerberichte automatisch gesendet, damit Fehler in einer Beta schnell auffallen. Außerdem werden dein Minecraft-Name gespeichert und wann du den Key zuletzt genutzt hast. Mehr nicht.',
+              'While you are in, error reports are sent automatically, so bugs in a beta get noticed quickly. Your Minecraft name and when you last used the key are stored as well. Nothing else.'
+            )}
+          </p>
         </>
       )}
 
       {beta.state === 'active' && (
         <>
           <p className="hint">
-            {tr(
-              `Du bist als ${beta.playerName} dabei. Neue Betas kommen wie normale Updates. Erscheint danach die normale Version, bekommst du die.`,
-              `You are in as ${beta.playerName}. New betas arrive like normal updates. When the normal version comes out after that, you get it.`
-            )}
+            {beta.manualInstall
+              ? tr(
+                  `Du bist als ${beta.playerName} dabei. Auf dem Mac installiert sich eine Beta nicht von selbst: Du lädst sie hier herunter und ziehst Launch Gabi wie gewohnt in Programme.`,
+                  `You are in as ${beta.playerName}. On a Mac a beta does not install itself: you download it here and drag Launch Gabi into Applications as usual.`
+                )
+              : tr(
+                  `Du bist als ${beta.playerName} dabei. Neue Betas kommen wie normale Updates. Erscheint danach die normale Version, bekommst du die.`,
+                  `You are in as ${beta.playerName}. New betas arrive like normal updates. When the normal version comes out after that, you get it.`
+                )}{' '}
+            {tr('Fehlerberichte werden automatisch gesendet, solange du dabei bist.', 'Error reports are sent automatically while you are in.')}
           </p>
           <p className="hint">
             {beta.build?.version
@@ -257,6 +287,15 @@ function BetaSection(): JSX.Element {
               : tr('Gerade liegt keine Beta bereit.', 'No beta is ready right now.')}
             {beta.runningBeta ? tr(' Du nutzt gerade eine Beta.', ' You are using a beta right now.') : ''}
           </p>
+          {beta.manualInstall && beta.buildIsNewer && (
+            <div className="row gap-8 mt-8">
+              <button className="btn primary" disabled={beta.downloadPercent !== undefined} onClick={download}>
+                {beta.downloadPercent !== undefined
+                  ? tr(`Wird geladen… ${beta.downloadPercent} %`, `Downloading… ${beta.downloadPercent}%`)
+                  : tr(`Beta ${beta.build?.version} herunterladen`, `Download beta ${beta.build?.version}`)}
+              </button>
+            </div>
+          )}
           {beta.accountMissing && (
             <p className="hint mt-8" style={{ color: 'var(--warn)' }}>
               <IconWarning />{' '}
@@ -1606,16 +1645,18 @@ function ReportsPanel(): JSX.Element {
   const { settings } = useStore()
   const [reports, setReports] = useState<ErrorReport[] | null>(null)
   const [configured, setConfigured] = useState(false)
+  const [inBeta, setInBeta] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
 
   const load = async (): Promise<void> => {
     const [list, status] = await Promise.all([
       window.gabi.reports.list().catch(() => [] as ErrorReport[]),
-      window.gabi.reports.status().catch(() => ({ configured: false }))
+      window.gabi.reports.status().catch(() => ({ configured: false, beta: false }))
     ])
     setReports(list)
     setConfigured(status.configured)
+    setInBeta(status.beta)
   }
 
   useEffect(() => {
@@ -1638,17 +1679,23 @@ function ReportsPanel(): JSX.Element {
         <SettingToggle
           label={tr('Fehler automatisch senden', 'Send errors automatically')}
           hint={
-            configured
+            !configured
               ? tr(
-                  'An den Launch-Gabi-Server, ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.',
-                  'To the Launch Gabi server, without your name, your UUID and your credentials. Your IP address is not stored.'
-                )
-              : tr(
                   'In dieser Version ist kein Empfänger hinterlegt, es wird nichts gesendet. Berichte werden nur bei dir gespeichert.',
                   'This version has no recipient set up, so nothing is sent. Reports are only stored on your computer.'
                 )
+              : inBeta
+                ? tr(
+                    'Im Beta-Programm immer an, das gehört zum Mitmachen dazu. Verlässt du es unter Updates, gilt wieder deine eigene Einstellung. Ohne deinen Namen, deine UUID und deine Zugangsdaten.',
+                    'Always on in the beta programme, that is part of taking part. If you leave it under Updates, your own setting applies again. Without your name, your UUID and your credentials.'
+                  )
+                : tr(
+                    'An den Launch-Gabi-Server, ohne deinen Namen, deine UUID und deine Zugangsdaten. Deine IP-Adresse wird nicht gespeichert.',
+                    'To the Launch Gabi server, without your name, your UUID and your credentials. Your IP address is not stored.'
+                  )
           }
-          checked={settings.crashReports === 'on'}
+          checked={settings.crashReports === 'on' || (configured && inBeta)}
+          disabled={configured && inBeta}
           onChange={(value) => void saveSettings({ crashReports: value ? 'on' : 'off' })}
         />
       </section>

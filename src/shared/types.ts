@@ -615,8 +615,17 @@ export interface BetaStatus {
   accountMissing?: boolean
   /** The newest beta on the server, as of the last check. */
   build?: { version: string | null; releaseDate: string | null } | null
+  /** That beta is newer than the launcher running now. */
+  buildIsNewer?: boolean
   /** The launcher running right now is itself a beta. */
   runningBeta: boolean
+  /**
+   * macOS: the unsigned app cannot replace itself, so a beta is downloaded
+   * with a button and installed by hand instead of arriving as an update.
+   */
+  manualInstall: boolean
+  /** 0..100 while that download runs. */
+  downloadPercent?: number
 }
 
 export interface UpdateStatus {

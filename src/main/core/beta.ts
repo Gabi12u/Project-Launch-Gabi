@@ -11,18 +11,26 @@
  * The beta token lasts 30 days and is renewed the same way before it runs
  * out, with the key kept here for that. When the key is revoked or removed in
  * the panel, the launcher says so once and goes back to the normal updates.
+ *
+ * Whoever is in the programme sends error reports automatically, see
+ * betaMembership.ts. On macOS a beta cannot install itself, so it is
+ * downloaded with a button instead, see downloadBetaForMac.
  */
-import { app, safeStorage } from 'electron'
-import { rmSync } from 'node:fs'
+import { app, safeStorage, shell } from 'electron'
+import { createHash } from 'node:crypto'
+import { createWriteStream, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
 import { EVENTS } from '@shared/ipc'
 import type { BetaStatus } from '@shared/types'
-import { isPrerelease } from '@shared/versions'
+import { compareVersions, isPrerelease } from '@shared/versions'
 import { tr } from '@shared/i18n'
 import { getActiveAccount, getValidAccessToken } from '../auth/microsoft'
 import { emit, notify } from '../events'
 import { log } from '../logger'
 import { readAccounts, readJson, writeJsonAtomic, type StoredAccount } from '../store'
+import { betaFile } from './betaMembership'
 
 const logger = log('beta')
 
@@ -51,9 +59,8 @@ interface BetaFile {
 /** The newest beta on the server, from the last answer that named it. */
 let lastBuild: BetaStatus['build'] = null
 
-function betaFile(): string {
-  return join(app.getPath('userData'), 'beta.json')
-}
+/** Progress of the Mac download, null while none runs. */
+let downloadPercent: number | null = null
 
 function readBeta(): BetaFile | null {
   const stored = readJson<BetaFile | null>(betaFile(), null)
@@ -100,15 +107,19 @@ function boundAccount(file: BetaFile): StoredAccount | null {
 
 export function betaStatus(): BetaStatus {
   const runningBeta = isPrerelease(app.getVersion())
+  const manualInstall = process.platform === 'darwin'
   const file = readBeta()
-  if (!file) return { state: 'none', runningBeta }
-  if (file.ended) return { state: 'ended', endedReason: file.ended, playerName: file.playerName, runningBeta }
+  if (!file) return { state: 'none', runningBeta, manualInstall }
+  if (file.ended) return { state: 'ended', endedReason: file.ended, playerName: file.playerName, runningBeta, manualInstall }
   return {
     state: 'active',
     playerName: file.playerName,
     accountMissing: !boundAccount(file),
     build: lastBuild,
-    runningBeta
+    buildIsNewer: !!lastBuild?.version && compareVersions(lastBuild.version, app.getVersion()) > 0,
+    runningBeta,
+    manualInstall,
+    downloadPercent: downloadPercent ?? undefined
   }
 }
 
@@ -391,6 +402,8 @@ export interface BetaFeed {
   token: string
   /** Null when the server has no beta for this system right now. */
   version: string | null
+  /** The manifest itself, whenever it could be read. */
+  manifest: string | null
 }
 
 /**
@@ -406,17 +419,145 @@ export async function betaFeed(): Promise<BetaFeed | null> {
       res = await fetch(`${url}/${channelFile('beta')}`, { headers: { 'x-beta-token': token }, signal: AbortSignal.timeout(20_000) })
     } catch (err) {
       logger.warn('Beta-Feed nicht erreichbar:', err instanceof Error ? err.message : err)
-      return { url, token, version: null }
+      return { url, token, version: null, manifest: null }
     }
     if (res.status === 401 || res.status === 403) {
       token = await onRefused(res.status)
       continue
     }
-    if (!res.ok) return { url, token, version: null }
+    if (!res.ok) return { url, token, version: null, manifest: null }
     const text = await res.text()
     const version = /^version:\s*['"]?([^'"\s]+)/m.exec(text)?.[1] ?? null
     if (version) lastBuild = { version, releaseDate: /^releaseDate:\s*['"]?([^'"\s]+)/m.exec(text)?.[1] ?? null }
-    return { url, token, version }
+    return { url, token, version, manifest: text }
   }
   return null
+}
+
+/* ------------------------------------------------------------------ *
+ * macOS
+ * ------------------------------------------------------------------ */
+
+interface ManifestFile {
+  url: string
+  sha512: string
+  size: number
+}
+
+/** The `files:` list of an electron-builder manifest, which is all this needs of it. */
+function manifestFiles(manifest: string): ManifestFile[] {
+  const files: ManifestFile[] = []
+  let current: Partial<ManifestFile> | null = null
+  for (const line of manifest.split(/\r?\n/)) {
+    const entry = /^\s*-\s*url:\s*['"]?([^'"\s]+)/.exec(line)
+    if (entry) {
+      current = { url: entry[1] }
+      files.push(current as ManifestFile)
+      continue
+    }
+    // Indented fields belong to the entry above; the first line without
+    // indentation ends the list.
+    if (!current || !/^\s+\S/.test(line)) {
+      current = null
+      continue
+    }
+    const field = /^\s+(sha512|size):\s*['"]?([^'"\s]+)/.exec(line)
+    if (field?.[1] === 'sha512') current.sha512 = field[2]
+    if (field?.[1] === 'size') current.size = Number(field[2])
+  }
+  return files.filter((file) => typeof file.sha512 === 'string' && Number.isFinite(file.size) && file.size > 0)
+}
+
+let downloading: Promise<string> | null = null
+
+/**
+ * Downloads the current beta for this Mac into Downloads and opens the disk
+ * image, from where Launch Gabi is dragged into Applications as usual. The
+ * unsigned app may not replace itself on macOS, so for a beta, which has no
+ * public download page, this button is the only way onto a Mac.
+ */
+export async function downloadBetaForMac(): Promise<string> {
+  if (!downloading) downloading = downloadOnce().finally(() => { downloading = null })
+  return downloading
+}
+
+async function downloadOnce(): Promise<string> {
+  if (process.platform !== 'darwin') {
+    throw new Error(tr('Das ist nur auf dem Mac nötig. Hier kommt eine Beta als normales Update.', 'This is only needed on a Mac. Here a beta arrives as a normal update.'))
+  }
+  const feed = await betaFeed()
+  if (!feed) throw new Error(tr('Du bist nicht im Beta-Programm.', 'You are not in the beta programme.'))
+  if (!feed.version || !feed.manifest) throw new Error(tr('Gerade liegt keine Beta bereit.', 'No beta is ready right now.'))
+  if (compareVersions(feed.version, app.getVersion()) <= 0) {
+    throw new Error(tr(`Du hast ${app.getVersion()} schon, das ist die aktuelle Beta oder neuer.`, `You already have ${app.getVersion()}, the current beta or newer.`))
+  }
+
+  const files = manifestFiles(feed.manifest).filter((file) => file.url.endsWith('.dmg'))
+  const file = files.find((candidate) => candidate.url.endsWith(`-mac-${process.arch}.dmg`)) ?? null
+  if (!file) {
+    throw new Error(tr(`Für diesen Mac (${process.arch}) liegt keine Beta bereit.`, `There is no beta for this Mac (${process.arch}).`))
+  }
+  // A name from the server, so nothing but a plain file name is accepted.
+  const name = file.url.split('/').pop() ?? ''
+  if (!/^[A-Za-z0-9][A-Za-z0-9._+-]*\.dmg$/.test(name)) throw new Error(tr('Der Beta-Server nennt eine ungültige Datei.', 'The beta server names an invalid file.'))
+
+  const target = join(app.getPath('downloads'), name)
+  const partial = `${target}.part`
+  logger.info(`Lade Beta ${feed.version} für den Mac: ${name}`)
+  const report = (value: number | null): void => {
+    downloadPercent = value
+    emit(EVENTS.betaStatus, betaStatus())
+  }
+  report(0)
+  try {
+    let res: Response
+    try {
+      res = await fetch(`${feed.url}/${encodeURIComponent(name)}`, { headers: { 'x-beta-token': feed.token } })
+    } catch (err) {
+      throw new Error(tr('Keine Verbindung zum Beta-Server. Prüfe deine Internetverbindung.', 'No connection to the beta server. Check your internet connection.'), { cause: err })
+    }
+    if (!res.ok || !res.body) {
+      throw new Error(tr(`Der Beta-Server antwortete mit HTTP ${res.status}.`, `The beta server answered with HTTP ${res.status}.`))
+    }
+    const hash = createHash('sha512')
+    let received = 0
+    let shown = 0
+    const source = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0])
+    const damaged = (): Error => new Error(tr('Die Beta kam beschädigt an. Bitte noch einmal versuchen.', 'The beta arrived damaged. Please try again.'))
+    source.on('data', (chunk: Buffer) => {
+      hash.update(chunk)
+      received += chunk.length
+      // Stopped at once rather than written to the end first.
+      if (received > file.size) source.destroy(damaged())
+      const percent = Math.floor((received / file.size) * 100)
+      if (percent > shown) {
+        shown = percent
+        report(Math.min(percent, 99))
+      }
+    })
+    try {
+      await pipeline(source, createWriteStream(partial))
+    } catch (err) {
+      if (received > file.size) throw damaged()
+      throw new Error(tr('Der Download wurde unterbrochen. Bitte noch einmal versuchen.', 'The download was interrupted. Please try again.'), { cause: err })
+    }
+    // Checked against the manifest, which came with the beta token over the
+    // same encrypted connection: a broken or swapped file is never opened.
+    if (received !== file.size || hash.digest('base64') !== file.sha512) throw damaged()
+    renameSync(partial, target)
+  } catch (err) {
+    rmSync(partial, { force: true })
+    logger.warn('Beta für den Mac nicht geladen:', err instanceof Error ? err.message : err)
+    throw err
+  } finally {
+    report(null)
+  }
+
+  logger.info(`Beta gespeichert unter ${target}`)
+  const failed = await shell.openPath(target)
+  if (failed) {
+    logger.warn(`Beta-Datei ließ sich nicht öffnen: ${failed}`)
+    shell.showItemInFolder(target)
+  }
+  return target
 }

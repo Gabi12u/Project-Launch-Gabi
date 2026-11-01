@@ -194,7 +194,8 @@ const api = {
   beta: {
     status: call(IPC.betaStatus),
     join: call(IPC.betaJoin),
-    leave: call(IPC.betaLeave)
+    leave: call(IPC.betaLeave),
+    download: call(IPC.betaDownload)
   },
 
   events: {
