@@ -217,7 +217,6 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           BETA_ROOT: ${{ secrets.BETA_ROOT }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
           DEST="${BETA_ROOT:-/var/lib/launch-gabi-beta}"
           PORT="${SSH_PORT:-22}"
           mkdir -p ~/.ssh
@@ -225,11 +224,26 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_beta
           chmod 600 ~/.ssh/id_beta
           ssh-keyscan -p "$PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          # Only installers and blockmaps of other versions. The manifests are
-          # always the current ones, and anything else in the folder is left
-          # alone.
-          ssh -i ~/.ssh/id_beta -p "$PORT" -o BatchMode=yes "$SSH_USER@$SSH_HOST" \
-            "find '$DEST' -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.blockmap' -o -name '.upload-*' \) ! -name '*-$VERSION-*' ! -name '*-$VERSION.*' -print -delete"
+          # Only installers and blockmaps the current manifests do not name.
+          # Going by the version in the file name instead deleted the Linux
+          # beta right after its upload: the AppImage carries no version
+          # since 1.0.23. The manifests themselves and anything else in the
+          # folder are left alone.
+          ssh -i ~/.ssh/id_beta -p "$PORT" -o BatchMode=yes "$SSH_USER@$SSH_HOST" bash -s -- "$DEST" <<'REMOTE'
+          set -e
+          cd "$1"
+          if ! ls beta*.yml >/dev/null 2>&1; then
+            echo "Keine Beta-Manifeste, nichts entfernt."
+            exit 0
+          fi
+          keep=" $(grep -hoE 'url: [^[:space:]]+' beta*.yml | sed 's/^url: //' | tr '\n' ' ') "
+          for file in *.exe *.dmg *.AppImage *.blockmap .upload-*; do
+            [ -f "$file" ] || continue
+            case "$keep" in *" ${file%.blockmap} "*) continue ;; esac
+            rm -f -- "$file"
+            echo "    entfernt: $file"
+          done
+          REMOTE
           rm -f ~/.ssh/id_beta
 
   release:
