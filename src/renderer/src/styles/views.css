@@ -1134,7 +1134,10 @@
 .onboarding {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  /* Over the title bar (40) and the task dock (90), under dialogs (100) and
+     toasts (120). At 200 the sign-in window the setup opens itself sat
+     behind it, and "Account hinzufügen" seemed to do nothing. */
+  z-index: 95;
   display: grid;
   place-items: center;
   padding: 40px;

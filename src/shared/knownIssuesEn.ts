@@ -3229,6 +3229,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'pixels, depending on whether a scroll bar was showing. "Still to download" showed the size with a ' +
       'dot instead of a comma in German, and a lone cell in the "Before launch" grid left a grey area ' +
       'next to it.'
+  },
+  'einrichtung-anmeldung-unsichtbar': {
+    title: 'During setup, "Add account" seemed to do nothing',
+    detail:
+      'In the last step of the setup at first start, "Add account" opens the sign-in window. It opened ' +
+      'behind the setup assistant, though, and stayed invisible, so the button seemed not to react. The ' +
+      'same went for "Manage" when an account was already signed in, and for notifications shown during ' +
+      'setup. Skipping the step and signing in from the sidebar afterwards worked as usual.'
   }
 }
 

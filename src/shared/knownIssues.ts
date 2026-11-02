@@ -5140,6 +5140,19 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-02',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'einrichtung-anmeldung-unsichtbar',
+    title: 'Bei der Einrichtung tat „Account hinzufügen“ scheinbar nichts',
+    detail:
+      'Im letzten Schritt der Einrichtung beim ersten Start öffnet „Account hinzufügen“ das Fenster zum ' +
+      'Anmelden. Es ging aber hinter dem Einrichtungsassistenten auf und blieb unsichtbar, der Knopf schien ' +
+      'nicht zu reagieren. Dasselbe galt für „Verwalten“, wenn schon ein Konto angemeldet war, und für ' +
+      'Meldungen, die während der Einrichtung erschienen. Wer den Schritt übersprang, konnte sich danach ' +
+      'wie gewohnt über die Seitenleiste anmelden.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
   }
 ]
 
