@@ -3292,6 +3292,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Kotlin 1.14 reached instances with Fabric Loader 0.19.3, while it needs 0.19.5 or newer, and Minecraft ' +
       'no longer started. Workaround: right-click the mod, "Choose version…" and take the previous version, ' +
       'or move the instance to a newer Fabric Loader through "Change version".'
+  },
+  'absturzhilfe-version-braucht-neueren-loader': {
+    title: 'The crash help could suggest a mod version that itself needs a newer Fabric Loader',
+    detail:
+      'When a mod needed a newer version of another mod, the crash help suggested the newest fitting one ' +
+      'without checking which Fabric Loader that version needs itself. For Fabric Language Kotlin that was ' +
+      '1.14, which needs Fabric Loader 0.19.5, and the game crashed again. Only affects the beta ' +
+      '1.0.26-beta.3. Workaround: right-click, "Choose version…" and take the highest version that still ' +
+      'fits your own Fabric Loader.'
   }
 }
 

@@ -5238,6 +5238,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Fabric Loader stellen.',
     state: 'investigating',
     since: '2026-11-03'
+  },
+  {
+    id: 'absturzhilfe-version-braucht-neueren-loader',
+    title: 'Die Absturzhilfe konnte eine Mod-Version vorschlagen, die selbst einen neueren Fabric Loader braucht',
+    detail:
+      'Verlangte ein Mod eine neuere Version eines anderen Mods, schlug die Absturzhilfe die neueste ' +
+      'passende vor, ohne zu prüfen, welchen Fabric Loader diese selbst braucht. Bei Fabric Language ' +
+      'Kotlin war das 1.14, das Fabric Loader 0.19.5 verlangt, und das Spiel stürzte danach wieder ab. ' +
+      'Betrifft nur die Beta 1.0.26-beta.3. Abhilfe: per Rechtsklick „Version wählen…“ die höchste Version ' +
+      'nehmen, die noch zum eigenen Fabric Loader passt.',
+    state: 'fixing',
+    since: '2026-11-03'
   }
 ]
 
