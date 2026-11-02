@@ -823,7 +823,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 </div>
 
                 <div className="row gap-8 mt-16 wrap">
-                  {[8, 17, 21].map((major) => (
+                  {/* 25 is what Minecraft 26.1 and newer needs (requiredJavaMajor). */}
+                  {[8, 17, 21, 25].map((major) => (
                     <button
                       key={major}
                       className="btn sm"
@@ -867,8 +868,8 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                   {info && (
                     <span className="hint">
                       {tr(
-                        `Dein System hat ${formatMemory(info.systemMemoryMb)} RAM. Lass mindestens 2-4 GB für Windows übrig.`,
-                        `Your system has ${formatMemory(info.systemMemoryMb)} of RAM. Leave at least 2-4 GB for Windows.`
+                        `Dein System hat ${formatMemory(info.systemMemoryMb)} RAM. Lass mindestens 2 bis 4 GB für das Betriebssystem übrig.`,
+                        `Your system has ${formatMemory(info.systemMemoryMb)} of RAM. Leave at least 2 to 4 GB for the operating system.`
                       )}
                     </span>
                   )}

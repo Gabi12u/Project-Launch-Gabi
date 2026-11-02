@@ -5191,6 +5191,27 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-02',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'java-25-knopf-fehlt',
+    title: 'Unter Java & Leistung ließ sich Java 25 nicht laden, das Minecraft 26 braucht',
+    detail:
+      'Wer „Java automatisch verwalten“ ausgeschaltet hat, konnte dort nur Java 8, 17 und 21 laden. Minecraft ' +
+      '26.1 und neuer braucht aber Java 25. Mit eingeschalteter automatischer Verwaltung lädt der Launcher ' +
+      'Java 25 von selbst, dort war nichts davon zu merken.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'ram-hinweis-nennt-windows',
+    title: 'Der Hinweis zum Arbeitsspeicher nannte auch auf macOS und Linux Windows',
+    detail:
+      'Unter Java & Leistung stand beim Arbeitsspeicher, man solle mindestens 2 bis 4 GB für Windows übrig ' +
+      'lassen, auch auf dem Mac und unter Linux. Gemeint war das jeweilige Betriebssystem.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
   }
 ]
 

@@ -3262,6 +3262,19 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'kept seeing the previous state in the mod list and under mod compatibility, such as the problem already ' +
       'solved or a missing mod that had long been installed. It was fixed all the same. Leaving the page and ' +
       'opening it again showed the right state.'
+  },
+  'java-25-knopf-fehlt': {
+    title: 'Java & performance could not download Java 25, which Minecraft 26 needs',
+    detail:
+      'Anyone who turned off "Manage Java automatically" could only get Java 8, 17 and 21 there. Minecraft 26.1 ' +
+      'and newer needs Java 25, though. With automatic management on, the launcher downloads Java 25 by itself, ' +
+      'so nothing showed there.'
+  },
+  'ram-hinweis-nennt-windows': {
+    title: 'The memory hint named Windows on macOS and Linux too',
+    detail:
+      'Under Java & performance, the memory setting said to leave at least 2 to 4 GB for Windows, on the Mac ' +
+      'and on Linux as well. It meant the operating system in use.'
   }
 }
 
