@@ -3450,8 +3450,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'In der normalen Fenstergröße stand der Installieren-Knopf neben dem Text der Ergebniskarten und ' +
       'ließ dem Namen kaum Platz. Namen und Autoren endeten nach wenigen Buchstaben, und das Datum ' +
       'brach auf mehrere Zeilen um.',
-    state: 'fixing',
-    since: '2026-10-01'
+    state: 'fixed',
+    since: '2026-10-01',
+    fixedIn: '1.0.26'
   },
   {
     id: 'neoforge-installer-bei-jedem-start',

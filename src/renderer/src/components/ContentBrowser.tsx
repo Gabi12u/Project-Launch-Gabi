@@ -588,59 +588,64 @@ function ProjectCard({
   onInstall: () => void
   onOpen: () => void
 }): JSX.Element {
+  // The button sits in its own row at the bottom. Next to the text, as it
+  // was, it took almost half of a card in the usual four columns, and names,
+  // authors and dates ended after a few letters.
   return (
-    <article className="project-card" aria-label={item.name} {...clickable(onOpen)}>
-      {item.iconUrl ? (
-        <img className="project-icon" src={item.iconUrl} alt="" loading="lazy" />
-      ) : (
-        <div className="project-icon" style={{ display: 'grid', placeItems: 'center' }}>
-          <IconPackage size={22} />
-        </div>
-      )}
-
-      <div className="col grow gap-6" style={{ overflow: 'hidden' }}>
-        <div className="row gap-8" style={{ overflow: 'hidden' }}>
-          <span className="truncate" style={{ fontSize: 14, fontWeight: 660 }}>
+    <article className="project-card project-result" aria-label={item.name} {...clickable(onOpen)}>
+      <div className="project-card-head">
+        {item.iconUrl ? (
+          <img className="project-icon" src={item.iconUrl} alt="" loading="lazy" />
+        ) : (
+          <div className="project-icon" style={{ display: 'grid', placeItems: 'center' }}>
+            <IconPackage size={22} />
+          </div>
+        )}
+        <div className="col gap-4" style={{ minWidth: 0 }}>
+          <span className="project-name clamp-2" title={item.name}>
             {item.name}
           </span>
-          <span className={`provider-tag ${item.provider}`}>
-            {item.provider === 'modrinth' ? 'MR' : 'CF'}
-          </span>
-        </div>
-
-        <span className="clamp-2 hint">{plainText(item.summary, 120)}</span>
-
-        <div className="row gap-8" style={{ fontSize: 11.5, color: 'var(--text-4)' }}>
-          <span>
-            <IconDownload size={11} style={{ display: 'inline', verticalAlign: '-1px' }}/>{' '}
-            {formatNumber(item.downloads)}
-          </span>
-          {item.author && <span className="truncate">{tr('von', 'by')} {item.author}</span>}
-          {item.updatedAt && <span>{formatRelative(new Date(item.updatedAt).getTime())}</span>}
+          <div className="project-byline">
+            {item.author && <span className="truncate">{tr('von', 'by')} {item.author}</span>}
+            {item.author && item.updatedAt && <span aria-hidden>·</span>}
+            {item.updatedAt && <span className="project-date">{formatRelative(new Date(item.updatedAt).getTime())}</span>}
+          </div>
         </div>
       </div>
 
-      {canInstall && (
-        <button
-          className={`btn sm ${installed ? '' : 'primary'}`}
-          style={{ alignSelf: 'center', flexShrink: 0 }}
-          disabled={installing || installed || blockedReason !== null}
-          title={blockedReason ?? undefined}
-          onClick={(event) => {
-            event.stopPropagation()
-            onInstall()
-          }}
-        >
-          {installing ? (
-            <span className="spinner" />
-          ) : installed ? (
-            <IconCheck size={14} />
-          ) : (
-            <IconDownload size={14} />
-          )}
-          {installed ? tr('Installiert', 'Installed') : installing ? tr('Wird installiert…', 'Installing…') : tr('Installieren', 'Install')}
-        </button>
-      )}
+      <span className="clamp-2 hint">{plainText(item.summary, 120)}</span>
+
+      <div className="project-card-foot">
+        <span className={`provider-tag ${item.provider}`}>
+          {item.provider === 'modrinth' ? 'MR' : 'CF'}
+        </span>
+        <span className="project-downloads">
+          <IconDownload size={11} style={{ display: 'inline', verticalAlign: '-1px' }}/>{' '}
+          {formatNumber(item.downloads)}
+        </span>
+        <span className="grow" />
+        {canInstall && (
+          <button
+            className={`btn sm ${installed ? '' : 'primary'}`}
+            style={{ flexShrink: 0 }}
+            disabled={installing || installed || blockedReason !== null}
+            title={blockedReason ?? undefined}
+            onClick={(event) => {
+              event.stopPropagation()
+              onInstall()
+            }}
+          >
+            {installing ? (
+              <span className="spinner" />
+            ) : installed ? (
+              <IconCheck size={14} />
+            ) : (
+              <IconDownload size={14} />
+            )}
+            {installed ? tr('Installiert', 'Installed') : installing ? tr('Wird installiert…', 'Installing…') : tr('Installieren', 'Install')}
+          </button>
+        )}
+      </div>
     </article>
   )
 }
