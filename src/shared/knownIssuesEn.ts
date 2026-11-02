@@ -3275,6 +3275,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'Under Java & performance, the memory setting said to leave at least 2 to 4 GB for Windows, on the Mac ' +
       'and on Linux as well. It meant the operating system in use.'
+  },
+  'altes-java-ohne-hilfsrechte': {
+    title: 'On macOS and Linux, Minecraft and mods could not open other programs',
+    detail:
+      'A Java the launcher downloaded before version 1.0.25 got a helper file without permission to run. ' +
+      'Minecraft started all the same, but anything that calls another program from inside the game failed ' +
+      'with "posix_spawn failed, error: 13" in the log: for example opening links and folders from the game, ' +
+      "Essential's update window or Sodium's graphics card detection. Java downloaded since 1.0.25 is fine, " +
+      'but one already there was never corrected.'
   }
 }
 

@@ -4625,6 +4625,17 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-02",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "altes-java-ohne-hilfsrechte",
+      "title": "Unter macOS und Linux konnten Minecraft und Mods keine anderen Programme öffnen",
+      "detail": "Ein Java, das der Launcher vor Version 1.0.25 heruntergeladen hat, bekam eine Hilfsdatei ohne das Recht, ausgeführt zu werden. Minecraft startete trotzdem, aber alles, was aus dem Spiel heraus ein anderes Programm aufruft, scheiterte mit „posix_spawn failed, error: 13“ im Log: zum Beispiel Links und Ordner aus dem Spiel öffnen, das Update-Fenster von Essential oder die Grafikkarten-Erkennung von Sodium. Seit 1.0.25 geladenes Java ist in Ordnung, ein schon vorhandenes wurde aber nicht nachgebessert.",
+      "state": "fixing",
+      "since": "2026-11-02",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
     }
   ];
   var ISSUE_LABEL = {
@@ -8182,6 +8193,17 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-02",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "altes-java-ohne-hilfsrechte",
+      "title": "On macOS and Linux, Minecraft and mods could not open other programs",
+      "detail": "A Java the launcher downloaded before version 1.0.25 got a helper file without permission to run. Minecraft started all the same, but anything that calls another program from inside the game failed with \"posix_spawn failed, error: 13\" in the log: for example opening links and folders from the game, Essential's update window or Sodium's graphics card detection. Java downloaded since 1.0.25 is fine, but one already there was never corrected.",
+      "state": "fixing",
+      "since": "2026-11-02",
+      "platforms": [
+        "macOS",
+        "Linux"
+      ]
     }
   ];
   var ISSUE_LABEL_EN = {

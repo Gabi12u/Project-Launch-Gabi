@@ -5212,6 +5212,19 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-02',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'altes-java-ohne-hilfsrechte',
+    title: 'Unter macOS und Linux konnten Minecraft und Mods keine anderen Programme öffnen',
+    detail:
+      'Ein Java, das der Launcher vor Version 1.0.25 heruntergeladen hat, bekam eine Hilfsdatei ohne das ' +
+      'Recht, ausgeführt zu werden. Minecraft startete trotzdem, aber alles, was aus dem Spiel heraus ein ' +
+      'anderes Programm aufruft, scheiterte mit „posix_spawn failed, error: 13“ im Log: zum Beispiel Links ' +
+      'und Ordner aus dem Spiel öffnen, das Update-Fenster von Essential oder die Grafikkarten-Erkennung von ' +
+      'Sodium. Seit 1.0.25 geladenes Java ist in Ordnung, ein schon vorhandenes wurde aber nicht nachgebessert.',
+    state: 'fixing',
+    since: '2026-11-02',
+    platforms: ['macOS', 'Linux']
   }
 ]
 
