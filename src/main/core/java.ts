@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { chmodSync, createReadStream, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { JavaRuntime } from '@shared/types'
 import { paths } from '../paths'
@@ -319,6 +319,43 @@ const EXE_SUBPATHS: string[][] = [
   ['bin', EXE],
   ['Contents', 'Home', 'bin', EXE]
 ]
+
+/**
+ * Gives the programs of a runtime the launcher downloaded their execute bit
+ * back.
+ *
+ * Before 1.0.25 unpacking kept only `bin/java` executable. The game started,
+ * but `lib/jspawnhelper`, which Java needs to start any other program, stayed
+ * without it: every link or folder opened from the game, Sodium's graphics
+ * card probe and Essential's update window failed with "posix_spawn failed,
+ * error: 13". Unpacking keeps the archive's modes now; this mends a runtime
+ * unpacked before that, at its next start. A Java the user installed is left
+ * alone.
+ */
+export function mendManagedRuntime(executable: string): void {
+  if (process.platform === 'win32' || !executable.startsWith(paths.java())) return
+  // `<home>/bin/java`, also inside a macOS bundle (`Contents/Home/bin/java`).
+  const home = dirname(dirname(executable))
+  const files = [join(home, 'lib', 'jspawnhelper')]
+  try {
+    for (const name of readdirSync(join(home, 'bin'))) files.push(join(home, 'bin', name))
+  } catch {
+    // no bin folder to look at
+  }
+  let mended = 0
+  for (const file of files) {
+    try {
+      const info = statSync(file)
+      if (!info.isFile() || info.mode & 0o111) continue
+      chmodSync(file, (info.mode & 0o777) | 0o755)
+      mended++
+    } catch (err) {
+      // Not part of this runtime, or not ours to change; the start goes on.
+      logger.debug(`Rechte von ${file} nicht geprüft:`, err)
+    }
+  }
+  if (mended > 0) logger.info(`${mended} ${mended === 1 ? 'Programm' : 'Programme'} von Java in ${home} wieder ausführbar gemacht`)
+}
 
 /**
  * Finds the `java` executable belonging to a runtime root.

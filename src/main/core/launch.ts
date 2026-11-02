@@ -26,7 +26,7 @@ import {
   type VersionJson
 } from './mojang'
 import { extractNatives } from './archive'
-import { is32BitJava, JavaNotInstalledError, requiredJavaMajor, resolveJava } from './java'
+import { is32BitJava, JavaNotInstalledError, mendManagedRuntime, requiredJavaMajor, resolveJava } from './java'
 import { ensureApproved, ensureJavaPathApproved, isApproved, isValidJavaPath, jvmArgsLoadCode } from './commandApproval'
 import {
   getInstance,
@@ -624,6 +624,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       instanceId: instance.id
     })
     logger.info(`Starte ${instance.name} mit Java ${java.version} (${java.path})`)
+    mendManagedRuntime(java.path)
 
     // 5. Natives -----------------------------------------------------
     setStatus(instanceId, 'launching', tr('Natives werden entpackt…', 'Unpacking natives…'))

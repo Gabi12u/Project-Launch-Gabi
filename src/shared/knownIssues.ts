@@ -5222,9 +5222,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'anderes Programm aufruft, scheiterte mit „posix_spawn failed, error: 13“ im Log: zum Beispiel Links ' +
       'und Ordner aus dem Spiel öffnen, das Update-Fenster von Essential oder die Grafikkarten-Erkennung von ' +
       'Sodium. Seit 1.0.25 geladenes Java ist in Ordnung, ein schon vorhandenes wurde aber nicht nachgebessert.',
-    state: 'fixing',
+    state: 'fixed',
     since: '2026-11-02',
-    platforms: ['macOS', 'Linux']
+    platforms: ['macOS', 'Linux'],
+    fixedIn: '1.0.26'
   }
 ]
 
