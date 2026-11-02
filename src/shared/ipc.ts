@@ -27,6 +27,8 @@ export const IPC = {
   instanceGet: 'instance:get',
   instanceCreate: 'instance:create',
   instanceUpdate: 'instance:update',
+  /** Moves an instance to another build of its own loader, mods untouched. */
+  instanceSetLoaderVersion: 'instance:set-loader-version',
   instanceDelete: 'instance:delete',
   instanceDuplicate: 'instance:duplicate',
   instanceImportFolder: 'instance:import-folder',

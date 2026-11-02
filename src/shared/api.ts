@@ -242,6 +242,8 @@ export interface GabiApi {
     get(id: string): Promise<InstanceDetail>
     create(options: CreateInstanceOptions): Promise<Instance>
     update(id: string, patch: InstancePatch): Promise<Instance>
+    /** Another build of the instance's own loader; the next start installs it. */
+    setLoaderVersion(id: string, loaderVersion: string): Promise<Instance>
     remove(id: string): Promise<InstanceSummary[]>
     duplicate(id: string, name?: string): Promise<Instance>
     /**

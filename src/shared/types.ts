@@ -202,6 +202,12 @@ export interface Instance {
    * for the target, the record still names the old version.
    */
   pendingVersionChange?: GameVersionTarget
+  /**
+   * A newer stable build of `loader` for this Minecraft version, found by the
+   * update check and offered on the Installed tab. Mods move on to newer
+   * loaders and refuse to start on the old one.
+   */
+  loaderUpdate?: string
 }
 
 /** A Minecraft version with its mod loader build. */

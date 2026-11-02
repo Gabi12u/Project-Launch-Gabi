@@ -32,7 +32,7 @@
  */
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -614,6 +614,23 @@ try {
   check(geckoNow?.versionId === 'gl-4412' && geckoNow.keepVersion === true, `NeoForge, nach dem Beheben: ${JSON.stringify({ v: geckoNow?.versionId, keep: geckoNow?.keepVersion })}`)
   report = await compat.checkCompatibility('neoforge')
   check(!report.issues.some((i) => i.id === 'crash-replace-geckolib') && report.issues.some((i) => i.id === 'crash-refit-oldmod'), 'NeoForge: nach einem Fix verschwanden die falschen Einträge')
+
+  // --- 12. The loader gets offered an update too ------------------------------------
+  // "waehlen" runs Fabric Loader 0.19.5; 0.20.1 is the newest stable build.
+  await content.checkUpdates('waehlen', undefined, false)
+  check(instances.getInstance('waehlen').loaderUpdate === '0.20.1', `Loader-Update nicht gefunden: ${instances.getInstance('waehlen').loaderUpdate}`)
+  await content.checkUpdates('neoforge', undefined, false)
+  check(instances.getInstance('neoforge').loaderUpdate === '21.1.209', `NeoForge-Update: ${instances.getInstance('neoforge').loaderUpdate}`)
+  const modsBefore = instances.getInstance('waehlen').content.map((c) => c.versionId).join(',')
+  instances.setLoaderVersion('waehlen', '0.20.1')
+  const afterLoader = instances.getInstance('waehlen')
+  check(afterLoader.loaderVersion === '0.20.1' && !afterLoader.loaderUpdate, `Nach dem Umstellen: ${afterLoader.loaderVersion} / ${afterLoader.loaderUpdate}`)
+  check(afterLoader.content.map((c) => c.versionId).join(',') === modsBefore, 'Das Umstellen des Loaders hat Mods verändert')
+  await content.checkUpdates('waehlen', undefined, false)
+  check(!instances.getInstance('waehlen').loaderUpdate, 'Auf dem neuesten Loader wird trotzdem ein Update angeboten')
+  // Kept in the file, so it survives a restart of the launcher.
+  const onDisk = JSON.parse(readFileSync(p.instanceFile('neoforge'), 'utf8'))
+  check(onDisk.loaderUpdate === '21.1.209', `Nicht gespeichert: ${onDisk.loaderUpdate}`)
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

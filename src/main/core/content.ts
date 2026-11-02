@@ -7,6 +7,7 @@ import type {
   ContentItem,
   ContentType,
   Instance,
+  LoaderVersion,
   ProjectVersion
 } from '@shared/types'
 import {
@@ -34,6 +35,8 @@ import {
   toggleContent
 } from './instances'
 import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
+import { listLoaderVersions } from '../loaders'
+import { compareMaven, compareVersions, modVersionOf } from './crashHelp'
 import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 import { flattenName } from './compat'
@@ -819,6 +822,30 @@ function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
   return new Date(candidate.releasedAt).getTime() > current.installedAt - 24 * 60 * 60 * 1000
 }
 
+/**
+ * A newer stable build of the instance's own loader for its Minecraft
+ * version. Nothing ever offered the loader an update: an instance stayed on
+ * the build it was created with until a mod updated past it refused to start.
+ * Undefined when there is none, or the lookup failed.
+ */
+async function newerLoaderBuild(instance: Instance): Promise<string | undefined> {
+  // An empty build means "the newest" and is resolved at every start.
+  if (instance.loader === 'vanilla' || !instance.loaderVersion) return undefined
+  let builds: LoaderVersion[]
+  try {
+    builds = await listLoaderVersions(instance.loader, instance.mcVersion)
+  } catch (err) {
+    logger.warn(`Versionen von ${instance.loader} für ${instance.mcVersion} nicht geprüft:`, err)
+    return undefined
+  }
+  const compare = instance.loader === 'forge' || instance.loader === 'neoforge' ? compareMaven : compareVersions
+  // Forge lists some builds as "1.20.1-47.2.0".
+  const own = (version: string): string => modVersionOf(version, instance.mcVersion) ?? version
+  const newest = builds.filter((build) => build.stable).sort((a, b) => compare(own(b.version), own(a.version)))[0]
+  if (!newest || compare(own(newest.version), own(instance.loaderVersion)) <= 0) return undefined
+  return newest.version
+}
+
 /** Thrown when an update check stopped because there was no connection at all. */
 export class UpdateCheckOfflineError extends Error {}
 
@@ -919,6 +946,9 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
   // whatever happened in the meantime, so the freshly read list decides which
   // items still exist and only the update marker is merged onto them.
   const scanned = new Map(updated.map((item) => [item.id, item]))
+  // The loader itself, looked up before the merge below, which must not wait
+  // on the network between reading the record and writing it back.
+  const loaderUpdate = gaveUp ? instance.loaderUpdate : await newerLoaderBuild(instance)
   const current = getInstance(instanceId)
   // Moved to another version or loader while this ran ("Version ändern"):
   // every marker was looked up for the old game and none of them applies.
@@ -937,7 +967,9 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
     return { ...item, update: seen.update ?? null }
   })
 
-  const result = persist({ ...current, content: merged })
+  // Found for the game the check started with; on another one by now it
+  // means nothing.
+  const result = persist({ ...current, content: merged, loaderUpdate: sameGame ? loaderUpdate : current.loaderUpdate })
   const count = merged.filter((c) => c.update).length
   logger.info(`${count} Updates für ${current.name} gefunden`)
   if (unchecked.length > 0 && announceFailures && !gaveUp) {

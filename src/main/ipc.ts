@@ -37,6 +37,7 @@ import {
   listWorlds,
   resolveInstanceImage,
   setInstanceImage,
+  setLoaderVersion,
   syncContentWithDisk,
   toggleContent,
   updateInstance
@@ -507,6 +508,8 @@ export function registerIpc(): void {
   handle(IPC.instanceCreate, (options: CreateInstanceOptions) => createInstance(options))
 
   handle(IPC.instanceUpdate, (id: string, patch: InstancePatch) => updateInstance(id, patch))
+
+  handle(IPC.instanceSetLoaderVersion, (id: string, loaderVersion: string) => setLoaderVersion(id, loaderVersion))
 
   handle(IPC.instanceDelete, (id: string) => {
     deleteInstance(id)

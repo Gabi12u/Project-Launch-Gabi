@@ -424,6 +424,8 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
       installing: false,
       installed: true,
       pendingVersionChange: undefined,
+      // Found for the old game, like the markers below.
+      loaderUpdate: undefined,
       content: now.content.map((item) => ({ ...item, update: null }))
     })
     logger.info(`${now.name} auf ${label(game)} umgestellt`)

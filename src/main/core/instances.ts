@@ -89,7 +89,9 @@ function normalise(raw: Partial<Instance>, id: string): Instance {
     favorite: raw.favorite ?? false,
     installing: false, // never restore a stale "installing" flag
     installed: raw.installed ?? false,
-    pendingVersionChange: pendingTarget(raw.pendingVersionChange)
+    pendingVersionChange: pendingTarget(raw.pendingVersionChange),
+    // Becomes part of a version id at the next start, so only a well formed one.
+    loaderUpdate: typeof raw.loaderUpdate === 'string' && isValidVersionString(raw.loaderUpdate) ? raw.loaderUpdate : undefined
   }
 }
 
@@ -1528,7 +1530,8 @@ export function setLoaderVersion(id: string, loaderVersion: string): Instance {
     throw new Error(tr('Ungültige Versionsangabe.', 'Invalid version.'))
   }
   logger.info(`${instance.name}: ${instance.loader} ${instance.loaderVersion || '(neueste)'} wird auf ${loaderVersion} gestellt`)
-  return persist({ ...instance, loaderVersion })
+  // The offered update is taken, or was for the build just left behind.
+  return persist({ ...instance, loaderVersion, loaderUpdate: undefined })
 }
 
 /**

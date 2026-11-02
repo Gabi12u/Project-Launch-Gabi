@@ -64,6 +64,7 @@ const api = {
     get: call(IPC.instanceGet),
     create: call(IPC.instanceCreate),
     update: call(IPC.instanceUpdate),
+    setLoaderVersion: call(IPC.instanceSetLoaderVersion),
     remove: call(IPC.instanceDelete),
     duplicate: call(IPC.instanceDuplicate),
     importFolder: call(IPC.instanceImportFolder),

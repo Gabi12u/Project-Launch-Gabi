@@ -845,6 +845,9 @@ function ContentTab({
   const [updating, setUpdating] = useState<ReadonlySet<string>>(() => new Set())
   const menu = useContextMenu<ContentItem>()
   const [versionFor, setVersionFor] = useState<ContentItem | null>(null)
+  const [loaderBusy, setLoaderBusy] = useState(false)
+  const loaderName =
+    instance.loader === 'fabric' ? 'Fabric Loader' : instance.loader === 'quilt' ? 'Quilt Loader' : LOADER_LABELS[instance.loader]
   const [confirmUpdate, setConfirmUpdate] = useState<ContentItem | null>(null)
   const [confirmRemove, setConfirmRemove] = useState<ContentItem | null>(null)
   const [worldsFor, setWorldsFor] = useState<ContentItem | null>(null)
@@ -875,17 +878,23 @@ function ContentTab({
     try {
       const updated = await window.gabi.content.checkUpdates(instance.id)
       const count = updated.content.filter((c) => c.update).length
+      // Said here too: "Alles aktuell" with a newer loader waiting read wrong.
+      const loaderNote = updated.loaderUpdate
+        ? tr(`${loaderName} ${updated.loaderUpdate} ist verfügbar.`, `${loaderName} ${updated.loaderUpdate} is available.`)
+        : ''
       toast(
-        count > 0 ? 'info' : 'success',
+        count > 0 || loaderNote ? 'info' : 'success',
         count > 0
           ? tr(
               `${count} ${pluralise(count, 'Update', 'Updates')} verfügbar`,
               `${count} ${pluralise(count, 'update', 'updates')} available`
             )
-          : tr('Alles aktuell', 'Everything is up to date'),
-        count > 0
-          ? tr('Du kannst einzeln oder alle auf einmal aktualisieren.', 'You can update them one by one or all at once.')
-          : undefined
+          : loaderNote
+            ? tr('Neuer Loader verfügbar', 'New loader available')
+            : tr('Alles aktuell', 'Everything is up to date'),
+        [count > 0 ? tr('Du kannst einzeln oder alle auf einmal aktualisieren.', 'You can update them one by one or all at once.') : '', loaderNote]
+          .filter(Boolean)
+          .join(' ') || undefined
       )
       await onChanged()
     } catch (err) {
@@ -1028,6 +1037,54 @@ function ContentTab({
           <IconUpload size={14} /> {tr('Datei hinzufügen', 'Add file')}
         </button>
       </div>
+
+      {/* The loader itself, which the mod updates never covered: an instance
+          kept its first build until a mod updated past it refused to start. */}
+      {type === 'mod' && instance.loaderUpdate && instance.loader !== 'vanilla' && (
+        <div className="issue info">
+          <div className="issue-icon">
+            <IconDownload size={16} />
+          </div>
+          <div className="grow">
+            <div className="issue-title">
+              {tr(`${loaderName} ${instance.loaderUpdate} ist verfügbar`, `${loaderName} ${instance.loaderUpdate} is available`)}
+            </div>
+            <div className="issue-detail">
+              {tr(
+                `Installiert ist ${instance.loaderVersion}. Neue Mod-Versionen verlangen oft einen neueren Loader. Deine Mods bleiben dabei, wie sie sind.`,
+                `${instance.loaderVersion} is installed. New mod versions often need a newer loader. Your mods stay as they are.`
+              )}
+            </div>
+          </div>
+          <button
+            className="btn sm primary"
+            style={{ alignSelf: 'center', flexShrink: 0 }}
+            disabled={loaderBusy || blockedReason !== null}
+            title={blockedReason ?? undefined}
+            onClick={async () => {
+              const target = instance.loaderUpdate
+              if (!target) return
+              setLoaderBusy(true)
+              try {
+                await window.gabi.instances.setLoaderVersion(instance.id, target)
+                toast(
+                  'success',
+                  tr(`${loaderName} ${target} eingestellt`, `${loaderName} ${target} set`),
+                  tr('Er wird beim nächsten Start geladen.', 'It is downloaded on the next start.')
+                )
+                await onChanged()
+              } catch (err) {
+                toastError(err, tr('Loader konnte nicht umgestellt werden', 'The loader could not be changed'))
+              } finally {
+                setLoaderBusy(false)
+              }
+            }}
+          >
+            {loaderBusy ? <span className="spinner" /> : <IconDownload size={14} />}
+            {tr('Aktualisieren', 'Update')}
+          </button>
+        </div>
+      )}
 
       {items.length === 0 && search.trim() ? (
         <EmptyState
