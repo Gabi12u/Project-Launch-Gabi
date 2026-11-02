@@ -3246,6 +3246,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'dependency too when installing, and the compatibility check showed it as missing with a button to fix ' +
       'it. The button failed every time with "There is no version of KotlinLangForge for Minecraft 26.2 ' +
       '(fabric)". The game itself does not need this dependency, the note can be ignored.'
+  },
+  'aeltere-modversion-update-frage': {
+    title: 'After switching a mod to an older version, the launcher asked about an update before every start',
+    detail:
+      'Anyone who deliberately put an older version of a mod in place through "Choose version" got the ' +
+      '"Mods are outdated" notice before every start and had to press "Not now" each time. The launcher did ' +
+      'not remember the choice. "Update now" and "Update all" also set the mod back to the newest version, ' +
+      'undoing the switch. Until the fix, the older version stays as long as you choose "Not now" on that notice.'
   }
 }
 

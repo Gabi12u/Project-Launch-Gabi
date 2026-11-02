@@ -5166,6 +5166,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'lässt sich ignorieren.',
     state: 'investigating',
     since: '2026-11-02'
+  },
+  {
+    id: 'aeltere-modversion-update-frage',
+    title: 'Nach dem Wechsel auf eine ältere Mod-Version fragte der Launcher bei jedem Start nach einem Update',
+    detail:
+      'Wer über „Version wählen“ bewusst eine ältere Version eines Mods eingesetzt hat, bekam vor jedem ' +
+      'Spielstart den Hinweis „Mods sind veraltet“ und musste jedes Mal „Nicht jetzt“ drücken. Der Launcher ' +
+      'merkte sich die Wahl nicht. „Jetzt aktualisieren“ und „Alle aktualisieren“ setzten den Mod außerdem ' +
+      'wieder auf die neueste Version und machten den Wechsel so rückgängig. Bis zur Reparatur bleibt die ' +
+      'ältere Version erhalten, solange du bei diesem Hinweis „Nicht jetzt“ wählst.',
+    state: 'fixing',
+    since: '2026-11-02'
   }
 ]
 

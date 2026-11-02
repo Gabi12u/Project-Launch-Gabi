@@ -4593,6 +4593,13 @@ footer .grow { flex: 1; }
       "detail": "Manche Mods führen bei Modrinth die Abhängigkeiten aller Mod-Loader zusammen auf. Zoomify für Fabric nennt so auch KotlinLangForge, das es nur für Forge und NeoForge gibt. Der Launcher versuchte beim Installieren, auch diese Abhängigkeit zu laden, und die Kompatibilitätsprüfung zeigte sie als fehlend mit einem Knopf zum Beheben an. Der Knopf scheiterte jedes Mal mit „Für KotlinLangForge gibt es keine Version für Minecraft 26.2 (fabric)“. Das Spiel selbst braucht diese Abhängigkeit nicht, der Hinweis lässt sich ignorieren.",
       "state": "investigating",
       "since": "2026-11-02"
+    },
+    {
+      "id": "aeltere-modversion-update-frage",
+      "title": "Nach dem Wechsel auf eine ältere Mod-Version fragte der Launcher bei jedem Start nach einem Update",
+      "detail": "Wer über „Version wählen“ bewusst eine ältere Version eines Mods eingesetzt hat, bekam vor jedem Spielstart den Hinweis „Mods sind veraltet“ und musste jedes Mal „Nicht jetzt“ drücken. Der Launcher merkte sich die Wahl nicht. „Jetzt aktualisieren“ und „Alle aktualisieren“ setzten den Mod außerdem wieder auf die neueste Version und machten den Wechsel so rückgängig. Bis zur Reparatur bleibt die ältere Version erhalten, solange du bei diesem Hinweis „Nicht jetzt“ wählst.",
+      "state": "fixing",
+      "since": "2026-11-02"
     }
   ];
   var ISSUE_LABEL = {
@@ -8117,6 +8124,13 @@ footer .grow { flex: 1; }
       "title": "For some mods the launcher tried to install a dependency for another mod loader, which always failed",
       "detail": "Some mods list the dependencies of every mod loader together on Modrinth. Zoomify for Fabric names KotlinLangForge that way, which only exists for Forge and NeoForge. The launcher tried to download that dependency too when installing, and the compatibility check showed it as missing with a button to fix it. The button failed every time with \"There is no version of KotlinLangForge for Minecraft 26.2 (fabric)\". The game itself does not need this dependency, the note can be ignored.",
       "state": "investigating",
+      "since": "2026-11-02"
+    },
+    {
+      "id": "aeltere-modversion-update-frage",
+      "title": "After switching a mod to an older version, the launcher asked about an update before every start",
+      "detail": "Anyone who deliberately put an older version of a mod in place through \"Choose version\" got the \"Mods are outdated\" notice before every start and had to press \"Not now\" each time. The launcher did not remember the choice. \"Update now\" and \"Update all\" also set the mod back to the newest version, undoing the switch. Until the fix, the older version stays as long as you choose \"Not now\" on that notice.",
+      "state": "fixing",
       "since": "2026-11-02"
     }
   ];
