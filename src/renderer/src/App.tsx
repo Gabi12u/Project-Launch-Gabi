@@ -214,6 +214,11 @@ export function App(): JSX.Element {
     }
     const onRejection = (event: PromiseRejectionEvent): void => {
       const reason = event.reason
+      // Electron's answer to a call still waiting while the window or the
+      // whole app goes away, above all when an update is installed during
+      // start-up. Nothing the user sees and nothing to fix, but it arrived as
+      // an error report from every such restart.
+      if (reason instanceof Error && reason.message === 'reply was never sent') return
       record(
         'ui:promise',
         reason instanceof Error ? reason.message : String(reason),
