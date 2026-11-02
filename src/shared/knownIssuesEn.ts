@@ -3237,6 +3237,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'behind the setup assistant, though, and stayed invisible, so the button seemed not to react. The ' +
       'same went for "Manage" when an account was already signed in, and for notifications shown during ' +
       'setup. Skipping the step and signing in from the sidebar afterwards worked as usual.'
+  },
+  'abhaengigkeit-anderer-loader': {
+    title: 'For some mods the launcher tried to install a dependency for another mod loader, which always failed',
+    detail:
+      'Some mods list the dependencies of every mod loader together on Modrinth. Zoomify for Fabric names ' +
+      'KotlinLangForge that way, which only exists for Forge and NeoForge. The launcher tried to download that ' +
+      'dependency too when installing, and the compatibility check showed it as missing with a button to fix ' +
+      'it. The button failed every time with "There is no version of KotlinLangForge for Minecraft 26.2 ' +
+      '(fabric)". The game itself does not need this dependency, the note can be ignored.'
   }
 }
 

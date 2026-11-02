@@ -4586,6 +4586,13 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-02",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "abhaengigkeit-anderer-loader",
+      "title": "Für manche Mods wollte der Launcher eine Abhängigkeit für einen anderen Mod-Loader installieren, was immer scheiterte",
+      "detail": "Manche Mods führen bei Modrinth die Abhängigkeiten aller Mod-Loader zusammen auf. Zoomify für Fabric nennt so auch KotlinLangForge, das es nur für Forge und NeoForge gibt. Der Launcher versuchte beim Installieren, auch diese Abhängigkeit zu laden, und die Kompatibilitätsprüfung zeigte sie als fehlend mit einem Knopf zum Beheben an. Der Knopf scheiterte jedes Mal mit „Für KotlinLangForge gibt es keine Version für Minecraft 26.2 (fabric)“. Das Spiel selbst braucht diese Abhängigkeit nicht, der Hinweis lässt sich ignorieren.",
+      "state": "investigating",
+      "since": "2026-11-02"
     }
   ];
   var ISSUE_LABEL = {
@@ -8104,6 +8111,13 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-02",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "abhaengigkeit-anderer-loader",
+      "title": "For some mods the launcher tried to install a dependency for another mod loader, which always failed",
+      "detail": "Some mods list the dependencies of every mod loader together on Modrinth. Zoomify for Fabric names KotlinLangForge that way, which only exists for Forge and NeoForge. The launcher tried to download that dependency too when installing, and the compatibility check showed it as missing with a button to fix it. The button failed every time with \"There is no version of KotlinLangForge for Minecraft 26.2 (fabric)\". The game itself does not need this dependency, the note can be ignored.",
+      "state": "investigating",
+      "since": "2026-11-02"
     }
   ];
   var ISSUE_LABEL_EN = {
