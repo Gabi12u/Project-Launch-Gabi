@@ -38,6 +38,7 @@ import {
   tryGetInstance
 } from './instances'
 import { checkCompatibility } from './compat'
+import { forgetCrash, rememberCrash } from './crashHelp'
 import { isContentBusy, withContentLock } from './contentLock'
 import { SignInUnavailableError, getActiveAccount, getValidAccessToken, storedAccessToken, toPublicAccount } from '../auth/microsoft'
 import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isSameProcess, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount, type AdoptedGame } from './running'
@@ -956,6 +957,9 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     // 'exit' will clean up after.
     child.on('spawn', () => {
       spawned = true
+      // This run reports its own crash, if any; the last one's fixes are done
+      // or were waved through with "Trotzdem starten".
+      forgetCrash(instanceId)
     })
 
     child.on('exit', (code, signal) => {
@@ -1083,8 +1087,12 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
           const hasMods = instance.loader !== 'vanilla' && instance.content.some((c) => c.type === 'mod' && c.enabled)
           void (async () => {
             let hint = ''
+            let helped = false
             if (hasMods) {
               try {
+                // Fabric's own report first: the check below then lists what
+                // it found, with the version to switch to.
+                helped = await rememberCrash(instanceId, startedAt)
                 const report = await checkCompatibility(instanceId)
                 const blocking = report.issues.find((i) => i.severity === 'error')
                 hint = blocking
@@ -1097,14 +1105,23 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
             notify(
               'error',
               tr(`${instance.name} ist abgestürzt`, `${instance.name} crashed`),
-              tr(
-                `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
-                `Minecraft exited with code ${code}.${hint} You can find the log in the instance's Log tab.`
-              ),
+              helped
+                ? tr(
+                    `Fabric hat unpassende Mods gefunden.${hint} Ein Klick zeigt dir, wie du es behebst.`,
+                    `Fabric found mods that do not fit.${hint} Click to see how to fix it.`
+                  )
+                : tr(
+                    `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
+                    `Minecraft exited with code ${code}.${hint} You can find the log in the instance's Log tab.`
+                  ),
               // Stays until clicked away: the launcher is often hidden while
               // the game runs, and the notice was gone by the time it showed.
-              { route: `/instances/${instanceId}?tab=logs`, timeout: 0 }
+              // With a fix at hand it leads to the overview, where it is offered.
+              { route: helped ? `/instances/${instanceId}` : `/instances/${instanceId}?tab=logs`, timeout: 0 }
             )
+            // And offered straight away: the launcher comes back to the front
+            // after a crash, so the fix is the first thing on screen.
+            if (helped) emit(EVENTS.crashHelp, { instanceId, instanceName: instance.name })
           })()
         } else if (getSettings().notifyOnGameExit) {
           // "1 Minuten" and "0 Minuten" read as broken, and two hours as

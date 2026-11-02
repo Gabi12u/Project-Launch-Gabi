@@ -205,6 +205,8 @@ export interface InstallContentRequest {
   skipDependencies?: boolean
   /** Worlds (folder names under saves/) a datapack should be copied into. */
   worlds?: string[]
+  /** Hold `versionId` when a newer fitting version exists ("Version wählen"). */
+  holdIfOlder?: boolean
 }
 
 export type Unsubscribe = () => void
@@ -331,6 +333,8 @@ export interface GabiApi {
     install(request: InstallContentRequest): Promise<ContentItem[]>
     remove(instanceId: string, contentId: string): Promise<Instance>
     toggle(instanceId: string, contentId: string, enabled: boolean): Promise<Instance>
+    /** Holds an item at its version, or lets updates through again. */
+    keepVersion(instanceId: string, contentId: string, keep: boolean): Promise<Instance>
     checkUpdates(instanceId: string): Promise<Instance>
     update(instanceId: string, contentId: string): Promise<ContentItem | null>
     updateAll(instanceId: string): Promise<number>
@@ -430,6 +434,8 @@ export interface GabiApi {
     onRecordingStart(fn: (request: RecordingRequest) => void): Unsubscribe
     onRecordingStop(fn: (sessionId: number) => void): Unsubscribe
     onRecordingState(fn: (state: RecordingState) => void): Unsubscribe
+    /** A crash left fixes from Fabric's report for this instance. */
+    onCrashHelp(fn: (crash: { instanceId: string; instanceName: string }) => void): Unsubscribe
   }
 }
 

@@ -121,6 +121,13 @@ export interface ContentItem {
    * it by hand clears this.
    */
   disabledByVersionChange?: boolean
+  /**
+   * Held at this version on purpose: picked through "Version wählen" while a
+   * newer fitting one existed, put in place by the crash help to satisfy
+   * another mod, or held by hand. The update check leaves it out, so neither
+   * the launch prompt nor "Alle aktualisieren" undoes the choice.
+   */
+  keepVersion?: boolean
   /** Disabled content keeps a `.disabled` suffix on disk. */
   enabled: boolean
   gameVersions: string[]
@@ -461,7 +468,8 @@ export interface CompatibilityIssue {
   contentId?: string
   /** Set when the issue can be resolved without user input. */
   fix?: {
-    kind: 'install-dependency' | 'enable-content' | 'disable-content' | 'remove-content' | 'update-content'
+    /** `install-version` puts exactly `versionId` in place and holds it there. */
+    kind: 'install-dependency' | 'enable-content' | 'disable-content' | 'remove-content' | 'update-content' | 'install-version'
     label: string
     /** Payload interpreted by the fixer in the main process. */
     projectId?: string

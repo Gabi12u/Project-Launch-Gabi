@@ -53,6 +53,8 @@ import {
   IconUpload,
   IconWrench,
   IconLayers,
+  IconLock,
+  IconUnlock,
   IconCheck,
   IconFilm,
   IconX} from '../components/Icons'
@@ -90,7 +92,7 @@ export function InstanceDetailView({
   instanceId: string
   query: URLSearchParams
 }): JSX.Element {
-  const { instances, launchStatus, starting } = useStore()
+  const { instances, launchStatus, starting, compatGate } = useStore()
   const summary = instances.find((i) => i.id === instanceId)
 
   const [instance, setInstance] = useState<InstanceDetail | null>(null)
@@ -215,6 +217,26 @@ export function InstanceDetailView({
     }
     wasInstalling.current = summaryInstalling
   }, [summaryInstalling, load, runChecks])
+
+  // A crash Fabric explained adds its fixes to the check, and the gate fixes
+  // them from wherever it opened. Neither goes through this page, which kept
+  // showing the old mod versions and the solved problem.
+  useEffect(
+    () =>
+      window.gabi.events.onCrashHelp((crash) => {
+        if (crash.instanceId === instanceId) void runChecks()
+      }),
+    [instanceId, runChecks]
+  )
+  const gateHere = compatGate?.instanceId === instanceId
+  const hadGate = useRef(gateHere)
+  useEffect(() => {
+    if (hadGate.current && !gateHere) {
+      void load()
+      void runChecks()
+    }
+    hadGate.current = gateHere
+  }, [gateHere, load, runChecks])
 
   const [exporting, setExporting] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
@@ -1070,6 +1092,20 @@ function ContentTab({
             },
             onUpdate: (item) => setConfirmUpdate(item),
             onPickVersion: (item) => setVersionFor(item),
+            onKeepVersion: async (item, keep) => {
+              try {
+                await window.gabi.content.keepVersion(instance.id, item.id, keep)
+                toast(
+                  'success',
+                  keep
+                    ? tr(`${item.name} bleibt auf ${item.version}`, `${item.name} stays on ${item.version}`)
+                    : tr(`Updates für ${item.name} wieder an`, `Updates for ${item.name} back on`)
+                )
+                await onChanged()
+              } catch (err) {
+                toastError(err, tr('Das hat nicht geklappt', 'That did not work'))
+              }
+            },
             onOpenPage: (item) => void window.gabi.app.openExternal(item.pageUrl as string),
             onRemove: (item) => setConfirmRemove(item)
           })}
@@ -1158,6 +1194,7 @@ function contentMenuItems(
     onToggle: (item: ContentItem, enabled: boolean) => void
     onUpdate: (item: ContentItem) => void
     onPickVersion: (item: ContentItem) => void
+    onKeepVersion: (item: ContentItem, keep: boolean) => void
     onOpenPage: (item: ContentItem) => void
     onRemove: (item: ContentItem) => void
   }
@@ -1191,6 +1228,14 @@ function contentMenuItems(
         ? reason
         : tr('Diese Datei wurde von Hand hinzugefügt, es gibt keine Versionsliste.', 'This file was added by hand, there is no version list.'),
       onSelect: () => handlers.onPickVersion(item)
+    },
+    {
+      // Only the record changes, so this stays available while the game runs.
+      label: item.keepVersion ? tr('Updates wieder zulassen', 'Allow updates again') : tr('Version festhalten', 'Keep this version'),
+      icon: item.keepVersion ? <IconUnlock size={14} /> : <IconLock size={14} />,
+      disabled: local,
+      disabledReason: tr('Diese Datei wurde von Hand hinzugefügt, sie bekommt ohnehin keine Updates.', 'This file was added by hand, it gets no updates anyway.'),
+      onSelect: () => handlers.onKeepVersion(item, !item.keepVersion)
     },
     {
       label: tr('Projektseite öffnen', 'Open project page'),
@@ -1256,6 +1301,17 @@ function ContentRow({
             {item.provider === 'modrinth' ? 'MR' : item.provider === 'curseforge' ? 'CF' : tr('LOKAL', 'LOCAL')}
           </span>
           {item.update && <span className="badge warn">Update</span>}
+          {item.keepVersion && (
+            <span
+              className="badge"
+              title={tr(
+                'Diese Version bleibt, auch wenn es eine neuere gibt. Per Rechtsklick lässt du Updates wieder zu.',
+                'This version stays even when a newer one exists. Right-click to allow updates again.'
+              )}
+            >
+              <IconLock size={11} /> {tr('Festgehalten', 'Kept')}
+            </span>
+          )}
         </div>
 
         <div className="content-meta">

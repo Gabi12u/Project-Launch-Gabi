@@ -171,6 +171,20 @@ export function App(): JSX.Element {
 
       window.gabi.events.onUpdateStatus((status) => {
         setState({ updateReady: status.state === 'ready' ? (status.version ?? '') : null })
+      }),
+
+      // Fabric named what does not fit, and the fixes are ready. Shown in the
+      // same gate a blocked Play click uses, unless a gate is already open;
+      // the crash notification still leads to the instance either way.
+      window.gabi.events.onCrashHelp(({ instanceId, instanceName }) => {
+        if (getState().compatGate) return
+        void window.gabi.content
+          .compatibility(instanceId)
+          .then((report) => {
+            if (report.launchable || getState().compatGate) return
+            setState({ compatGate: { instanceId, instanceName, report, afterCrash: true } })
+          })
+          .catch(() => undefined)
       })
     ]
 

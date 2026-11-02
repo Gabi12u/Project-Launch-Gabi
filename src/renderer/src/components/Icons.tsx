@@ -391,6 +391,24 @@ export const IconFilter = (p: IconProps): JSX.Element => (
   </Icon>
 )
 
+export const IconLock = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <g>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </g>
+  </Icon>
+)
+
+export const IconUnlock = (p: IconProps): JSX.Element => (
+  <Icon {...p}>
+    <g>
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 7.5-2" />
+    </g>
+  </Icon>
+)
+
 export const IconLayers = (p: IconProps): JSX.Element => (
   <Icon {...p}>
     <g>

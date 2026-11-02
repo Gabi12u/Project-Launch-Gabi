@@ -93,7 +93,10 @@ export function VersionPicker({
         provider: version.provider,
         projectId: version.projectId,
         versionId: version.versionId,
-        type: item.type
+        type: item.type,
+        // An older pick is held, or the launch prompt offers the newer one
+        // again on every start.
+        holdIfOlder: true
       })
       toast('success', tr(`${item.name} ${version.versionNumber} installiert`, `${item.name} ${version.versionNumber} installed`))
       await onChanged()

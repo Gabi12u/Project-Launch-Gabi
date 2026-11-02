@@ -266,6 +266,7 @@ export function CompatibilityGate(): JSX.Element | null {
 
   const errors = current.issues.filter((i) => i.severity === 'error')
   const fixable = current.issues.filter(isSafeAutoFix).length
+  const afterCrash = compatGate.afterCrash === true
 
   return (
     <Modal
@@ -273,20 +274,24 @@ export function CompatibilityGate(): JSX.Element | null {
       title={
         <span className="row gap-8" style={{ alignItems: 'center' }}>
           <IconWarning size={16} />
-          {tr('Problem gefunden', 'Problem found')}
+          {afterCrash ? tr('Minecraft ist abgestürzt', 'Minecraft crashed') : tr('Problem gefunden', 'Problem found')}
         </span>
       }
-      subtitle={tr(
-        `${compatGate.instanceName} kann so nicht gestartet werden.`,
-        `${compatGate.instanceName} cannot start like this.`
-      )}
+      subtitle={
+        afterCrash
+          ? tr(
+              `Fabric hat in ${compatGate.instanceName} Mods gefunden, die nicht zusammenpassen. So lässt es sich beheben:`,
+              `Fabric found mods in ${compatGate.instanceName} that do not fit together. This is how to fix it:`
+            )
+          : tr(`${compatGate.instanceName} kann so nicht gestartet werden.`, `${compatGate.instanceName} cannot start like this.`)
+      }
       onClose={close}
       busy={fixing}
       width="wide"
       footer={
         <>
           <button className="btn ghost" onClick={close} disabled={fixing}>
-            {tr('Abbrechen', 'Cancel')}
+            {afterCrash ? tr('Schließen', 'Close') : tr('Abbrechen', 'Cancel')}
           </button>
           <button
             className="btn"
@@ -302,7 +307,7 @@ export function CompatibilityGate(): JSX.Element | null {
           {fixable > 0 && (
             <button className="btn primary" onClick={fixAll} disabled={fixing}>
               {fixing ? <span className="spinner" /> : <IconSparkle size={15} />}
-              {tr('Automatisch beheben', 'Fix automatically')}
+              {afterCrash ? tr('Beheben und neu starten', 'Fix and restart') : tr('Automatisch beheben', 'Fix automatically')}
             </button>
           )}
         </>

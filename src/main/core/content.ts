@@ -134,6 +134,12 @@ export interface InstallContentOptions {
   worlds?: string[]
   /** Internal: installed as another project's required dependency. */
   asDependency?: boolean
+  /**
+   * Hold `versionId` (`keepVersion`) when a newer fitting version exists. Set
+   * for a version the user picked by hand, and for one the crash help put in
+   * place because another mod needs exactly that one.
+   */
+  holdIfOlder?: boolean
 }
 
 /**
@@ -399,6 +405,21 @@ async function installContentOnce(
     finalFileName,
     enabled
   )
+  // An older version picked on purpose. Left unheld, the launch prompt offered
+  // the newer one again on every start, and "Jetzt aktualisieren" undid the
+  // pick. Decided with the update check's own lookup, so held means exactly
+  // "the check would have flagged this".
+  if (options.holdIfOlder && options.versionId) {
+    try {
+      const newest = await bestVersionFor(provider, projectId, instance.mcVersion, instance.loader, type)
+      if (newest && isNewer(newest, item)) item.keepVersion = true
+    } catch (err) {
+      // The download just worked, so this is rare. Held anyway: the user
+      // asked for this version, and a hold is easy to lift again.
+      logger.warn(`Neueste Version von ${project.name} nicht geprüft, Version bleibt festgehalten:`, err)
+      item.keepVersion = true
+    }
+  }
   // World copies happen only while the item is enabled, the same rule
   // `applyUpdateOnce` and `toggleContent` apply: a disabled datapack has no
   // copies at all and only gets them once switched back on. The intended
@@ -830,8 +851,10 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
   }
   const instance = getInstance(instanceId)
 
+  // A held version is not asked about at all, and the loop below clears any
+  // marker it still carries, so nothing offers to undo the hold.
   const managed = instance.content.filter(
-    (c) => c.provider !== 'local' && c.projectId
+    (c) => c.provider !== 'local' && c.projectId && !c.keepVersion
   )
 
   const updated: ContentItem[] = []
@@ -847,6 +870,10 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
   const unchecked: { name: string; reason: string }[] = []
 
   for (const item of instance.content) {
+    if (item.keepVersion) {
+      updated.push({ ...item, update: null })
+      continue
+    }
     if (!managed.includes(item) || gaveUp) {
       updated.push(item)
       continue
@@ -900,6 +927,8 @@ export async function checkUpdates(instanceId: string, task?: Task, announceFail
     current.loaderVersion === instance.loaderVersion
 
   const merged = current.content.map((item) => {
+    // Held while this ran: a marker found before that would undo the hold.
+    if (item.keepVersion) return item.update ? { ...item, update: null } : item
     const seen = scanned.get(item.id)
     // A different version on disk means this item changed underneath us; a
     // marker computed against the old one must not be pinned to the new one.
@@ -1086,7 +1115,11 @@ async function applyUpdateOnce(
     modIds: undefined,
     modIdsFrom: undefined,
     // The launcher wrote this file, it is no longer the one placed by hand.
-    recognisedFrom: undefined
+    recognisedFrom: undefined,
+    // A newer file replaced the one that was held, so the hold is over. Only
+    // "Version ändern" gets here for a held mod: it swaps every mod for one
+    // made for the new game, and the old pick means nothing there.
+    keepVersion: undefined
   }
 
   // The file downloaded above always sits under its bare name. If the mod is
@@ -1381,6 +1414,49 @@ async function updateAllOnce(instanceId: string): Promise<number> {
 }
 
 /* ------------------------------------------------------------------ *
+ * Holding a version
+ * ------------------------------------------------------------------ */
+
+/**
+ * Holds an item at its current version, or lets updates through again.
+ *
+ * Letting go looks the item up right away, so a newer version shows at once
+ * instead of only after the next full update check.
+ */
+export async function setKeepVersion(instanceId: string, contentId: string, keep: boolean): Promise<Instance> {
+  const patch = (change: (item: ContentItem) => ContentItem | null): Promise<Instance> =>
+    withContentLock(instanceId, () =>
+      withItemLock(contentId, async () => {
+        const current = getInstance(instanceId)
+        const item = current.content.find((c) => c.id === contentId)
+        if (!item) throw new Error(tr('Inhalt nicht gefunden', 'Content not found'))
+        const next = change(item)
+        if (!next) return current
+        return persist({ ...current, content: current.content.map((c) => (c.id === contentId ? next : c)) })
+      })
+    )
+
+  if (keep) return patch((item) => ({ ...item, keepVersion: true, update: null }))
+
+  const released = await patch((item) => ({ ...item, keepVersion: undefined }))
+  const item = released.content.find((c) => c.id === contentId)
+  if (!item || item.provider === 'local' || !item.projectId) return released
+
+  let newest: ProjectVersion | null
+  try {
+    newest = await bestVersionFor(item.provider, item.projectId, released.mcVersion, released.loader, item.type)
+  } catch (err) {
+    // The next update check finds it instead.
+    logger.warn(`Update für ${item.name} nach dem Freigeben nicht geprüft:`, err)
+    return released
+  }
+  if (!newest || !isNewer(newest, item)) return released
+  const update = toAvailableUpdate(newest)
+  // Held again or swapped meanwhile: the lookup no longer applies.
+  return patch((now) => (now.keepVersion || now.versionId !== item.versionId ? null : { ...now, update }))
+}
+
+/* ------------------------------------------------------------------ *
  * Automatic fixes
  * ------------------------------------------------------------------ */
 
@@ -1457,6 +1533,23 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
         projectId: fix.projectId,
         versionId: candidate.versionId,
         type: item.type
+      })
+      return
+    }
+
+    // The crash help: the version another mod needs, often an older one, so
+    // it is held there like a pick made by hand.
+    case 'install-version': {
+      if (!fix.contentId || !fix.projectId || !fix.provider || !fix.versionId) return
+      const item = getInstance(instanceId).content.find((c) => c.id === fix.contentId)
+      if (!item) return
+      await installContent({
+        instanceId,
+        provider: fix.provider,
+        projectId: fix.projectId,
+        versionId: fix.versionId,
+        type: item.type,
+        holdIfOlder: true
       })
       return
     }

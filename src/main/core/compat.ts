@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { getInstance, syncContentWithDisk } from './instances'
 import { readJarMetadata } from './modMetadata'
 import { gameVersionMatches } from './gameVersions'
+import { crashIssues } from './crashHelp'
 import { paths } from '../paths'
 import { modrinth, curseforge } from '../providers'
 import { log } from '../logger'
@@ -510,9 +511,23 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
     }
   }
 
-  const launchable = !issues.some((i) => i.severity === 'error')
+  // 7. What Fabric itself reported at the last crash ------------------
+  //
+  // First, since the game has already refused to start over these. A check
+  // above that offers to install the same project is dropped, the crash
+  // help names the reason more precisely.
+  const fromCrash = crashIssues(instance)
+  const crashInstalls = new Set(
+    fromCrash.filter((i) => i.fix?.kind === 'install-dependency').map((i) => `${i.fix?.provider}:${i.fix?.projectId}`)
+  )
+  const all = [
+    ...fromCrash,
+    ...issues.filter((i) => !(i.fix?.kind === 'install-dependency' && crashInstalls.has(`${i.fix.provider}:${i.fix.projectId}`)))
+  ]
 
-  logger.debug(`Kompatibilität ${instanceId}: ${issues.length} Hinweise, startbar=${launchable}`)
+  const launchable = !all.some((i) => i.severity === 'error')
 
-  return { instanceId, checkedAt: Date.now(), issues, launchable }
+  logger.debug(`Kompatibilität ${instanceId}: ${all.length} Hinweise, startbar=${launchable}`)
+
+  return { instanceId, checkedAt: Date.now(), issues: all, launchable }
 }

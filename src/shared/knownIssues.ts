@@ -5176,8 +5176,21 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'merkte sich die Wahl nicht. „Jetzt aktualisieren“ und „Alle aktualisieren“ setzten den Mod außerdem ' +
       'wieder auf die neueste Version und machten den Wechsel so rückgängig. Bis zur Reparatur bleibt die ' +
       'ältere Version erhalten, solange du bei diesem Hinweis „Nicht jetzt“ wählst.',
-    state: 'fixing',
-    since: '2026-11-02'
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'seite-nach-automatisch-beheben-veraltet',
+    title: 'Nach „Automatisch beheben“ zeigte die Seite der Instanz noch den alten Stand',
+    detail:
+      'Wer auf der Seite einer Instanz auf Spielen drückte und im Fenster „Problem gefunden“ „Automatisch ' +
+      'beheben“ wählte, sah danach in der Mod-Liste und unter Mod-Kompatibilität weiter den Stand von vorher, ' +
+      'etwa das schon gelöste Problem oder einen fehlenden Mod, der längst installiert war. Behoben war es ' +
+      'trotzdem. Die Seite einmal verlassen und wieder öffnen zeigte den richtigen Stand.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
   }
 ]
 

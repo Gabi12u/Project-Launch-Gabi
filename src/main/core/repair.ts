@@ -900,7 +900,11 @@ async function runRepair(
               update: null,
               modIds: undefined,
               modIdsFrom: undefined,
-              recognisedFrom: undefined
+              recognisedFrom: undefined,
+              // A held version made for another Minecraft version was swapped
+              // for one that fits, so the old pick no longer applies. A damaged
+              // file comes back as the same version and stays held.
+              keepVersion: wrongVersion ? undefined : item.keepVersion
             }
             if (wrongVersion) refitted++
             else restored++

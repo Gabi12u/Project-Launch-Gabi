@@ -59,6 +59,7 @@ import {
   installContent,
   removeContent,
   setDatapackWorlds,
+  setKeepVersion,
   updateAll
 } from './core/content'
 import { checkCompatibility } from './core/compat'
@@ -772,6 +773,7 @@ export function registerIpc(): void {
       type?: ContentType
       skipDependencies?: boolean
       worlds?: string[]
+      holdIfOlder?: boolean
     }) => {
       requireStopped(options.instanceId, tr('Mods installieren', 'Installing mods'))
       const installed = await installContent(options)
@@ -798,6 +800,11 @@ export function registerIpc(): void {
     requireStopped(instanceId, enabled ? tr('Aktivieren', 'Enabling') : tr('Deaktivieren', 'Disabling'))
     return toggleContent(instanceId, contentId, enabled)
   })
+
+  // Only the record changes, no file, so this is allowed while the game runs.
+  handle(IPC.contentKeepVersion, (instanceId: string, contentId: string, keep: boolean) =>
+    setKeepVersion(instanceId, contentId, keep)
+  )
 
   handle(IPC.contentSetDatapackWorlds, (instanceId: string, contentId: string, worlds: string[]) => {
     requireStopped(instanceId, tr('Welten zuordnen', 'Assigning worlds'))

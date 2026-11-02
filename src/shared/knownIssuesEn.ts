@@ -3254,6 +3254,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       '"Mods are outdated" notice before every start and had to press "Not now" each time. The launcher did ' +
       'not remember the choice. "Update now" and "Update all" also set the mod back to the newest version, ' +
       'undoing the switch. Until the fix, the older version stays as long as you choose "Not now" on that notice.'
+  },
+  'seite-nach-automatisch-beheben-veraltet': {
+    title: 'After "Fix automatically" the instance page still showed the old state',
+    detail:
+      'Anyone who pressed Play on an instance page and chose "Fix automatically" in the "Problem found" window ' +
+      'kept seeing the previous state in the mod list and under mod compatibility, such as the problem already ' +
+      'solved or a missing mod that had long been installed. It was fixed all the same. Leaving the page and ' +
+      'opening it again showed the right state.'
   }
 }
 

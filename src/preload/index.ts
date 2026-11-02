@@ -138,6 +138,7 @@ const api = {
     install: call(IPC.contentInstall),
     remove: call(IPC.contentRemove),
     toggle: call(IPC.contentToggle),
+    keepVersion: call(IPC.contentKeepVersion),
     checkUpdates: call(IPC.contentCheckUpdates),
     update: call(IPC.contentUpdate),
     updateAll: call(IPC.contentUpdateAll),
@@ -217,7 +218,8 @@ const api = {
     onBetaStatus: (fn: (payload: never) => void) => on(EVENTS.betaStatus, fn),
     onRecordingStart: (fn: (payload: never) => void) => on(EVENTS.recordingStart, fn),
     onRecordingStop: (fn: (payload: never) => void) => on(EVENTS.recordingStop, fn),
-    onRecordingState: (fn: (payload: never) => void) => on(EVENTS.recordingState, fn)
+    onRecordingState: (fn: (payload: never) => void) => on(EVENTS.recordingState, fn),
+    onCrashHelp: (fn: (payload: never) => void) => on(EVENTS.crashHelp, fn)
   }
 }
 

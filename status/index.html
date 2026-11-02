@@ -4598,8 +4598,17 @@ footer .grow { flex: 1; }
       "id": "aeltere-modversion-update-frage",
       "title": "Nach dem Wechsel auf eine ältere Mod-Version fragte der Launcher bei jedem Start nach einem Update",
       "detail": "Wer über „Version wählen“ bewusst eine ältere Version eines Mods eingesetzt hat, bekam vor jedem Spielstart den Hinweis „Mods sind veraltet“ und musste jedes Mal „Nicht jetzt“ drücken. Der Launcher merkte sich die Wahl nicht. „Jetzt aktualisieren“ und „Alle aktualisieren“ setzten den Mod außerdem wieder auf die neueste Version und machten den Wechsel so rückgängig. Bis zur Reparatur bleibt die ältere Version erhalten, solange du bei diesem Hinweis „Nicht jetzt“ wählst.",
-      "state": "fixing",
-      "since": "2026-11-02"
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.26"
+    },
+    {
+      "id": "seite-nach-automatisch-beheben-veraltet",
+      "title": "Nach „Automatisch beheben“ zeigte die Seite der Instanz noch den alten Stand",
+      "detail": "Wer auf der Seite einer Instanz auf Spielen drückte und im Fenster „Problem gefunden“ „Automatisch beheben“ wählte, sah danach in der Mod-Liste und unter Mod-Kompatibilität weiter den Stand von vorher, etwa das schon gelöste Problem oder einen fehlenden Mod, der längst installiert war. Behoben war es trotzdem. Die Seite einmal verlassen und wieder öffnen zeigte den richtigen Stand.",
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.26"
     }
   ];
   var ISSUE_LABEL = {
@@ -8130,8 +8139,17 @@ footer .grow { flex: 1; }
       "id": "aeltere-modversion-update-frage",
       "title": "After switching a mod to an older version, the launcher asked about an update before every start",
       "detail": "Anyone who deliberately put an older version of a mod in place through \"Choose version\" got the \"Mods are outdated\" notice before every start and had to press \"Not now\" each time. The launcher did not remember the choice. \"Update now\" and \"Update all\" also set the mod back to the newest version, undoing the switch. Until the fix, the older version stays as long as you choose \"Not now\" on that notice.",
-      "state": "fixing",
-      "since": "2026-11-02"
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.26"
+    },
+    {
+      "id": "seite-nach-automatisch-beheben-veraltet",
+      "title": "After \"Fix automatically\" the instance page still showed the old state",
+      "detail": "Anyone who pressed Play on an instance page and chose \"Fix automatically\" in the \"Problem found\" window kept seeing the previous state in the mod list and under mod compatibility, such as the problem already solved or a missing mod that had long been installed. It was fixed all the same. Leaving the page and opening it again showed the right state.",
+      "state": "fixed",
+      "since": "2026-11-02",
+      "fixedIn": "1.0.26"
     }
   ];
   var ISSUE_LABEL_EN = {

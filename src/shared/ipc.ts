@@ -101,6 +101,7 @@ export const IPC = {
   contentInstall: 'content:install',
   contentRemove: 'content:remove',
   contentToggle: 'content:toggle',
+  contentKeepVersion: 'content:keep-version',
   contentCheckUpdates: 'content:check-updates',
   contentUpdate: 'content:update',
   contentUpdateAll: 'content:update-all',
@@ -171,7 +172,9 @@ export const EVENTS = {
   /** Main asks the renderer to stop capturing. */
   recordingStop: 'evt:recording-stop',
   /** Recorder state changed, for the indicator in the interface. */
-  recordingState: 'evt:recording-state'
+  recordingState: 'evt:recording-state',
+  /** A crash left fixes from Fabric's report; the renderer offers them. */
+  crashHelp: 'evt:crash-help'
 } as const
 
 export type NotificationKind = 'info' | 'success' | 'warning' | 'error'

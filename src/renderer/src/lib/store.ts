@@ -36,8 +36,11 @@ export interface AppState {
    * toast action. The sidebar owns the actual dialog and watches this flag.
    */
   accountModalOpen: boolean
-  /** Populated when a launch was stopped by compatibility problems. */
-  compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport } | null
+  /**
+   * Populated when a launch was stopped by compatibility problems, or right
+   * after a crash Fabric explained (`afterCrash`).
+   */
+  compatGate: { instanceId: string; instanceName: string; report: CompatibilityReport; afterCrash?: boolean } | null
   /** Populated when a launch is paused to ask about outdated mods first. */
   modUpdateGate: { instanceId: string; instanceName: string; count: number } | null
   /** Instances whose launch is currently being prepared in the UI. */
