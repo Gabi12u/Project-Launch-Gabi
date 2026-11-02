@@ -22,6 +22,11 @@
  *    getauscht, nicht Minecraft.
  * 8. Passt der Versionsname nicht zu Fabrics Angabe, wird nicht geraten.
  * 9. Ein neuer Start verwirft den alten Bericht.
+ * 10. Quilt: echter Bericht von Quilt Loader 0.30.2, gelesen auch aus
+ *     logs/latest.log, wenn er nicht mehr im Puffer des Launchers steht.
+ * 11. Forge und NeoForge: Zeilen genau nach der Vorlage in ModSorter.java
+ *     (Forge 1.20.1 bis 1.21.11, NeoForge 1.20.4 bis heute), Bereiche und
+ *     Vergleiche nach Maven.
  *
  * Minecraft, Java und Modrinth sind ersetzt, Dateien und Downloads sind echt.
  */
@@ -62,7 +67,7 @@ function jarBytes(modId, name, version) {
   return zip.toBuffer()
 }
 
-function release(projectId, versionId, versionNumber, gameVersions, released, modId) {
+function release(projectId, versionId, versionNumber, gameVersions, released, modId, loaders = ['fabric']) {
   const fileName = `${versionId}.jar`
   const body = jarBytes(modId, projectId, versionNumber)
   served.set(`/${fileName}`, body)
@@ -74,7 +79,7 @@ function release(projectId, versionId, versionNumber, gameVersions, released, mo
     versionNumber,
     releaseType: 'release',
     gameVersions,
-    loaders: ['fabric'],
+    loaders,
     downloadUrl: `${base}/${fileName}`,
     fileName,
     sha1: sha1(body),
@@ -126,6 +131,59 @@ A potential solution has been determined, this may resolve your problem:
 More details:
 \t - Mod 'Range Test' (rangetest) 1.0.0 requires any version between 2.0 (inclusive) and 3.0 (exclusive) of mod 'Lib Test' (libtest), but only the wrong version is present: 3.1.0!`
 }
+
+// Real output of Quilt Loader 0.30.2 from the same kind of runs, as it lands
+// in the log after "Partial Report:".
+const QUILT = {
+  mismatch: `[22:00:37] [ERROR] [Quilt Loader/]: Partial Report:
+---- Quilt Loader: Failed to load ----
+Date/Time: 2026/11/02 22:00:37.9740 [+0100]
+Quilt Loader Version: 0.30.2
+
+-- Error 1 --
+
+Zoomify requires version (-?, 1.12.56] of fabric-language-kotlin, but only wrong versions are present:
+
+- version 1.13.1+kotlin.2.1.0 from <mods>/flk-1131.jar
+
+Zoomify is loaded from <mods>/zf-217.jar
+
+
+-- Plugin State --
+
+Cycle number = 1`,
+  minecraft: `---- Quilt Loader: Failed to load ----
+-- Error 1 --
+Xaero's Minimap requires version [1.20.1, 1.20.1] of minecraft, but only wrong versions are present:
+- version 1.21.11 from <game>/.cache/quilt_loader/remappedJars/minecraft-1.21.11-0.30.2/client-intermediary.jar
+Xaero's Minimap is loaded from <mods>/xm-1201.jar
+-- Plugin State --`,
+  breaks: `---- Quilt Loader: Failed to load ----
+-- Error 1 --
+Breaker Test breaks all versions of victimtest, which is present!
+- <mods>/breakertest.jar
+-- Plugin State --`,
+  loader: `---- Quilt Loader: Failed to load ----
+-- Error 1 --
+New Loader Test requires version [0.20.0, ?) of fabricloader, but only wrong versions are present:
+- version 0.19.5 provided by Quilt Loader from /Users/x/libs/quilt-loader-0.30.2.jar
+New Loader Test is loaded from <mods>/newloadertest.jar
+-- Plugin State --`,
+  missing: `---- Quilt Loader: Failed to load ----
+-- Error 1 --
+Sodium Test requires any version of fabric-api, which is missing!
+Sodium Test is loaded from <mods>/sodiumtest.jar
+-- Plugin State --`
+}
+
+// Forge and NeoForge print these from ModSorter with String.format, the
+// header through log4j (here as the launcher's log parser passes it on).
+const FORGE = `[main/ERROR] Missing or unsupported mandatory dependencies:
+\tMod ID: 'geckolib', Requested by: 'mobmod', Expected range: '[4.4.9,4.5)', Actual version: '4.6.0'
+\tMod ID: 'cloth_config', Requested by: 'mobmod', Expected range: '[15.0,)', Actual version: '[MISSING]'
+\tMod ID: 'minecraft', Requested by: 'oldmod', Expected range: '[1.20,1.21)', Actual version: '1.21.1'
+[main/ERROR] Incompatibilities between mods:
+\tMod 'breakermod' is incompatible with 'victimmod', versions: '[1.0,)'; Version found: '2.0'`
 
 try {
   const esbuild = require('esbuild')
@@ -281,8 +339,9 @@ try {
   globalThis.__lgAll.zoomify = [zoom]
   globalThis.__lgBest.zoomify = () => zoom
 
+  const NAMES = { flk: 'Fabric Language Kotlin', zoomify: 'Zoomify', geckolib: 'GeckoLib', mobmod: 'Mob Mod', oldmod: 'Old Mod' }
   /** An instance whose mods folder and record hold `releases`. */
-  function makeInstance(id, mcVersion, releases) {
+  function makeInstance(id, mcVersion, releases, loader = 'fabric') {
     mkdirSync(p.mods(id), { recursive: true })
     const items = releases.map((v, i) => {
       writeFileSync(join(p.mods(id), v.fileName), served.get(`/${v.fileName}`))
@@ -291,7 +350,7 @@ try {
         type: 'mod',
         provider: 'modrinth',
         fileName: v.fileName,
-        name: v.projectId === 'flk' ? 'Fabric Language Kotlin' : v.projectId,
+        name: NAMES[v.projectId] ?? v.projectId,
         version: v.versionNumber,
         versionId: v.versionId,
         projectId: v.projectId,
@@ -308,7 +367,7 @@ try {
     })
     writeFileSync(
       p.instanceFile(id),
-      JSON.stringify({ name: id, mcVersion, loader: 'fabric', loaderVersion: '0.19.5', installed: true, content: items })
+      JSON.stringify({ name: id, mcVersion, loader, loaderVersion: '0.19.5', installed: true, content: items })
     )
   }
   const crashed = (id, text) => {
@@ -333,6 +392,28 @@ try {
   makeInstance('fehlt', '1.21.11', [sodium])
   makeInstance('minecraft', '1.21.11', [xOld])
   makeInstance('raten', '1.21.11', [zoom, odd])
+  makeInstance('quilt', '1.21.11', [zoom, flkCur, xOld], 'quilt')
+
+  // NeoForge 1.21.1: GeckoLib 4.6.0 where Mob Mod wants [4.4.9,4.5), Cloth
+  // Config missing, Old Mod built for 1.20, Breaker refusing Victim.
+  const neo = (projectId, versionId, number, games, released, modId) =>
+    release(projectId, versionId, number, games, released, modId, ['neoforge'])
+  const gl460 = neo('geckolib', 'gl-460', 'geckolib-neoforge-1.21.1-4.6.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'geckolib')
+  const gl4412 = neo('geckolib', 'gl-4412', 'geckolib-neoforge-1.21.1-4.4.12', ['1.21.1'], '2026-09-01T00:00:00Z', 'geckolib')
+  const gl4410 = neo('geckolib', 'gl-4410', 'geckolib-neoforge-1.21.1-4.4.10', ['1.21.1'], '2026-08-01T00:00:00Z', 'geckolib')
+  const gl4413old = neo('geckolib', 'gl-4413-120', 'geckolib-neoforge-1.20.4-4.4.13', ['1.20.4'], '2026-09-15T00:00:00Z', 'geckolib')
+  globalThis.__lgAll.geckolib = [gl460, gl4413old, gl4412, gl4410]
+  globalThis.__lgBest.geckolib = () => gl460
+  const mob = neo('mobmod', 'mob-1', '2.0.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'mobmod')
+  const oldMod = neo('oldmod', 'old-120', '1.0.0', ['1.20.1'], '2026-01-01T00:00:00Z', 'oldmod')
+  const oldMod121 = neo('oldmod', 'old-121', '1.1.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'oldmod')
+  globalThis.__lgBest.oldmod = (game) => (game === '1.21.1' ? oldMod121 : null)
+  const breaker = neo('breakermod', 'br-1', '1.0.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'breakermod')
+  const victim = neo('victimmod', 'vi-2', '2.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'victimmod')
+  const cloth = neo('9s6osm5g', 'cl-15', '15.0.140', ['1.21.1'], '2026-10-01T00:00:00Z', 'cloth_config')
+  globalThis.__lgBest['9s6osm5g'] = () => cloth
+  globalThis.__lgSlugs['cloth-config'] = { projectId: '9s6osm5g', name: 'Cloth Config API' }
+  makeInstance('neoforge', '1.21.1', [mob, gl460, oldMod, breaker, victim], 'neoforge')
 
   check((await crashed('absturz', FABRIC.mismatch)) === true, 'Nach dem Absturz gab es keinen Vorschlag')
   let report = await compat.checkCompatibility('absturz')
@@ -401,6 +482,103 @@ try {
   crash.forgetCrash('raten')
   report = await compat.checkCompatibility('raten')
   check(!report.issues.some((i) => i.id.startsWith('crash-')), 'Nach einem neuen Start ist der alte Bericht noch da')
+
+  // --- 10. Quilt -------------------------------------------------------------------------
+  const qm = crash.parseQuiltReport(QUILT.mismatch)
+  const qd = qm?.details[0]
+  check(qd?.kind === 'mismatch' && qd.mod.name === 'Zoomify' && qd.mod.file === 'zf-217.jar', `Quilt, fragender Mod: ${JSON.stringify(qd?.mod)}`)
+  check(qd?.dep.id === 'fabric-language-kotlin' && qd.dep.file === 'flk-1131.jar' && qd.present[0] === '1.13.1+kotlin.2.1.0', `Quilt, Abhängigkeit: ${JSON.stringify(qd?.dep)} ${qd?.present}`)
+  check(qd?.range === '(-?, 1.12.56]', `Quilt, Bereich: ${qd?.range}`)
+  check(crash.parseQuiltReport(QUILT.missing)?.details[0]?.kind === 'missing', 'Quilt, fehlender Mod')
+  const qb = crash.parseQuiltReport(QUILT.breaks)?.details[0]
+  check(qb?.kind === 'breaks' && qb.mod.file === 'breakertest.jar' && qb.dep.id === 'victimtest', `Quilt, Konflikt: ${JSON.stringify(qb)}`)
+  check(crash.parseQuiltReport(QUILT.loader)?.details[0]?.dep.file === undefined, 'Quilt, ein Pfad außerhalb des Mod-Ordners wurde als Datei gelesen')
+  const qr = (text) => crash.parseQuiltRange(text)
+  check(qr('(-?, 1.12.56]')?.test('1.12.56') && !qr('(-?, 1.12.56]')?.test('1.13.1'), 'Quilt-Bereich nach oben offen')
+  check(qr('(-?, 1.12.56]')?.de === 'Version 1.12.56 oder älter', `Quilt-Bereich auf Deutsch: ${qr('(-?, 1.12.56]')?.de}`)
+  check(qr('[0.20.0, ?)')?.test('0.20.1') && !qr('[0.20.0, ?)')?.test('0.19.5'), 'Quilt-Bereich nach unten offen')
+  check(qr('[1.20.1, 1.20.1]')?.de === 'Version 1.20.1', `Quilt, genau eine Version: ${qr('[1.20.1, 1.20.1]')?.de}`)
+  const qu = qr('{ [1.0, 2.0) U [3.0, ?) }')
+  check(qu?.test('1.5') && qu.test('3.1') && !qu.test('2.5'), 'Quilt, mehrere Bereiche')
+
+  // Read from logs/latest.log: the launcher's buffer holds nothing of it.
+  const quiltLog = (text) => {
+    mkdirSync(join(p.gameDir('quilt'), 'logs'), { recursive: true })
+    writeFileSync(join(p.gameDir('quilt'), 'logs', 'latest.log'), text)
+  }
+  quiltLog(QUILT.mismatch)
+  check((await crash.rememberCrash('quilt', Date.now() - 100)) === true, 'Quilt: Bericht aus latest.log nicht gelesen')
+  report = await compat.checkCompatibility('quilt')
+  const qfix = report.issues.find((i) => i.id === 'crash-replace-fabric-language-kotlin')
+  check(qfix?.fix?.kind === 'install-version' && qfix.fix.versionId === 'flk-11256', `Quilt, Vorschlag: ${JSON.stringify(report.issues.map((i) => [i.id, i.fix?.versionId]))}`)
+  check(/Zoomify braucht Fabric Language Kotlin: Version 1\.12\.56 oder älter/.test(qfix?.title ?? ''), `Quilt, Titel: ${qfix?.title}`)
+  check(/Quilt den Start abgebrochen/.test(qfix?.detail ?? ''), `Quilt, Text nennt den Loader nicht: ${qfix?.detail}`)
+  quiltLog(QUILT.minecraft)
+  await crash.rememberCrash('quilt', Date.now() - 100)
+  report = await compat.checkCompatibility('quilt')
+  const qrefit = report.issues.find((i) => i.id.startsWith('crash-refit-'))
+  check(qrefit?.fix?.kind === 'install-version' && qrefit.fix.versionId === 'xm-12111', `Quilt, Mod für andere Minecraft-Version: ${JSON.stringify(report.issues.map((i) => [i.id, i.fix]))}`)
+  quiltLog(QUILT.loader)
+  check((await crash.rememberCrash('quilt', Date.now() - 100)) === true, 'Quilt: zu alter Loader ohne Hinweis')
+  report = await compat.checkCompatibility('quilt')
+  const qload = report.issues.find((i) => i.id === 'crash-replace-fabricloader')
+  check(qload && !qload.fix && /Version ändern/.test(qload.detail), `Quilt, Loader zu alt: ${JSON.stringify(qload)}`)
+  // An older log file says nothing about this start.
+  quiltLog(QUILT.mismatch)
+  check((await crash.rememberCrash('quilt', Date.now() + 60000)) === false, 'Ein latest.log von vorher wurde gelesen')
+
+  // --- 11. Forge and NeoForge -------------------------------------------------------------
+  const fr = crash.parseForgeReport(FORGE)
+  check(fr?.details.length === 4, `Forge, Anzahl: ${fr?.details.length}`)
+  const [fGecko, fCloth, fMc, fBreak] = fr?.details ?? []
+  check(fGecko?.kind === 'mismatch' && fGecko.mod.id === 'mobmod' && fGecko.dep.id === 'geckolib' && fGecko.range === '[4.4.9,4.5)' && fGecko.present[0] === '4.6.0', `Forge, falsche Version: ${JSON.stringify(fGecko)}`)
+  check(fCloth?.kind === 'missing' && fCloth.dep.id === 'cloth_config', `Forge, fehlend: ${JSON.stringify(fCloth)}`)
+  check(fMc?.dep.id === 'minecraft', `Forge, Minecraft: ${JSON.stringify(fMc)}`)
+  check(fBreak?.kind === 'breaks' && fBreak.mod.id === 'breakermod' && fBreak.dep.id === 'victimmod', `Forge, Konflikt: ${JSON.stringify(fBreak)}`)
+  check(crash.parseForgeReport('[main/INFO] Loading 120 mods') === null, 'Ein normales Forge-Log wurde als Bericht gelesen')
+  // Only a warning the game goes on after, so no report.
+  check(crash.parseForgeReport("Conflicts between mods:\n\tMod 'a' discourages 'b', versions: '[1,)'; Version found: '2'") === null, 'Eine bloße Warnung wurde als Bericht gelesen')
+
+  const mr = (text) => crash.parseMavenRange(text)
+  check(mr('[4.4.9,4.5)')?.test('4.4.12') && !mr('[4.4.9,4.5)')?.test('4.5.0') && !mr('[4.4.9,4.5)')?.test('4.4.8'), 'Maven-Bereich')
+  check(mr('(,1.13.14]')?.de === 'Version 1.13.14 oder älter', `Maven nach oben: ${mr('(,1.13.14]')?.de}`)
+  check(mr('[15.0,)')?.de === 'Version 15.0 oder neuer', `Maven nach unten: ${mr('[15.0,)')?.de}`)
+  check(mr('[1.0]')?.test('1.0') && !mr('[1.0]')?.test('1.1'), 'Maven, genau eine Version')
+  check(mr('1.0')?.test('0.1') && mr('')?.test('9') && mr('*')?.test('9'), 'Maven, ohne Klammern ist jede Version recht')
+  const multi = mr('[1.0,2.0),[3.0,)')
+  check(multi?.test('1.5') && multi.test('3.2') && !multi.test('2.5'), 'Maven, mehrere Bereiche')
+  const cm = crash.compareMaven
+  check(cm('1.0-beta', '1.0') < 0 && cm('0.5.1.f', '0.5.1') > 0 && cm('1.0', '1.0.0') === 0 && cm('15.20.0.106', '15.2.0.27') > 0, 'Maven-Vergleich')
+  const forgeNames = [
+    ['jei-1.20.1-forge-15.20.0.106', '1.20.1', '15.20.0.106'],
+    ['0.5.1.f', '1.20.1', '0.5.1.f'],
+    ['geckolib-neoforge-1.21.1-4.4.9', '1.21.1', '4.4.9'],
+    ['1.21.1-4.4.9', '1.21.1', '4.4.9'],
+    ['create-1.21.1-6.0.4', '1.21.1', '6.0.4']
+  ]
+  for (const [name, game, expected] of forgeNames) {
+    const got = crash.modVersionOf(name, game)
+    check(got === expected, `Versionsname "${name}": ${got} statt ${expected}`)
+  }
+
+  check((await crashed('neoforge', FORGE)) === true, 'NeoForge: kein Vorschlag')
+  report = await compat.checkCompatibility('neoforge')
+  notes.push(`NeoForge: ${report.issues.filter((i) => i.id.startsWith('crash-')).map((i) => `${i.title} [${i.fix?.label ?? '-'}]`).join(' | ')}`)
+  const nGecko = report.issues.find((i) => i.id === 'crash-replace-geckolib')
+  check(nGecko?.fix?.kind === 'install-version' && nGecko.fix.versionId === 'gl-4412', `NeoForge, GeckoLib: ${JSON.stringify(nGecko?.fix)}`)
+  check(/Mob Mod braucht GeckoLib: eine Version ab 4\.4\.9 und unter 4\.5/.test(nGecko?.title ?? ''), `NeoForge, Titel: ${nGecko?.title}`)
+  const nCloth = report.issues.find((i) => i.id === 'crash-install-cloth_config')
+  check(nCloth?.fix?.kind === 'install-dependency' && nCloth.fix.projectId === '9s6osm5g' && /Cloth Config API/.test(nCloth.title), `NeoForge, Cloth Config: ${JSON.stringify(nCloth)}`)
+  const nOld = report.issues.find((i) => i.id === 'crash-refit-oldmod')
+  check(nOld?.fix?.kind === 'install-version' && nOld.fix.versionId === 'old-121', `NeoForge, Mod für 1.20: ${JSON.stringify(nOld)}`)
+  const nBreak = report.issues.find((i) => i.id === 'crash-refit-breakermod')
+  check(nBreak?.fix?.kind === 'disable-content' && /verträgt sich nicht/.test(nBreak.title), `NeoForge, Konflikt: ${JSON.stringify(nBreak)}`)
+
+  await content.applyFix('neoforge', nGecko.fix)
+  const geckoNow = instances.getInstance('neoforge').content.find((c) => c.projectId === 'geckolib')
+  check(geckoNow?.versionId === 'gl-4412' && geckoNow.keepVersion === true, `NeoForge, nach dem Beheben: ${JSON.stringify({ v: geckoNow?.versionId, keep: geckoNow?.keepVersion })}`)
+  report = await compat.checkCompatibility('neoforge')
+  check(!report.issues.some((i) => i.id === 'crash-replace-geckolib') && report.issues.some((i) => i.id === 'crash-refit-oldmod'), 'NeoForge: nach einem Fix verschwanden die falschen Einträge')
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

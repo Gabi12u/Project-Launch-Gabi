@@ -266,7 +266,7 @@ export function CompatibilityGate(): JSX.Element | null {
 
   const errors = current.issues.filter((i) => i.severity === 'error')
   const fixable = current.issues.filter(isSafeAutoFix).length
-  const afterCrash = compatGate.afterCrash === true
+  const afterCrash = compatGate.afterCrash
 
   return (
     <Modal
@@ -274,14 +274,14 @@ export function CompatibilityGate(): JSX.Element | null {
       title={
         <span className="row gap-8" style={{ alignItems: 'center' }}>
           <IconWarning size={16} />
-          {afterCrash ? tr('Minecraft ist abgestürzt', 'Minecraft crashed') : tr('Problem gefunden', 'Problem found')}
+          {afterCrash ? tr('Minecraft konnte nicht starten', 'Minecraft could not start') : tr('Problem gefunden', 'Problem found')}
         </span>
       }
       subtitle={
         afterCrash
           ? tr(
-              `Fabric hat in ${compatGate.instanceName} Mods gefunden, die nicht zusammenpassen. So lässt es sich beheben:`,
-              `Fabric found mods in ${compatGate.instanceName} that do not fit together. This is how to fix it:`
+              `${afterCrash.loader} hat in ${compatGate.instanceName} Mods gefunden, die nicht zusammenpassen. So lässt es sich beheben:`,
+              `${afterCrash.loader} found mods in ${compatGate.instanceName} that do not fit together. This is how to fix it:`
             )
           : tr(`${compatGate.instanceName} kann so nicht gestartet werden.`, `${compatGate.instanceName} cannot start like this.`)
       }

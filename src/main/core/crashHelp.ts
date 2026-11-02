@@ -1,24 +1,32 @@
 /**
- * Reads why Fabric refused to start and turns it into fixes.
+ * Reads why the mod loader refused to start and turns it into fixes.
  *
- * When mods do not fit together, Fabric Loader stops before the game window
- * opens and prints exactly what is wrong, down to the version another mod
- * needs ("requires version 1.12.56 or later of mod ..., but only the wrong
- * version is present: 1.13.1!"). The launcher only ever said "probably a
- * mod", and the player had to find that line in the log and pick the right
- * version by hand.
+ * When mods do not fit together, the loader stops before the game reaches
+ * its menu and says exactly what is wrong, down to the version another mod
+ * needs. The launcher only ever said "probably a mod", and the player had to
+ * find that line in the log and pick the right version by hand.
  *
- * After such a crash this reads those lines, finds the installed mod each one
- * names and the version that satisfies it, and hands the result to the
+ * After the game ends this reads those lines, finds the installed mod each
+ * one names and the version that satisfies it, and hands the result to the
  * compatibility check. The next Play click then offers the fix like any other
  * problem, with "Automatisch beheben" swapping the version in.
  *
- * Only Fabric's English messages are read. Fabric translates them into a few
- * other languages (not German), chosen by the system language; a crash in one
- * of those keeps the general hint.
+ * Each loader words it its own way, all taken from real output or from the
+ * loader's own source:
+ * - Fabric: "Mod 'A' (a) 1.0 requires version 2.0 or later of mod 'B' (b),
+ *   but only the wrong version is present: 1.5!", plus a suggested solution.
+ *   Fabric translates this into a few languages (not German) by the system
+ *   language; such a report is not read.
+ * - Quilt: "A requires version [2.0, ?) of b, but only wrong versions are
+ *   present:", in a report it writes to the log. Always English.
+ * - Forge and NeoForge: "Mod ID: 'b', Requested by: 'a', Expected range:
+ *   '[2.0,)', Actual version: '1.5'". Always English. Forge and older NeoForge
+ *   show this on a screen inside the game and close normally from there, so
+ *   the log is read after every exit, not only after a crash.
  */
+import { open, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { CompatibilityIssue, ContentItem, Instance, ProjectVersion } from '@shared/types'
+import type { CompatibilityIssue, ContentItem, Instance, LoaderId, ProjectVersion } from '@shared/types'
 import { tr } from '@shared/i18n'
 import { getLogBuffer } from './instanceLog'
 import { getInstance } from './instances'
@@ -36,43 +44,63 @@ const logger = log('crashHelp')
  */
 const flattenName = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 
-/* ------------------------------------------------------------------ *
- * Reading Fabric's report
- * ------------------------------------------------------------------ */
-
-export interface FabricMod {
-  name: string
-  id: string
-  version?: string
+const LOADER_NAMES: Record<LoaderId, string> = {
+  vanilla: 'Minecraft',
+  fabric: 'Fabric',
+  quilt: 'Quilt',
+  forge: 'Forge',
+  neoforge: 'NeoForge'
 }
 
-/** One line under "More details:". */
-export interface FabricRequirement {
+/** The loader's name for the interface. */
+export function loaderName(loader: LoaderId): string {
+  return LOADER_NAMES[loader] ?? loader
+}
+
+/* ------------------------------------------------------------------ *
+ * Reading the loader's report
+ * ------------------------------------------------------------------ */
+
+export interface LoaderMod {
+  name: string
+  /** Empty where the loader only gives the name (Quilt, for the asking mod). */
+  id: string
+  version?: string
+  /** File name in the mods folder, where the loader says it (Quilt). */
+  file?: string
+}
+
+/** One thing the loader found wrong. */
+export interface Requirement {
   kind: 'mismatch' | 'missing' | 'breaks'
   /** The mod that has the requirement. */
-  mod: FabricMod
+  mod: LoaderMod
   /** The mod it requires or refuses. */
-  dep: FabricMod
+  dep: LoaderMod
   range: string
   /** Versions of `dep` that are present, for `mismatch` and `breaks`. */
   present: string[]
 }
 
-/** One line under "A potential solution has been determined". */
-export type FabricSolution =
-  | { kind: 'replace'; mod: FabricMod; range: string }
-  | { kind: 'refit'; mod: FabricMod }
-  | { kind: 'install'; mod: FabricMod; range: string }
-  | { kind: 'remove'; mod: FabricMod }
+/** One step that would help. Only Fabric names these itself. */
+export type Solution =
+  | { kind: 'replace'; mod: LoaderMod; range: string }
+  | { kind: 'refit'; mod: LoaderMod }
+  | { kind: 'install'; mod: LoaderMod; range: string }
+  | { kind: 'remove'; mod: LoaderMod }
 
-export interface FabricReport {
-  solutions: FabricSolution[]
-  details: FabricRequirement[]
+/** Whose wording a report is in, which also decides how versions compare. */
+export type ReportSource = 'fabric' | 'quilt' | 'forge'
+
+export interface LoaderReport {
+  source: ReportSource
+  solutions: Solution[]
+  details: Requirement[]
 }
 
-// "Mod 'Name' (id)" for a mod, "'Name' (id)" for Minecraft, Java and the
-// loader itself. A name can hold an apostrophe ("Xaero's Minimap"), so the
-// name runs up to the quote that is followed by the id in brackets.
+// Fabric: "Mod 'Name' (id)" for a mod, "'Name' (id)" for Minecraft, Java and
+// the loader itself. A name can hold an apostrophe ("Xaero's Minimap"), so
+// the name runs up to the quote that is followed by the id in brackets.
 const REF = String.raw`(?:[Mm]od )?'(.+?)' \(([^)\s]+)\)`
 const LEAD = String.raw`^\s*-\s*`
 
@@ -98,10 +126,10 @@ export function isFabricIncompatibility(text: string): boolean {
  * Picks Fabric's report apart. Null when the text holds none, or one in a
  * language other than English.
  */
-export function parseFabricReport(text: string): FabricReport | null {
+export function parseFabricReport(text: string): LoaderReport | null {
   if (!isFabricIncompatibility(text)) return null
-  const solutions: FabricSolution[] = []
-  const details: FabricRequirement[] = []
+  const solutions: Solution[] = []
+  const details: Requirement[] = []
 
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trimEnd()
@@ -149,11 +177,105 @@ export function parseFabricReport(text: string): FabricReport | null {
   }
 
   if (solutions.length === 0 && details.length === 0) return null
-  return { solutions, details }
+  return { source: 'fabric', solutions, details }
+}
+
+// Quilt names the asking mod by its name and the other one by its id, and
+// lists the versions it found with the file each came from.
+const QUILT_MARK = '---- Quilt Loader: Failed to load ----'
+const QUILT_REQUIRES = /^(.+?) requires (any version|version (.+?)) of ([^\s,]+), (which is missing!|but only wrong versions are present:)$/
+const QUILT_BREAKS = /^(.+?) breaks (all versions|version (.+?)) of ([^\s,]+), which is present!$/
+const QUILT_PRESENT = /^- version (\S+)(?: provided by .+?)? from (.+)$/
+const QUILT_LOADED = /^(.+?) is loaded from (.+)$/
+const QUILT_PATH = /^- (<mods>\/.+)$/
+
+/** The file a Quilt path names in the mods folder, if it lies there. */
+function modsFile(path: string): string | undefined {
+  const m = /^<mods>\/([^!]+)/.exec(path.trim())
+  if (!m) return undefined
+  return m[1].split('/').pop()
+}
+
+/** "org.example:mod" names the mod "mod". */
+const bareId = (id: string): string => id.slice(id.lastIndexOf(':') + 1)
+
+/** Picks Quilt's report apart. Null when the text holds none. */
+export function parseQuiltReport(text: string): LoaderReport | null {
+  if (!text.includes(QUILT_MARK)) return null
+  const details: Requirement[] = []
+  let current: Requirement | null = null
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    let m: RegExpExecArray | null
+    if (line.startsWith('-- ')) {
+      current = null
+    } else if ((m = QUILT_REQUIRES.exec(line))) {
+      const id = bareId(m[4])
+      current = {
+        kind: m[5].startsWith('which') ? 'missing' : 'mismatch',
+        mod: { name: m[1], id: '' },
+        dep: { name: id, id },
+        range: m[3] ?? 'any version',
+        present: []
+      }
+      details.push(current)
+    } else if ((m = QUILT_BREAKS.exec(line))) {
+      const id = bareId(m[4])
+      current = { kind: 'breaks', mod: { name: m[1], id: '' }, dep: { name: id, id }, range: m[3] ?? 'any version', present: [] }
+      details.push(current)
+    } else if (current && (m = QUILT_PRESENT.exec(line))) {
+      current.present.push(m[1])
+      current.dep.file ??= modsFile(m[2])
+    } else if (current && (m = QUILT_LOADED.exec(line))) {
+      if (m[1] === current.mod.name) current.mod.file ??= modsFile(m[2])
+    } else if (current?.kind === 'breaks' && (m = QUILT_PATH.exec(line))) {
+      current.mod.file ??= modsFile(m[1])
+    }
+  }
+
+  // Quilt suggests nothing itself; each detail stands for its own step.
+  return details.length > 0 ? { source: 'quilt', solutions: [], details } : null
+}
+
+// Forge and NeoForge, the same lines since Forge 1.20.1 (ModSorter).
+const FORGE_MARK = /Missing or unsupported mandatory dependencies:|Unsupported installed optional dependencies:|Incompatibilities between mods:/
+const FORGE_DEP = /Mod ID: '([^']+)', Requested by: '([^']+)', Expected range: '([^']*)', Actual version: '([^']*)'/
+const FORGE_BREAKS = /Mod '([^']+)' is incompatible with '([^']+)', versions: '([^']*)'; Version found: '([^']*)'/
+
+/** Picks the report of Forge or NeoForge apart. Null when the text holds none. */
+export function parseForgeReport(text: string): LoaderReport | null {
+  if (!FORGE_MARK.test(text)) return null
+  const details: Requirement[] = []
+  for (const line of text.split(/\r?\n/)) {
+    let m: RegExpExecArray | null
+    if ((m = FORGE_DEP.exec(line))) {
+      const missing = m[4] === '[MISSING]'
+      details.push({
+        kind: missing ? 'missing' : 'mismatch',
+        mod: { name: m[2], id: m[2] },
+        dep: { name: m[1], id: m[1] },
+        range: m[3],
+        present: missing ? [] : [m[4]]
+      })
+    } else if ((m = FORGE_BREAKS.exec(line))) {
+      details.push({ kind: 'breaks', mod: { name: m[1], id: m[1] }, dep: { name: m[2], id: m[2] }, range: m[3], present: [m[4]] })
+    }
+  }
+  return details.length > 0 ? { source: 'forge', solutions: [], details } : null
+}
+
+/** Whichever loader's report the text holds. */
+export function parseLoaderReport(text: string): LoaderReport | null {
+  return parseFabricReport(text) ?? parseQuiltReport(text) ?? parseForgeReport(text)
+}
+
+function mentionsReport(text: string): boolean {
+  return isFabricIncompatibility(text) || text.includes(QUILT_MARK) || FORGE_MARK.test(text)
 }
 
 /* ------------------------------------------------------------------ *
- * Versions the way Fabric compares them
+ * Versions the way the loaders compare them
  * ------------------------------------------------------------------ */
 
 interface Semantic {
@@ -161,7 +283,7 @@ interface Semantic {
   pre: string[] | null
 }
 
-/** Null for a version Fabric would only compare as plain text. */
+/** Null for a version Fabric and Quilt would only compare as plain text. */
 function parseSemantic(version: string): Semantic | null {
   const noBuild = version.split('+')[0]
   const dash = noBuild.indexOf('-')
@@ -170,7 +292,10 @@ function parseSemantic(version: string): Semantic | null {
   return { core: core.split('.').map(Number), pre: dash >= 0 ? noBuild.slice(dash + 1).split('.') : null }
 }
 
-/** Below zero when `a` is older. Build metadata after "+" does not count. */
+/**
+ * Fabric's and Quilt's order. Below zero when `a` is older. Build metadata
+ * after "+" does not count.
+ */
 export function compareVersions(a: string, b: string): number {
   const left = parseSemantic(a)
   const right = parseSemantic(b)
@@ -196,11 +321,112 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
+// Maven's order of known qualifiers; a plain release sits at "". Unknown
+// words come after all of them, among themselves alphabetically.
+const QUALIFIER_RANK: Record<string, number> = {
+  alpha: 0, a: 0, beta: 1, b: 1, milestone: 2, m: 2, rc: 3, cr: 3, snapshot: 4,
+  '': 5, ga: 5, final: 5, release: 5, sp: 6
+}
+
+function mavenItems(version: string): (number | string)[] {
+  return version
+    .toLowerCase()
+    .split(/[.\-_+]|(?<=\d)(?=[a-z])|(?<=[a-z])(?=\d)/)
+    .filter((item) => item !== '')
+    .map((item) => (/^\d+$/.test(item) ? Number(item) : item))
+}
+
+/**
+ * Forge's and NeoForge's order (Maven's): "1.0-beta" before "1.0", and
+ * "0.5.1.f" after "0.5.1". Below zero when `a` is older.
+ */
+export function compareMaven(a: string, b: string): number {
+  const left = mavenItems(a)
+  const right = mavenItems(b)
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const x = left[i]
+    const y = right[i]
+    if (typeof x === 'number' && typeof y === 'number') {
+      if (x !== y) return x - y
+      continue
+    }
+    // A number against nothing counts as against 0, against a word it wins.
+    if (typeof x === 'number') {
+      if (y === undefined) {
+        if (x !== 0) return 1
+        continue
+      }
+      return 1
+    }
+    if (typeof y === 'number') {
+      if (x === undefined) {
+        if (y !== 0) return -1
+        continue
+      }
+      return -1
+    }
+    const wx = x ?? ''
+    const wy = y ?? ''
+    const diff = (QUALIFIER_RANK[wx] ?? 7) - (QUALIFIER_RANK[wy] ?? 7)
+    if (diff !== 0) return diff
+    if (wx !== wy) return wx < wy ? -1 : 1
+  }
+  return 0
+}
+
+function comparerFor(source: ReportSource): (a: string, b: string) => number {
+  return source === 'forge' ? compareMaven : compareVersions
+}
+
 export interface VersionRange {
   test: (version: string) => boolean
   /** The same range in words for the interface, in both languages. */
   de: string
   en: string
+}
+
+const ANY: VersionRange = { test: () => true, de: 'eine beliebige Version', en: 'any version' }
+const NONE: VersionRange = { test: () => false, de: 'keine mögliche Version', en: 'no possible version' }
+
+/** One interval, bounds left empty where open. */
+function interval(
+  low: string,
+  high: string,
+  lowIn: boolean,
+  highIn: boolean,
+  compare: (a: string, b: string) => number
+): VersionRange {
+  if (!low && !high) return ANY
+  if (low && high && low === high) {
+    return { test: (v) => compare(v, low) === 0, de: `Version ${low}`, en: `version ${low}` }
+  }
+  const test = (v: string): boolean =>
+    (!low || (lowIn ? compare(v, low) >= 0 : compare(v, low) > 0)) && (!high || (highIn ? compare(v, high) <= 0 : compare(v, high) < 0))
+  if (!high) {
+    return lowIn
+      ? { test, de: `Version ${low} oder neuer`, en: `version ${low} or later` }
+      : { test, de: `eine Version nach ${low}`, en: `a version after ${low}` }
+  }
+  if (!low) {
+    return highIn
+      ? { test, de: `Version ${high} oder älter`, en: `version ${high} or earlier` }
+      : { test, de: `eine Version vor ${high}`, en: `a version before ${high}` }
+  }
+  return {
+    test,
+    de: `eine Version ${lowIn ? 'ab' : 'nach'} ${low} und ${highIn ? 'bis' : 'unter'} ${high}`,
+    en: `a version ${lowIn ? 'from' : 'after'} ${low} and ${highIn ? 'up to' : 'below'} ${high}`
+  }
+}
+
+function anyOf(parts: VersionRange[]): VersionRange | null {
+  if (parts.length === 0) return null
+  if (parts.length === 1) return parts[0]
+  return {
+    test: (v) => parts.some((part) => part.test(v)),
+    de: parts.map((part) => part.de).join(' oder '),
+    en: parts.map((part) => part.en).join(' or ')
+  }
 }
 
 type Piece = [RegExp, (m: RegExpExecArray) => VersionRange]
@@ -211,28 +437,10 @@ const V = '([^\\s,]+)'
 const PIECES: Piece[] = [
   [
     new RegExp(`^any version between ${V} \\((inclusive|exclusive)\\) and ${V} \\((inclusive|exclusive)\\)`),
-    (m) => {
-      const lowIn = m[2] === 'inclusive'
-      const highIn = m[4] === 'inclusive'
-      return {
-        test: (v) => {
-          const low = compareVersions(v, m[1])
-          const high = compareVersions(v, m[3])
-          return (lowIn ? low >= 0 : low > 0) && (highIn ? high <= 0 : high < 0)
-        },
-        de: `eine Version ab ${m[1]}${lowIn ? '' : ' (ohne diese)'} und ${highIn ? 'bis' : 'unter'} ${m[3]}`,
-        en: `a version from ${m[1]}${lowIn ? '' : ' (exclusive)'} and ${highIn ? 'up to' : 'below'} ${m[3]}`
-      }
-    }
+    (m) => interval(m[1], m[3], m[2] === 'inclusive', m[4] === 'inclusive', compareVersions)
   ],
-  [
-    new RegExp(`^any version after ${V}`),
-    (m) => ({ test: (v) => compareVersions(v, m[1]) > 0, de: `eine Version nach ${m[1]}`, en: `a version after ${m[1]}` })
-  ],
-  [
-    new RegExp(`^any version before ${V}`),
-    (m) => ({ test: (v) => compareVersions(v, m[1]) < 0, de: `eine Version vor ${m[1]}`, en: `a version before ${m[1]}` })
-  ],
+  [new RegExp(`^any version after ${V}`), (m) => interval(m[1], '', false, false, compareVersions)],
+  [new RegExp(`^any version before ${V}`), (m) => interval('', m[1], false, false, compareVersions)],
   [
     /^any (\d+)\.(\d+)\.x version/,
     (m) => ({
@@ -252,22 +460,16 @@ const PIECES: Piece[] = [
       en: `a ${m[1]}.x version`
     })
   ],
-  [/^any version/, () => ({ test: () => true, de: 'eine beliebige Version', en: 'any version' })],
-  [/^an unsatisfiable version range/, () => ({ test: () => false, de: 'keine mögliche Version', en: 'no possible version' })],
-  [
-    new RegExp(`^version ${V} or later`),
-    (m) => ({ test: (v) => compareVersions(v, m[1]) >= 0, de: `Version ${m[1]} oder neuer`, en: `version ${m[1]} or later` })
-  ],
-  [
-    new RegExp(`^version ${V} or earlier`),
-    (m) => ({ test: (v) => compareVersions(v, m[1]) <= 0, de: `Version ${m[1]} oder älter`, en: `version ${m[1]} or earlier` })
-  ],
-  [new RegExp(`^version ${V}`), (m) => ({ test: (v) => compareVersions(v, m[1]) === 0, de: `Version ${m[1]}`, en: `version ${m[1]}` })]
+  [/^any version/, () => ANY],
+  [/^an unsatisfiable version range/, () => NONE],
+  [new RegExp(`^version ${V} or later`), (m) => interval(m[1], '', true, false, compareVersions)],
+  [new RegExp(`^version ${V} or earlier`), (m) => interval('', m[1], false, true, compareVersions)],
+  [new RegExp(`^version ${V}`), (m) => interval(m[1], m[1], true, true, compareVersions)]
 ]
 
 /**
- * Reads a range like "version 1.12.56 or later" or "any 1.12.x version or
- * version 2.0". Null for wording this does not know.
+ * Reads a range in Fabric's words, like "version 1.12.56 or later" or "any
+ * 1.12.x version or version 2.0". Null for wording this does not know.
  */
 export function parseRange(text: string): VersionRange | null {
   const parts: VersionRange[] = []
@@ -287,29 +489,67 @@ export function parseRange(text: string): VersionRange | null {
     if (separator) rest = rest.slice(separator[0].length)
     else if (rest) return null
   }
-  if (parts.length === 0) return null
-  if (parts.length === 1) return parts[0]
-  return {
-    test: (v) => parts.some((part) => part.test(v)),
-    de: parts.map((part) => part.de).join(' oder '),
-    en: parts.map((part) => part.en).join(' or ')
+  return anyOf(parts)
+}
+
+/**
+ * Reads bracket intervals, "[2.0,3.0)" or "(-?, 1.12.56]", with `open`
+ * standing for a bound that is left open.
+ */
+function parseIntervals(text: string, compare: (a: string, b: string) => number, open: string[]): VersionRange | null {
+  const parts: VersionRange[] = []
+  const pattern = /([[(])\s*([^,[\]()]*?)\s*(?:,\s*([^,[\]()]*?)\s*)?([\])])/g
+  let m: RegExpExecArray | null
+  while ((m = pattern.exec(text))) {
+    const bound = (raw: string): string => (open.includes(raw) ? '' : raw)
+    const low = bound(m[2])
+    // "[1.0]" is exactly that version.
+    const high = m[3] === undefined ? low : bound(m[3])
+    parts.push(interval(low, high, m[1] === '[', m[4] === ']', compare))
   }
+  return anyOf(parts)
+}
+
+/**
+ * Reads a Maven range as Forge and NeoForge print it. A bare version without
+ * brackets is only a recommendation and accepts any version.
+ */
+export function parseMavenRange(text: string): VersionRange | null {
+  const trimmed = text.trim()
+  if (trimmed === '' || trimmed === '*' || !/[[(]/.test(trimmed)) return ANY
+  return parseIntervals(trimmed, compareMaven, [''])
+}
+
+/** Reads a range in Quilt's notation, "[0.20.0, ?)" or "{ [1, 2) U [3, ?) }". */
+export function parseQuiltRange(text: string): VersionRange | null {
+  const trimmed = text.trim()
+  if (trimmed === 'any version') return ANY
+  if (trimmed.includes('<empty set>')) return NONE
+  return parseIntervals(trimmed, compareVersions, ['', '-?', '?'])
+}
+
+export function rangeFor(source: ReportSource, text: string): VersionRange | null {
+  if (source === 'fabric') return parseRange(text)
+  if (source === 'quilt') return parseQuiltRange(text)
+  return parseMavenRange(text)
 }
 
 /**
  * The mod's own version inside a release name from Modrinth or CurseForge.
  *
  * Mostly the two agree ("0.92.0+1.20.1"), but some put the game version in
- * front ("mc1.20.1-0.5.3") or a loader after it ("23.9.0_Fabric_1.20").
- * Only a pre-release word is kept after a dash, so "0.5.3-mc1.20" does not
- * read as a pre-release of 0.5.3.
+ * front ("mc1.20.1-0.5.3") or in the middle ("jei-1.20.1-forge-15.20.0.106"),
+ * or a loader after it ("23.9.0_Fabric_1.20"). Only a pre-release word or a
+ * single letter is kept after the numbers, so "0.5.3-mc1.20" does not read
+ * as a pre-release of 0.5.3, while Create's "0.5.1.f" stays whole.
  */
 export function modVersionOf(versionNumber: string, mcVersion: string): string | null {
   let rest = versionNumber.trim()
-  rest = rest.replace(/^(?:fabric|quilt)[-_ ]/i, '')
+  rest = rest.replace(/^(?:fabric|quilt|forge|neoforge)[-_ ]/i, '')
   rest = rest.replace(/^mc\d+(?:\.\d+)+[-_]/i, '')
-  if (rest.startsWith(`${mcVersion}-`)) rest = rest.slice(mcVersion.length + 1)
-  const m = /(\d+(?:\.\d+)+)(-(?:alpha|beta|rc|pre)[0-9A-Za-z.]*)?/i.exec(rest) ?? /(\d+)/.exec(rest)
+  const game = mcVersion.replace(/\./g, '\\.')
+  rest = rest.replace(new RegExp(`(?<![\\d.])(?:mc)?${game}(?!\\d|\\.\\d)`, 'gi'), ' ')
+  const m = /(\d+(?:\.\d+)+)(-(?:alpha|beta|rc|pre)[0-9A-Za-z.]*|\.[a-z](?![a-z]))?/i.exec(rest) ?? /(\d+)/.exec(rest)
   if (!m) return null
   return m[1] + (m[2] ?? '')
 }
@@ -318,8 +558,21 @@ export function modVersionOf(versionNumber: string, mcVersion: string): string |
  * Turning the report into fixes
  * ------------------------------------------------------------------ */
 
-/** Ids Fabric uses for things that are no mod in the folder. */
-const BUILTIN = new Set(['minecraft', 'java', 'fabricloader', 'fabric-loader', 'quilt_loader'])
+/** Ids the loaders use for things that are no mod in the folder. */
+const BUILTIN = new Set(['minecraft', 'java', 'fabricloader', 'fabric-loader', 'quilt_loader', 'forge', 'neoforge', 'fml', 'javafml', 'lowcodefml'])
+
+const BUILTIN_NAMES: Record<string, string> = {
+  fabricloader: 'Fabric Loader',
+  'fabric-loader': 'Fabric Loader',
+  quilt_loader: 'Quilt Loader',
+  forge: 'Forge',
+  neoforge: 'NeoForge',
+  fml: 'FML',
+  javafml: 'FML',
+  lowcodefml: 'FML',
+  minecraft: 'Minecraft',
+  java: 'Java'
+}
 
 interface Finding {
   issue: CompatibilityIssue
@@ -364,59 +617,122 @@ export function forgetCrash(instanceId: string): void {
 }
 
 /**
- * Reads the output of the run that just crashed and keeps what it found.
+ * The start of the game's own log file, for a report that already scrolled
+ * out of the launcher's buffer. Only the head: the report comes while
+ * loading, and a long session can leave a large file.
+ */
+async function latestLogHead(instanceId: string, startedAt: number): Promise<string> {
+  const file = join(paths.gameDir(instanceId), 'logs', 'latest.log')
+  try {
+    const info = await stat(file)
+    // Written by an earlier start, so it says nothing about this one.
+    if (info.mtimeMs < startedAt - 1000) return ''
+    const size = Math.min(info.size, 2 * 1024 * 1024)
+    const handle = await open(file, 'r')
+    try {
+      const buffer = Buffer.alloc(size)
+      await handle.read(buffer, 0, size, 0)
+      return buffer.toString('utf8')
+    } finally {
+      await handle.close()
+    }
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Reads the output of the run that just ended and keeps what it found.
  * True when there is something to fix.
  */
 export async function rememberCrash(instanceId: string, startedAt: number): Promise<boolean> {
   findings.delete(instanceId)
-  const text = getLogBuffer(instanceId)
+  let text = getLogBuffer(instanceId)
     .filter((line) => line.time >= startedAt - 1000)
     .map((line) => line.text)
     .join('\n')
-  const report = parseFabricReport(text)
+  let report = parseLoaderReport(text)
   if (!report) {
-    if (isFabricIncompatibility(text)) logger.info('Fabric meldet unpassende Mods, der Bericht ließ sich aber nicht lesen')
+    const head = await latestLogHead(instanceId, startedAt)
+    const fromFile = head ? parseLoaderReport(head) : null
+    if (fromFile) {
+      report = fromFile
+      text = head
+    }
+  }
+  if (!report) {
+    if (mentionsReport(text)) logger.info('Der Mod-Loader meldet unpassende Mods, der Bericht ließ sich aber nicht lesen')
     return false
   }
   try {
     const found = await resolveReport(getInstance(instanceId), report)
     if (found.length > 0) findings.set(instanceId, found)
-    logger.info(`Absturzhilfe für ${instanceId}: ${found.length} Vorschläge aus Fabrics Bericht`)
+    logger.info(`Absturzhilfe für ${instanceId}: ${found.length} Vorschläge aus dem Bericht (${report.source})`)
     return found.length > 0
   } catch (err) {
-    logger.warn('Fabrics Bericht konnte nicht ausgewertet werden:', err)
+    logger.warn('Der Bericht des Mod-Loaders konnte nicht ausgewertet werden:', err)
     return false
   }
 }
 
+/** Whether two references from a report mean the same mod. */
+function same(a: LoaderMod, b: LoaderMod): boolean {
+  if (a.id && b.id) return a.id === b.id
+  if (a.file && b.file) return a.file === b.file
+  return flattenName(a.name) === flattenName(b.name)
+}
+
+type Finder = (ref: LoaderMod, enabled?: boolean) => ContentItem | undefined
+
 /** Builds the findings for one report. Exported for the tests. */
-export async function resolveReport(instance: Instance, report: FabricReport): Promise<Finding[]> {
+export async function resolveReport(instance: Instance, given: LoaderReport): Promise<Finding[]> {
   const mods = instance.content.filter((c) => c.type === 'mod')
   const idsOf = new Map<string, string[]>()
   for (const mod of mods) {
     const ids = mod.modIds ?? (await readJarMetadata(join(paths.mods(instance.id), mod.fileName)))?.ids ?? []
     idsOf.set(mod.id, ids)
   }
-  const find = (ref: FabricMod, enabled = true): ContentItem | undefined =>
-    mods.find((m) => m.enabled === enabled && (idsOf.get(m.id) ?? []).includes(ref.id)) ??
-    mods.find((m) => m.enabled === enabled && (flattenName(m.name) === flattenName(ref.name) || flattenName(m.name) === flattenName(ref.id)))
+  const bare = (fileName: string): string => fileName.replace(/\.disabled$/, '').toLowerCase()
+  const find: Finder = (ref, enabled = true) =>
+    mods.find((m) => m.enabled === enabled && ref.file !== undefined && bare(m.fileName) === ref.file.toLowerCase()) ??
+    mods.find((m) => m.enabled === enabled && ref.id !== '' && (idsOf.get(m.id) ?? []).includes(ref.id)) ??
+    mods.find(
+      (m) =>
+        m.enabled === enabled &&
+        (flattenName(m.name) === flattenName(ref.name) || (ref.id !== '' && flattenName(m.name) === flattenName(ref.id)))
+    )
 
-  // Fabric sometimes names no solution at all, only the details. Each detail
-  // then stands for the step it implies.
-  const named: FabricSolution[] =
+  // Forge and Quilt name some mods by id only. The mod list's name reads
+  // better in the sentence, so it takes over wherever the mod is installed.
+  const label = (ref: LoaderMod): LoaderMod => {
+    if (BUILTIN.has(ref.id)) return { ...ref, name: BUILTIN_NAMES[ref.id] ?? ref.name }
+    if (ref.id === '' || ref.name !== ref.id) return ref
+    const item = find(ref) ?? find(ref, false)
+    return item ? { ...ref, name: item.name } : ref
+  }
+  const report: LoaderReport = {
+    source: given.source,
+    details: given.details.map((d) => ({ ...d, mod: label(d.mod), dep: label(d.dep) })),
+    solutions: given.solutions.map((s) => ({ ...s, mod: label(s.mod) }))
+  }
+
+  // Only Fabric names solutions. Otherwise each detail stands for the step
+  // it implies; a declared conflict asks for another version of the mod that
+  // declares it, as Fabric itself answers it.
+  const named: Solution[] =
     report.solutions.length > 0
       ? report.solutions
-      : report.details.map((d): FabricSolution =>
+      : report.details.map((d): Solution =>
           d.kind === 'mismatch'
             ? { kind: 'replace', mod: { ...d.dep, version: d.present[0] }, range: d.range }
             : d.kind === 'missing'
               ? { kind: 'install', mod: d.dep, range: d.range }
-              : { kind: 'remove', mod: { ...d.dep, version: d.present[0] } }
+              : { kind: 'refit', mod: d.mod }
         )
-  // "Replace Minecraft with version 1.20.1" is Fabric's literal answer to a
-  // mod built for another game version. Swapping the mod for its build for
-  // this game is the step that helps.
-  const solutions = named.flatMap((solution): FabricSolution[] => {
+  // "Replace Minecraft with version 1.20.1" is the literal answer to a mod
+  // built for another game version. Swapping the mod for its build for this
+  // game is the step that helps.
+  const solutions = named.flatMap((solution): Solution[] => {
     if (solution.kind !== 'replace' || solution.mod.id !== 'minecraft') return [solution]
     const askers = report.details.filter((d) => d.kind === 'mismatch' && d.dep.id === 'minecraft')
     return askers.length > 0 ? askers.map((d) => ({ kind: 'refit', mod: d.mod })) : [solution]
@@ -425,14 +741,14 @@ export async function resolveReport(instance: Instance, report: FabricReport): P
   const out: Finding[] = []
   const seen = new Set<string>()
   for (const solution of solutions) {
-    const key = `${solution.kind}:${solution.mod.id}`
+    const key = `${solution.kind}:${solution.mod.id || solution.mod.file || flattenName(solution.mod.name)}`
     if (seen.has(key)) continue
     seen.add(key)
     try {
       const finding = await resolveSolution(instance, report, solution, find)
       if (finding) out.push(finding)
     } catch (err) {
-      logger.warn(`Vorschlag für ${solution.mod.id} nicht ausgewertet:`, err)
+      logger.warn(`Vorschlag für ${solution.mod.id || solution.mod.name} nicht ausgewertet:`, err)
     }
   }
   return out
@@ -454,19 +770,24 @@ function fitsInstance(instance: Instance, version: ProjectVersion): boolean {
   return gameOk && loaderOk
 }
 
+/** Stable per step, so the same problem keeps its row between checks. */
+function issueId(solution: Solution): string {
+  return `crash-${solution.kind}-${solution.mod.id || solution.mod.file || flattenName(solution.mod.name)}`
+}
+
 async function resolveSolution(
   instance: Instance,
-  report: FabricReport,
-  solution: FabricSolution,
-  find: (ref: FabricMod, enabled?: boolean) => ContentItem | undefined
+  report: LoaderReport,
+  solution: Solution,
+  find: Finder
 ): Promise<Finding | null> {
-  const id = `crash-${solution.kind}-${solution.mod.id}`
+  const id = issueId(solution)
 
   if (solution.kind === 'replace') {
-    // Who asked for it, for the sentence. Fabric names it in the details.
-    const reason = report.details.find((d) => d.kind === 'mismatch' && d.dep.id === solution.mod.id)
+    // Who asked for it, for the sentence. The details name it.
+    const reason = report.details.find((d) => d.kind === 'mismatch' && same(d.dep, solution.mod))
     const requirer = reason ? find(reason.mod) : undefined
-    const range = parseRange(solution.range)
+    const range = rangeFor(report.source, solution.range)
     const wanted = range ? tr(range.de, range.en) : solution.range
     const who = reason?.mod.name ?? tr('Ein anderer Mod', 'Another mod')
     const target = find(solution.mod)
@@ -478,8 +799,8 @@ async function resolveSolution(
 
     const title = tr(`${who} braucht ${solution.mod.name}: ${wanted}`, `${who} needs ${solution.mod.name}: ${wanted}`)
     const told = tr(
-      `Installiert ist ${installed}, deshalb hat Fabric den Start abgebrochen.`,
-      `${installed} is installed, so Fabric stopped the launch.`
+      `Installiert ist ${installed}, deshalb hat ${loaderName(instance.loader)} den Start abgebrochen.`,
+      `${installed} is installed, so ${loaderName(instance.loader)} stopped the launch.`
     )
 
     if (!target || target.provider === 'local' || !target.projectId) {
@@ -499,7 +820,7 @@ async function resolveSolution(
     }
 
     const provider = target.provider as 'modrinth' | 'curseforge'
-    const pick = range ? await versionInRange(instance, target, provider, installed, range) : null
+    const pick = range ? await versionInRange(instance, target, provider, installed, range, comparerFor(report.source)) : null
     if (pick) {
       return withWatch(
         {
@@ -547,14 +868,14 @@ async function resolveSolution(
     const target = find(solution.mod)
     if (!target) return null
     const needs = report.details
-      .filter((d) => d.mod.id === solution.mod.id && d.kind === 'mismatch')
+      .filter((d) => d.kind === 'mismatch' && same(d.mod, solution.mod))
       .map((d) => {
-        const range = parseRange(d.range)
+        const range = rangeFor(report.source, d.range)
         return `${d.dep.name} ${range ? tr(range.de, range.en) : d.range}`
       })
-    // Fabric answers a declared conflict the same way: a version of the mod
+    // A declared conflict is answered the same way: a version of the mod
     // that no longer names the other one.
-    const clash = report.details.find((d) => d.kind === 'breaks' && d.mod.id === solution.mod.id)
+    const clash = report.details.find((d) => d.kind === 'breaks' && same(d.mod, solution.mod))
     const why = clash
       ? tr(
           `Laut seinen Entwicklern verträgt sich ${target.name} nicht mit ${clash.dep.name}.`,
@@ -617,10 +938,10 @@ async function resolveSolution(
 
   if (solution.kind === 'install') {
     if (BUILTIN.has(solution.mod.id)) return null
-    const reason = report.details.find((d) => d.kind === 'missing' && d.dep.id === solution.mod.id)
+    const reason = report.details.find((d) => d.kind === 'missing' && same(d.dep, solution.mod))
     const requirer = reason ? find(reason.mod) : undefined
     const who = reason?.mod.name ?? tr('Ein Mod', 'A mod')
-    // Fabric only knows the bare id of a mod that is not there.
+    // Fabric and Forge only know the bare id of a mod that is not there.
     const titleFor = (name: string): string => tr(`${who} braucht ${name}`, `${who} needs ${name}`)
 
     const switchedOff = find(solution.mod, false)
@@ -638,15 +959,21 @@ async function resolveSolution(
       )
     }
 
-    // A mod's id is very often its project slug on Modrinth ("fabric-api").
+    // A mod's id is very often its project slug on Modrinth ("fabric-api"),
+    // with Forge's underscores as dashes ("cloth_config", "cloth-config").
     // Offered only when that project really has a build for this instance.
     let project: { id: string; name: string } | null = null
-    try {
-      const found = await modrinth.getProject(solution.mod.id)
-      const fits = await bestVersionFor('modrinth', found.projectId, instance.mcVersion, instance.loader, 'mod')
-      if (fits) project = { id: found.projectId, name: found.name }
-    } catch {
-      project = null
+    for (const slug of new Set([solution.mod.id, solution.mod.id.replace(/_/g, '-')])) {
+      try {
+        const found = await modrinth.getProject(slug)
+        const fits = await bestVersionFor('modrinth', found.projectId, instance.mcVersion, instance.loader, 'mod')
+        if (fits) {
+          project = { id: found.projectId, name: found.name }
+          break
+        }
+      } catch {
+        // not a slug there
+      }
     }
     return withWatch(
       {
@@ -671,7 +998,7 @@ async function resolveSolution(
   // remove
   const target = find(solution.mod)
   if (!target) return null
-  const clash = report.details.find((d) => d.kind === 'breaks' && (d.dep.id === solution.mod.id || d.mod.id === solution.mod.id))
+  const clash = report.details.find((d) => d.kind === 'breaks' && (same(d.dep, solution.mod) || same(d.mod, solution.mod)))
   return withWatch(
     {
       id,
@@ -682,7 +1009,10 @@ async function resolveSolution(
             `${clash.mod.name} verträgt sich laut seinen Entwicklern nicht mit ${clash.dep.name}. Ohne ${target.name} startet das Spiel.`,
             `According to its developers ${clash.mod.name} does not work with ${clash.dep.name}. The game starts without ${target.name}.`
           )
-        : tr(`Fabric empfiehlt, ${target.name} zu entfernen.`, `Fabric recommends removing ${target.name}.`),
+        : tr(
+            `${loaderName(instance.loader)} empfiehlt, ${target.name} zu entfernen.`,
+            `${loaderName(instance.loader)} recommends removing ${target.name}.`
+          ),
       contentId: target.id,
       fix: { kind: 'disable-content', label: tr(`${target.name} ausschalten`, `Switch off ${target.name}`), contentId: target.id }
     },
@@ -693,7 +1023,7 @@ async function resolveSolution(
 /** Minecraft, Java or the loader is what does not fit. No file to swap. */
 function builtinIssue(
   id: string,
-  mod: FabricMod,
+  mod: LoaderMod,
   who: string,
   wanted: string,
   installed: string,
@@ -712,8 +1042,8 @@ function builtinIssue(
             `This instance uses Minecraft ${installed}. Right-click ${who} and pick a version for ${installed} under "Choose version…".`
           )
         : tr(
-            `Diese Instanz nutzt ${mod.name} ${installed}. Stelle sie per Rechtsklick auf die Instanz unter „Version ändern“ auf einen neueren Loader.`,
-            `This instance uses ${mod.name} ${installed}. Move it to a newer loader by right-clicking the instance and choosing "Change version".`
+            `Installiert ist ${installed}. Stelle die Instanz per Rechtsklick unter „Version ändern“ auf eine neuere Version des Mod-Loaders.`,
+            `${installed} is installed. Move the instance to a newer version of the mod loader by right-clicking it and choosing "Change version".`
           )
   return {
     id,
@@ -738,18 +1068,19 @@ function builtinIssue(
  * The newest release of `target` for this instance whose own version lies in
  * `range`. Null when the release names do not reliably carry the mod's own
  * version: the installed one is checked first, and if its release name does
- * not read as the version Fabric saw, no guess is made.
+ * not read as the version the loader saw, no guess is made.
  */
 async function versionInRange(
   instance: Instance,
   target: ContentItem,
   provider: 'modrinth' | 'curseforge',
   installed: string,
-  range: VersionRange
+  range: VersionRange,
+  compare: (a: string, b: string) => number
 ): Promise<ProjectVersion | null> {
   const own = modVersionOf(target.version, instance.mcVersion)
-  if (!own || compareVersions(own, installed) !== 0) {
-    logger.info(`${target.name}: Versionsname "${target.version}" passt nicht zu Fabrics "${installed}", keine Auswahl`)
+  if (!own || compare(own, installed) !== 0) {
+    logger.info(`${target.name}: Versionsname "${target.version}" passt nicht zu "${installed}" laut Mod-Loader, keine Auswahl`)
     return null
   }
   const all = await getVersions(provider, target.projectId as string)

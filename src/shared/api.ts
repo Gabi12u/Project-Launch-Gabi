@@ -434,8 +434,8 @@ export interface GabiApi {
     onRecordingStart(fn: (request: RecordingRequest) => void): Unsubscribe
     onRecordingStop(fn: (sessionId: number) => void): Unsubscribe
     onRecordingState(fn: (state: RecordingState) => void): Unsubscribe
-    /** A crash left fixes from Fabric's report for this instance. */
-    onCrashHelp(fn: (crash: { instanceId: string; instanceName: string }) => void): Unsubscribe
+    /** The mod loader named mods that do not fit, and the fixes are ready. */
+    onCrashHelp(fn: (crash: { instanceId: string; instanceName: string; loader: string }) => void): Unsubscribe
   }
 }
 

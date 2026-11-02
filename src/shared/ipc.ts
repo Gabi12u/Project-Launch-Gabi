@@ -173,7 +173,7 @@ export const EVENTS = {
   recordingStop: 'evt:recording-stop',
   /** Recorder state changed, for the indicator in the interface. */
   recordingState: 'evt:recording-state',
-  /** A crash left fixes from Fabric's report; the renderer offers them. */
+  /** The mod loader named mods that do not fit; the renderer offers the fixes. */
   crashHelp: 'evt:crash-help'
 } as const
 

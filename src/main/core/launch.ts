@@ -38,7 +38,7 @@ import {
   tryGetInstance
 } from './instances'
 import { checkCompatibility } from './compat'
-import { forgetCrash, rememberCrash } from './crashHelp'
+import { forgetCrash, loaderName, rememberCrash } from './crashHelp'
 import { isContentBusy, withContentLock } from './contentLock'
 import { SignInUnavailableError, getActiveAccount, getValidAccessToken, storedAccessToken, toPublicAccount } from '../auth/microsoft'
 import { activeVersionIds, clearRunning, clearStarting, getAdopted, getRunning, isRunning, isSameProcess, isStarting, listRunning, markStarting, setRunning, startingCount, ownRunningCount, type AdoptedGame } from './running'
@@ -1079,19 +1079,25 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         })
 
         const minutes = Math.round((endedAt - startedAt) / 60000)
+        // A guess at the cause is only worth adding for modded instances; a
+        // vanilla crash has no mod to blame.
+        const hasMods = instance.loader !== 'vanilla' && instance.content.some((c) => c.type === 'mod' && c.enabled)
+        const loader = loaderName(instance.loader)
+        // Offered straight away once the loader named mods that do not fit:
+        // the launcher comes back to the front after the game, so the fix is
+        // the first thing on screen.
+        const offerHelp = (): void => emit(EVENTS.crashHelp, { instanceId, instanceName: instance.name, loader })
         if (crashed) {
-          // A guess at the cause is only worth adding for modded instances; a
-          // vanilla crash has no mod to blame. Fired without awaiting so a slow
-          // compatibility check never delays the rest of this handler, in
-          // particular handleWindowRestore() a few lines down.
-          const hasMods = instance.loader !== 'vanilla' && instance.content.some((c) => c.type === 'mod' && c.enabled)
+          // Fired without awaiting so a slow compatibility check never delays
+          // the rest of this handler, in particular handleWindowRestore() a
+          // few lines down.
           void (async () => {
             let hint = ''
             let helped = false
             if (hasMods) {
               try {
-                // Fabric's own report first: the check below then lists what
-                // it found, with the version to switch to.
+                // The loader's own report first: the check below then lists
+                // what it found, with the version to switch to.
                 helped = await rememberCrash(instanceId, startedAt)
                 const report = await checkCompatibility(instanceId)
                 const blocking = report.issues.find((i) => i.severity === 'error')
@@ -1107,8 +1113,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
               tr(`${instance.name} ist abgestürzt`, `${instance.name} crashed`),
               helped
                 ? tr(
-                    `Fabric hat unpassende Mods gefunden.${hint} Ein Klick zeigt dir, wie du es behebst.`,
-                    `Fabric found mods that do not fit.${hint} Click to see how to fix it.`
+                    `${loader} hat unpassende Mods gefunden.${hint} Ein Klick zeigt dir, wie du es behebst.`,
+                    `${loader} found mods that do not fit.${hint} Click to see how to fix it.`
                   )
                 : tr(
                     `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
@@ -1119,20 +1125,38 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
               // With a fix at hand it leads to the overview, where it is offered.
               { route: helped ? `/instances/${instanceId}` : `/instances/${instanceId}?tab=logs`, timeout: 0 }
             )
-            // And offered straight away: the launcher comes back to the front
-            // after a crash, so the fix is the first thing on screen.
-            if (helped) emit(EVENTS.crashHelp, { instanceId, instanceName: instance.name })
+            if (helped) offerHelp()
           })()
-        } else if (getSettings().notifyOnGameExit) {
-          // "1 Minuten" and "0 Minuten" read as broken, and two hours as
-          // "120 Minuten" are hard to take in at a glance.
-          const played =
-            minutes < 1
-              ? tr('unter einer Minute', 'less than a minute')
-              : minutes < 60
-                ? tr(`${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`, `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`)
-                : tr(`${Math.floor(minutes / 60)} Std. ${minutes % 60} Min.`, `${Math.floor(minutes / 60)} h ${minutes % 60} min`)
-          notify('info', tr(`${instance.name} beendet`, `${instance.name} closed`), tr(`Spielzeit: ${played}`, `Play time: ${played}`))
+        } else {
+          void (async () => {
+            // Forge and older NeoForge show mods that do not fit on a screen
+            // inside the game and close normally from there. Their report is
+            // in the log all the same, and it replaces the usual notice.
+            const helped = hasMods ? await rememberCrash(instanceId, startedAt).catch(() => false) : false
+            if (helped) {
+              notify(
+                'error',
+                tr(`${instance.name} konnte nicht starten`, `${instance.name} could not start`),
+                tr(
+                  `${loader} hat Mods gefunden, die nicht zusammenpassen. Ein Klick zeigt dir, wie du es behebst.`,
+                  `${loader} found mods that do not fit together. Click to see how to fix it.`
+                ),
+                { route: `/instances/${instanceId}`, timeout: 0 }
+              )
+              offerHelp()
+              return
+            }
+            if (!getSettings().notifyOnGameExit) return
+            // "1 Minuten" and "0 Minuten" read as broken, and two hours as
+            // "120 Minuten" are hard to take in at a glance.
+            const played =
+              minutes < 1
+                ? tr('unter einer Minute', 'less than a minute')
+                : minutes < 60
+                  ? tr(`${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`, `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`)
+                  : tr(`${Math.floor(minutes / 60)} Std. ${minutes % 60} Min.`, `${Math.floor(minutes / 60)} h ${minutes % 60} min`)
+            notify('info', tr(`${instance.name} beendet`, `${instance.name} closed`), tr(`Spielzeit: ${played}`, `Play time: ${played}`))
+          })()
         }
       }
 
