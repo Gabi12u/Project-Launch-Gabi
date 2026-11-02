@@ -184,7 +184,8 @@
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  /* 228px cut "5 Mods" and longer names off in four columns. */
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 14px;
 }
 
@@ -776,11 +777,13 @@
 
 /* --- Preflight panel -------------------------------------------------- */
 
+/* The dividers come from the cells, not from the grid showing through its
+   gaps: a short last row left the rest of that row as a grey block. */
 .preflight-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
   gap: 1px;
-  background: var(--line);
+  background: var(--surface-solid);
   border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid var(--line);
@@ -788,6 +791,7 @@
 
 .preflight-cell {
   background: var(--surface-solid);
+  box-shadow: 0 0 0 1px var(--line);
   padding: 13px 15px;
 }
 
@@ -1071,14 +1075,16 @@
 
 .settings-layout {
   display: grid;
-  grid-template-columns: 208px 1fr;
+  /* minmax(0, ...): a plain 1fr never got narrower than its widest line, and
+     a Java path pushed the whole page out of a small window. */
+  grid-template-columns: 208px minmax(0, 1fr);
   gap: 30px;
   align-items: start;
 }
 
 @media (max-width: 940px) {
   .settings-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

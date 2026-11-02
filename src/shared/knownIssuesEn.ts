@@ -3202,6 +3202,33 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'driver makes the interface crash. At the next start, however, reading that note already failed because ' +
       'of a bug in the program. The launcher therefore started with graphics acceleration again, and the ' +
       'interface crashed again.'
+  },
+  'einstellungen-java-zu-breit': {
+    title: 'In a small window the Java page of the settings stuck out to the right',
+    detail:
+      'Settings, Java & performance lists the Java installations found, with their path. An ordinary path ' +
+      'such as that of an Eclipse Adoptium installation was wider than the room in a small window and ' +
+      'pushed the whole page out to the right. The "Manage Java automatically" switch was cut off, and the ' +
+      'cards and the memory slider ran up to the window edge.'
+  },
+  'filterfeld-zusammengedrueckt': {
+    title: 'The filter field under "Installed" was squeezed down to one letter',
+    detail:
+      'On an instance page, Installed has a field for filtering next to the tabs for mods, resource packs, ' +
+      'shaders and data packs. At the usual window size only the magnifier and one letter of it were left, ' +
+      'at other sizes it slid under the sorting. In the smallest window the search field under Instances ' +
+      'was also so narrow that its placeholder broke off.'
+  },
+  'kleine-darstellungsfehler-oberflaeche': {
+    title: 'Minor display glitches in the interface',
+    detail:
+      'On Home, "Recently played" cut off the number of mods, and longer names ended early. Transparent ' +
+      'buttons such as "Back" in the setup assistant showed only half a frame at the top. In the version ' +
+      'list of a project the Stable and Beta badges sat further left or right depending on the date. ' +
+      'Switching between sections of the settings or tabs of an instance shifted the content by a few ' +
+      'pixels, depending on whether a scroll bar was showing. "Still to download" showed the size with a ' +
+      'dot instead of a comma in German, and a lone cell in the "Before launch" grid left a grey area ' +
+      'next to it.'
   }
 }
 

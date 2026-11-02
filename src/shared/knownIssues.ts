@@ -5100,6 +5100,46 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-02',
     fixedIn: '1.0.25'
+  },
+  {
+    id: 'einstellungen-java-zu-breit',
+    title: 'In einem kleinen Fenster ragte die Java-Seite der Einstellungen rechts aus dem Fenster',
+    detail:
+      'Unter Einstellungen, Java & Leistung stehen die gefundenen Java-Installationen mit ihrem Pfad. Ein ' +
+      'gewöhnlicher Pfad wie der einer Eclipse-Adoptium-Installation war in einem kleinen Fenster breiter ' +
+      'als der Platz und schob die ganze Seite nach rechts hinaus. Der Schalter „Java automatisch ' +
+      'verwalten“ war angeschnitten, und die Karten und der Regler für den Arbeitsspeicher liefen bis an ' +
+      'den Fensterrand.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'filterfeld-zusammengedrueckt',
+    title: 'Das Filterfeld unter „Installiert“ war auf einen Buchstaben zusammengedrückt',
+    detail:
+      'Auf der Seite einer Instanz steht unter Installiert neben den Reitern für Mods, Resourcepacks, ' +
+      'Shader und Data Packs ein Feld zum Filtern. In der normalen Fenstergröße blieben davon nur die Lupe ' +
+      'und ein Buchstabe übrig, in anderen Größen schob es sich unter die Sortierung. Im kleinsten Fenster ' +
+      'war auch das Suchfeld unter Instanzen so schmal, dass sein Platzhalter abbrach.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'kleine-darstellungsfehler-oberflaeche',
+    title: 'Kleinere Darstellungsfehler in der Oberfläche',
+    detail:
+      'Auf der Startseite brach unter „Zuletzt gespielt“ die Zahl der Mods ab, und längere Namen endeten ' +
+      'früh. Durchsichtige Knöpfe wie „Zurück“ im Einrichtungsassistenten zeigten oben nur einen halben ' +
+      'Rahmen. In der Versionsliste eines Projekts standen die Abzeichen Stabil und Beta je nach Datum ' +
+      'unterschiedlich weit rechts. Beim Wechsel zwischen Abschnitten der Einstellungen oder Reitern einer ' +
+      'Instanz verrutschte der Inhalt um einige Pixel, je nachdem, ob gerade eine Bildlaufleiste da war. ' +
+      'Unter „Noch zu laden“ stand die Größe mit Punkt statt Komma, und eine allein stehende Zelle im Raster ' +
+      '„Vor dem Start“ ließ daneben eine graue Fläche stehen.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
   }
 ]
 

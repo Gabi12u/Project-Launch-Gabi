@@ -703,7 +703,7 @@ function OverviewTab({
           <Cell label={tr('Resourcepacks', 'Resource packs')} value={String(preflight?.resourcePackCount ?? 0)} />
           <Cell label={tr('Shader', 'Shaders')} value={String(preflight?.shaderCount ?? 0)} />
           {preflight && preflight.downloadSizeMb > 0 && (
-            <Cell label={tr('Noch zu laden', 'Still to download')} value={`${preflight.downloadSizeMb} MB`} />
+            <Cell label={tr('Noch zu laden', 'Still to download')} value={formatBytes(preflight.downloadSizeMb * 1024 * 1024)} />
           )}
         </div>
       </section>
@@ -945,7 +945,8 @@ function ContentTab({
           })}
         </div>
 
-        <div className="search" style={{ maxWidth: 260 }}>
+        {/* A floor, so a full row wraps the field instead of squeezing it to one letter. */}
+        <div className="search" style={{ flex: '1 1 200px', minWidth: 180, maxWidth: 260 }}>
           <IconPackage size={15} />
           <input
             className="input"

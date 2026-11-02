@@ -315,7 +315,7 @@ export function ModsView(): JSX.Element {
       ) : (
         <>
           <div className="row gap-12 wrap">
-            <div className="search" style={{ maxWidth: 320 }}>
+            <div className="search" style={{ minWidth: 200, maxWidth: 320 }}>
               <IconSearch size={16} />
               <input
                 className="input"

@@ -292,6 +292,9 @@ img {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Room for the scroll bar either way, or content shifted between pages
+     with and without one. */
+  scrollbar-gutter: stable;
   padding: 30px 38px 120px;
   scroll-behavior: smooth;
 }

@@ -104,7 +104,7 @@ export function InstancesView(): JSX.Element {
 
       {instances.length > 0 && (
         <div className="row gap-12 wrap">
-          <div className="search" style={{ maxWidth: 340 }}>
+          <div className="search" style={{ minWidth: 200, maxWidth: 340 }}>
             <IconSearch size={16} />
             <input
               className="input"

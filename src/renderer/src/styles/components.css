@@ -420,6 +420,8 @@
 .btn.ghost {
   background: transparent;
   border-color: transparent;
+  /* The top highlight alone, with no background or border, read as a cut-off frame. */
+  box-shadow: none;
   color: var(--text-2);
 }
 

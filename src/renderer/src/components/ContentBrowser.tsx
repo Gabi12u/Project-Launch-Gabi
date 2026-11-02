@@ -924,7 +924,8 @@ function ProjectModal({
                       >
                         {releaseTypeLabel(version.releaseType)}
                       </span>
-                      <span className="hint">{formatRelative(new Date(version.releasedAt).getTime())}</span>
+                      {/* A fixed slot: with the date's own width the badges beside it stood in a ragged line. */}
+                      <span className="hint" style={{ minWidth: 80, textAlign: 'right' }}>{formatRelative(new Date(version.releasedAt).getTime())}</span>
                     </div>
                   </button>
                 ))}
