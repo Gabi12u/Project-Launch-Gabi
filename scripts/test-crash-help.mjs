@@ -182,6 +182,7 @@ const FORGE = `[main/ERROR] Missing or unsupported mandatory dependencies:
 \tMod ID: 'geckolib', Requested by: 'mobmod', Expected range: '[4.4.9,4.5)', Actual version: '4.6.0'
 \tMod ID: 'cloth_config', Requested by: 'mobmod', Expected range: '[15.0,)', Actual version: '[MISSING]'
 \tMod ID: 'minecraft', Requested by: 'oldmod', Expected range: '[1.20,1.21)', Actual version: '1.21.1'
+\tMod ID: 'neoforge', Requested by: 'mobmod', Expected range: '[21.1.200,)', Actual version: '21.1.77'
 [main/ERROR] Incompatibilities between mods:
 \tMod 'breakermod' is incompatible with 'victimmod', versions: '[1.0,)'; Version found: '2.0'`
 
@@ -226,6 +227,16 @@ try {
        curseforge: { getProject: async (id) => ({ projectId: id, type: 'mod', name: id }) }
      }`
   )
+  const loadersStub = join(work, 'loaders.js')
+  writeFileSync(
+    loadersStub,
+    `module.exports = {
+       listLoaderVersions: async (loader) => globalThis.__lgLoaders[loader] || [],
+       resolveLatestLoaderVersion: async (loader) => (globalThis.__lgLoaders[loader] || [])[0]?.version || '',
+       installLoader: async (loader, mc, build) => loader + '-' + build + '-' + mc,
+       availableLoaders: async () => ['fabric']
+     }`
+  )
   const entry = join(work, 'entry.js')
   writeFileSync(
     entry,
@@ -251,6 +262,7 @@ try {
         name: 'stubs',
         setup(build) {
           build.onResolve({ filter: /^\.\.\/providers$/ }, () => ({ path: providersStub }))
+          build.onResolve({ filter: /^\.\.\/loaders$/ }, () => ({ path: loadersStub }))
         }
       }
     ],
@@ -260,6 +272,24 @@ try {
   globalThis.__lgAll = {}
   globalThis.__lgBest = {}
   globalThis.__lgSlugs = {}
+  // Loader builds per loader, newest first like the real lists.
+  globalThis.__lgLoaders = {
+    fabric: [
+      { version: '0.20.2-beta.1', stable: false },
+      { version: '0.20.1', stable: true },
+      { version: '0.20.0', stable: true },
+      { version: '0.19.5', stable: true }
+    ],
+    quilt: [
+      { version: '0.30.2', stable: true },
+      { version: '0.29.0', stable: true }
+    ],
+    neoforge: [
+      { version: '21.1.77', stable: true },
+      { version: '21.1.215-beta', stable: false },
+      { version: '21.1.209', stable: true }
+    ]
+  }
   const { crash, compat, content, instances, log, paths } = require(out)
   const p = paths.paths
 
@@ -521,16 +551,18 @@ try {
   quiltLog(QUILT.loader)
   check((await crash.rememberCrash('quilt', Date.now() - 100)) === true, 'Quilt: zu alter Loader ohne Hinweis')
   report = await compat.checkCompatibility('quilt')
+  // Quilt stands in for Fabric Loader under another number: its newest build.
   const qload = report.issues.find((i) => i.id === 'crash-replace-fabricloader')
-  check(qload && !qload.fix && /Version ändern/.test(qload.detail), `Quilt, Loader zu alt: ${JSON.stringify(qload)}`)
+  check(qload?.fix?.kind === 'change-loader' && qload.fix.loaderVersion === '0.30.2', `Quilt, Loader zu alt: ${JSON.stringify(qload)}`)
+  check(qload?.fix?.label === 'Quilt Loader auf 0.30.2 aktualisieren', `Quilt, Knopf: ${qload?.fix?.label}`)
   // An older log file says nothing about this start.
   quiltLog(QUILT.mismatch)
   check((await crash.rememberCrash('quilt', Date.now() + 60000)) === false, 'Ein latest.log von vorher wurde gelesen')
 
   // --- 11. Forge and NeoForge -------------------------------------------------------------
   const fr = crash.parseForgeReport(FORGE)
-  check(fr?.details.length === 4, `Forge, Anzahl: ${fr?.details.length}`)
-  const [fGecko, fCloth, fMc, fBreak] = fr?.details ?? []
+  check(fr?.details.length === 5, `Forge, Anzahl: ${fr?.details.length}`)
+  const [fGecko, fCloth, fMc, , fBreak] = fr?.details ?? []
   check(fGecko?.kind === 'mismatch' && fGecko.mod.id === 'mobmod' && fGecko.dep.id === 'geckolib' && fGecko.range === '[4.4.9,4.5)' && fGecko.present[0] === '4.6.0', `Forge, falsche Version: ${JSON.stringify(fGecko)}`)
   check(fCloth?.kind === 'missing' && fCloth.dep.id === 'cloth_config', `Forge, fehlend: ${JSON.stringify(fCloth)}`)
   check(fMc?.dep.id === 'minecraft', `Forge, Minecraft: ${JSON.stringify(fMc)}`)
@@ -573,6 +605,9 @@ try {
   check(nOld?.fix?.kind === 'install-version' && nOld.fix.versionId === 'old-121', `NeoForge, Mod für 1.20: ${JSON.stringify(nOld)}`)
   const nBreak = report.issues.find((i) => i.id === 'crash-refit-breakermod')
   check(nBreak?.fix?.kind === 'disable-content' && /verträgt sich nicht/.test(nBreak.title), `NeoForge, Konflikt: ${JSON.stringify(nBreak)}`)
+  // The newest stable build in range, not the beta above it.
+  const nLoader = report.issues.find((i) => i.id === 'crash-replace-neoforge')
+  check(nLoader?.fix?.kind === 'change-loader' && nLoader.fix.loaderVersion === '21.1.209', `NeoForge, Loader: ${JSON.stringify(nLoader?.fix)}`)
 
   await content.applyFix('neoforge', nGecko.fix)
   const geckoNow = instances.getInstance('neoforge').content.find((c) => c.projectId === 'geckolib')

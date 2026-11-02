@@ -468,14 +468,25 @@ export interface CompatibilityIssue {
   contentId?: string
   /** Set when the issue can be resolved without user input. */
   fix?: {
-    /** `install-version` puts exactly `versionId` in place and holds it there. */
-    kind: 'install-dependency' | 'enable-content' | 'disable-content' | 'remove-content' | 'update-content' | 'install-version'
+    /**
+     * `install-version` puts exactly `versionId` in place and holds it there.
+     * `change-loader` moves the instance to `loaderVersion` of its loader.
+     */
+    kind:
+      | 'install-dependency'
+      | 'enable-content'
+      | 'disable-content'
+      | 'remove-content'
+      | 'update-content'
+      | 'install-version'
+      | 'change-loader'
     label: string
     /** Payload interpreted by the fixer in the main process. */
     projectId?: string
     provider?: 'modrinth' | 'curseforge'
     contentId?: string
     versionId?: string
+    loaderVersion?: string
   }
 }
 

@@ -23,6 +23,7 @@ import {
   paths,
   removeDatapackFromWorld,
   RESERVED_WINDOWS_NAMES,
+  isValidVersionString,
   safeJoin,
   sanitizeVersionId
 } from '../paths'
@@ -1504,6 +1505,30 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
     }
     return candidates.find((c) => c.sha1?.toLowerCase() === hash.toLowerCase()) ?? null
   }
+}
+
+/**
+ * Moves the instance to another build of the loader it already uses, for the
+ * same Minecraft version, when a mod needs a newer one.
+ *
+ * Deliberately not "Version ändern": that also swaps every mod for the newest
+ * build of the target, which on the same game version would update all of
+ * them and undo held versions. Here the mods stay exactly as they are. The
+ * build itself is installed by the next start, the way a missing one always is.
+ */
+export function setLoaderVersion(id: string, loaderVersion: string): Instance {
+  const instance = getInstance(id)
+  if (isRunning(id) || isStarting(id)) {
+    throw new Error(tr('Die Instanz läuft gerade. Beende Minecraft zuerst.', 'The instance is running. Close Minecraft first.'))
+  }
+  if (instance.installing) {
+    throw new Error(tr('Die Instanz wird gerade eingerichtet. Warte, bis das fertig ist.', 'The instance is being set up right now. Wait until that is done.'))
+  }
+  if (instance.loader === 'vanilla' || !isValidVersionString(loaderVersion)) {
+    throw new Error(tr('Ungültige Versionsangabe.', 'Invalid version.'))
+  }
+  logger.info(`${instance.name}: ${instance.loader} ${instance.loaderVersion || '(neueste)'} wird auf ${loaderVersion} gestellt`)
+  return persist({ ...instance, loaderVersion })
 }
 
 /**

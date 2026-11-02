@@ -26,13 +26,14 @@
  */
 import { open, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { CompatibilityIssue, ContentItem, Instance, LoaderId, ProjectVersion } from '@shared/types'
+import type { CompatibilityIssue, ContentItem, Instance, LoaderId, LoaderVersion, ProjectVersion } from '@shared/types'
 import { tr } from '@shared/i18n'
 import { getLogBuffer } from './instanceLog'
 import { getInstance } from './instances'
 import { readJarMetadata } from './modMetadata'
 import { gameVersionMatches } from './gameVersions'
 import { bestVersionFor, getVersions, modrinth } from '../providers'
+import { listLoaderVersions } from '../loaders'
 import { paths } from '../paths'
 import { log } from '../logger'
 
@@ -578,7 +579,13 @@ interface Finding {
   issue: CompatibilityIssue
   /** Items this finding is about and how they looked at the crash. */
   watch: Map<string, string>
+  /** Minecraft version and loader at the crash; another game, other mods. */
+  game?: string
+  /** The loader build at the crash, for a finding that offers another one. */
+  loaderVersion?: string
 }
+
+const gameOf = (instance: Instance): string => `${instance.mcVersion}|${instance.loader}`
 
 /** Findings from the last crash, per instance, until the next start. */
 const findings = new Map<string, Finding[]>()
@@ -597,6 +604,8 @@ export function crashIssues(instance: Instance): CompatibilityIssue[] {
   if (!stored) return []
   const byId = new Map(instance.content.map((item) => [item.id, item]))
   const current = stored.filter((finding) => {
+    if (finding.game !== undefined && finding.game !== gameOf(instance)) return false
+    if (finding.loaderVersion !== undefined && finding.loaderVersion !== instance.loaderVersion) return false
     for (const [id, seen] of finding.watch) {
       const item = byId.get(id)
       if (!item || signature(item) !== seen) return false
@@ -746,7 +755,7 @@ export async function resolveReport(instance: Instance, given: LoaderReport): Pr
     seen.add(key)
     try {
       const finding = await resolveSolution(instance, report, solution, find)
-      if (finding) out.push(finding)
+      if (finding) out.push({ ...finding, game: gameOf(instance) })
     } catch (err) {
       logger.warn(`Vorschlag für ${solution.mod.id || solution.mod.name} nicht ausgewertet:`, err)
     }
@@ -794,7 +803,11 @@ async function resolveSolution(
     const installed = solution.mod.version ?? reason?.present[0] ?? '?'
 
     if (BUILTIN.has(solution.mod.id)) {
-      return withWatch(builtinIssue(id, solution.mod, who, wanted, installed, requirer), [requirer])
+      const fix = range ? await loaderFix(instance, solution.mod.id, range, comparerFor(report.source)) : undefined
+      const finding = withWatch(builtinIssue(id, solution.mod, who, wanted, installed, requirer, fix), [requirer])
+      // Gone once the instance is on another build, whichever way it got there.
+      if (fix) finding.loaderVersion = instance.loaderVersion
+      return finding
     }
 
     const title = tr(`${who} braucht ${solution.mod.name}: ${wanted}`, `${who} needs ${solution.mod.name}: ${wanted}`)
@@ -1020,6 +1033,74 @@ async function resolveSolution(
   )
 }
 
+const LOADER_FULL_NAMES: Partial<Record<LoaderId, string>> = {
+  fabric: 'Fabric Loader',
+  quilt: 'Quilt Loader',
+  forge: 'Forge',
+  neoforge: 'NeoForge'
+}
+
+/** Whether `id` from a report names the instance's own loader. */
+function namesOwnLoader(loader: LoaderId, id: string): boolean {
+  switch (loader) {
+    case 'fabric':
+      return id === 'fabricloader' || id === 'fabric-loader'
+    case 'quilt':
+      return id === 'quilt_loader' || id === 'fabricloader' || id === 'fabric-loader'
+    case 'forge':
+      // Forge's language provider carries Forge's own major version.
+      return id === 'forge' || id === 'javafml'
+    case 'neoforge':
+      return id === 'neoforge'
+    default:
+      return false
+  }
+}
+
+/**
+ * A build of the instance's own loader for its Minecraft version that the
+ * mod accepts: the newest stable one, else the newest at all. Undefined when
+ * the report is about something else, nothing fits, or the instance already
+ * uses the build found.
+ */
+async function loaderFix(
+  instance: Instance,
+  id: string,
+  range: VersionRange,
+  compare: (a: string, b: string) => number
+): Promise<CompatibilityIssue['fix']> {
+  if (!namesOwnLoader(instance.loader, id)) return undefined
+  let builds: LoaderVersion[]
+  try {
+    builds = await listLoaderVersions(instance.loader, instance.mcVersion)
+  } catch (err) {
+    logger.warn(`Versionen von ${instance.loader} für ${instance.mcVersion} nicht geladen:`, err)
+    return undefined
+  }
+  // Forge lists builds as "1.20.1-47.2.0", the mod asks for "47.2.0".
+  const own = (version: string): string => modVersionOf(version, instance.mcVersion) ?? version
+  // Quilt reports the Fabric Loader version it stands in for, which is not
+  // its own number. Its newest build is the best answer there.
+  const standIn = instance.loader === 'quilt' && id !== 'quilt_loader'
+  const fitting = builds
+    .filter((build) => standIn || range.test(own(build.version)))
+    .sort((a, b) => compare(own(b.version), own(a.version)))
+  const pick = fitting.find((build) => build.stable) ?? fitting[0]
+  if (!pick) return undefined
+  const current = instance.loaderVersion
+  const diff = current ? compare(own(pick.version), own(current)) : 1
+  if (diff === 0 || (standIn && diff < 0)) return undefined
+  const name = LOADER_FULL_NAMES[instance.loader] ?? instance.loader
+  return {
+    kind: 'change-loader',
+    label:
+      diff > 0
+        ? tr(`${name} auf ${pick.version} aktualisieren`, `Update ${name} to ${pick.version}`)
+        : tr(`${name} auf ${pick.version} wechseln`, `Switch ${name} to ${pick.version}`),
+    loaderVersion: pick.version
+  }
+}
+
 /** Minecraft, Java or the loader is what does not fit. No file to swap. */
 function builtinIssue(
   id: string,
@@ -1027,9 +1108,23 @@ function builtinIssue(
   who: string,
   wanted: string,
   installed: string,
-  requirer: ContentItem | undefined
+  requirer: ContentItem | undefined,
+  loaderChange?: CompatibilityIssue['fix']
 ): CompatibilityIssue {
   const title = tr(`${who} braucht ${mod.name}: ${wanted}`, `${who} needs ${mod.name}: ${wanted}`)
+  if (loaderChange) {
+    return {
+      id,
+      severity: 'error',
+      title,
+      detail: tr(
+        `Installiert ist ${installed}. Version ${loaderChange.loaderVersion} passt, deine Mods bleiben dabei, wie sie sind. Der neue Loader wird beim nächsten Start geladen.`,
+        `${installed} is installed. Version ${loaderChange.loaderVersion} fits, your mods stay as they are. The new loader is downloaded on the next start.`
+      ),
+      contentId: requirer?.id,
+      fix: loaderChange
+    }
+  }
   const detail =
     mod.id === 'java'
       ? tr(

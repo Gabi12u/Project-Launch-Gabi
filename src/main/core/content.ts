@@ -29,6 +29,7 @@ import {
   getInstance,
   persist,
   removeContentRecord,
+  setLoaderVersion,
   syncContentWithDisk,
   toggleContent
 } from './instances'
@@ -1551,6 +1552,12 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
         type: item.type,
         holdIfOlder: true
       })
+      return
+    }
+
+    case 'change-loader': {
+      if (!fix.loaderVersion) return
+      setLoaderVersion(instanceId, fix.loaderVersion)
       return
     }
 
