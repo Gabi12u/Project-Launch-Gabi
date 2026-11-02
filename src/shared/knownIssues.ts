@@ -5226,6 +5226,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-11-02',
     platforms: ['macOS', 'Linux'],
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'mod-update-braucht-neueren-loader',
+    title: 'Ein Mod-Update konnte eine Version einspielen, die einen neueren Fabric Loader verlangt',
+    detail:
+      'Modrinth sagt beim Update nicht, welchen Mod-Loader eine neue Version mindestens braucht. So kam ' +
+      'etwa Fabric Language Kotlin 1.14 auf Instanzen mit Fabric Loader 0.19.3, verlangt aber 0.19.5 oder ' +
+      'neuer, und Minecraft startete danach nicht mehr. Abhilfe: per Rechtsklick auf den Mod „Version ' +
+      'wählen…“ und die vorherige Version nehmen, oder die Instanz über „Version ändern“ auf einen neueren ' +
+      'Fabric Loader stellen.',
+    state: 'investigating',
+    since: '2026-11-03'
   }
 ]
 

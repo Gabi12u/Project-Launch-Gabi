@@ -3284,6 +3284,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'with "posix_spawn failed, error: 13" in the log: for example opening links and folders from the game, ' +
       "Essential's update window or Sodium's graphics card detection. Java downloaded since 1.0.25 is fine, " +
       'but one already there was never corrected.'
+  },
+  'mod-update-braucht-neueren-loader': {
+    title: 'A mod update could install a version that needs a newer Fabric Loader',
+    detail:
+      'Modrinth does not say which mod loader a new version needs at least. That is how Fabric Language ' +
+      'Kotlin 1.14 reached instances with Fabric Loader 0.19.3, while it needs 0.19.5 or newer, and Minecraft ' +
+      'no longer started. Workaround: right-click the mod, "Choose version…" and take the previous version, ' +
+      'or move the instance to a newer Fabric Loader through "Change version".'
   }
 }
 
