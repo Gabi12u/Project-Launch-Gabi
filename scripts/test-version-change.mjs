@@ -205,7 +205,11 @@ try {
     record('c-hand', 'handmade', 'handmade', 'handmade.jar', 'mod', 'local'),
     record('c-flaky', 'flaky', 'flaky-1211', 'flaky-1211.jar'),
     record('c-rp', 'faithful', 'rp-1', 'faithful.zip', 'resourcepack'),
-    record('c-off', 'switchedoff', 'off-1211', 'off-1211.jar', 'mod', 'modrinth', false)
+    record('c-off', 'switchedoff', 'off-1211', 'off-1211.jar', 'mod', 'modrinth', false),
+    // Held on purpose: one also made for 1.21.4, which must stay, and one
+    // only for 1.21.1, which has to give way.
+    { ...record('c-held', 'heldmod', 'held-old', 'held-old.jar'), gameVersions: ['1.21.1', '1.21.4'], keepVersion: true, releasedAt: '2026-01-01T00:00:00Z' },
+    { ...record('c-heldx', 'heldx', 'heldx-1211', 'heldx-1211.jar'), keepVersion: true, releasedAt: '2026-01-01T00:00:00Z' }
   ]
   for (const item of content) {
     const dir = item.type === 'resourcepack' ? packs : mods
@@ -227,6 +231,8 @@ try {
   const fapi1214 = version('fabric-api', 'fapi-1214', 'fapi-1214.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'] })
   const newdep = version('newdep', 'newdep-1214', 'newdep-1214.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'] })
   const off1214 = version('switchedoff', 'off-1214', 'off-1214.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'] })
+  const heldNew = version('heldmod', 'held-new', 'held-new.jar', { gameVersions: ['1.21.1', '1.21.4'], loaders: ['fabric'] })
+  const heldx1214 = version('heldx', 'heldx-1214', 'heldx-1214.jar', { gameVersions: ['1.21.4'], loaders: ['fabric'] })
   globalThis.__lgAll = { newdep: [newdep], sodium: [sodium1214, sodiumNeo] }
   globalThis.__lgVersions = {
     sodium: (mc, loader) => (loader === 'neoforge' ? sodiumNeo : mc === '1.21.4' ? sodium1214 : null),
@@ -237,14 +243,19 @@ try {
     },
     faithful: () => ({ ...version('faithful', 'rp-1', 'faithful.zip'), versionId: 'rp-1' }),
     switchedoff: (mc, loader) => (loader === 'fabric' && mc === '1.21.4' ? off1214 : null),
-    newdep: () => newdep
+    newdep: () => newdep,
+    heldmod: (mc, loader) => (loader === 'fabric' ? heldNew : null),
+    heldx: (mc, loader) => (loader === 'fabric' && mc === '1.21.4' ? heldx1214 : null)
   }
 
   // --- 1. Preview ------------------------------------------------------------
   const before = readFileSync(p.instanceFile(id), 'utf8')
   const plan = await change.planVersionChange(id, { mcVersion: '1.21.4', loader: 'fabric' })
   const outcome = (items, contentId) => items.find((i) => i.contentId === contentId)?.outcome
-  const expected = { 'c-sodium': 'update', 'c-fapi': 'update', 'c-old': 'disable', 'c-hand': 'local', 'c-flaky': 'unchecked', 'c-rp': 'keep', 'c-off': 'update' }
+  const expected = {
+    'c-sodium': 'update', 'c-fapi': 'update', 'c-old': 'disable', 'c-hand': 'local', 'c-flaky': 'unchecked', 'c-rp': 'keep', 'c-off': 'update',
+    'c-held': 'keep', 'c-heldx': 'update'
+  }
   for (const [contentId, want] of Object.entries(expected)) {
     check(outcome(plan.items, contentId) === want, `Vorschau ${contentId}: ${outcome(plan.items, contentId)} statt ${want}`)
   }
@@ -278,6 +289,8 @@ try {
   check(JSON.stringify(byId('c-sodium')?.gameVersions) === '["1.21.4"]', 'Die Metadaten des neuen Sodium fehlen')
   check(byId('c-old')?.enabled === false, 'oldmod gilt im Eintrag noch als eingeschaltet')
   check(after.content.every((c) => !c.update), 'Update-Markierungen der alten Version blieben stehen')
+  check(byId('c-held')?.versionId === 'held-old' && byId('c-held')?.keepVersion === true, `Festgehaltener, passender Mod: ${JSON.stringify(byId('c-held'))}`)
+  check(byId('c-heldx')?.versionId === 'heldx-1214' && !byId('c-heldx')?.keepVersion, `Festgehaltener, unpassender Mod: ${JSON.stringify(byId('c-heldx'))}`)
 
   const list = await backups.listBackups(id)
   const saved = list.find((b) => b.reason === 'pre-update')

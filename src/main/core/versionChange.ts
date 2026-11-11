@@ -138,15 +138,21 @@ async function lookUp(
   let answered = 0
   let passing = 0
 
-  // Already made for the target and newer than what was found: a beta the
-  // user chose over the latest release is not swapped back to an older file.
-  const fitsAlready = (item: ContentItem, candidate: ProjectVersion): boolean =>
+  const madeForTarget = (item: ContentItem): boolean =>
     item.gameVersions.includes(target.mcVersion) &&
     (item.type !== 'mod' ||
       item.loaders.includes(target.loader) ||
-      (target.loader === 'quilt' && item.loaders.includes('fabric'))) &&
-    Boolean(item.releasedAt) &&
-    new Date(candidate.releasedAt).getTime() < new Date(item.releasedAt as string).getTime()
+      (target.loader === 'quilt' && item.loaders.includes('fabric')))
+
+  // Already made for the target and newer than what was found: a beta the
+  // user chose over the latest release is not swapped back to an older file.
+  // A version held on purpose stays as well, however old, as long as it is
+  // made for the target: only changing the loader build, or moving to a game
+  // version it supports, swapped it for the newest and dropped the hold.
+  const fitsAlready = (item: ContentItem, candidate: ProjectVersion): boolean =>
+    madeForTarget(item) &&
+    (item.keepVersion === true ||
+      (Boolean(item.releasedAt) && new Date(candidate.releasedAt).getTime() < new Date(item.releasedAt as string).getTime()))
 
   await eachLimited(pending, LOOKUPS_AT_ONCE, async (entry) => {
     task?.throwIfCancelled()
