@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
-import type { BackupEntry } from '@shared/types'
-import { paths } from '../paths'
+import type { BackupEntry, GameVersionTarget, LoaderId } from '@shared/types'
+import { isValidVersionString, paths } from '../paths'
 import { getSettings, readJson, readJsonResult, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
@@ -20,6 +20,33 @@ import { isRepairing } from './repairLock'
 import { tr } from '@shared/i18n'
 
 const logger = log('backups')
+
+const LOADERS: LoaderId[] = ['vanilla', 'fabric', 'forge', 'neoforge', 'quilt']
+
+/** A recorded game version, only when it is well formed. `backups.json` is a file on the user's disk. */
+function wellFormedGame(raw: unknown): GameVersionTarget | undefined {
+  const value = raw as Partial<GameVersionTarget> | null | undefined
+  if (!value || typeof value.mcVersion !== 'string' || !isValidVersionString(value.mcVersion)) return undefined
+  if (typeof value.loader !== 'string' || !LOADERS.includes(value.loader)) return undefined
+  const loaderVersion = typeof value.loaderVersion === 'string' ? value.loaderVersion : ''
+  if (loaderVersion && !isValidVersionString(loaderVersion)) return undefined
+  return { mcVersion: value.mcVersion, loader: value.loader, loaderVersion }
+}
+
+/**
+ * The Minecraft version and loader a backup was made with. Undefined for
+ * backups from before this was recorded; the caller then has nothing better
+ * than the instance as it is now.
+ */
+export function backupGame(entry: BackupEntry): GameVersionTarget | undefined {
+  return wellFormedGame(entry.game)
+}
+
+/** "2026-11-11 14:05:33" in the user's own time zone. */
+function localStamp(date: Date): string {
+  const two = (n: number): string => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`
+}
 
 /**
  * The part of an error that may be shown to the user. A raw fs error carries
@@ -278,7 +305,7 @@ export function backupArchive(instanceId: string, backupId: string): { entry: Ba
 export async function addDownloadedBackup(
   instanceId: string,
   sourceFile: string,
-  meta: { name: string; includes: string[]; createdAt: number }
+  meta: { name: string; includes: string[]; createdAt: number; game?: GameVersionTarget }
 ): Promise<BackupEntry> {
   const instance = getInstance(instanceId)
   return withInstanceLock(instanceId, async () => {
@@ -320,7 +347,8 @@ export async function addDownloadedBackup(
       createdAt: Number.isFinite(meta.createdAt) ? meta.createdAt : Date.now(),
       size: statSync(target).size,
       reason: 'cloud',
-      includes
+      includes,
+      game: wellFormedGame(meta.game)
     }
     try {
       writeIndex(instanceId, [entry, ...readIndex(instanceId, true)])
@@ -473,17 +501,16 @@ async function createBackupUnlocked(
             id: randomUUID(),
             instanceId,
             instanceName: instance.name,
-            name:
-              options.name?.trim() ||
-              tr(
-                `Sicherung vom ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`,
-                `Backup from ${stamp.slice(0, 10)} ${stamp.slice(11).replace(/-/g, ':')}`
-              ),
+            // The user's own clock: the file name's stamp above is UTC, and
+            // printed here it was one or two hours off in Germany and named
+            // the day before for a backup made just after midnight.
+            name: options.name?.trim() || tr(`Sicherung vom ${localStamp(now)}`, `Backup from ${localStamp(now)}`),
             fileName,
             createdAt: Date.now(),
             size: statSync(target).size,
             reason,
-            includes: existing
+            includes: existing,
+            game: { mcVersion: instance.mcVersion, loader: instance.loader, loaderVersion: instance.loaderVersion }
           }
           return { entry, entries: [entry, ...readIndex(instanceId, true)] }
         } catch (err) {

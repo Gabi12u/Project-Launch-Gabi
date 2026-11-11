@@ -25,7 +25,7 @@ import { getSettings } from '../store'
 import { isValidVersionString, paths } from '../paths'
 import { log } from '../logger'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
-import { addDownloadedBackup, assertRestorable, backupArchive, restoreBackup } from './backups'
+import { addDownloadedBackup, assertRestorable, backupArchive, backupGame, restoreBackup } from './backups'
 import { createInstance, deleteInstance, getInstance, tryGetInstance } from './instances'
 import { formatNumber, tr } from '@shared/i18n'
 
@@ -361,11 +361,16 @@ export async function uploadToCloud(instanceId: string, backupId: string, replac
     )
   }
 
+  // The version the backup was made with, not the one the instance has now:
+  // after a version change in between, a new instance made from it on
+  // another PC was set up for the wrong game and the mods inside did not
+  // load. Older backups recorded nothing, so they still fall back.
+  const game = backupGame(entry) ?? { mcVersion: instance.mcVersion, loader: instance.loader, loaderVersion: instance.loaderVersion }
   const meta = {
     instanceName: instance.name,
-    mcVersion: instance.mcVersion,
-    loader: instance.loader,
-    loaderVersion: instance.loaderVersion,
+    mcVersion: game.mcVersion,
+    loader: game.loader,
+    loaderVersion: game.loaderVersion,
     includes: entry.includes,
     createdAt: entry.createdAt
   }
@@ -523,7 +528,8 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
           `From the cloud, uploaded on ${new Date(backup.uploadedAt).toLocaleDateString()}`
         ),
         includes: backup.includes,
-        createdAt: backup.createdAt
+        createdAt: backup.createdAt,
+        game: { mcVersion: backup.mcVersion, loader: backup.loader, loaderVersion: backup.loaderVersion ?? '' }
       })
       await restoreBackup(instanceId, entry.id)
     } catch (err) {

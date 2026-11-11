@@ -599,6 +599,13 @@ export interface BackupEntry {
   reason: 'manual' | 'automatic' | 'pre-update' | 'pre-repair' | 'pre-restore' | 'cloud'
   /** Which folders were captured. */
   includes: string[]
+  /**
+   * The Minecraft version and loader the instance had when this was made.
+   * Reading them off the instance at upload time described an older backup
+   * with whatever version the instance had moved to since. Missing on
+   * backups made before this was recorded.
+   */
+  game?: GameVersionTarget
 }
 
 /* ------------------------------------------------------------------ *

@@ -139,7 +139,7 @@ try {
   })
 
   const { zipFolder, extractAllSlowly, listEntries } = require(outArchive)
-  const { recoverInterruptedRestores, failedRestoreRecoveries } = require(outBackups)
+  const { recoverInterruptedRestores, failedRestoreRecoveries, createBackup, addDownloadedBackup, backupGame } = require(outBackups)
 
   /* ================================================================ *
    * Part 1: streaming zipFolder() with a large file
@@ -320,6 +320,57 @@ try {
     'Fehlgeschlagenes Zurueckbenennen beim Wiederherstellen: weder der halb entpackte Rest noch die ' +
       'geparkte Originalsicherung gingen verloren, und die fehlgeschlagene Instanz wird gemeldet.'
   )
+  /* ================================================================ *
+   * Part 4: a backup records the game version it was made with, and
+   * its default name is in the user's own time zone
+   * ================================================================ */
+
+  // Far enough from UTC that a name printed in UTC is visibly off.
+  process.env.TZ = 'America/New_York'
+  const instanceId4 = 'test-instance-game'
+  const gameDir4 = join(dataDir, 'instances', instanceId4, 'minecraft')
+  mkdirSync(join(gameDir4, 'saves', 'Welt'), { recursive: true })
+  writeFileSync(join(gameDir4, 'saves', 'Welt', 'level.dat'), 'welt')
+  writeFileSync(
+    join(dataDir, 'instances', instanceId4, 'instance.json'),
+    JSON.stringify({ name: 'Versionstest', mcVersion: '1.21.1', loader: 'fabric', loaderVersion: '0.16.9', installed: true, content: [] })
+  )
+  const made = await createBackup(instanceId4, { includes: ['saves'] })
+  check(
+    made.game?.mcVersion === '1.21.1' && made.game?.loader === 'fabric' && made.game?.loaderVersion === '0.16.9',
+    `Die Sicherung merkt sich die Spielversion nicht: ${JSON.stringify(made.game)}`
+  )
+  check(backupGame(made)?.mcVersion === '1.21.1', 'backupGame() gibt die gemerkte Version nicht heraus')
+  const shown = /(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)$/.exec(made.name)
+  check(Boolean(shown), `Unerwarteter Name der Sicherung: ${made.name}`)
+  if (shown) {
+    const [, y, mo, d, h, mi, se] = shown.map(Number)
+    const shownAt = new Date(y, mo - 1, d, h, mi, se).getTime()
+    check(
+      Math.abs(shownAt - made.createdAt) < 5000,
+      `Der Name „${made.name}“ zeigt nicht die Ortszeit (Abstand ${Math.round((shownAt - made.createdAt) / 60000)} Minuten)`
+    )
+  }
+  delete process.env.TZ
+
+  check(backupGame({ game: { mcVersion: '../x', loader: 'fabric', loaderVersion: '' } }) === undefined, 'Ein ungültiger Pfad als Version wurde angenommen')
+  check(backupGame({ game: { mcVersion: '1.21.1', loader: 'bukkit', loaderVersion: '' } }) === undefined, 'Ein unbekannter Loader wurde angenommen')
+  check(backupGame({}) === undefined, 'Eine alte Sicherung ohne Angabe liefert trotzdem eine Version')
+
+  // A backup that came down from the cloud keeps the version the cloud named.
+  const cloudZip = join(work, 'cloud-download.zip')
+  await zipFolder(gameDir4, cloudZip, { include: ['saves'] })
+  const fromCloud = await addDownloadedBackup(instanceId4, cloudZip, {
+    name: 'Aus der Cloud',
+    includes: ['saves'],
+    createdAt: Date.now(),
+    game: { mcVersion: '1.20.1', loader: 'forge', loaderVersion: '47.3.0' }
+  })
+  check(
+    backupGame(fromCloud)?.mcVersion === '1.20.1' && backupGame(fromCloud)?.loader === 'forge',
+    `Ein Cloud-Backup vergisst die Version aus der Cloud: ${JSON.stringify(fromCloud.game)}`
+  )
+  notes.push('Sicherungen merken sich Minecraft-Version und Loader, auch aus der Cloud; der Name steht in Ortszeit.')
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {
