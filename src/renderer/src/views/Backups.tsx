@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
-import type { BackupEntry } from '@shared/types'
+import type { BackupEntry, LoaderId } from '@shared/types'
 import type { CloudBackup, CloudOverview } from '@shared/api'
 import { navigate, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { LOADER_LABELS, contentBlockedReason, formatBytes, formatDateTime, formatRelative, pluralise } from '../lib/format'
@@ -23,6 +23,16 @@ const FOLDER_LABELS: Record<string, string> = {
   resourcepacks: tr('Resourcepacks', 'Resource packs'),
   shaderpacks: tr('Shader', 'Shaders'),
   screenshots: 'Screenshots'
+}
+
+/**
+ * A modded game whose backup left the mods out. Downloaded as a new instance
+ * on another PC, that one then starts without any of them, which looked like
+ * a broken download. Unknown contents (a website upload lists nothing) and
+ * vanilla are not worth a word.
+ */
+function lacksMods(includes: readonly string[], loader: LoaderId | undefined): boolean {
+  return loader !== undefined && loader !== 'vanilla' && includes.length > 0 && !includes.includes('mods')
 }
 
 /** What is waiting for the user to accept the cloud note first. */
@@ -116,6 +126,11 @@ export function BackupsView(): JSX.Element {
     else setConsentFor(pending)
   }
 
+  // The version recorded with the backup first: the instance may have moved
+  // to another loader since.
+  const loaderOf = (backup: BackupEntry): LoaderId | undefined =>
+    backup.game?.loader ?? instances.find((i) => i.id === backup.instanceId)?.loader
+
   const upload = async (backup: BackupEntry, replace?: string): Promise<void> => {
     setUploading(backup.id)
     try {
@@ -124,7 +139,14 @@ export function BackupsView(): JSX.Element {
         setReplaceFor({ backup, choices: result.backups })
         return
       }
-      toast('success', tr('In der Cloud gespeichert', 'Saved in the cloud'), `${backup.instanceName} · ${formatBytes(result.backup.size)}`)
+      toast(
+        'success',
+        tr('In der Cloud gespeichert', 'Saved in the cloud'),
+        `${backup.instanceName} · ${formatBytes(result.backup.size)}` +
+          (lacksMods(backup.includes, loaderOf(backup))
+            ? tr('. Ohne Mods: auf einem anderen PC fehlen sie dann.', '. Without mods: they will be missing on another PC.')
+            : '')
+      )
       await loadCloud()
     } catch (err) {
       toastError(err, tr('Hochladen fehlgeschlagen', 'Upload failed'))
@@ -272,7 +294,8 @@ export function BackupsView(): JSX.Element {
                 </div>
 
                 <div className="content-actions">
-                  {/* The upload sends the instance's version and loader along,
+                  {/* The upload names the instance and, for backups older than
+                      the recorded game version, sends its version and loader,
                       so a backup whose instance is gone cannot go up. */}
                   {cloudReady && instanceExists && (
                     <button
@@ -357,6 +380,14 @@ export function BackupsView(): JSX.Element {
                       `Then you can also download ${askCloudFor.instanceName} on another PC when you sign in there with the same Microsoft account.`
                     )
               })()}
+              {lacksMods(askCloudFor.includes, loaderOf(askCloudFor)) && (
+                <div style={{ color: 'var(--warn)', marginTop: 8 }}>
+                  {tr(
+                    'Diese Sicherung enthält keine Mods. Wer sie auf einem anderen PC als neue Instanz herunterlädt, bekommt die Welten und Einstellungen, aber keine Mods. Soll alles mit, erstelle eine Sicherung mit dem Ordner Mods.',
+                    'This backup holds no mods. Downloaded on another PC as a new instance, it brings the worlds and settings but no mods. To take everything along, create a backup with the Mods folder.'
+                  )}
+                </div>
+              )}
             </>
           ) : null
         }
@@ -949,7 +980,16 @@ function DownloadModal({
                   `${backup.instanceName} mit Minecraft ${backup.mcVersion} und ${LOADER_LABELS[backup.loader] ?? backup.loader}. Minecraft und der Mod-Loader werden dafür eingerichtet.`,
                   `${backup.instanceName} with Minecraft ${backup.mcVersion} and ${LOADER_LABELS[backup.loader] ?? backup.loader}. Minecraft and the mod loader are set up for it.`
                 )}
+                {folders && ' ' + tr(`Aus dem Backup kommen: ${folders}.`, `Taken from the backup: ${folders}.`)}
               </div>
+              {lacksMods(backup.includes, backup.loader) && (
+                <div className="hint" style={{ color: 'var(--warn)' }}>
+                  {tr(
+                    'Dieses Backup enthält keine Mods. Die neue Instanz startet ohne sie, du musst sie danach selbst installieren.',
+                    'This backup holds no mods. The new instance starts without them, you have to install them yourself afterwards.'
+                  )}
+                </div>
+              )}
             </div>
           </label>
         </div>
