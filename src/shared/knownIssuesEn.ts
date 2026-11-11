@@ -3301,6 +3301,112 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       '1.14, which needs Fabric Loader 0.19.5, and the game crashed again. Only affects the beta ' +
       '1.0.26-beta.3. Workaround: right-click, "Choose version…" and take the highest version that still ' +
       'fits your own Fabric Loader.'
+  },
+  'versionswechsel-festgehaltene-mods': {
+    title: '"Change version" swapped kept mods even when they already fitted',
+    detail:
+      'Anyone who kept a mod on a version through the right-click menu and then only changed the mod ' +
+      'loader or moved to a fitting Minecraft version got the mod swapped for the newest version anyway, ' +
+      'and the hold was gone. Only affects the 1.0.26 betas.'
+  },
+  'cloud-backup-falsche-version': {
+    title: 'A cloud backup carried the Minecraft version the instance had at upload, not the one of the backup',
+    detail:
+      'When an instance was moved with "Change version" after a backup was made and that older backup was ' +
+      'only uploaded afterwards, the cloud showed the new version. Downloading it as a new instance then ' +
+      'created an instance with the wrong Minecraft version and the old mods, which did not start.'
+  },
+  'cloud-backup-ohne-mods-unklar': {
+    title: 'Uploading and downloading cloud backups never said that a default backup holds no mods',
+    detail:
+      'Without a selection, a backup only holds worlds and settings. Anyone who put such a backup in the ' +
+      'cloud and downloaded it as a new instance on another PC got an instance without mods, with no note ' +
+      'about it anywhere beforehand.'
+  },
+  'absturzhilfe-fabric-api-module': {
+    title: 'The crash help took parts of Fabric API for files added by hand',
+    detail:
+      'When a mod needed a newer version of a part of Fabric API, such as "fabric-rendering-v1", the crash ' +
+      'help said the file had been added by hand and offered no button. Updating Fabric API itself would ' +
+      'have been right. Only affects the 1.0.26 betas.'
+  },
+  'befehl-vor-start-haengt': {
+    title: 'A "command before start" with a lot of output held up the game start for five minutes',
+    detail:
+      'When the own command before the start printed a lot of text, such as a sync script, it got stuck, ' +
+      'because the launcher never read its output. The start then waited five minutes and gave up. The ' +
+      "command's output was not in the log either."
+  },
+  'java-argument-jar-ohne-rueckfrage': {
+    title: 'Own Java arguments that start another program ran without asking',
+    detail:
+      'Java arguments that load foreign program code ask before the first start. "-jar" and "-m" were ' +
+      'missing from that check. An instance from a foreign source with such an argument could have started ' +
+      'another program instead of Minecraft.'
+  },
+  'wiederherstellung-rueckgaengig-nach-neustart': {
+    title: 'When cleaning up after a restore failed, the next start undid the restore',
+    detail:
+      'When a virus scanner held a file in the staging folder after a successful restore, the note of a ' +
+      'running restore stayed there. The next start of the launcher took it for an interrupted one and ' +
+      'brought back the state from before, without a word. Staging folders left half deleted were never ' +
+      'cleaned up either.'
+  },
+  'mod-update-alte-datei-bleibt': {
+    title: 'When the old file could not be deleted during a mod update, the mod was there twice',
+    detail:
+      'When a virus scanner, for example, held the old file of a mod, the update still reported success. ' +
+      'The old file stayed in the mods folder, showed up as a second mod at the next sync, and the game ' +
+      'did not start with the duplicate.'
+  },
+  'instanzseite-nach-spielen-veraltet': {
+    title: 'The page of an instance still showed the old play time after playing',
+    detail:
+      'Anyone who played from the page of an instance and stayed there afterwards kept seeing the state ' +
+      'from before the game under statistics and "Before you play", such as play time, sessions and "Last ' +
+      'played". Only leaving and reopening it showed the right state.'
+  },
+  'leere-loader-version-immer-neueste': {
+    title: 'Instances without a fixed loader version got the newest mod loader at every start, unasked',
+    detail:
+      'When importing a folder did not recognise the version of the mod loader, it stayed empty. The ' +
+      'launcher then took the newest loader at every start and quietly set up every new Forge and NeoForge ' +
+      'build, which could upset single mods. Without internet such a Forge instance may not have started.'
+  },
+  'wiederherstellung-fremde-zips': {
+    title: 'A backup from a foreign zip could move the worlds aside and restore nothing',
+    detail:
+      'When a backup did not come from the launcher and its paths used backslashes, such as a zip packed ' +
+      'by hand, the launcher recognised the folders in it but unpacked none of them. The current worlds ' +
+      'were then only in the safety copy, and the message still said "Restored".'
+  },
+  'reparatur-abgebrochener-loader-wechsel': {
+    title: 'Repair reported an interrupted change of mod loader as solved, while mods for both loaders stayed mixed',
+    detail:
+      'When "Change version" from one mod loader to another on the same Minecraft version was cut off, ' +
+      'for example by closing the launcher, the repair only checked the Minecraft version of the mods. The ' +
+      'mods already swapped for the other loader stayed, and the game crashed afterwards.'
+  },
+  'kleinere-fehler-tiefensuche-november': {
+    title: 'A number of smaller bugs, found in a deep search in November',
+    detail:
+      'Backups were named after the time in UTC instead of your own. After a crash on macOS and Linux the ' +
+      'message said "code null". A link to a section of the settings did nothing on the second click. ' +
+      'Shortcuts opened windows on top of an open dialog. "Play" in the command search gave no feedback for ' +
+      'an instance that was starting. "Remove background" left the "unsaved" bar standing. "Get Java" ' +
+      'showed no progress. The Log tab read the whole log file into memory. A switched off dependency was ' +
+      'not switched back on when installing. A modpack with an unknown mod loader was quietly imported as ' +
+      'vanilla. Error reports turned four part version numbers into an IP address. Anyone who left the beta ' +
+      'programme during a renewal was back in afterwards.'
+  },
+  'kleinere-fehler-absturzhilfe-beta': {
+    title: 'Smaller bugs of the crash help and the loader notice in the betas',
+    detail:
+      'A "mod missing" suggestion stayed after the mod had been installed by hand. After a very quick ' +
+      'restart the report of the previous crash could appear. When two mods needed different versions of ' +
+      'the same mod, only the first was taken into account. The notice about a newer mod loader vanished ' +
+      'when its lookup failed once, and its button did not check whether a repair or restore was running. ' +
+      'Only affects the 1.0.26 betas.'
   }
 }
 

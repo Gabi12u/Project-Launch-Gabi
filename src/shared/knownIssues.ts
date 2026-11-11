@@ -5250,6 +5250,159 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'nehmen, die noch zum eigenen Fabric Loader passt.',
     state: 'fixing',
     since: '2026-11-03'
+  },
+  {
+    id: 'versionswechsel-festgehaltene-mods',
+    title: '„Version ändern“ tauschte festgehaltene Mods aus, auch wenn sie schon passten',
+    detail:
+      'Wer einen Mod per Rechtsklick auf einer Version festgehalten hatte und danach nur den Mod-Loader ' +
+      'oder eine passende Minecraft-Version wechselte, bekam den Mod trotzdem auf die neueste Version ' +
+      'getauscht, und das Festhalten war weg. Betrifft nur die Betas von 1.0.26.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'cloud-backup-falsche-version',
+    title: 'Ein Cloud-Backup trug die Minecraft-Version, die die Instanz beim Hochladen hatte, nicht die der Sicherung',
+    detail:
+      'Wurde eine Instanz nach dem Sichern per „Version ändern“ umgestellt und die ältere Sicherung erst ' +
+      'danach in die Cloud geladen, stand dort die neue Version. Beim Herunterladen als neue Instanz ' +
+      'entstand dann eine Instanz mit der falschen Minecraft-Version und den Mods der alten, die nicht ' +
+      'starteten.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'cloud-backup-ohne-mods-unklar',
+    title: 'Beim Hoch- und Herunterladen von Cloud-Backups stand nirgends, dass eine Standard-Sicherung keine Mods enthält',
+    detail:
+      'Eine Sicherung enthält ohne Auswahl nur Welten und Konfiguration. Wer so eine Sicherung in die ' +
+      'Cloud legte und auf einem anderen PC als neue Instanz herunterlud, bekam eine Instanz ohne Mods, ' +
+      'ohne dass vorher irgendwo ein Hinweis darauf stand.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'absturzhilfe-fabric-api-module',
+    title: 'Die Absturzhilfe hielt Teilmodule der Fabric API für von Hand hinzugefügte Dateien',
+    detail:
+      'Verlangte ein Mod eine neuere Version eines Teils der Fabric API, etwa „fabric-rendering-v1“, ' +
+      'schrieb die Absturzhilfe, die Datei sei von Hand hinzugefügt, und bot keinen Knopf an. Richtig ' +
+      'wäre gewesen, Fabric API selbst zu aktualisieren. Betrifft nur die Betas von 1.0.26.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'befehl-vor-start-haengt',
+    title: 'Ein „Befehl vor dem Start“ mit viel Ausgabe hielt den Spielstart fünf Minuten auf',
+    detail:
+      'Gab der eigene Befehl vor dem Start viel Text aus, etwa ein Sync-Skript, blieb er hängen, weil ' +
+      'der Launcher seine Ausgabe nie las. Der Start wartete dann fünf Minuten und brach ab. Die Ausgabe ' +
+      'des Befehls stand außerdem nirgends im Log.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'java-argument-jar-ohne-rueckfrage',
+    title: 'Eigene Java-Argumente, die ein anderes Programm starten, liefen ohne Rückfrage',
+    detail:
+      'Java-Argumente, die fremden Programmcode laden, fragen vor dem ersten Start nach. „-jar“ und ' +
+      '„-m“ fehlten in dieser Prüfung. Eine Instanz aus fremder Quelle mit einem solchen Argument hätte ' +
+      'damit statt Minecraft ein anderes Programm starten können.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'wiederherstellung-rueckgaengig-nach-neustart',
+    title: 'Scheiterte nach einer Wiederherstellung das Aufräumen, machte der nächste Start sie rückgängig',
+    detail:
+      'Hielt ein Virenscanner nach einer erfolgreichen Wiederherstellung eine Datei im Zwischenordner ' +
+      'fest, blieb dort der Vermerk einer laufenden Wiederherstellung liegen. Der nächste Start des ' +
+      'Launchers hielt sie für abgebrochen und stellte ohne Hinweis den Stand von davor wieder her. ' +
+      'Zwischenordner, die halb gelöscht liegen blieben, wurden außerdem nie aufgeräumt.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'mod-update-alte-datei-bleibt',
+    title: 'Konnte bei einem Mod-Update die alte Datei nicht gelöscht werden, war der Mod danach doppelt da',
+    detail:
+      'Hielt etwa ein Virenscanner die alte Datei eines Mods fest, meldete das Update trotzdem Erfolg. ' +
+      'Die alte Datei blieb im Mod-Ordner, tauchte beim nächsten Abgleich als zweiter Mod auf, und das ' +
+      'Spiel startete mit dem Duplikat nicht.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'instanzseite-nach-spielen-veraltet',
+    title: 'Die Seite einer Instanz zeigte nach dem Spielen noch die alte Spielzeit',
+    detail:
+      'Wer von der Seite einer Instanz aus spielte und danach dort blieb, sah unter Statistik und „Vor ' +
+      'dem Start“ weiter den Stand von vor dem Spiel, etwa Spielzeit, Sitzungen und „Zuletzt gespielt“. ' +
+      'Erst Verlassen und wieder Öffnen zeigte den richtigen Stand.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'leere-loader-version-immer-neueste',
+    title: 'Instanzen ohne feste Loader-Version bekamen bei jedem Start ungefragt den neuesten Mod-Loader',
+    detail:
+      'Wurde beim Import eines Ordners die Version des Mod-Loaders nicht erkannt, blieb sie leer. Der ' +
+      'Launcher nahm dann bei jedem Start den neuesten Loader und richtete bei Forge und NeoForge jeden ' +
+      'neuen Build still neu ein, was einzelne Mods stören konnte. Ohne Internet startete so eine ' +
+      'Forge-Instanz womöglich gar nicht.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'wiederherstellung-fremde-zips',
+    title: 'Eine Sicherung aus einem fremden Zip konnte die Welten beiseiteräumen und nichts einspielen',
+    detail:
+      'Stammte eine Sicherung nicht vom Launcher und trugen ihre Pfade Backslashes, etwa ein von Hand ' +
+      'gepacktes Zip, erkannte der Launcher die Ordner darin, entpackte aber keinen davon. Die aktuellen ' +
+      'Welten lagen danach nur noch in der Sicherheitskopie, und die Meldung sagte trotzdem ' +
+      '„Wiederhergestellt“.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'reparatur-abgebrochener-loader-wechsel',
+    title: 'Die Reparatur meldete einen abgebrochenen Wechsel des Mod-Loaders als gelöst, obwohl Mods beider Loader gemischt blieben',
+    detail:
+      'Wurde „Version ändern“ von einem Mod-Loader auf einen anderen bei gleicher Minecraft-Version ' +
+      'mittendrin abgebrochen, etwa weil der Launcher geschlossen wurde, prüfte die Reparatur nur die ' +
+      'Minecraft-Version der Mods. Die schon getauschten Mods für den anderen Loader blieben liegen, und ' +
+      'das Spiel stürzte danach ab.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'kleinere-fehler-tiefensuche-november',
+    title: 'Eine Reihe kleinerer Fehler, gefunden bei einer Tiefensuche im November',
+    detail:
+      'Sicherungen hießen nach der Uhrzeit in UTC statt der eigenen. Nach einem Absturz unter macOS und ' +
+      'Linux stand „Code null“ in der Meldung. Ein Link auf einen Bereich der Einstellungen tat beim ' +
+      'zweiten Klick nichts. Tastenkürzel öffneten Fenster über einem offenen Dialog. „Spielen“ in der ' +
+      'Befehlssuche gab bei einer startenden Instanz keine Rückmeldung. „Hintergrund entfernen“ ließ die ' +
+      'Leiste „ungespeichert“ stehen. „Java laden“ zeigte keinen Fortschritt. Der Log-Reiter las die ' +
+      'ganze Logdatei in den Arbeitsspeicher. Eine ausgeschaltete Abhängigkeit wurde beim Installieren ' +
+      'nicht wieder eingeschaltet. Ein Modpack mit unbekanntem Mod-Loader wurde still als Vanilla ' +
+      'importiert. Fehlerberichte machten aus vierteiligen Versionsnummern eine IP-Adresse. Wer das ' +
+      'Beta-Programm während einer Erneuerung verließ, war danach wieder dabei.',
+    state: 'fixing',
+    since: '2026-11-11'
+  },
+  {
+    id: 'kleinere-fehler-absturzhilfe-beta',
+    title: 'Kleinere Fehler der Absturzhilfe und des Loader-Hinweises in den Betas',
+    detail:
+      'Ein Vorschlag „Mod fehlt“ blieb stehen, nachdem der Mod von Hand installiert war. Nach einem sehr ' +
+      'schnellen Neustart konnte der Bericht des vorigen Absturzes erscheinen. Verlangten zwei Mods ' +
+      'unterschiedliche Versionen desselben Mods, wurde nur die erste beachtet. Der Hinweis auf einen ' +
+      'neueren Mod-Loader verschwand, wenn die Abfrage einmal scheiterte, und sein Knopf prüfte nicht, ob ' +
+      'gerade eine Reparatur oder Wiederherstellung lief. Betrifft nur die Betas von 1.0.26.',
+    state: 'fixing',
+    since: '2026-11-11'
   }
 ]
 
