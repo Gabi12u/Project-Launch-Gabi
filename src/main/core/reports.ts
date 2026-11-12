@@ -261,7 +261,16 @@ export function scrub(text: string): string {
   // address that shows up *inside* an error's own text from travelling with
   // it, and the consent dialog promises none is kept — this is that promise
   // actually enforced rather than relying only on where the report is sent.
-  out = out.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '<IP>')
+  //
+  // Only four numbers of at most 255 each, not written like a version: every
+  // a.b.c.d used to go, so the Windows build "10.0.19045.1234" or a mod like
+  // "fabric-api-0.92.2.1" arrived as "<IP>". A real address is not glued to
+  // a letter, "-", "_", "+" or "." in front, nor to a letter, "-", "_", "+"
+  // or a further ".5" behind. A full stop ending the sentence still counts.
+  out = out.replace(
+    /(?<![\w.+-])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![\w+-]|\.\d)/g,
+    '<IP>'
+  )
   // At least three colons, so an HH:MM:SS timestamp (two colons) elsewhere in
   // the same stack trace is never mistaken for one.
   out = out.replace(/\b(?:[0-9a-fA-F]{1,4}:){3,7}[0-9a-fA-F]{0,4}\b/g, '<IP>')

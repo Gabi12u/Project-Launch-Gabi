@@ -185,6 +185,20 @@ try {
     scrubbedNormal.includes('1.21.11') && !scrubbedNormal.includes(instanceUuid) && scrubbedNormal.includes('<UUID>'),
     scrubbedNormal
   )
+
+  // Real addresses go, version numbers with four parts stay.
+  const withAddresses = scrub('connect ECONNREFUSED 192.168.1.20:25565 und /85.10.200.3 sowie (10.0.0.1), Verbindung zu 172.16.5.9.')
+  check(
+    'scrub: echte IP-Adressen werden zu <IP>, auch am Satzende',
+    !/192\.168|85\.10\.200|10\.0\.0\.1|172\.16/.test(withAddresses) && withAddresses.split('<IP>').length === 5,
+    withAddresses
+  )
+  const withVersions = scrub('Windows 10.0.19045.1234, fabric-api-0.92.2.1, mod v1.2.3.4, build 1.2.3.4+mc1.20, 2.0.0.0-beta')
+  check(
+    'scrub: vierteilige Versionsnummern bleiben',
+    ['10.0.19045.1234', '0.92.2.1', 'v1.2.3.4', '1.2.3.4+mc1.20', '2.0.0.0-beta'].every((v) => withVersions.includes(v)),
+    withVersions
+  )
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stderr ? String(err.stderr) : err.message))
 } finally {
