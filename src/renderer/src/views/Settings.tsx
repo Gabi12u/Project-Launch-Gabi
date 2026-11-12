@@ -588,7 +588,13 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
             <button
               key={entry.id}
               className={section === entry.id ? 'active' : ''}
-              onClick={() => setSection(entry.id)}
+              // Through the route, not only local state: a link to the
+              // section the route still named did nothing after another
+              // section had been picked here, since the route had not changed.
+              onClick={() => {
+                setSection(entry.id)
+                navigate(`/settings?section=${entry.id}`)
+              }}
             >
               {entry.label}
               {/* A dot on the changelog until this version's entry has been
