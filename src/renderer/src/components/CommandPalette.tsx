@@ -8,7 +8,7 @@ import {
   type ReactNode
 } from 'react'
 import { createPortal } from 'react-dom'
-import { navigate, setState, useStore } from '../lib/store'
+import { navigate, setState, toast, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
 import { trapTab, useOverlayId } from './ui'
@@ -66,12 +66,18 @@ export function CommandPalette(): JSX.Element | null {
 
     for (const instance of instances) {
       const busy = starting.includes(instance.id) || instance.installing
+      // Picked while busy, this used to close the palette and do nothing.
+      const busyText = instance.installing
+        ? tr(`${instance.name} wird gerade eingerichtet`, `${instance.name} is being set up`)
+        : tr(`${instance.name} startet gerade`, `${instance.name} is starting`)
 
       items.push({
         id: `play-${instance.id}`,
         label: instance.running
           ? tr(`${instance.name} beenden`, `Stop ${instance.name}`)
-          : tr(`${instance.name} spielen`, `Play ${instance.name}`),
+          : busy
+            ? busyText
+            : tr(`${instance.name} spielen`, `Play ${instance.name}`),
         hint: `${instance.mcVersion} · ${LOADER_LABELS[instance.loader]}${
           instance.modCount > 0
             ? ` · ${instance.modCount} ${pluralise(instance.modCount, 'Mod', 'Mods')}`
@@ -82,7 +88,8 @@ export function CommandPalette(): JSX.Element | null {
         keywords: `${instance.mcVersion} ${instance.loader} start launch`,
         run: () => {
           if (instance.running) void stopInstance(instance.id)
-          else if (!busy) void startInstance(instance.id, instance.name)
+          else if (busy) toast('info', busyText, tr('Einen Moment, das läuft schon.', 'One moment, that is already under way.'))
+          else void startInstance(instance.id, instance.name)
         }
       })
 
