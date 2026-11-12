@@ -19,6 +19,7 @@ import { Toasts } from './components/Toasts'
 import { TaskDock } from './components/TaskDock'
 import { Ambient } from './components/Ambient'
 import { CommandPalette } from './components/CommandPalette'
+import { openOverlayCount } from './components/ui'
 import { BootSplash } from './components/BootSplash'
 import { CompatibilityGate } from './components/CompatibilityPanel'
 import { UpdateGate } from './components/UpdateGate'
@@ -286,9 +287,14 @@ export function App(): JSX.Element {
       const typing =
         target &&
         (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      // Overlays other than the palette itself. A shortcut used to open the
+      // wizard or the palette on top of an open dialog, mid question.
+      const { paletteOpen } = getState()
+      const dialogOpen = openOverlayCount() - (paletteOpen ? 1 : 0) > 0
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'n') {
         event.preventDefault()
+        if (dialogOpen) return
         // The palette lists this same shortcut and closes itself when the entry
         // is picked there. Opening the wizard without closing it stacked one
         // overlay on top of the other.
@@ -297,11 +303,12 @@ export function App(): JSX.Element {
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
+        if (dialogOpen) return
         setState((current) => ({ paletteOpen: !current.paletteOpen }))
         return
       }
       // A bare "/" is the second habit people bring from other apps.
-      if (!typing && event.key === '/') {
+      if (!typing && !dialogOpen && event.key === '/') {
         event.preventDefault()
         setState({ paletteOpen: true })
       }

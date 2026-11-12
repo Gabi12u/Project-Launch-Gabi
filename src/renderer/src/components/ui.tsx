@@ -48,6 +48,11 @@ export function useOverlayId(open: boolean): () => boolean {
   return useCallback(() => openOverlayIds[openOverlayIds.length - 1] === idRef.current, [])
 }
 
+/** How many overlays are open right now, for shortcuts that open one more. */
+export function openOverlayCount(): number {
+  return openOverlayIds.length
+}
+
 /* ------------------------------------------------------------------ *
  * Modal
  * ------------------------------------------------------------------ */
