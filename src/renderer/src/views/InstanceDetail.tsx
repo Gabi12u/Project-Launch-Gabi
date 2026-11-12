@@ -218,6 +218,19 @@ export function InstanceDetailView({
     wasInstalling.current = summaryInstalling
   }, [summaryInstalling, load, runChecks])
 
+  // The same once a game ends: play time, sessions and "last played" have
+  // changed, and the page kept the state from before the game until it was
+  // left and opened again. The settings form keeps its own fields, so
+  // unsaved edits there survive this.
+  const wasRunning = useRef(running)
+  useEffect(() => {
+    if (wasRunning.current && !running) {
+      void load()
+      void runChecks()
+    }
+    wasRunning.current = running
+  }, [running, load, runChecks])
+
   // A crash Fabric explained adds its fixes to the check, and the gate fixes
   // them from wherever it opened. Neither goes through this page, which kept
   // showing the old mod versions and the solved problem.
