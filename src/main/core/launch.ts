@@ -981,6 +981,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // recorded into the session history for good.
       const crashed = !requested && (signal !== null || (code !== 0 && code !== null))
       clearRunning(instanceId)
+      // A process the system ended (macOS, Linux) has no code, only a
+      // signal, and the messages below said "Code null".
+      const how =
+        code !== null ? { de: `Code ${code}`, en: `code ${code}` } : { de: `Signal ${signal ?? '?'}`, en: `signal ${signal ?? '?'}` }
 
       // A wrapper that hands Minecraft off instead of becoming it.
       //
@@ -1064,8 +1068,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
         level: crashed ? 'error' : 'info',
         text: crashed
           ? tr(
-              `Minecraft wurde mit Code ${code} beendet${signal ? ` (Signal ${signal})` : ''}.`,
-              `Minecraft exited with code ${code}${signal ? ` (signal ${signal})` : ''}.`
+              `Minecraft wurde mit ${how.de} beendet${signal && code !== null ? ` (Signal ${signal})` : ''}.`,
+              `Minecraft exited with ${how.en}${signal && code !== null ? ` (signal ${signal})` : ''}.`
             )
           : tr('Minecraft wurde beendet.', 'Minecraft closed.'),
         time: endedAt
@@ -1075,7 +1079,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // is only exiting because that failure killed it. Overwriting the reason
       // with "Beendet" would hide what actually went wrong.
       if (!launchFailed) {
-        setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? tr(`Absturz (Code ${code})`, `Crash (code ${code})`) : tr('Beendet', 'Closed'), {
+        setStatus(instanceId, crashed ? 'crashed' : 'stopped', crashed ? tr(`Absturz (${how.de})`, `Crash (${how.en})`) : tr('Beendet', 'Closed'), {
           exitCode: code
         })
 
@@ -1118,8 +1122,8 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
                     `${loader} found mods that do not fit.${hint} Click to see how to fix it.`
                   )
                 : tr(
-                    `Minecraft wurde mit Code ${code} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
-                    `Minecraft exited with code ${code}.${hint} You can find the log in the instance's Log tab.`
+                    `Minecraft wurde mit ${how.de} beendet.${hint} Das Log findest du bei der Instanz im Reiter Log.`,
+                    `Minecraft exited with ${how.en}.${hint} You can find the log in the instance's Log tab.`
                   ),
               // Stays until clicked away: the launcher is often hidden while
               // the game runs, and the notice was gone by the time it showed.
@@ -1421,11 +1425,17 @@ export async function runPreLaunch(
     task.signal.addEventListener('abort', onAbort)
 
     child.on('error', (err) => settle(() => reject(err)))
-    child.on('exit', (code) =>
+    child.on('exit', (code, signal) =>
       settle(() => {
         if (task.cancelled) return reject(new TaskCancelledError())
         if (code === 0) return resolve()
-        reject(new Error(tr(`Der Befehl vor dem Start endete mit Code ${code}`, `Pre-launch command exited with code ${code}`)))
+        reject(
+          new Error(
+            code !== null
+              ? tr(`Der Befehl vor dem Start endete mit Code ${code}`, `Pre-launch command exited with code ${code}`)
+              : tr(`Der Befehl vor dem Start wurde vom System beendet (${signal ?? '?'})`, `Pre-launch command was ended by the system (${signal ?? '?'})`)
+          )
+        )
       })
     )
   })
