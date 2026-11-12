@@ -3388,7 +3388,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'message said "code null". A link to a section of the settings did nothing on the second click. ' +
       'Shortcuts opened windows on top of an open dialog. "Play" in the command search gave no feedback for ' +
       'an instance that was starting. "Remove background" left the "unsaved" bar standing. "Get Java" ' +
-      'showed no progress. The Log tab read the whole log file into memory. A switched off dependency was ' +
+      'showed no progress. A switched off dependency was ' +
       'not switched back on when installing. A modpack with an unknown mod loader was quietly imported as ' +
       'vanilla. Error reports turned four part version numbers into an IP address. Anyone who left the beta ' +
       'programme during a renewal was back in afterwards.'

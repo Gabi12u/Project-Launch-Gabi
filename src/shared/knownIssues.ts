@@ -5258,8 +5258,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer einen Mod per Rechtsklick auf einer Version festgehalten hatte und danach nur den Mod-Loader ' +
       'oder eine passende Minecraft-Version wechselte, bekam den Mod trotzdem auf die neueste Version ' +
       'getauscht, und das Festhalten war weg. Betrifft nur die Betas von 1.0.26.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'cloud-backup-falsche-version',
@@ -5269,8 +5270,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'danach in die Cloud geladen, stand dort die neue Version. Beim Herunterladen als neue Instanz ' +
       'entstand dann eine Instanz mit der falschen Minecraft-Version und den Mods der alten, die nicht ' +
       'starteten.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'cloud-backup-ohne-mods-unklar',
@@ -5279,8 +5281,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Eine Sicherung enthält ohne Auswahl nur Welten und Konfiguration. Wer so eine Sicherung in die ' +
       'Cloud legte und auf einem anderen PC als neue Instanz herunterlud, bekam eine Instanz ohne Mods, ' +
       'ohne dass vorher irgendwo ein Hinweis darauf stand.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'absturzhilfe-fabric-api-module',
@@ -5289,8 +5292,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Verlangte ein Mod eine neuere Version eines Teils der Fabric API, etwa „fabric-rendering-v1“, ' +
       'schrieb die Absturzhilfe, die Datei sei von Hand hinzugefügt, und bot keinen Knopf an. Richtig ' +
       'wäre gewesen, Fabric API selbst zu aktualisieren. Betrifft nur die Betas von 1.0.26.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'befehl-vor-start-haengt',
@@ -5299,8 +5303,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Gab der eigene Befehl vor dem Start viel Text aus, etwa ein Sync-Skript, blieb er hängen, weil ' +
       'der Launcher seine Ausgabe nie las. Der Start wartete dann fünf Minuten und brach ab. Die Ausgabe ' +
       'des Befehls stand außerdem nirgends im Log.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'java-argument-jar-ohne-rueckfrage',
@@ -5309,8 +5314,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Java-Argumente, die fremden Programmcode laden, fragen vor dem ersten Start nach. „-jar“ und ' +
       '„-m“ fehlten in dieser Prüfung. Eine Instanz aus fremder Quelle mit einem solchen Argument hätte ' +
       'damit statt Minecraft ein anderes Programm starten können.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'wiederherstellung-rueckgaengig-nach-neustart',
@@ -5320,8 +5326,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'fest, blieb dort der Vermerk einer laufenden Wiederherstellung liegen. Der nächste Start des ' +
       'Launchers hielt sie für abgebrochen und stellte ohne Hinweis den Stand von davor wieder her. ' +
       'Zwischenordner, die halb gelöscht liegen blieben, wurden außerdem nie aufgeräumt.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'mod-update-alte-datei-bleibt',
@@ -5330,8 +5337,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Hielt etwa ein Virenscanner die alte Datei eines Mods fest, meldete das Update trotzdem Erfolg. ' +
       'Die alte Datei blieb im Mod-Ordner, tauchte beim nächsten Abgleich als zweiter Mod auf, und das ' +
       'Spiel startete mit dem Duplikat nicht.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'instanzseite-nach-spielen-veraltet',
@@ -5340,8 +5348,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer von der Seite einer Instanz aus spielte und danach dort blieb, sah unter Statistik und „Vor ' +
       'dem Start“ weiter den Stand von vor dem Spiel, etwa Spielzeit, Sitzungen und „Zuletzt gespielt“. ' +
       'Erst Verlassen und wieder Öffnen zeigte den richtigen Stand.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'leere-loader-version-immer-neueste',
@@ -5351,8 +5360,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'konnte, etwa bei einem Import ohne Internet, blieb diese leer. Spätere Starts und die Reparatur ' +
       'nahmen dann jedes Mal den neuesten Loader, ohne ihn sich zu merken, und richteten bei Forge und ' +
       'NeoForge jeden neuen Build still neu ein.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'reparatur-abgebrochener-loader-wechsel',
@@ -5362,8 +5372,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'mittendrin abgebrochen, etwa weil der Launcher geschlossen wurde, prüfte die Reparatur nur die ' +
       'Minecraft-Version der Mods. Die schon getauschten Mods für den anderen Loader blieben liegen, und ' +
       'das Spiel stürzte danach ab.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'kleinere-fehler-tiefensuche-november',
@@ -5373,13 +5384,14 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Linux stand „Code null“ in der Meldung. Ein Link auf einen Bereich der Einstellungen tat beim ' +
       'zweiten Klick nichts. Tastenkürzel öffneten Fenster über einem offenen Dialog. „Spielen“ in der ' +
       'Befehlssuche gab bei einer startenden Instanz keine Rückmeldung. „Hintergrund entfernen“ ließ die ' +
-      'Leiste „ungespeichert“ stehen. „Java laden“ zeigte keinen Fortschritt. Der Log-Reiter las die ' +
-      'ganze Logdatei in den Arbeitsspeicher. Eine ausgeschaltete Abhängigkeit wurde beim Installieren ' +
+      'Leiste „ungespeichert“ stehen. „Java laden“ zeigte keinen Fortschritt. Eine ausgeschaltete ' +
+      'Abhängigkeit wurde beim Installieren ' +
       'nicht wieder eingeschaltet. Ein Modpack mit unbekanntem Mod-Loader wurde still als Vanilla ' +
       'importiert. Fehlerberichte machten aus vierteiligen Versionsnummern eine IP-Adresse. Wer das ' +
       'Beta-Programm während einer Erneuerung verließ, war danach wieder dabei.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   },
   {
     id: 'kleinere-fehler-absturzhilfe-beta',
@@ -5390,8 +5402,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'unterschiedliche Versionen desselben Mods, wurde nur die erste beachtet. Der Hinweis auf einen ' +
       'neueren Mod-Loader verschwand, wenn die Abfrage einmal scheiterte, und sein Knopf prüfte nicht, ob ' +
       'gerade eine Reparatur oder Wiederherstellung lief. Betrifft nur die Betas von 1.0.26.',
-    state: 'fixing',
-    since: '2026-11-11'
+    state: 'fixed',
+    since: '2026-11-11',
+    fixedIn: '1.0.26'
   }
 ]
 
