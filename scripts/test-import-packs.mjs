@@ -189,6 +189,48 @@ try {
   )
 
   /* ------------------------------------------------------------------ *
+   * 2b. Mod-Loader, den der Launcher nicht kennt
+   * ------------------------------------------------------------------ */
+  // Used to become a vanilla instance full of mods that then crashed.
+  const pack = (file, entries) => {
+    const zip = new AdmZip()
+    for (const [name, value] of Object.entries(entries)) zip.addFile(name, Buffer.from(JSON.stringify(value)))
+    zip.writeZip(join(work, file))
+    return join(work, file)
+  }
+  const strangeCurse = await analyzeModpackFile(
+    pack('Fremd.zip', {
+      'manifest.json': {
+        minecraft: { version: '1.12.2', modLoaders: [{ id: 'liteloader-1.12.2', primary: true }] },
+        name: 'Fremd', version: '1', author: 'x', files: [], overrides: 'overrides'
+      }
+    })
+  )
+  check(strangeCurse.canImport === false, 'CurseForge mit unbekanntem Loader: als importierbar gemeldet')
+  check(
+    strangeCurse.findings.some((f) => f.level === 'blocker' && f.title.includes('liteloader')),
+    `CurseForge mit unbekanntem Loader: kein Hinderungsgrund genannt (${strangeCurse.findings.map((f) => `${f.level}:${f.title}`).join(' | ')})`
+  )
+  const strangeModrinth = await analyzeModpackFile(
+    pack('Fremd.mrpack', {
+      'modrinth.index.json': { formatVersion: 1, game: 'minecraft', versionId: '1', name: 'Fremd', files: [], dependencies: { minecraft: '1.12.2', liteloader: '1.12.2' } }
+    })
+  )
+  check(strangeModrinth.canImport === false, 'mrpack mit unbekanntem Loader: als importierbar gemeldet')
+  check(
+    strangeModrinth.findings.some((f) => f.level === 'blocker' && (f.detail ?? '').includes('liteloader')),
+    `mrpack mit unbekanntem Loader: kein Hinderungsgrund genannt (${strangeModrinth.findings.map((f) => `${f.level}:${f.title}`).join(' | ')})`
+  )
+  // Asking for nothing but Minecraft is a real vanilla pack and stays fine.
+  const plain = await analyzeModpackFile(
+    pack('Vanilla.mrpack', {
+      'modrinth.index.json': { formatVersion: 1, game: 'minecraft', versionId: '1', name: 'Vanilla', files: [], dependencies: { minecraft: '1.21.1' } }
+    })
+  )
+  check(plain.canImport === true && plain.loader === 'vanilla', `Reines Vanilla-mrpack: ${plain.loader}, importierbar ${plain.canImport}`)
+  notes.push('Unbekannter Mod-Loader: CurseForge und mrpack werden abgelehnt, reines Vanilla-mrpack geht weiter.')
+
+  /* ------------------------------------------------------------------ *
    * 3. Zip, das gar kein Modpack ist, aber Inhalte hat
    * ------------------------------------------------------------------ */
   const looseePath = join(work, 'EinfachEinZip.zip')

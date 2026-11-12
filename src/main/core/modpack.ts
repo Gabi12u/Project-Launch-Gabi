@@ -86,7 +86,22 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
   if (dependencies['forge']) {
     return { loader: 'forge', loaderVersion: loaderVersionOf('forge'), mcVersion }
   }
+  // A pack for a loader this launcher does not know became a vanilla
+  // instance full of mods that then crashed, with nothing naming the cause.
+  // Only a pack that asks for nothing but Minecraft is really vanilla.
+  const unknown = Object.keys(dependencies).filter((key) => key !== 'minecraft')
+  if (unknown.length > 0) throw unknownLoaderError(unknown.join(', '))
   return { loader: 'vanilla', loaderVersion: '', mcVersion }
+}
+
+/** Raised for a modpack made for a mod loader this launcher cannot set up. */
+function unknownLoaderError(name: string): Error {
+  return new Error(
+    tr(
+      `Das Modpack braucht den Mod-Loader „${name}“, den der Launcher nicht einrichten kann. Es wurde nicht importiert.`,
+      `The modpack needs the mod loader "${name}", which the launcher cannot set up. It was not imported.`
+    )
+  )
 }
 
 /**
@@ -497,7 +512,7 @@ function loaderFromCurseId(id: string): { loader: LoaderId; loaderVersion: strin
     case 'forge':
       return { loader: 'forge', loaderVersion: version }
     default:
-      return { loader: 'vanilla', loaderVersion: '' }
+      throw unknownLoaderError(name)
   }
 }
 
@@ -910,9 +925,11 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
         detail: `Minecraft ${mcVersion}${loader !== 'vanilla' ? `, ${loader} ${loaderVersion}`.trimEnd() : ''}`
       })
     } catch (err) {
+      // Also a mod loader the launcher does not know, not only a missing
+      // version; the message says which.
       findings.push({
         level: 'blocker',
-        title: tr('Das Modpack nennt keine Minecraft-Version', 'The modpack names no Minecraft version'),
+        title: tr('Das Modpack lässt sich so nicht einrichten', 'The modpack cannot be set up like this'),
         detail: err instanceof Error ? err.message : undefined
       })
     }
@@ -986,10 +1003,12 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       loader = known.includes(lower as LoaderId) ? (lower as LoaderId) : null
       loaderVersion = rest.join('-')
       if (!loader) {
+        // The import refuses such a pack (see `loaderFromCurseId`), so this
+        // says so up front instead of promising a fix by hand.
         findings.push({
-          level: 'warn',
+          level: 'blocker',
           title: tr(`Unbekannter Mod-Loader "${rawName}"`, `Unknown mod loader "${rawName}"`),
-          detail: tr('Der Loader muss nach dem Import von Hand gesetzt werden.', 'The loader has to be set by hand after the import.')
+          detail: tr('Diesen Mod-Loader kann der Launcher nicht einrichten.', 'The launcher cannot set up this mod loader.')
         })
       }
     } else {
