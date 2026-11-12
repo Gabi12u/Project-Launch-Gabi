@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 import type { BackupEntry, GameVersionTarget, LoaderId } from '@shared/types'
 import { isValidVersionString, paths } from '../paths'
@@ -684,6 +684,26 @@ function journalFile(stagingDir: string): string {
 }
 
 /**
+ * Written into the staging folder once a restore has fully succeeded. With
+ * it there, the parked folders are only the old state to throw away, never
+ * something to put back, whatever else is still lying in the folder.
+ */
+const FINISHED_MARK = 'finished'
+
+/**
+ * Deletes a finished restore's staging folder, the mark last: a file a
+ * scanner holds can stop this halfway, and whatever is left must still say
+ * that the restore was finished.
+ */
+function removeFinishedStaging(staging: string): void {
+  const retry = { recursive: true, force: true, maxRetries: 3, retryDelay: 200 } as const
+  for (const name of readdirSync(staging)) {
+    if (name !== FINISHED_MARK) rmSync(join(staging, name), retry)
+  }
+  rmSync(staging, retry)
+}
+
+/**
  * Sweeps `zipFolder`'s own leftover temp files after a crash mid backup.
  *
  * Only ever removes a file ending in the exact suffix `zipFolder` writes
@@ -801,6 +821,18 @@ export function failedRestoreRecoveries(): { instanceId: string; staging: string
 
 function recoverOneInterruptedRestore(instanceId: string, staging: string): boolean {
   if (!existsSync(staging) || !statSync(staging).isDirectory()) return false
+
+  // A finished restore whose clean up did not get through. Undoing it here
+  // put the old state back without a word after the next start.
+  if (existsSync(join(staging, FINISHED_MARK))) {
+    try {
+      removeFinishedStaging(staging)
+      logger.info(`Zwischenordner ${staging} einer abgeschlossenen Wiederherstellung aufgeräumt`)
+    } catch (err) {
+      logger.warn(`Zwischenordner ${staging} einer abgeschlossenen Wiederherstellung nicht aufgeräumt:`, err)
+    }
+    return false
+  }
 
   const file = journalFile(staging)
   // No journal means either an older build's leftover or a folder some other
@@ -1194,14 +1226,24 @@ async function restoreBackupUnlocked(instanceId: string, backupId: string): Prom
           )
         }
 
-        // 4. Only now is the old state expendable. The journal goes first: a
-        // staging folder that then fails to delete (a scanner holding a file)
-        // is harmless leftover, but one still carrying its journal would have
-        // the next start undo this finished restore.
+        // 4. Only now is the old state expendable. Marked finished before
+        // anything is deleted: the journal and the folder used to go in one
+        // step, and a scanner holding the journal left it behind, so the next
+        // start took this finished restore for an interrupted one and undid it.
+        let marked = false
         try {
-          rmSync(journalFile(parked), { force: true })
-          rmSync(parked, { recursive: true, force: true })
+          writeFileSync(join(parked, FINISHED_MARK), '')
+          marked = true
         } catch (err) {
+          logger.warn(`Zwischenordner ${parked} konnte nicht als abgeschlossen markiert werden:`, err)
+        }
+        try {
+          // Without the mark only the journal's absence tells the next start
+          // to keep its hands off, so it goes first.
+          if (!marked) rmSync(journalFile(parked), { force: true, maxRetries: 3, retryDelay: 200 })
+          removeFinishedStaging(parked)
+        } catch (err) {
+          // Cleaned up on the next start, never undone.
           logger.warn(`Zwischenordner ${parked} nach der Wiederherstellung nicht aufgeräumt:`, err)
         }
         logger.info(`Sicherung ${entry.fileName} in ${instance.name} eingespielt`)

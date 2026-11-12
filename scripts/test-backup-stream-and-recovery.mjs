@@ -35,6 +35,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync
@@ -139,7 +140,7 @@ try {
   })
 
   const { zipFolder, extractAllSlowly, listEntries } = require(outArchive)
-  const { recoverInterruptedRestores, failedRestoreRecoveries, createBackup, addDownloadedBackup, backupGame } = require(outBackups)
+  const { recoverInterruptedRestores, failedRestoreRecoveries, createBackup, addDownloadedBackup, backupGame, restoreBackup } = require(outBackups)
 
   /* ================================================================ *
    * Part 1: streaming zipFolder() with a large file
@@ -371,6 +372,48 @@ try {
     `Ein Cloud-Backup vergisst die Version aus der Cloud: ${JSON.stringify(fromCloud.game)}`
   )
   notes.push('Sicherungen merken sich Minecraft-Version und Loader, auch aus der Cloud; der Name steht in Ortszeit.')
+
+  /* ================================================================ *
+   * Part 5: a finished restore is never undone on the next start
+   * ================================================================ */
+
+  // What a scanner holding a file leaves behind after a successful restore:
+  // the staging folder with its journal and the old state still in it, but
+  // marked finished. The game folder holds the restored state.
+  const backupsDir4 = join(dataDir, 'backups', instanceId4)
+  const leftover = join(backupsDir4, 'restore-fertig01')
+  mkdirSync(join(leftover, 'saves', 'Welt'), { recursive: true })
+  writeFileSync(join(leftover, 'saves', 'Welt', 'level.dat'), 'ALTER STAND VOR DER WIEDERHERSTELLUNG')
+  writeFileSync(
+    join(leftover, 'journal.json'),
+    JSON.stringify({ moved: [{ key: 'saves', from: join(gameDir4, 'saves'), to: join(leftover, 'saves') }], newKeys: [] })
+  )
+  writeFileSync(join(leftover, 'finished'), '')
+  writeFileSync(join(gameDir4, 'saves', 'Welt', 'level.dat'), 'EINGESPIELTER STAND')
+  // Half deleted already: only the mark is left.
+  const halfGone = join(backupsDir4, 'restore-fertig02')
+  mkdirSync(halfGone, { recursive: true })
+  writeFileSync(join(halfGone, 'finished'), '')
+
+  const undone5 = recoverInterruptedRestores()
+  check(!undone5.includes(instanceId4), 'Eine abgeschlossene Wiederherstellung wurde als abgebrochen behandelt')
+  check(
+    readFileSync(join(gameDir4, 'saves', 'Welt', 'level.dat'), 'utf8') === 'EINGESPIELTER STAND',
+    'Der Start hat eine abgeschlossene Wiederherstellung rueckgaengig gemacht'
+  )
+  check(!existsSync(leftover), 'Der Zwischenordner einer abgeschlossenen Wiederherstellung blieb liegen')
+  check(!existsSync(halfGone), 'Ein halb geloeschter Zwischenordner blieb liegen')
+
+  // A real restore cleans up after itself completely.
+  writeFileSync(join(gameDir4, 'saves', 'Welt', 'level.dat'), 'SPAETER VERAENDERT')
+  await restoreBackup(instanceId4, made.id)
+  check(
+    readFileSync(join(gameDir4, 'saves', 'Welt', 'level.dat'), 'utf8') === 'welt',
+    'Die Wiederherstellung hat den gesicherten Stand nicht eingespielt'
+  )
+  const stagingLeft = readdirSync(backupsDir4).filter((name) => name.startsWith('restore-'))
+  check(stagingLeft.length === 0, `Nach der Wiederherstellung liegen Zwischenordner herum: ${stagingLeft.join(', ')}`)
+  notes.push('Abgeschlossene Wiederherstellung: beim naechsten Start nur aufgeraeumt, nie rueckgaengig gemacht.')
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {
