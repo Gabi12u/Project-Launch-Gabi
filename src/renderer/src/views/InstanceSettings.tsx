@@ -345,6 +345,16 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                       await window.gabi.instances.update(instance.id, {
                         appearance: { ...instance.appearance, icon, accent, background: null }
                       })
+                      // Icon and accent were saved along with it (indexes 3
+                      // and 4 of the baseline), so they no longer count as
+                      // unsaved. The bar kept saying so until the next edit.
+                      const fields = JSON.parse(baseline.current)
+                      fields[3] = icon
+                      fields[4] = accent
+                      baseline.current = JSON.stringify(fields)
+                      const stillDirty = fieldsSnapshot() !== baseline.current
+                      setDirty(stillDirty)
+                      onDirtyChange?.(stillDirty)
                       await onChanged()
                     } catch (err) {
                       toastError(err, tr('Hintergrund konnte nicht entfernt werden', 'Could not remove the background'))
