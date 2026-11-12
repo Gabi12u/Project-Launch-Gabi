@@ -20,7 +20,7 @@ import { getSettings, resetSettings, saveSettings } from './store'
 import { tr } from '@shared/i18n'
 import { emit, getMainWindow, notify } from './events'
 import { log, getLogDirectory } from './logger'
-import { cancelTask, listTasks, TaskCancelledError } from './tasks'
+import { cancelTask, listTasks, TaskCancelledError, withTask } from './tasks'
 
 import { listMinecraftVersions } from './core/mojang'
 import { listLoaderVersions } from './loaders'
@@ -696,7 +696,13 @@ export function registerIpc(): void {
 
   handle(IPC.javaList, (force?: boolean) => detectJavaRuntimes(force))
   handle(IPC.javaDetect, () => detectJavaRuntimes(true))
-  handle(IPC.javaInstall, (major: number) => installJava(major))
+  // As a task, so the download shows its progress and can be cancelled like
+  // every other; the button only had a spinner for minutes.
+  handle(IPC.javaInstall, (major: number) =>
+    withTask(tr(`Java ${major} wird installiert`, `Installing Java ${major}`), tr('Wird vorbereitet…', 'Preparing…'), undefined, (task) =>
+      installJava(major, task)
+    )
+  )
 
   /* ---------------------------------------------------------------- *
    * Accounts
