@@ -231,7 +231,10 @@ try {
   writeFileSync(
     loadersStub,
     `module.exports = {
-       listLoaderVersions: async (loader) => globalThis.__lgLoaders[loader] || [],
+       listLoaderVersions: async (loader) => {
+         if (globalThis.__lgLoadersOffline) throw new Error('offline')
+         return globalThis.__lgLoaders[loader] || []
+       },
        resolveLatestLoaderVersion: async (loader) => (globalThis.__lgLoaders[loader] || [])[0]?.version || '',
        installLoader: async (loader, mc, build) => loader + '-' + build + '-' + mc,
        availableLoaders: async () => ['fabric']
@@ -788,6 +791,15 @@ More details:
   const before = (Date.now() - 500) / 1000
   utimesSync(oldLog, before, before)
   check((await crash.rememberCrash('altbericht', Date.now())) === false, 'Der Bericht des vorigen Absturzes galt als neuer')
+
+  // --- 20. The loader notice survives a failed lookup, its fix still applies --------
+  check(instances.getInstance('neoforge').loaderUpdate === '21.1.209', `Vorher kein Loader-Hinweis: ${instances.getInstance('neoforge').loaderUpdate}`)
+  globalThis.__lgLoadersOffline = true
+  await content.checkUpdates('neoforge', undefined, false).catch(() => undefined)
+  globalThis.__lgLoadersOffline = false
+  check(instances.getInstance('neoforge').loaderUpdate === '21.1.209', `Nach einer gescheiterten Abfrage ist der Loader-Hinweis weg: ${instances.getInstance('neoforge').loaderUpdate}`)
+  await content.applyFix('neoforge', nLoader.fix)
+  check(instances.getInstance('neoforge').loaderVersion === '21.1.209', `Der Loader-Knopf der Absturzhilfe wirkt nicht: ${instances.getInstance('neoforge').loaderVersion}`)
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

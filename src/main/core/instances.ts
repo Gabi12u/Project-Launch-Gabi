@@ -1538,13 +1538,29 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
  * them and undo held versions. Here the mods stay exactly as they are. The
  * build itself is installed by the next start, the way a missing one always is.
  */
-export function setLoaderVersion(id: string, loaderVersion: string): Instance {
+export function setLoaderVersion(
+  id: string,
+  loaderVersion: string,
+  /** Set by a caller that itself holds `withContentLock`, which then reads as busy. */
+  options: { holdsContentLock?: boolean } = {}
+): Instance {
   const instance = getInstance(id)
   if (isRunning(id) || isStarting(id)) {
     throw new Error(tr('Die Instanz läuft gerade. Beende Minecraft zuerst.', 'The instance is running. Close Minecraft first.'))
   }
   if (instance.installing) {
     throw new Error(tr('Die Instanz wird gerade eingerichtet. Warte, bis das fertig ist.', 'The instance is being set up right now. Wait until that is done.'))
+  }
+  // A repair installs the loader build it reads from the record, and a
+  // version change writes its own build when it ends, so either running
+  // meanwhile left the record and the installed files apart.
+  if (isRepairing(id) || isRestoring(id) || (!options.holdsContentLock && isContentBusy(id))) {
+    throw new Error(
+      tr(
+        'An dieser Instanz läuft gerade eine Reparatur, Wiederherstellung oder ein Versionswechsel. Warte, bis das fertig ist.',
+        'A repair, restore or version change is running on this instance. Wait until that is done.'
+      )
+    )
   }
   if (instance.loader === 'vanilla' || !isValidVersionString(loaderVersion)) {
     throw new Error(tr('Ungültige Versionsangabe.', 'Invalid version.'))

@@ -838,8 +838,10 @@ async function newerLoaderBuild(instance: Instance): Promise<string | undefined>
   try {
     builds = await listLoaderVersions(instance.loader, instance.mcVersion)
   } catch (err) {
+    // Not known this time, so what was known stays. Returning nothing here
+    // took the notice away after a single failed lookup.
     logger.warn(`Versionen von ${instance.loader} für ${instance.mcVersion} nicht geprüft:`, err)
-    return undefined
+    return instance.loaderUpdate
   }
   const compare = instance.loader === 'forge' || instance.loader === 'neoforge' ? compareMaven : compareVersions
   // Forge lists some builds as "1.20.1-47.2.0".
@@ -1673,7 +1675,8 @@ async function runFix(instanceId: string, fix: NonNullable<CompatibilityIssue['f
 
     case 'change-loader': {
       if (!fix.loaderVersion) return
-      setLoaderVersion(instanceId, fix.loaderVersion)
+      // `applyFix` holds the content lock around this.
+      setLoaderVersion(instanceId, fix.loaderVersion, { holdsContentLock: true })
       return
     }
 
