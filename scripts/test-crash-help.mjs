@@ -453,6 +453,12 @@ try {
   makeInstance('modul', '1.21.11', [iris, apiOld])
   makeInstance('ohnetraeger', '1.21.11', [iris])
   makeInstance('gesperrt', '1.21.11', [flkCur])
+  // A setup that never got to pin a loader build, as one that failed offline.
+  mkdirSync(p.mods('ohneloader'), { recursive: true })
+  writeFileSync(
+    p.instanceFile('ohneloader'),
+    JSON.stringify({ name: 'ohneloader', mcVersion: '1.21.11', loader: 'fabric', loaderVersion: '', installed: false, content: [] })
+  )
 
   // NeoForge 1.21.1: GeckoLib 4.6.0 where Mob Mod wants [4.4.9,4.5), Cloth
   // Config missing, Old Mod built for 1.20, Breaker refusing Victim.
@@ -713,6 +719,23 @@ More details:
     instances.getInstance('gesperrt').content.find((c) => c.projectId === 'flk')?.versionId === 'flk-1132',
     'Gesperrt, zweiter Versuch: die Liste nennt nicht die neue Version'
   )
+
+  // --- 15. The first start of an instance without a loader build pins one -----------
+  const newestFabric = globalThis.__lgLoaders.fabric[0].version
+  const startId = await instances.resolveVersionId(instances.getInstance('ohneloader'))
+  check(
+    instances.getInstance('ohneloader').loaderVersion === newestFabric,
+    `Ohne Loader-Version: nach dem Start steht dort „${instances.getInstance('ohneloader').loaderVersion}“ statt ${newestFabric}`
+  )
+  check(startId.includes(newestFabric), `Ohne Loader-Version: gestartet wurde ${startId}`)
+  // Only looking, as the pre-launch check does, changes nothing.
+  writeFileSync(
+    p.instanceFile('ohneloader'),
+    JSON.stringify({ ...JSON.parse(readFileSync(p.instanceFile('ohneloader'), 'utf8')), loaderVersion: '' })
+  )
+  instances.loadInstances(true)
+  await instances.resolveVersionId(instances.getInstance('ohneloader'), false).catch(() => undefined)
+  check(instances.getInstance('ohneloader').loaderVersion === '', 'Ohne Loader-Version: schon das Nachsehen hat die Version festgelegt')
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

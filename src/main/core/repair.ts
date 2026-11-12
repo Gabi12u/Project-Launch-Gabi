@@ -9,7 +9,7 @@ import { TaskCancelledError, withTask } from '../tasks'
 import { downloadAll, downloadFile, isSatisfied, sha1File, type DownloadItem } from './net'
 import { clientJarPath, installVersion, loadVersionJson, resolveLibraries , type VersionJson } from './mojang'
 import { requiredJavaMajor, resolveJava } from './java'
-import { getInstance, persist, resolveVersionId, syncContentWithDisk } from './instances'
+import { getInstance, persist, pinnedLoaderVersion, resolveVersionId, syncContentWithDisk } from './instances'
 import { checkUpdates, contentFilePath, identifyLocalContent, removeContent } from './content'
 import { gameVersionMatches } from './gameVersions'
 import { isContentBusy, withContentLock } from './contentLock'
@@ -286,7 +286,7 @@ async function runRepair(
         repairLog(instanceId, 'warning', tr(`${instance.loader}-Profil fehlt oder ist unvollständig`, `${instance.loader} profile is missing or incomplete`))
         task.update(tr('Mod-Loader wird neu installiert…', 'Reinstalling mod loader…'), 0.1)
         repairLog(instanceId, 'fix', tr(`Installiere ${instance.loader} neu`, `Reinstalling ${instance.loader}`))
-        versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+        versionId = await installLoader(instance.loader, instance.mcVersion, await pinnedLoaderVersion(instance), task)
         step(tr('Mod-Loader', 'Mod loader'), 'repaired', tr(`${instance.loader} neu installiert`, `${instance.loader} reinstalled`))
       } else {
         step(tr('Mod-Loader', 'Mod loader'), 'ok', instance.loader === 'vanilla' ? 'Vanilla' : tr(`${instance.loader} vorhanden`, `${instance.loader} present`))
@@ -349,7 +349,7 @@ async function runRepair(
       try {
         rmSync(join(paths.version(versionId), `${versionId}.json`), { force: true })
         if (instance.loader !== 'vanilla') {
-          versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+          versionId = await installLoader(instance.loader, instance.mcVersion, await pinnedLoaderVersion(instance), task)
         }
         versionJson = await loadVersionJson(versionId)
         versionJsonRebuilt = true
@@ -410,7 +410,7 @@ async function runRepair(
           const setAside = `${profile}.repair-old`
           renameSync(profile, setAside)
           try {
-            versionId = await installLoader(instance.loader, instance.mcVersion, instance.loaderVersion, task)
+            versionId = await installLoader(instance.loader, instance.mcVersion, await pinnedLoaderVersion(instance), task)
           } catch (installErr) {
             try {
               if (!existsSync(profile)) renameSync(setAside, profile)

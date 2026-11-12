@@ -553,12 +553,10 @@ async function installInstanceOnce(id: string, force: boolean): Promise<void> {
       async (task) => {
         const current = getInstance(id)
 
-        let loaderVersion = current.loaderVersion
-        if (current.loader !== 'vanilla' && !loaderVersion) {
+        if (current.loader !== 'vanilla' && !current.loaderVersion) {
           task.update(tr('Loader-Version wird ermittelt…', 'Determining loader version…'), null)
-          loaderVersion = await resolveLatestLoaderVersion(current.loader, current.mcVersion)
-          persist({ ...getInstance(id), loaderVersion })
         }
+        const loaderVersion = await pinnedLoaderVersion(current)
 
         await installGameFiles({ ...current, loaderVersion }, task, force)
 
@@ -616,12 +614,34 @@ export async function installGameFiles(target: GameTarget, task: Task, force = f
   })
 }
 
+/**
+ * The instance's loader build, and when it has none yet, the newest one,
+ * written into the instance so it stays that build. Left empty, every start
+ * took whatever was newest that day, and Forge and NeoForge ran their
+ * installer again for each new build without asking. Only for callers about
+ * to install that build.
+ */
+export async function pinnedLoaderVersion(instance: Pick<Instance, 'id' | 'loader' | 'mcVersion' | 'loaderVersion'>): Promise<string> {
+  if (instance.loader === 'vanilla' || instance.loaderVersion) return instance.loaderVersion
+  const loaderVersion = await resolveLatestLoaderVersion(instance.loader, instance.mcVersion)
+  const fresh = tryGetInstance(instance.id)
+  // Only onto the same game: a version change meanwhile brought its own.
+  if (fresh && !fresh.loaderVersion && fresh.loader === instance.loader && fresh.mcVersion === instance.mcVersion) {
+    persist({ ...fresh, loaderVersion })
+    logger.info(`${fresh.name}: ${fresh.loader} auf ${loaderVersion} festgelegt`)
+  }
+  return loaderVersion
+}
+
 /** The version id the launcher should start (loader id, or the MC version). */
 export async function resolveVersionId(instance: Instance, install = true): Promise<string> {
   if (instance.loader === 'vanilla') return instance.mcVersion
 
-  const loaderVersion =
-    instance.loaderVersion || (await resolveLatestLoaderVersion(instance.loader, instance.mcVersion))
+  // Pinned only on the way to an install; a look from the pre-launch check
+  // leaves the instance as it is.
+  const loaderVersion = install
+    ? await pinnedLoaderVersion(instance)
+    : instance.loaderVersion || (await resolveLatestLoaderVersion(instance.loader, instance.mcVersion))
 
   switch (instance.loader) {
     case 'fabric':
