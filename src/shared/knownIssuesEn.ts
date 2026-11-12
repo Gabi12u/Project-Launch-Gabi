@@ -3369,16 +3369,10 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
   'leere-loader-version-immer-neueste': {
     title: 'Instances without a fixed loader version got the newest mod loader at every start, unasked',
     detail:
-      'When importing a folder did not recognise the version of the mod loader, it stayed empty. The ' +
-      'launcher then took the newest loader at every start and quietly set up every new Forge and NeoForge ' +
-      'build, which could upset single mods. Without internet such a Forge instance may not have started.'
-  },
-  'wiederherstellung-fremde-zips': {
-    title: 'A backup from a foreign zip could move the worlds aside and restore nothing',
-    detail:
-      'When a backup did not come from the launcher and its paths used backslashes, such as a zip packed ' +
-      'by hand, the launcher recognised the folders in it but unpacked none of them. The current worlds ' +
-      'were then only in the safety copy, and the message still said "Restored".'
+      'When the first setup of an instance failed before it could fix the version of the mod loader, for ' +
+      'example an import without internet, that version stayed empty. Later starts and repairs then took ' +
+      'the newest loader every time without remembering it, and quietly set up every new Forge and ' +
+      'NeoForge build.'
   },
   'reparatur-abgebrochener-loader-wechsel': {
     title: 'Repair reported an interrupted change of mod loader as solved, while mods for both loaders stayed mixed',

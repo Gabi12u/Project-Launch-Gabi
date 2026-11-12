@@ -5347,21 +5347,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     id: 'leere-loader-version-immer-neueste',
     title: 'Instanzen ohne feste Loader-Version bekamen bei jedem Start ungefragt den neuesten Mod-Loader',
     detail:
-      'Wurde beim Import eines Ordners die Version des Mod-Loaders nicht erkannt, blieb sie leer. Der ' +
-      'Launcher nahm dann bei jedem Start den neuesten Loader und richtete bei Forge und NeoForge jeden ' +
-      'neuen Build still neu ein, was einzelne Mods stören konnte. Ohne Internet startete so eine ' +
-      'Forge-Instanz womöglich gar nicht.',
-    state: 'fixing',
-    since: '2026-11-11'
-  },
-  {
-    id: 'wiederherstellung-fremde-zips',
-    title: 'Eine Sicherung aus einem fremden Zip konnte die Welten beiseiteräumen und nichts einspielen',
-    detail:
-      'Stammte eine Sicherung nicht vom Launcher und trugen ihre Pfade Backslashes, etwa ein von Hand ' +
-      'gepacktes Zip, erkannte der Launcher die Ordner darin, entpackte aber keinen davon. Die aktuellen ' +
-      'Welten lagen danach nur noch in der Sicherheitskopie, und die Meldung sagte trotzdem ' +
-      '„Wiederhergestellt“.',
+      'Scheiterte die erste Einrichtung einer Instanz, bevor sie die Version des Mod-Loaders festlegen ' +
+      'konnte, etwa bei einem Import ohne Internet, blieb diese leer. Spätere Starts und die Reparatur ' +
+      'nahmen dann jedes Mal den neuesten Loader, ohne ihn sich zu merken, und richteten bei Forge und ' +
+      'NeoForge jeden neuen Build still neu ein.',
     state: 'fixing',
     since: '2026-11-11'
   },
