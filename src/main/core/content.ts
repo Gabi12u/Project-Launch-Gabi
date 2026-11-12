@@ -469,10 +469,13 @@ async function installContentOnce(
       // principle collide with a Modrinth id that has nothing to do with it.
       // Without the scope, such a coincidence would read as "already
       // installed" and silently skip a genuinely missing requirement.
-      const already = getInstance(instanceId).content.some(
+      const already = getInstance(instanceId).content.find(
         (c) => c.projectId === dependency.projectId && c.provider === provider
       )
-      if (already) continue
+      if (already) {
+        if (!already.enabled) await enableDependency(instanceId, already, project.name)
+        continue
+      }
 
       try {
         options.task?.update(tr('Abhängigkeit wird installiert…', 'Installing dependency…'), null)
@@ -1019,6 +1022,32 @@ export function applyPreparedUpdate(instanceId: string, contentId: string, prepa
 }
 
 /**
+ * A required dependency that is installed but switched off. It counted as
+ * present and stayed off, and the mod needing it did not start.
+ */
+async function enableDependency(instanceId: string, dependency: ContentItem, neededBy: string): Promise<void> {
+  try {
+    await toggleContent(instanceId, dependency.id, true)
+    logger.info(`Abhängigkeit ${dependency.name} für ${neededBy} wieder eingeschaltet`)
+    notify(
+      'info',
+      tr(`${dependency.name} wieder eingeschaltet`, `${dependency.name} switched back on`),
+      tr(`${neededBy} braucht es, ohne startet das Spiel nicht.`, `${neededBy} needs it, the game does not start without it.`)
+    )
+  } catch (err) {
+    logger.warn(`Abhängigkeit ${dependency.name} ließ sich nicht einschalten:`, err)
+    notify(
+      'warning',
+      tr(`${neededBy}: Abhängigkeit ausgeschaltet`, `${neededBy}: dependency switched off`),
+      tr(
+        `${dependency.name} ist ausgeschaltet und ließ sich nicht einschalten. Schalte es von Hand ein, sonst startet das Spiel unter Umständen nicht.`,
+        `${dependency.name} is switched off and could not be switched on. Switch it on by hand, or the game may not start.`
+      )
+    )
+  }
+}
+
+/**
  * A new version can require something the old one did not. An update only
  * swapped the file, so the game then failed to start with nothing pointing
  * at why. Pulled in the same way a fresh install pulls its dependencies.
@@ -1029,10 +1058,13 @@ export async function installNewDependencies(instanceId: string, item: ContentIt
   const provider = item.provider
   for (const dependency of item.dependencies ?? []) {
     if (dependency.type !== 'required' || !dependency.projectId) continue
-    const already = getInstance(instanceId).content.some(
+    const already = getInstance(instanceId).content.find(
       (c) => c.projectId === dependency.projectId && c.provider === provider
     )
-    if (already) continue
+    if (already) {
+      if (!already.enabled) await enableDependency(instanceId, already, item.name)
+      continue
+    }
     try {
       await installContent({
         instanceId,

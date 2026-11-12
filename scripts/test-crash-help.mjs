@@ -32,7 +32,7 @@
  */
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -453,6 +453,15 @@ try {
   makeInstance('modul', '1.21.11', [iris, apiOld])
   makeInstance('ohnetraeger', '1.21.11', [iris])
   makeInstance('gesperrt', '1.21.11', [flkCur])
+  // Fabric API installed but switched off.
+  makeInstance('abhaengig', '1.21.11', [apiOld])
+  {
+    const record = JSON.parse(readFileSync(p.instanceFile('abhaengig'), 'utf8'))
+    record.content[0].enabled = false
+    record.content[0].fileName = `${apiOld.fileName}.disabled`
+    renameSync(join(p.mods('abhaengig'), apiOld.fileName), join(p.mods('abhaengig'), `${apiOld.fileName}.disabled`))
+    writeFileSync(p.instanceFile('abhaengig'), JSON.stringify(record))
+  }
   // A setup that never got to pin a loader build, as one that failed offline.
   mkdirSync(p.mods('ohneloader'), { recursive: true })
   writeFileSync(
@@ -736,6 +745,14 @@ More details:
   instances.loadInstances(true)
   await instances.resolveVersionId(instances.getInstance('ohneloader'), false).catch(() => undefined)
   check(instances.getInstance('ohneloader').loaderVersion === '', 'Ohne Loader-Version: schon das Nachsehen hat die Version festgelegt')
+
+  // --- 16. A required dependency that is switched off is switched back on -------------
+  await content.installNewDependencies('abhaengig', {
+    id: 'iris-neu', type: 'mod', provider: 'modrinth', name: 'Iris', dependencies: [{ type: 'required', projectId: 'P7dR8mSH' }]
+  })
+  const depAfter = instances.getInstance('abhaengig').content.find((c) => c.projectId === 'P7dR8mSH')
+  check(depAfter?.enabled === true, `Ausgeschaltete Abhängigkeit blieb aus: ${JSON.stringify({ enabled: depAfter?.enabled, file: depAfter?.fileName })}`)
+  check(existsSync(join(p.mods('abhaengig'), apiOld.fileName)), `Die Datei der Abhängigkeit heißt noch: ${readdirSync(p.mods('abhaengig')).join(', ')}`)
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {
