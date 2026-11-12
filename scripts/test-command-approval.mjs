@@ -60,7 +60,25 @@ try {
     logLevel: 'error'
   })
 
-  const { validateJavaPath, isValidJavaPath, approvalKey, isApproved } = require(out)
+  const { validateJavaPath, isValidJavaPath, approvalKey, isApproved, jvmArgsLoadCode } = require(out)
+
+  /* ------------------------------------------------------------------ *
+   * Java arguments that start other code ask first
+   * ------------------------------------------------------------------ */
+  for (const args of [
+    ['-jar', 'C:\\fremd\\programm.jar'],
+    ['-m', 'fremd/de.fremd.Main'],
+    ['--module', 'fremd/de.fremd.Main'],
+    ['--module=fremd/de.fremd.Main'],
+    ['-javaagent:C:\\a.jar'],
+    ['-cp', 'C:\\fremd']
+  ]) {
+    check(jvmArgsLoadCode(args), `Sollte eine Rueckfrage ausloesen: ${args.join(' ')}`)
+  }
+  for (const args of [['-Xmx4G', '-XX:+UseG1GC'], ['-Dmy.jar=1'], ['-jarfoo']]) {
+    check(!jvmArgsLoadCode(args), `Gewoehnliche Argumente loesen eine Rueckfrage aus: ${args.join(' ')}`)
+  }
+  notes.push('Java-Argumente: -jar, -m und --module fragen nach, gewoehnliche Einstellungen nicht.')
 
   /* ------------------------------------------------------------------ *
    * javaPath validation
