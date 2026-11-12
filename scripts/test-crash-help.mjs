@@ -32,7 +32,7 @@
  */
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -237,6 +237,24 @@ try {
        availableLoaders: async () => ['fabric']
      }`
   )
+  // Passes everything to the real fs, except that the one file named in
+  // `globalThis.__lgLocked` can be neither renamed nor deleted, the way a
+  // virus scanner holding it behaves.
+  const fsShim = join(work, 'fs-shim.js')
+  writeFileSync(
+    fsShim,
+    `const real = require('fs')
+     const locked = (path) => typeof globalThis.__lgLocked === 'string' && String(path).toLowerCase() === globalThis.__lgLocked.toLowerCase()
+     const refuse = () => { const err = new Error('EPERM: gesperrt (Test)'); err.code = 'EPERM'; throw err }
+     module.exports = new Proxy(real, {
+       get(target, prop, receiver) {
+         if (prop === 'renameSync') return (from, to) => (locked(from) ? refuse() : target.renameSync(from, to))
+         if (prop === 'rmSync') return (path, options) => (locked(path) ? refuse() : target.rmSync(path, options))
+         if (prop === 'unlinkSync') return (path) => (locked(path) ? refuse() : target.unlinkSync(path))
+         return Reflect.get(target, prop, receiver)
+       }
+     })`
+  )
   const entry = join(work, 'entry.js')
   writeFileSync(
     entry,
@@ -263,6 +281,7 @@ try {
         setup(build) {
           build.onResolve({ filter: /^\.\.\/providers$/ }, () => ({ path: providersStub }))
           build.onResolve({ filter: /^\.\.\/loaders$/ }, () => ({ path: loadersStub }))
+          build.onResolve({ filter: /^node:fs$/ }, () => ({ path: fsShim }))
         }
       }
     ],
@@ -433,6 +452,7 @@ try {
   NAMES.iris = 'Iris'
   makeInstance('modul', '1.21.11', [iris, apiOld])
   makeInstance('ohnetraeger', '1.21.11', [iris])
+  makeInstance('gesperrt', '1.21.11', [flkCur])
 
   // NeoForge 1.21.1: GeckoLib 4.6.0 where Mob Mod wants [4.4.9,4.5), Cloth
   // Config missing, Old Mod built for 1.20, Breaker refusing Victim.
@@ -667,6 +687,32 @@ More details:
   const lone = report.issues.find((i) => i.id === 'crash-replace-fabric-rendering-v1')
   check(lone !== undefined && !/von Hand/.test(lone.detail ?? ''), `Ohne Träger: ${lone?.detail}`)
   check(lone?.fix?.kind === 'disable-content' && /Iris/.test(lone.fix.label), `Ohne Träger, Knopf: ${JSON.stringify(lone?.fix)}`)
+
+  // --- 14. An update whose old file is locked is undone, not left doubled -----------
+  await content.checkUpdates('gesperrt', undefined, false)
+  const lockedItem = instances.getInstance('gesperrt').content.find((c) => c.projectId === 'flk')
+  check(lockedItem?.update?.versionId === 'flk-1132', `Gesperrt: kein Update gefunden: ${JSON.stringify(lockedItem?.update)}`)
+  const modsOf = (id) => readdirSync(p.mods(id)).sort().join(', ')
+  globalThis.__lgLocked = join(p.mods('gesperrt'), lockedItem.fileName)
+  let lockedError
+  try {
+    await content.applyUpdate('gesperrt', lockedItem.id)
+  } catch (err) {
+    lockedError = err
+  }
+  globalThis.__lgLocked = null
+  check(lockedError !== undefined && /gesperrt|locked/.test(lockedError.message), `Gesperrt: das Update meldete Erfolg (${lockedError?.message})`)
+  check(modsOf('gesperrt') === 'flk-1131.jar', `Gesperrt: im Mods-Ordner liegt danach: ${modsOf('gesperrt')}`)
+  const afterLocked = instances.getInstance('gesperrt').content.filter((c) => c.type === 'mod')
+  check(afterLocked.length === 1 && afterLocked[0].versionId === 'flk-1131', `Gesperrt: die Liste nach dem Fehlschlag: ${JSON.stringify(afterLocked.map((c) => c.versionId))}`)
+
+  // Once the lock is gone the same update goes through and leaves nothing behind.
+  await content.applyUpdate('gesperrt', lockedItem.id)
+  check(modsOf('gesperrt') === 'flk-1132.jar', `Gesperrt, zweiter Versuch: im Mods-Ordner liegt: ${modsOf('gesperrt')}`)
+  check(
+    instances.getInstance('gesperrt').content.find((c) => c.projectId === 'flk')?.versionId === 'flk-1132',
+    'Gesperrt, zweiter Versuch: die Liste nennt nicht die neue Version'
+  )
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

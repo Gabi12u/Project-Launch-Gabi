@@ -1175,6 +1175,40 @@ async function applyUpdateOnce(
   const oldPath = contentPath(dir, current.fileName)
   const stale = samePath(oldPath, destination) ? null : oldPath
 
+  // The old file is moved out of the way before anything else changes. It
+  // used to be deleted at the very end, and a delete that failed (a scanner
+  // holding the jar) was only logged: the update reported success, the old
+  // jar stayed next to the new one, and the game refused to start with the
+  // duplicate. Now a file that cannot be moved stops the update cleanly.
+  // The ".replaced" name is no jar, so neither the folder scan nor the game
+  // looks at it should deleting it fail later on.
+  let aside: string | null = null
+  if (stale && existsSync(stale)) {
+    const target = `${stale}.${randomUUID().slice(0, 8)}.replaced`
+    try {
+      await renameWithRetry(stale, target)
+      aside = target
+    } catch (err) {
+      discardStaged(destination)
+      throw new Error(
+        tr(
+          `Die alte Datei von ${item.name} ist gerade gesperrt, etwa von einem Virenscanner oder dem laufenden Spiel. Das Update wurde zurückgenommen, versuche es gleich noch einmal.`,
+          `The old file of ${item.name} is locked right now, for example by a virus scanner or the running game. The update was undone, try again in a moment.`
+        ),
+        { cause: err }
+      )
+    }
+  }
+  // Puts the old file back where it was, for every way out below that fails.
+  const restoreAside = (): void => {
+    if (!aside || !stale) return
+    try {
+      renameSync(aside, stale)
+    } catch (err) {
+      logger.error(`Alte Datei ${aside} konnte nicht zurückbenannt werden:`, err)
+    }
+  }
+
   // World copies: only touched while the item is enabled. A disabled datapack
   // has none to begin with, since `toggleContent` removes them on disable and
   // only restores them the next time it is switched back on.
@@ -1183,8 +1217,14 @@ async function applyUpdateOnce(
       name.endsWith('.disabled') ? name.slice(0, -'.disabled'.length) : name
     // A world deleted since it was assigned is dropped, not recreated.
     const live = current.worlds.filter((world) => worldExists(instanceId, world))
-    for (const world of live) removeDatapackFromWorld(instanceId, world, bare(current.fileName))
-    next.worlds = placeIntoWorlds(instanceId, live, destination, bare(next.fileName), item.name)
+    try {
+      for (const world of live) removeDatapackFromWorld(instanceId, world, bare(current.fileName))
+      next.worlds = placeIntoWorlds(instanceId, live, destination, bare(next.fileName), item.name)
+    } catch (err) {
+      discardStaged(destination)
+      restoreAside()
+      throw err
+    }
   }
 
   // Dependencies can change between versions.
@@ -1221,6 +1261,7 @@ async function applyUpdateOnce(
     persist({ ...getInstance(instanceId), content })
   } catch (err) {
     discardStaged(destination)
+    restoreAside()
     throw err
   }
 
@@ -1231,20 +1272,31 @@ async function applyUpdateOnce(
     renamePackSelection(instanceId, next.type, current.fileName, next.fileName)
   }
 
-  if (stale) removeStaleFile(stale)
+  if (aside) removeStaleFile(aside)
 
   logger.info(`${item.name} auf ${next.version} aktualisiert`)
   return next
 }
 
 /**
- * Deletes the file an update replaced, without ever failing the update.
- *
- * Tried twice: the usual reason a delete fails is a scanner or indexer holding
- * the file open for a moment, and by the time the record has been written that
- * has often passed. If it still refuses, the update itself already succeeded
- * and is recorded correctly, so this is logged and left alone rather than
- * unwinding work that is done.
+ * Renames a file, trying a few times over about a second: the usual reason
+ * this fails is a scanner or indexer holding the file open for a moment.
+ */
+async function renameWithRetry(from: string, to: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      renameSync(from, to)
+      return
+    } catch (err) {
+      if (attempt >= 4) throw err
+      await new Promise((resolveWait) => setTimeout(resolveWait, 250))
+    }
+  }
+}
+
+/**
+ * Deletes the old file an update moved aside, without ever failing the
+ * update. Tried twice; left over, it is no jar and nothing loads it.
  */
 function removeStaleFile(path: string): void {
   try {
