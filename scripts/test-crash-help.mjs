@@ -32,7 +32,7 @@
  */
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -489,6 +489,13 @@ try {
   globalThis.__lgBest['9s6osm5g'] = () => cloth
   globalThis.__lgSlugs['cloth-config'] = { projectId: '9s6osm5g', name: 'Cloth Config API' }
   makeInstance('neoforge', '1.21.1', [mob, gl460, oldMod, breaker, victim], 'neoforge')
+  // Two mods asking for different GeckoLib versions.
+  const otherMod = neo('othermod', 'oth-1', '1.0.0', ['1.21.1'], '2026-10-01T00:00:00Z', 'othermod')
+  makeInstance('zweimods', '1.21.1', [mob, otherMod, gl460], 'neoforge')
+  // Fabric API missing, later put in by hand.
+  makeInstance('vonhand', '1.21.11', [sodium])
+  // An old report left in latest.log.
+  makeInstance('altbericht', '1.21.11', [zoom, flkCur])
 
   check((await crashed('absturz', FABRIC.mismatch)) === true, 'Nach dem Absturz gab es keinen Vorschlag')
   let report = await compat.checkCompatibility('absturz')
@@ -753,6 +760,34 @@ More details:
   const depAfter = instances.getInstance('abhaengig').content.find((c) => c.projectId === 'P7dR8mSH')
   check(depAfter?.enabled === true, `Ausgeschaltete Abhängigkeit blieb aus: ${JSON.stringify({ enabled: depAfter?.enabled, file: depAfter?.fileName })}`)
   check(existsSync(join(p.mods('abhaengig'), apiOld.fileName)), `Die Datei der Abhängigkeit heißt noch: ${readdirSync(p.mods('abhaengig')).join(', ')}`)
+
+  // --- 17. Two mods asking for different versions: the pick suits both ---------------
+  const TWO = `[main/ERROR] Missing or unsupported mandatory dependencies:
+	Mod ID: 'geckolib', Requested by: 'mobmod', Expected range: '[4.4.9,4.5)', Actual version: '4.6.0'
+	Mod ID: 'geckolib', Requested by: 'othermod', Expected range: '[4.4.9,4.4.11)', Actual version: '4.6.0'`
+  check((await crashed('zweimods', TWO)) === true, 'Zwei Mods: kein Vorschlag')
+  report = await compat.checkCompatibility('zweimods')
+  const twoGecko = report.issues.find((i) => i.id === 'crash-replace-geckolib')
+  notes.push(`Zwei Mods: ${twoGecko?.title} [${twoGecko?.fix?.label ?? '-'}]`)
+  check(twoGecko?.fix?.kind === 'install-version' && twoGecko.fix.versionId === 'gl-4410', `Zwei Mods: gewählt ${JSON.stringify(twoGecko?.fix)}`)
+  check(/Mob Mod und othermod brauchen GeckoLib/.test(twoGecko?.title ?? ''), `Zwei Mods, Titel: ${twoGecko?.title}`)
+
+  // --- 18. A missing mod put in by hand ends the finding -----------------------------
+  check((await crashed('vonhand', FABRIC.missing)) === true, 'Von Hand: kein Vorschlag')
+  report = await compat.checkCompatibility('vonhand')
+  check(report.issues.some((i) => i.id === 'crash-install-fabric-api'), 'Von Hand: der Vorschlag fehlt schon vorher')
+  writeFileSync(join(p.mods('vonhand'), 'fabric-api-handgeladen.jar'), jarBytes('fabric-api', 'Fabric API', '0.141.0'))
+  await instances.syncContentWithDisk('vonhand', { force: true })
+  report = await compat.checkCompatibility('vonhand')
+  check(!report.issues.some((i) => i.id === 'crash-install-fabric-api'), 'Von Hand installiert: der Vorschlag „fehlt“ bleibt stehen')
+
+  // --- 19. A report from before this start is not this start's --------------------
+  const oldLog = join(p.gameDir('altbericht'), 'logs', 'latest.log')
+  mkdirSync(dirname(oldLog), { recursive: true })
+  writeFileSync(oldLog, FABRIC.mismatch)
+  const before = (Date.now() - 500) / 1000
+  utimesSync(oldLog, before, before)
+  check((await crash.rememberCrash('altbericht', Date.now())) === false, 'Der Bericht des vorigen Absturzes galt als neuer')
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

@@ -420,6 +420,16 @@ function interval(
   }
 }
 
+/** A version every one of `parts` accepts. */
+function allOf(parts: VersionRange[]): VersionRange {
+  if (parts.length === 1) return parts[0]
+  return {
+    test: (v) => parts.every((part) => part.test(v)),
+    de: parts.map((part) => part.de).join(' und '),
+    en: parts.map((part) => part.en).join(' and ')
+  }
+}
+
 function anyOf(parts: VersionRange[]): VersionRange | null {
   if (parts.length === 0) return null
   if (parts.length === 1) return parts[0]
@@ -583,6 +593,8 @@ interface Finding {
   game?: string
   /** The loader build at the crash, for a finding that offers another one. */
   loaderVersion?: string
+  /** A mod the loader found missing; gone once a mod with that id is there. */
+  missing?: { id: string; name: string }
 }
 
 const gameOf = (instance: Instance): string => `${instance.mcVersion}|${instance.loader}`
@@ -612,7 +624,19 @@ export function crashIssues(instance: Instance): CompatibilityIssue[] {
     }
     const fix = finding.issue.fix
     if (fix?.kind === 'install-dependency') {
-      return !instance.content.some((c) => c.enabled && c.provider === fix.provider && c.projectId === fix.projectId)
+      if (instance.content.some((c) => c.enabled && c.provider === fix.provider && c.projectId === fix.projectId)) return false
+    }
+    // Put in by hand or from the other platform: then only its jar says it is
+    // the missing mod, and the finding stayed until the next start.
+    const missing = finding.missing
+    if (missing) {
+      const there = instance.content.some(
+        (c) =>
+          c.enabled &&
+          c.type === 'mod' &&
+          ((missing.id !== '' && (c.modIds ?? []).includes(missing.id)) || flattenName(c.name) === flattenName(missing.name))
+      )
+      if (there) return false
     }
     return true
   })
@@ -634,8 +658,10 @@ async function latestLogHead(instanceId: string, startedAt: number): Promise<str
   const file = join(paths.gameDir(instanceId), 'logs', 'latest.log')
   try {
     const info = await stat(file)
-    // Written by an earlier start, so it says nothing about this one.
-    if (info.mtimeMs < startedAt - 1000) return ''
+    // Written by an earlier start, so it says nothing about this one. A game
+    // that never got going leaves the last run's file, and with a second of
+    // slack a quick start after a crash showed that crash's report again.
+    if (info.mtimeMs < startedAt) return ''
     const size = Math.min(info.size, 2 * 1024 * 1024)
     const handle = await open(file, 'r')
     try {
@@ -656,8 +682,10 @@ async function latestLogHead(instanceId: string, startedAt: number): Promise<str
  */
 export async function rememberCrash(instanceId: string, startedAt: number): Promise<boolean> {
   findings.delete(instanceId)
+  // From this start on, without the second of slack there was: a start right
+  // after a crash read the last run's report as its own.
   let text = getLogBuffer(instanceId)
-    .filter((line) => line.time >= startedAt - 1000)
+    .filter((line) => line.time >= startedAt)
     .map((line) => line.text)
     .join('\n')
   let report = parseLoaderReport(text)
@@ -823,23 +851,36 @@ async function resolveSolution(
 
   if (solution.kind === 'replace') {
     // Who asked for it, for the sentence. The details name it.
-    const reason = report.details.find((d) => d.kind === 'mismatch' && same(d.dep, solution.mod))
+    const reasons = report.details.filter((d) => d.kind === 'mismatch' && same(d.dep, solution.mod))
+    const reason = reasons[0]
     const requirer = reason ? find(reason.mod) : undefined
-    const range = rangeFor(report.source, solution.range)
-    const wanted = range ? tr(range.de, range.en) : solution.range
-    const who = reason?.mod.name ?? tr('Ein anderer Mod', 'Another mod')
+    // Fabric's own step already suits every mod that asks. Forge and Quilt
+    // only list the requests, one per mod, and only the first was looked at:
+    // the version picked for it could break the second one.
+    const asked = [...new Set(report.solutions.length > 0 ? [solution.range] : [solution.range, ...reasons.map((d) => d.range)])]
+    const parts = asked.map((text) => rangeFor(report.source, text))
+    const range = parts.every((part): part is VersionRange => part !== null) ? allOf(parts) : null
+    const wanted = range ? tr(range.de, range.en) : asked.join(', ')
+    const askers = [...new Set(reasons.map((d) => d.mod.name))]
+    const who =
+      askers.length > 1
+        ? `${askers.slice(0, -1).join(', ')} ${tr('und', 'and')} ${askers[askers.length - 1]}`
+        : (reason?.mod.name ?? tr('Ein anderer Mod', 'Another mod'))
     const target = find(solution.mod)
     const installed = solution.mod.version ?? reason?.present[0] ?? '?'
 
     if (BUILTIN.has(solution.mod.id)) {
       const fix = range ? await loaderFix(instance, solution.mod.id, range, comparerFor(report.source)) : undefined
-      const finding = withWatch(builtinIssue(id, solution.mod, who, wanted, installed, requirer, fix), [requirer])
+      const finding = withWatch(builtinIssue(id, solution.mod, who, wanted, installed, requirer, fix, askers.length > 1), [requirer])
       // Gone once the instance is on another build, whichever way it got there.
       if (fix) finding.loaderVersion = instance.loaderVersion
       return finding
     }
 
-    const title = tr(`${who} braucht ${solution.mod.name}: ${wanted}`, `${who} needs ${solution.mod.name}: ${wanted}`)
+    const title =
+      askers.length > 1
+        ? tr(`${who} brauchen ${solution.mod.name}: ${wanted}`, `${who} need ${solution.mod.name}: ${wanted}`)
+        : tr(`${who} braucht ${solution.mod.name}: ${wanted}`, `${who} needs ${solution.mod.name}: ${wanted}`)
     const told = tr(
       `Installiert ist ${installed}, deshalb hat ${loaderName(instance.loader)} den Start abgebrochen.`,
       `${installed} is installed, so ${loaderName(instance.loader)} stopped the launch.`
@@ -1075,7 +1116,7 @@ async function resolveSolution(
         // not a slug there
       }
     }
-    return withWatch(
+    const missingFinding = withWatch(
       {
         id,
         severity: 'error',
@@ -1093,6 +1134,8 @@ async function resolveSolution(
       },
       [requirer]
     )
+    missingFinding.missing = { id: solution.mod.id, name: project?.name ?? solution.mod.name }
+    return missingFinding
   }
 
   // remove
@@ -1196,9 +1239,13 @@ function builtinIssue(
   wanted: string,
   installed: string,
   requirer: ContentItem | undefined,
-  loaderChange?: CompatibilityIssue['fix']
+  loaderChange?: CompatibilityIssue['fix'],
+  /** More than one mod asks, `who` names them all. */
+  several = false
 ): CompatibilityIssue {
-  const title = tr(`${who} braucht ${mod.name}: ${wanted}`, `${who} needs ${mod.name}: ${wanted}`)
+  const title = several
+    ? tr(`${who} brauchen ${mod.name}: ${wanted}`, `${who} need ${mod.name}: ${wanted}`)
+    : tr(`${who} braucht ${mod.name}: ${wanted}`, `${who} needs ${mod.name}: ${wanted}`)
   if (loaderChange) {
     return {
       id,
