@@ -312,7 +312,7 @@ try {
   check(repaired.includes('eigener-mod.jar'), 'Die Reparatur hat die unbekannte Datei angefasst')
   const repairedItem = instances.getInstance('reparatur').content.find((c) => c.fileName === 'knownmod-26.2.jar')
   check(repairedItem?.versionId === 'km-262' && JSON.stringify(repairedItem?.gameVersions) === '["26.2"]', `Eintrag nach der Reparatur: ${JSON.stringify(repairedItem)}`)
-  check(JSON.stringify(modStep ?? {}).includes('Minecraft-Version getauscht'), 'Der Reparatur-Bericht nennt den Austausch nicht')
+  check(JSON.stringify(modStep ?? {}).includes('passende Version für Minecraft und Mod-Loader getauscht'), 'Der Reparatur-Bericht nennt den Austausch nicht')
   check(modStep?.status === 'repaired', `Status des Mod-Schritts: ${modStep?.status}`)
 
   // A mod that already fits is left alone by the repair.

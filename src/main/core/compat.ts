@@ -64,7 +64,7 @@ async function projectInfo(
  * most Forge mods for that version; those were blocked outright as not
  * fitting, while most of them run.
  */
-function loaderFit(instance: Instance, loaders: string[]): 'fits' | 'forge-on-neoforge' | 'no' {
+export function loaderFit(instance: Pick<Instance, 'loader' | 'mcVersion'>, loaders: string[]): 'fits' | 'forge-on-neoforge' | 'no' {
   if (loaders.length === 0) return 'fits'
   if (instance.loader === 'vanilla') return 'no'
   if (loaders.includes(instance.loader)) return 'fits'

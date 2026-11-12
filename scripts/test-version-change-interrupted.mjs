@@ -212,6 +212,41 @@ try {
   notes.push(`Reparatur: ${JSON.stringify(report.steps?.find((s) => /Mods/.test(s.label ?? ''))?.detail)}`)
   check(!fixed.pendingVersionChange, 'Die Reparatur hat den unterbrochenen Wechsel nicht aufgelöst')
   check(readdirSync(repairMods).sort().join(',') === 'iris-1211.jar,lithium-1211.jar,sodium-1211.jar', `Mods nach der Reparatur: ${readdirSync(repairMods).join(', ')}`)
+
+  // --- 5. A change of loader on the same Minecraft version, cut off halfway -------
+  // Fabric to NeoForge on 1.21.1: Iris is already the NeoForge build, the rest
+  // still Fabric. Every mod is for 1.21.1, so the version check alone saw
+  // nothing wrong.
+  const mixMods = p.mods('gemischt')
+  mkdirSync(mixMods, { recursive: true })
+  const mixed = projects.map((pr, i) => {
+    const neo = i === 0
+    const fileName = neo ? `${pr}-1211-neo.jar` : `${pr}-1211.jar`
+    return {
+      id: `gemischt-${pr}`, type: 'mod', provider: 'modrinth', fileName, name: pr, version: fileName, versionId: fileName.replace('.jar', ''),
+      projectId: pr, enabled: true, gameVersions: ['1.21.1'], loaders: [neo ? 'neoforge' : 'fabric'], dependencies: [], installedAt: 1
+    }
+  })
+  for (const c of mixed) writeFileSync(join(mixMods, c.fileName), jar(c.fileName))
+  writeFileSync(
+    p.instanceFile('gemischt'),
+    JSON.stringify({
+      name: 'gemischt', mcVersion: '1.21.1', loader: 'fabric', loaderVersion: '0.16.9', installed: true, content: mixed,
+      pendingVersionChange: { mcVersion: '1.21.1', loader: 'neoforge', loaderVersion: '21.1.200' }
+    })
+  )
+  instances.invalidateInstanceCache()
+  await repair.repairInstance('gemischt')
+  const mixedAfter = instances.getInstance('gemischt')
+  check(
+    readdirSync(mixMods).sort().join(',') === 'iris-1211.jar,lithium-1211.jar,sodium-1211.jar',
+    `Gemischte Loader nach der Reparatur: ${readdirSync(mixMods).join(', ')}`
+  )
+  check(
+    mixedAfter.content.every((c) => c.loaders.includes('fabric')),
+    `Nach der Reparatur noch Mods für einen anderen Loader: ${mixedAfter.content.map((c) => `${c.name}:${c.loaders}`).join(', ')}`
+  )
+  check(!mixedAfter.pendingVersionChange, 'Gemischte Loader: der unterbrochene Wechsel ist nicht aufgelöst')
   void existsSync
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
