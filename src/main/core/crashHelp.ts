@@ -692,6 +692,8 @@ function same(a: LoaderMod, b: LoaderMod): boolean {
 }
 
 type Finder = (ref: LoaderMod, enabled?: boolean) => ContentItem | undefined
+/** The switched on mod that carries `ref` inside it, if one does. */
+type Bundler = (ref: LoaderMod) => Promise<ContentItem | undefined>
 
 /** Builds the findings for one report. Exported for the tests. */
 export async function resolveReport(instance: Instance, given: LoaderReport): Promise<Finding[]> {
@@ -710,6 +712,32 @@ export async function resolveReport(instance: Instance, given: LoaderReport): Pr
         m.enabled === enabled &&
         (flattenName(m.name) === flattenName(ref.name) || (ref.id !== '' && flattenName(m.name) === flattenName(ref.id)))
     )
+
+  // Fabric API brings its modules as jars nested in its own, and the loader
+  // names the module ("fabric-rendering-v1"), not Fabric API. Read only
+  // when a step names a mod that is no file of its own.
+  let bundles: Map<string, { provides: string[]; nested: string[] }> | null = null
+  const bundler: Bundler = async (ref) => {
+    if (!ref.id) return undefined
+    if (!bundles) {
+      const read = new Map<string, { provides: string[]; nested: string[] }>()
+      for (const mod of mods) {
+        if (!mod.enabled) continue
+        const meta = await readJarMetadata(join(paths.mods(instance.id), mod.fileName))
+        if (meta) read.set(mod.id, { provides: meta.provides, nested: meta.nested })
+      }
+      bundles = read
+    }
+    const known = bundles
+    // Nested jars are named "<id>-<version>.jar". The digit keeps
+    // "fabric-api" from matching "fabric-api-base-0.4.42.jar".
+    const id = ref.id.toLowerCase()
+    const carries = (file: string): boolean => file.startsWith(`${id}-`) && /^\d/.test(file.slice(id.length + 1))
+    return mods.find((m) => {
+      const own = known.get(m.id)
+      return own !== undefined && (own.provides.includes(ref.id) || own.nested.some(carries))
+    })
+  }
 
   // Forge and Quilt name some mods by id only. The mod list's name reads
   // better in the sentence, so it takes over wherever the mod is installed.
@@ -754,7 +782,7 @@ export async function resolveReport(instance: Instance, given: LoaderReport): Pr
     if (seen.has(key)) continue
     seen.add(key)
     try {
-      const finding = await resolveSolution(instance, report, solution, find)
+      const finding = await resolveSolution(instance, report, solution, find, bundler)
       if (finding) out.push({ ...finding, game: gameOf(instance) })
     } catch (err) {
       logger.warn(`Vorschlag für ${solution.mod.id || solution.mod.name} nicht ausgewertet:`, err)
@@ -788,7 +816,8 @@ async function resolveSolution(
   instance: Instance,
   report: LoaderReport,
   solution: Solution,
-  find: Finder
+  find: Finder,
+  bundler: Bundler
 ): Promise<Finding | null> {
   const id = issueId(solution)
 
@@ -816,7 +845,65 @@ async function resolveSolution(
       `${installed} is installed, so ${loaderName(instance.loader)} stopped the launch.`
     )
 
-    if (!target || target.provider === 'local' || !target.projectId) {
+    if (!target) {
+      // No file of its own: a module carried inside another mod. Its version
+      // moves with that mod, so the step is a newer build of the carrier.
+      const carrier = await bundler(solution.mod)
+      if (carrier && carrier.provider !== 'local' && carrier.projectId) {
+        const provider = carrier.provider as 'modrinth' | 'curseforge'
+        // An update only answers a request for a newer module.
+        const newerHelps = !range || (range.test('999999') && !range.test(installed))
+        const best = newerHelps ? await bestVersionFor(provider, carrier.projectId, instance.mcVersion, instance.loader, 'mod') : null
+        if (best && best.versionId !== carrier.versionId) {
+          return withWatch(
+            {
+              id,
+              severity: 'error',
+              title,
+              detail: `${told} ${tr(
+                `${solution.mod.name} ist ein Teil von ${carrier.name}. Version ${best.versionNumber} von ${carrier.name} ist neuer und kann das beheben.`,
+                `${solution.mod.name} is part of ${carrier.name}. Version ${best.versionNumber} of ${carrier.name} is newer and may fix this.`
+              )}`,
+              contentId: carrier.id,
+              fix: {
+                kind: 'install-version',
+                label: tr(`${carrier.name} auf ${best.versionNumber} aktualisieren`, `Update ${carrier.name} to ${best.versionNumber}`),
+                provider,
+                projectId: carrier.projectId,
+                contentId: carrier.id,
+                versionId: best.versionId
+              }
+            },
+            [carrier, requirer]
+          )
+        }
+      }
+      return withWatch(
+        {
+          id,
+          severity: 'error',
+          title,
+          detail: `${told} ${
+            carrier
+              ? tr(
+                  `${solution.mod.name} ist ein Teil von ${carrier.name}, eine passende Version von ${carrier.name} ließ sich aber nicht finden.`,
+                  `${solution.mod.name} is part of ${carrier.name}, but no fitting version of ${carrier.name} could be found.`
+                )
+              : tr(
+                  `${solution.mod.name} liegt nicht als eigene Datei im Mods-Ordner, es steckt in einem anderen Mod.`,
+                  `${solution.mod.name} is no file of its own in the mods folder, it is carried inside another mod.`
+                )
+          } ${requirer ? tr(`Ohne ${requirer.name} startet das Spiel.`, `The game starts without ${requirer.name}.`) : ''}`.trim(),
+          contentId: carrier?.id,
+          fix: requirer
+            ? { kind: 'disable-content', label: tr(`${requirer.name} ausschalten`, `Switch off ${requirer.name}`), contentId: requirer.id }
+            : undefined
+        },
+        [carrier, requirer]
+      )
+    }
+
+    if (target.provider === 'local' || !target.projectId) {
       return withWatch(
         {
           id,
@@ -826,7 +913,7 @@ async function resolveSolution(
             `${solution.mod.name} wurde von Hand hinzugefügt. Lade die passende Version selbst herunter und ersetze die Datei.`,
             `${solution.mod.name} was added by hand. Download the fitting version yourself and replace the file.`
           )}`,
-          contentId: target?.id
+          contentId: target.id
         },
         [target, requirer]
       )

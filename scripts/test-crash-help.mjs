@@ -61,15 +61,15 @@ globalThis.fetch = async (url) => {
 }
 
 /** A small but real jar declaring `modId`. */
-function jarBytes(modId, name, version) {
+function jarBytes(modId, name, version, extra = {}) {
   const zip = new AdmZip()
-  zip.addFile('fabric.mod.json', Buffer.from(JSON.stringify({ schemaVersion: 1, id: modId, name, version })))
+  zip.addFile('fabric.mod.json', Buffer.from(JSON.stringify({ schemaVersion: 1, id: modId, name, version, ...extra })))
   return zip.toBuffer()
 }
 
-function release(projectId, versionId, versionNumber, gameVersions, released, modId, loaders = ['fabric']) {
+function release(projectId, versionId, versionNumber, gameVersions, released, modId, loaders = ['fabric'], extra = {}) {
   const fileName = `${versionId}.jar`
-  const body = jarBytes(modId, projectId, versionNumber)
+  const body = jarBytes(modId, projectId, versionNumber, extra)
   served.set(`/${fileName}`, body)
   return {
     provider: 'modrinth',
@@ -423,6 +423,16 @@ try {
   makeInstance('minecraft', '1.21.11', [xOld])
   makeInstance('raten', '1.21.11', [zoom, odd])
   makeInstance('quilt', '1.21.11', [zoom, flkCur, xOld], 'quilt')
+  // Fabric API 0.140 carries Fabric Rendering 4.0.0 as a nested jar, and
+  // Iris asks for 5.0.0 or later of that module.
+  const apiOld = release('P7dR8mSH', 'api-0', '0.140.0+1.21.11', ['1.21.11'], '2026-09-01T00:00:00Z', 'fabric-api', ['fabric'], {
+    jars: [{ file: 'META-INF/jars/fabric-api-base-0.4.42+6573ed8c19.jar' }, { file: 'META-INF/jars/fabric-rendering-v1-4.0.0+abc.jar' }]
+  })
+  const iris = release('iris', 'iris-180', '1.8.0', ['1.21.11'], '2026-10-01T00:00:00Z', 'iris')
+  NAMES.P7dR8mSH = 'Fabric API'
+  NAMES.iris = 'Iris'
+  makeInstance('modul', '1.21.11', [iris, apiOld])
+  makeInstance('ohnetraeger', '1.21.11', [iris])
 
   // NeoForge 1.21.1: GeckoLib 4.6.0 where Mob Mod wants [4.4.9,4.5), Cloth
   // Config missing, Old Mod built for 1.20, Breaker refusing Victim.
@@ -631,6 +641,32 @@ try {
   // Kept in the file, so it survives a restart of the launcher.
   const onDisk = JSON.parse(readFileSync(p.instanceFile('neoforge'), 'utf8'))
   check(onDisk.loaderUpdate === '21.1.209', `Nicht gespeichert: ${onDisk.loaderUpdate}`)
+
+  // --- 13. A module of Fabric API is updated through Fabric API itself -------------
+  const MODULE = `[21:40:11] [ERROR] [FabricLoader/]: Incompatible mods found!
+net.fabricmc.loader.impl.FormattedException: Some of your mods are incompatible with the game or each other!
+A potential solution has been determined, this may resolve your problem:
+	 - Replace mod 'Fabric Rendering (v1)' (fabric-rendering-v1) 4.0.0+abc with version 5.0.0 or later.
+More details:
+	 - Mod 'Iris' (iris) 1.8.0 requires version 5.0.0 or later of mod 'Fabric Rendering (v1)' (fabric-rendering-v1), but only the wrong version is present: 4.0.0+abc!`
+  check((await crashed('modul', MODULE)) === true, 'Modul: kein Vorschlag nach dem Absturz')
+  report = await compat.checkCompatibility('modul')
+  const mod = report.issues.find((i) => i.id === 'crash-replace-fabric-rendering-v1')
+  const apiItem = instances.getInstance('modul').content.find((c) => c.projectId === 'P7dR8mSH')
+  notes.push(`Modul: ${mod?.title} / ${mod?.detail} / ${mod?.fix?.label}`)
+  check(!/von Hand/.test(mod?.detail ?? ''), `Modul: als von Hand hinzugefügt bezeichnet: ${mod?.detail}`)
+  check(
+    mod?.fix?.kind === 'install-version' && mod.fix.versionId === 'api-1' && mod.fix.contentId === apiItem?.id,
+    `Modul: kein Update von Fabric API angeboten: ${JSON.stringify(mod?.fix)}`
+  )
+  check(/Teil von Fabric API/.test(mod?.detail ?? ''), `Modul: Text nennt Fabric API nicht: ${mod?.detail}`)
+
+  // No mod carries it: no claim it was added by hand, and Iris can be switched off.
+  check((await crashed('ohnetraeger', MODULE)) === true, 'Ohne Träger: kein Vorschlag nach dem Absturz')
+  report = await compat.checkCompatibility('ohnetraeger')
+  const lone = report.issues.find((i) => i.id === 'crash-replace-fabric-rendering-v1')
+  check(lone !== undefined && !/von Hand/.test(lone.detail ?? ''), `Ohne Träger: ${lone?.detail}`)
+  check(lone?.fix?.kind === 'disable-content' && /Iris/.test(lone.fix.label), `Ohne Träger, Knopf: ${JSON.stringify(lone?.fix)}`)
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

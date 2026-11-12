@@ -19,6 +19,18 @@ export interface JarMetadata {
   version?: string
   /** Loaders the jar carries metadata for. Empty when it names none. */
   loaders: LoaderId[]
+  /**
+   * Further ids the jar answers to under Fabric's and Quilt's `provides`.
+   * Kept apart from `ids`: counted as its own ids, a jar providing another
+   * mod's id would look like a second copy of that mod.
+   */
+  provides: string[]
+  /**
+   * Lower case file names of the jars nested inside it, the way Fabric API
+   * carries its modules ("fabric-rendering-v1-5.0.2+abc.jar"). A loader
+   * report names such a module by its own id, not by the mod that brought it.
+   */
+  nested: string[]
 }
 
 const METADATA_ENTRIES = [
@@ -70,6 +82,9 @@ export async function readJarMetadata(file: string): Promise<JarMetadata | null>
 export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
   const ids: string[] = []
   const loaders: LoaderId[] = []
+  const provides: string[] = []
+  const nested: string[] = []
+  const baseName = (path: string): string => (path.split('/').pop() ?? '').toLowerCase()
   let name: string | undefined
   let version: string | undefined
 
@@ -80,12 +95,30 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
   const fabricText = texts.get('fabric.mod.json')
   if (fabricText !== undefined) {
     loaders.push('fabric')
-    const fabric = parseLenientJson(fabricText) as { id?: unknown; name?: unknown; version?: unknown } | null
+    const fabric = parseLenientJson(fabricText) as {
+      id?: unknown
+      name?: unknown
+      version?: unknown
+      provides?: unknown
+      jars?: unknown
+    } | null
     if (fabric && typeof fabric === 'object') {
       const id = value(fabric.id)
       if (id) ids.push(id)
       name ??= value(fabric.name)
       version ??= value(fabric.version)
+      if (Array.isArray(fabric.provides)) {
+        for (const entry of fabric.provides) {
+          const other = value(entry)
+          if (other) provides.push(other)
+        }
+      }
+      if (Array.isArray(fabric.jars)) {
+        for (const entry of fabric.jars) {
+          const file = value((entry as { file?: unknown } | null)?.file)
+          if (file) nested.push(baseName(file))
+        }
+      }
     }
   }
 
@@ -93,7 +126,13 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
   if (quiltText !== undefined) {
     loaders.push('quilt')
     const quilt = parseLenientJson(quiltText) as {
-      quilt_loader?: { id?: unknown; version?: unknown; metadata?: { name?: unknown } | null } | null
+      quilt_loader?: {
+        id?: unknown
+        version?: unknown
+        metadata?: { name?: unknown } | null
+        provides?: unknown
+        jars?: unknown
+      } | null
     } | null
     const block = quilt?.quilt_loader
     if (block && typeof block === 'object') {
@@ -101,6 +140,19 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
       if (id) ids.push(id)
       name ??= value(block.metadata?.name)
       version ??= value(block.version)
+      // Quilt writes a provided mod either as its id or as `{ "id": ... }`.
+      if (Array.isArray(block.provides)) {
+        for (const entry of block.provides) {
+          const other = value(entry) ?? value((entry as { id?: unknown } | null)?.id)
+          if (other) provides.push(other)
+        }
+      }
+      if (Array.isArray(block.jars)) {
+        for (const entry of block.jars) {
+          const file = value(entry)
+          if (file) nested.push(baseName(file))
+        }
+      }
     }
   }
 
@@ -129,7 +181,14 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
     }
   }
 
-  return { ids: [...new Set(ids)], name, version, loaders: [...new Set(loaders)] }
+  return {
+    ids: [...new Set(ids)],
+    name,
+    version,
+    loaders: [...new Set(loaders)],
+    provides: [...new Set(provides)].filter((id) => !ids.includes(id)),
+    nested: [...new Set(nested)]
+  }
 }
 
 /**
