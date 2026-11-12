@@ -1343,13 +1343,39 @@ function parseEnv(raw: string): Record<string, string> {
  */
 const PRE_LAUNCH_TIMEOUT_MS = 5 * 60_000
 
-async function runPreLaunch(instance: Instance, cwd: string, task: Task): Promise<void> {
+/** Exported for the tests. */
+export async function runPreLaunch(
+  instance: Pick<Instance, 'id' | 'settings'>,
+  cwd: string,
+  task: Pick<Task, 'signal' | 'cancelled'>
+): Promise<void> {
   const parts = splitUserArgs(instance.settings.preLaunchCommand)
   if (parts.length === 0) return
   const run = userCommand(parts)
 
+  pushLog({
+    instanceId: instance.id,
+    stream: 'launcher',
+    level: 'info',
+    // Not the command itself: it can carry a password or a token, and this
+    // log goes along with an error report.
+    text: tr('Der Befehl vor dem Start läuft…', 'Running the pre-launch command…'),
+    time: Date.now()
+  })
+
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(run.file, run.args, { cwd, windowsHide: true, windowsVerbatimArguments: run.verbatim })
+    // No input: a command asking a question got an open pipe nobody writes
+    // to, and waited for the full timeout below.
+    const child = spawn(run.file, run.args, {
+      cwd,
+      windowsHide: true,
+      windowsVerbatimArguments: run.verbatim,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    // Read into the game log. Left unread, the pipe filled after some
+    // kilobytes of output, the command blocked on its next write and the
+    // start hung until the timeout below killed it.
+    attachOutput(instance.id, child)
 
     const settle = (fn: () => void): void => {
       clearTimeout(timeout)
