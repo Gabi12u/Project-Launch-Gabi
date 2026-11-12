@@ -100,6 +100,8 @@ globalThis.fetch = async (input, init = {}) => {
     return json(200, { serverId })
   }
   if (path === '/activate') {
+    // Lets a test hold the answer back, as a slow connection would.
+    if (server.hold) await server.hold
     const entry = server.keys.get(body.key)
     if (!entry || server.challenges.get(body.serverId) !== body.key) return json(400, { code: 'challenge' })
     server.challenges.delete(body.serverId)
@@ -449,6 +451,30 @@ try {
   await settle()
   check(globalThis.__lgPanel.length === 2, 'Mit eingeschalteter Einstellung ging nach dem Verlassen nichts raus')
   notes.push(`Fehlerberichte: im Beta-Programm gesendet, danach wieder nach Einstellung (${globalThis.__lgPanel.length} gesendet)`)
+
+  // --- 10b. Leaving while a renewal is under way stays left ---------------
+  addKey('LGB-NNNN-PPPP-QQQQ-RRRR')
+  await beta.joinBeta('LGB-NNNN-PPPP-QQQQ-RRRR')
+  const nearlyDue = JSON.parse(readFileSync(join(userData, 'beta.json'), 'utf8'))
+  nearlyDue.expiresAt = new Date(Date.now() + 2 * 86400000).toISOString()
+  writeFileSync(join(userData, 'beta.json'), JSON.stringify(nearlyDue))
+  let release
+  server.hold = new Promise((resolve) => { release = resolve })
+  const renewing = beta.refreshBeta()
+  // Until the renewal waits for the server's answer.
+  for (let i = 0; i < 200 && !server.requests.at(-1)?.url.endsWith('/activate'); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  check(server.requests.at(-1)?.url.endsWith('/activate'), 'Die Erneuerung kam nicht bis zur Anfrage an den Server')
+  beta.leaveBeta()
+  release()
+  server.hold = null
+  await renewing
+  check(
+    beta.betaStatus().state === 'none' && !existsSync(join(userData, 'beta.json')),
+    `Nach dem Verlassen waehrend einer Erneuerung wieder dabei: ${JSON.stringify(beta.betaStatus())}`
+  )
+  notes.push('Verlassen waehrend einer Erneuerung: bleibt verlassen')
 
   // --- 11. Mac: download, check, open ------------------------------------
   const realPlatform = Object.getOwnPropertyDescriptor(process, 'platform')

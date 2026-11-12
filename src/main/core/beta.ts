@@ -320,14 +320,25 @@ async function renewOnce(file: BetaFile): Promise<string | null> {
     logger.warn(key ? 'Beta-Zugang nicht erneuert, das Konto ist nicht mehr im Launcher angemeldet' : 'Beta-Key ist unlesbar geworden')
     return null
   }
+  // Leaving the programme, or joining with another key, while the server
+  // was asked: the answer belongs to a membership that is gone. Written back
+  // anyway, it put the user straight back into the programme they had left.
+  const stillCurrent = (): boolean => {
+    const now = readBeta()
+    return now !== null && !now.ended && now.key === file.key
+  }
   try {
     const result = await redeem(key, account)
+    if (!stillCurrent()) {
+      logger.info('Beta-Zugang erneuert, aber inzwischen verlassen, nicht gespeichert')
+      return null
+    }
     const storedToken = protect(result.token)
     writeBeta({ ...file, token: storedToken.value, tokenSecure: storedToken.secure, expiresAt: result.expiresAt, playerName: result.name })
     logger.info('Beta-Zugang erneuert')
     return result.token
   } catch (err) {
-    if (err instanceof BetaHttpError) {
+    if (err instanceof BetaHttpError && stillCurrent()) {
       if (err.code === 'revoked') endBeta(file, 'revoked')
       else if (err.code === 'unknown' || err.code === 'bound') endBeta(file, 'removed')
     }
