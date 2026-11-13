@@ -5518,7 +5518,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'mit der abgebrochenen Installation in die Quere kommen. Ein Cloud-Backup mit einem unbekannten ' +
       'Mod-Loader wurde als neue Instanz angelegt, die sich nie einrichten ließ, und das Herunterladen ' +
       'galt trotzdem als gelungen. Blieb die Verbindung beim Hoch- oder Herunterladen ohne Fehler stehen, ' +
-      'hing die Aufgabe bis zum Abbrechen von Hand.',
+      'hing die Aufgabe bis zum Abbrechen von Hand. Eine Instanz ohne festgelegte Loader-Version wurde als ' +
+      'Modpack ohne Loader-Version exportiert, das andere Launcher und dieser selbst ablehnten, und das ' +
+      'eigene Startseiten-Paket des Launchers ging im Export mit.',
     state: 'fixing',
     since: '2026-11-13'
   }

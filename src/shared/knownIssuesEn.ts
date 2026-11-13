@@ -3358,7 +3358,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'anyway, and trying again at once could get in the way of the cancelled install. A cloud backup with ' +
       'an unknown mod loader was created as a new instance that could never be set up, and the download ' +
       'still counted as a success. When the connection stalled without an error during an upload or ' +
-      'download, the task hung until cancelled by hand.'
+      'download, the task hung until cancelled by hand. An instance without a fixed loader build was ' +
+      'exported as a modpack without a loader version, which other launchers and this one refused, and ' +
+      'the launcher’s own start screen pack went along in the export.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

@@ -17,7 +17,17 @@ import { notify } from '../events'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
 import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
-import { createInstance, deleteInstance, finishImport, getInstance, persist, syncContentWithDisk, waitForInstanceSetup } from './instances'
+import {
+  createInstance,
+  deleteInstance,
+  finishImport,
+  getInstance,
+  persist,
+  pinnedLoaderVersion,
+  syncContentWithDisk,
+  waitForInstanceSetup
+} from './instances'
+import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
 import { withContentLock } from './contentLock'
 import { withArchiving } from './restoreLock'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
@@ -1191,19 +1201,24 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     await syncContentWithDisk(instanceId)
     const current = getInstance(instanceId)
 
+    // An instance whose first setup never got to fix a loader build has none
+    // recorded. Written as "", the pack was invalid for other launchers, and
+    // this one refused it again as a pack with an unknown mod loader.
+    const loaderVersion = current.loader === 'vanilla' ? '' : await pinnedLoaderVersion(current)
+
     const dependencies: Record<string, string> = { minecraft: current.mcVersion }
     switch (current.loader) {
       case 'fabric':
-        dependencies['fabric-loader'] = current.loaderVersion
+        dependencies['fabric-loader'] = loaderVersion
         break
       case 'quilt':
-        dependencies['quilt-loader'] = current.loaderVersion
+        dependencies['quilt-loader'] = loaderVersion
         break
       case 'neoforge':
-        dependencies['neoforge'] = current.loaderVersion
+        dependencies['neoforge'] = loaderVersion
         break
       case 'forge':
-        dependencies['forge'] = current.loaderVersion
+        dependencies['forge'] = loaderVersion
         break
       default:
         break
@@ -1276,6 +1291,9 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     const excluded = current.content
       .map((item) => `${overrideFolderFor(item.type)}/${item.fileName}`)
       .filter((path) => files.some((f) => f.path === path))
+    // The launcher's own start screen pack is no content of the instance and
+    // went to whoever got the pack.
+    excluded.push(`resourcepacks/${START_SCREEN_PACK}`, `resourcepacks/${START_SCREEN_PACK}.activated`)
 
     const skipped: string[] = []
     const skippedLinks: string[] = []
