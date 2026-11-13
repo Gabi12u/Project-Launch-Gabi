@@ -5414,9 +5414,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'aber eine schlanke Laufzeit an, die es für Java 16 auf keinem System gibt. Der Start brach deshalb ' +
       'mit „Für Java 16 gibt es kein Paket für dieses System“ ab, unter Windows, macOS und Linux. Abhilfe: ' +
       'in den Einstellungen unter Java „Java 17“ laden und es in den Einstellungen der Instanz als ' +
-      'Java-Version auswählen. Minecraft 1.17 läuft auch mit Java 17.',
-    state: 'investigating',
-    since: '2026-11-13'
+      'Java-Version auswählen. Minecraft 1.17 läuft auch mit Java 17. Seit 1.0.26 lädt der Launcher in ' +
+      'dem Fall das vollständige Java 16.',
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'loader-abfrage-alte-version-netzfehler',

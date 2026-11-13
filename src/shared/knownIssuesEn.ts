@@ -3292,7 +3292,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'slim runtime that does not exist for Java 16 on any system. The start therefore stopped with "There ' +
       'is no Java 16 package for this system", on Windows, macOS and Linux. Workaround: download "Java 17" ' +
       'under Settings, Java, and pick it as the Java version in the instance settings. Minecraft 1.17 also ' +
-      'runs on Java 17.'
+      'runs on Java 17. Since 1.0.26 the launcher downloads the full Java 16 in that case.'
   },
   'loader-abfrage-alte-version-netzfehler': {
     title: 'For Minecraft versions without Fabric or Quilt, the wizard reported a connection error',

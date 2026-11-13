@@ -710,6 +710,34 @@ export function sha256File(file: string): Promise<string> {
   })
 }
 
+/**
+ * The archive to download for a Java major, the slim runtime (JRE) where one
+ * exists. Exported for the tests.
+ */
+export async function adoptiumPackageFor(major: number): Promise<AdoptiumArchiveMetadata | 'unavailable' | null> {
+  // Adoptium never built a JRE of some versions, Java 16 among them, which
+  // is exactly the one Minecraft 1.17 and 1.17.1 ask for. Every start of
+  // those versions failed with "no package for this system". The full JDK
+  // carries the same runtime and runs the game just the same.
+  const lookup = async (arch?: string): Promise<AdoptiumArchiveMetadata | 'unavailable' | null> => {
+    if (major <= 8) return adoptiumArchiveMetadata(major, 'jdk', arch)
+    const jre = await adoptiumArchiveMetadata(major, 'jre', arch)
+    if (jre !== 'unavailable') return jre
+    logger.info(`Kein JRE für Java ${major}, nehme das JDK`)
+    return adoptiumArchiveMetadata(major, 'jdk', arch)
+  }
+
+  const metadata = await lookup()
+  // Windows and macOS on ARM run x64 programs through emulation, while
+  // Temurin has no ARM build of the older Java versions old Minecraft needs.
+  // Refusing outright left those versions unplayable there.
+  if (metadata === 'unavailable' && adoptiumArch() === 'aarch64' && (process.platform === 'win32' || process.platform === 'darwin')) {
+    logger.info(`Kein ARM-Paket für Java ${major}, nehme das x64-Paket`)
+    return lookup('x64')
+  }
+  return metadata
+}
+
 async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime> {
   // `major` can come from a hand-edited settings file (`javaMajorOverride`),
   // not only from the launcher's own `requiredJavaMajor`. Both the folder
@@ -727,16 +755,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
     if (runtime && runtime.major === major) return runtime
   }
 
-  const imageType = major <= 8 ? 'jdk' : 'jre'
-
-  let metadata = await adoptiumArchiveMetadata(major, imageType)
-  // Windows and macOS on ARM run x64 programs through emulation, while
-  // Temurin has no ARM build of the older Java versions old Minecraft needs.
-  // Refusing outright left those versions unplayable there.
-  if (metadata === 'unavailable' && adoptiumArch() === 'aarch64' && (process.platform === 'win32' || process.platform === 'darwin')) {
-    logger.info(`Kein ARM-Paket für Java ${major}, nehme das x64-Paket`)
-    metadata = await adoptiumArchiveMetadata(major, imageType, 'x64')
-  }
+  const metadata = await adoptiumPackageFor(major)
   if (metadata === 'unavailable') {
     throw new Error(
       tr(
