@@ -5515,7 +5515,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'stand dort eine englische Systemmeldung mit dem Dateipfad. Ein Wrapper-Befehl, der sich sofort ' +
       'beendete, landete vollständig im Protokoll. Ein Abbrechen von „Java laden“ nach dem Download ' +
       'wirkte nicht, Java wurde trotzdem fertig installiert, und ein sofortiger neuer Versuch konnte sich ' +
-      'mit der abgebrochenen Installation in die Quere kommen.',
+      'mit der abgebrochenen Installation in die Quere kommen. Ein Cloud-Backup mit einem unbekannten ' +
+      'Mod-Loader wurde als neue Instanz angelegt, die sich nie einrichten ließ, und das Herunterladen ' +
+      'galt trotzdem als gelungen. Blieb die Verbindung beim Hoch- oder Herunterladen ohne Fehler stehen, ' +
+      'hing die Aufgabe bis zum Abbrechen von Hand.',
     state: 'fixing',
     since: '2026-11-13'
   }

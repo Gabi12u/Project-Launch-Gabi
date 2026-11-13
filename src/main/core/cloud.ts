@@ -22,10 +22,10 @@ import { pipeline } from 'node:stream/promises'
 import type { CloudBackup, CloudOverview, CloudUploadResult } from '@shared/api'
 import { getActiveAccount, getValidAccessToken } from '../auth/microsoft'
 import { getSettings } from '../store'
-import { isValidVersionString, paths } from '../paths'
+import { paths } from '../paths'
 import { log } from '../logger'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
-import { addDownloadedBackup, assertRestorable, backupArchive, backupGame, restoreBackup } from './backups'
+import { addDownloadedBackup, assertRestorable, backupArchive, backupGame, restoreBackup, wellFormedGame } from './backups'
 import { createInstance, deleteInstance, getInstance, tryGetInstance } from './instances'
 import { formatNumber, tr } from '@shared/i18n'
 
@@ -255,6 +255,13 @@ function sizeText(bytes: number): string {
 }
 
 /** Streams a file to the cloud with progress. Resolves with the parsed answer. */
+/**
+ * How long a transfer may go without a single byte either way. A connection
+ * that stalled without an error (Wi-Fi gone, a firewall dropping it) left the
+ * task at its last percentage until someone cancelled it by hand.
+ */
+const CLOUD_IDLE_MS = 120_000
+
 function putFile(
   path: string,
   file: string,
@@ -306,6 +313,7 @@ function putFile(
       reject(new TaskCancelledError())
     }
     task.signal.addEventListener('abort', onAbort, { once: true })
+    req.setTimeout(CLOUD_IDLE_MS, () => req.destroy(new Error('Cloud-Verbindung ohne Daten')))
     req.on('error', (err) => {
       if (task.signal.aborted) return
       reject(new Error(tr('Die Verbindung zur Cloud ist abgebrochen. Bitte noch einmal versuchen.', 'The connection to the cloud dropped. Please try again.'), { cause: err }))
@@ -460,6 +468,7 @@ function downloadTo(instanceKey: string, target: string, expected: CloudBackup, 
       reject(new TaskCancelledError())
     }
     task.signal.addEventListener('abort', onAbort, { once: true })
+    req.setTimeout(CLOUD_IDLE_MS, () => req.destroy(new Error('Cloud-Verbindung ohne Daten')))
     req.on('error', (err) => {
       if (task.signal.aborted) return
       reject(new Error(tr('Keine Verbindung zur Launch-Gabi-Cloud. Prüfe deine Internetverbindung.', 'No connection to the Launch Gabi cloud. Check your internet connection.'), { cause: err }))
@@ -484,7 +493,11 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
   // Asked before the download: a running game used to be reported only once
   // the whole backup had come down, which was then thrown away.
   if (into) assertRestorable(into)
-  if (!into && (!isValidVersionString(backup.mcVersion) || (backup.loaderVersion && !isValidVersionString(backup.loaderVersion)))) {
+  // The mod loader too: one the launcher does not know (a newer launcher's,
+  // or a damaged entry) made a new instance that could never be set up,
+  // while the download itself was reported as a success.
+  const game = wellFormedGame({ mcVersion: backup.mcVersion, loader: backup.loader, loaderVersion: backup.loaderVersion ?? '' })
+  if (!into && !game) {
     throw new Error(tr('Die Angaben zur Version in diesem Cloud-Backup sind ungültig.', 'The version details in this cloud backup are invalid.'))
   }
 
@@ -511,11 +524,13 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
     let created = false
     try {
       if (!instanceId) {
+        // `game` is set here, the check above throws without it.
+        const target = game as NonNullable<typeof game>
         const instance = await createInstance({
           name: backup.instanceName,
-          mcVersion: backup.mcVersion,
-          loader: backup.loader,
-          loaderVersion: backup.loaderVersion || undefined,
+          mcVersion: target.mcVersion,
+          loader: target.loader,
+          loaderVersion: target.loaderVersion || undefined,
           description: tr('Aus der Launch-Gabi-Cloud', 'From the Launch Gabi cloud')
         })
         instanceId = instance.id
@@ -529,7 +544,7 @@ export async function downloadFromCloud(instanceKey: string, into?: string): Pro
         ),
         includes: backup.includes,
         createdAt: backup.createdAt,
-        game: { mcVersion: backup.mcVersion, loader: backup.loader, loaderVersion: backup.loaderVersion ?? '' }
+        game
       })
       await restoreBackup(instanceId, entry.id)
     } catch (err) {

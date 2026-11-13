@@ -24,7 +24,7 @@ const logger = log('backups')
 const LOADERS: LoaderId[] = ['vanilla', 'fabric', 'forge', 'neoforge', 'quilt']
 
 /** A recorded game version, only when it is well formed. `backups.json` is a file on the user's disk. */
-function wellFormedGame(raw: unknown): GameVersionTarget | undefined {
+export function wellFormedGame(raw: unknown): GameVersionTarget | undefined {
   const value = raw as Partial<GameVersionTarget> | null | undefined
   if (!value || typeof value.mcVersion !== 'string' || !isValidVersionString(value.mcVersion)) return undefined
   if (typeof value.loader !== 'string' || !LOADERS.includes(value.loader)) return undefined
