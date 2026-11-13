@@ -585,7 +585,19 @@ export function installJava(major: number, task?: Task): Promise<JavaRuntime> {
   } as unknown as Task
 
   const entry = { listeners, controller } as JavaInstall
-  entry.promise = installJavaOnce(major, shared).finally(() => {
+  // A cancelled install of the same version can still be unpacking into the
+  // same folder from the same archive. Started side by side, one deleted the
+  // archive the other was reading. The new one waits for it to end first.
+  const started = running
+    ? running.promise.then(
+        () => undefined,
+        () => undefined
+      ).then(() => {
+        shared.throwIfCancelled()
+        return installJavaOnce(major, shared)
+      })
+    : installJavaOnce(major, shared)
+  entry.promise = started.finally(() => {
     // A newer install may already own this slot after a cancelled one.
     if (installing.get(major) === entry) installing.delete(major)
   })
@@ -826,6 +838,9 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
     if (archiveHash !== metadata.sha256) {
       throw new Error(tr(`Java ${major} hat eine falsche Prüfsumme und wurde nicht installiert.`, `Java ${major} has a wrong checksum and was not installed.`))
     }
+    // Only the download looked at a cancel. Pressed later, the task said
+    // "cancelled" while checksum, unpacking and the swap went on regardless.
+    task?.throwIfCancelled()
 
     task?.update(tr(`Java ${major} wird entpackt…`, `Unpacking Java ${major}…`), null)
     rmSync(staging, { recursive: true, force: true })
@@ -873,6 +888,7 @@ async function installJavaOnce(major: number, task?: Task): Promise<JavaRuntime>
         )
       )
     }
+    task?.throwIfCancelled()
 
     // Swapping in the new install must not cost the old one. Deleting
     // targetDir first and renaming staging into place second used to mean a

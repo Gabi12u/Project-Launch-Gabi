@@ -3354,7 +3354,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'were checked, and Minecraft started anyway. The pre-launch command already ran before the ' +
       'environment variables and the wrapper command were asked about. When Java could not be started, an ' +
       'English system message with the file path showed. A wrapper command that exited right away was ' +
-      'written to the log in full.'
+      'written to the log in full. Cancelling "Get Java" after the download did nothing, Java was installed ' +
+      'anyway, and trying again at once could get in the way of the cancelled install.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

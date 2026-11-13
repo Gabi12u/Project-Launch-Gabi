@@ -5513,7 +5513,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'die Dateien geprüft waren, und Minecraft startete trotzdem. Der Befehl vor dem Start lief schon, ' +
       'bevor nach Umgebungsvariablen und Wrapper-Befehl gefragt wurde. Konnte Java nicht gestartet werden, ' +
       'stand dort eine englische Systemmeldung mit dem Dateipfad. Ein Wrapper-Befehl, der sich sofort ' +
-      'beendete, landete vollständig im Protokoll.',
+      'beendete, landete vollständig im Protokoll. Ein Abbrechen von „Java laden“ nach dem Download ' +
+      'wirkte nicht, Java wurde trotzdem fertig installiert, und ein sofortiger neuer Versuch konnte sich ' +
+      'mit der abgebrochenen Installation in die Quere kommen.',
     state: 'fixing',
     since: '2026-11-13'
   }

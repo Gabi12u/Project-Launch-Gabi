@@ -57,9 +57,10 @@ function waitForSharedInstall(entry, task) {
 
 const installing = new Map()
 
+// Wortgleich im Ablauf mit installJava aus src/main/core/java.ts.
 function installJava(major, task, fakeInstallOnce) {
   const running = installing.get(major)
-  if (running) {
+  if (running && !running.controller.signal.aborted) {
     if (task) running.listeners.add(task)
     return waitForSharedInstall(running, task)
   }
@@ -75,8 +76,18 @@ function installJava(major, task, fakeInstallOnce) {
     }
   }
 
-  const promise = fakeInstallOnce(shared).finally(() => installing.delete(major))
-  const entry = { promise, listeners, controller }
+  const entry = { listeners, controller }
+  const started = running
+    ? running.promise
+        .then(() => undefined, () => undefined)
+        .then(() => {
+          if (controller.signal.aborted) throw new TaskCancelledError()
+          return fakeInstallOnce(shared)
+        })
+    : fakeInstallOnce(shared)
+  entry.promise = started.finally(() => {
+    if (installing.get(major) === entry) installing.delete(major)
+  })
   installing.set(major, entry)
   return waitForSharedInstall(entry, task)
 }
@@ -161,6 +172,36 @@ function fakeInstallOnce(shared, ms = 200) {
 
   check(sharedSignalAborted, 'Einziger Aufrufer bricht ab, aber die geteilte Installation wurde nicht tatsaechlich abgebrochen')
   notes.push('Ein einzelner Aufrufer ohne Mitwartende: Abbruch stoppt die Installation wirklich (wie vor der Aenderung).')
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. Cancelled while unpacking, then tried again at once. The cancelled
+ *    run is still busy with the same folder for a moment; the new one
+ *    must only start once it is over, never side by side with it.
+ * ------------------------------------------------------------------ */
+{
+  installing.clear()
+  let busy = 0
+  let overlapped = false
+  // Unpacking does not look at the signal until it is done.
+  const slowUnpack = () =>
+    new Promise((resolve) => {
+      busy++
+      if (busy > 1) overlapped = true
+      setTimeout(() => {
+        busy--
+        resolve({ major: 17, version: 'fake' })
+      }, 120)
+    })
+  const first = makeTask()
+  const firstResult = installJava(17, first, slowUnpack).catch(() => undefined)
+  await new Promise((r) => setTimeout(r, 20))
+  first.cancel()
+  const second = await installJava(17, makeTask(), slowUnpack)
+  await firstResult
+  check(!overlapped, 'Nach einem Abbruch lief die neue Installation gleichzeitig mit der abgebrochenen im selben Ordner')
+  check(second && second.version === 'fake', 'Die neue Installation nach dem Abbruch kam nicht an')
+  notes.push('Abbruch beim Entpacken und sofort neu: die neue Installation wartet, bis die alte vorbei ist.')
 }
 
 console.log('\n=== Beobachtungen ===')
