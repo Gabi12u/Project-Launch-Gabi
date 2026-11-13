@@ -161,6 +161,48 @@ try {
     check(!threw && result === name, `contentFileName("${name}") wurde faelschlich abgelehnt oder veraendert`)
   }
 
+  // --- A declared size of zero over real deflate data is refused ---------
+  // adm-zip does not limit inflating when the declared size is 0, and every
+  // check read that size: 1.5 MB inflated to gigabytes.
+  const { deflateRawSync } = await import('node:zlib')
+  const bombData = deflateRawSync(Buffer.alloc(20 * 1024 * 1024), { level: 9 })
+  const zipWith = (name, data, declared, method = 8) => {
+    const n = Buffer.from(name)
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(method, 8)
+    local.writeUInt32LE(data.length, 18); local.writeUInt32LE(declared, 22); local.writeUInt16LE(n.length, 26)
+    const body = Buffer.concat([local, n, data])
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6); central.writeUInt16LE(method, 10)
+    central.writeUInt32LE(data.length, 20); central.writeUInt32LE(declared, 24); central.writeUInt16LE(n.length, 28)
+    const dir = Buffer.concat([central, n])
+    const end = Buffer.alloc(22)
+    end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(1, 8); end.writeUInt16LE(1, 10); end.writeUInt32LE(dir.length, 12); end.writeUInt32LE(body.length, 16)
+    return Buffer.concat([body, dir, end])
+  }
+  const bomb = join(work, 'bomb.mrpack')
+  writeFileSync(bomb, zipWith('overrides/config/x.bin', bombData, 0))
+  const started = Date.now()
+  let bombFailure = ''
+  try {
+    archive.extractSubtree(bomb, 'overrides', join(work, 'bomb-out'))
+  } catch (err) {
+    bombFailure = err.message
+  }
+  check(/falsche Größe|wrong size/.test(bombFailure), `Zip-Bombe mit Größe 0: ${bombFailure || 'entpackt'}`)
+  check(Date.now() - started < 1000, `Zip-Bombe: ${Date.now() - started} ms bis zur Ablehnung`)
+  // A real empty file, deflated to two bytes, still goes through.
+  const empty = join(work, 'empty.zip')
+  writeFileSync(empty, zipWith('overrides/leer.txt', deflateRawSync(Buffer.alloc(0)), 0))
+  let emptyFailure = ''
+  try {
+    archive.extractSubtree(empty, 'overrides', join(work, 'empty-out'))
+  } catch (err) {
+    emptyFailure = err.message
+  }
+  check(emptyFailure === '' && existsSync(join(work, 'empty-out', 'leer.txt')), `Leere Datei abgelehnt: ${emptyFailure}`)
+  notes.push(`Zip-Bombe nach ${Date.now() - started} ms abgelehnt, leere Datei entpackt.`)
+
   // --- Names Windows cannot hold are skipped, not fatal ------------------
   // A pack built on Linux or macOS may carry them. One such file stopped the
   // whole import; device names and a trailing dot left undeletable files.

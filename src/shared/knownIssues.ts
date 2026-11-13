@@ -5616,8 +5616,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'präparierten Modpacks von 1,5 MB ließ den Launcher etwa 20 Sekunden hängen und über 3 GB ' +
       'Arbeitsspeicher belegen, ein größeres entsprechend länger. ' +
       'Betrifft nur Modpacks aus unbekannter Quelle.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'ordner-import-verknuepfung-schleife',

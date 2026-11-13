@@ -45,8 +45,30 @@ const logger = log('archive')
  */
 const MAX_ENTRY_SIZE = 1024 * 1024 * 1024
 
+type SizedEntry = { header: { size: number; compressedSize?: number }; entryName: string }
+
+/**
+ * A declared size of zero is only real for an empty file, which deflates to
+ * a couple of bytes. adm-zip limits inflating to the declared size, but not
+ * when that size is zero: an entry claiming 0 bytes with 1.5 MB of deflate
+ * data inflated to gigabytes, froze the launcher for twenty seconds and took
+ * more than 3 GB of memory, before the checksum failed. Every check here
+ * read the declared size and let it through.
+ */
+function assertHonestSize(entry: SizedEntry): void {
+  if (entry.header.size === 0 && (entry.header.compressedSize ?? 0) > 64) {
+    throw new Error(
+      tr(
+        `${entry.entryName} gibt im Archiv eine falsche Größe an, abgelehnt.`,
+        `${entry.entryName} states a wrong size in the archive, rejected.`
+      )
+    )
+  }
+}
+
 /** Throws before `entry.getData()` would inflate something absurd into memory. */
-export function assertReasonableSize(entry: { header: { size: number }; entryName: string }): void {
+export function assertReasonableSize(entry: SizedEntry): void {
+  assertHonestSize(entry)
   if (entry.header.size > MAX_ENTRY_SIZE) {
     throw new Error(
       tr(
@@ -68,7 +90,8 @@ export function assertReasonableSize(entry: { header: { size: number }; entryNam
  */
 const MAX_METADATA_SIZE = 32 * 1024 * 1024
 
-function assertReasonableMetadataSize(entry: { header: { size: number }; entryName: string }): void {
+function assertReasonableMetadataSize(entry: SizedEntry): void {
+  assertHonestSize(entry)
   if (entry.header.size > MAX_METADATA_SIZE) {
     throw new Error(tr(`Die Datei "${entry.entryName}" im Archiv ist unplausibel groß.`, `The file "${entry.entryName}" in the archive is implausibly large.`))
   }
