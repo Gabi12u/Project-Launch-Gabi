@@ -67,7 +67,7 @@ try {
         name: 'expose',
         setup(build) {
           build.onLoad({ filter: /instanceFolder\.ts$/ }, (args) => ({
-            contents: `${readFileSync(args.path, 'utf8')}\nexport { copyGameFiles }`,
+            contents: `${readFileSync(args.path, 'utf8')}\nexport { copyGameFiles, guessFromVersionsFolder }`,
             loader: 'ts'
           }))
         }
@@ -75,7 +75,27 @@ try {
     ],
     logLevel: 'error'
   })
-  const { copyGameFiles } = require(out)
+  const { copyGameFiles, guessFromVersionsFolder } = require(out)
+
+  // --- 4. Played last without a loader, Fabric mods in mods/ ------------
+  // An old "1.12.2-forge" folder won over the 1.21.1 played last.
+  const mc = join(work, 'dotminecraft')
+  mkdirSync(join(mc, 'versions', '1.12.2-forge-14.23.5.2860'), { recursive: true })
+  mkdirSync(join(mc, 'versions', '1.21.1'), { recursive: true })
+  mkdirSync(join(mc, 'mods'), { recursive: true })
+  writeFileSync(join(mc, 'mods', 'fabric-api-0.116.0+1.21.1.jar'), 'jar')
+  writeFileSync(
+    join(mc, 'launcher_profiles.json'),
+    JSON.stringify({
+      profiles: {
+        alt: { lastVersionId: '1.12.2-forge-14.23.5.2860', lastUsed: '2021-01-01T00:00:00.000Z' },
+        neu: { lastVersionId: '1.21.1', lastUsed: '2026-11-01T00:00:00.000Z' }
+      }
+    })
+  )
+  const guess = guessFromVersionsFolder(mc)
+  check(guess?.mcVersion === '1.21.1' && guess.loader === 'fabric', `Zuletzt 1.21.1 ohne Loader, Fabric-Mods im Ordner: erkannt ${JSON.stringify(guess)}`)
+  notes.push(`Versionserkennung: ${JSON.stringify(guess)}`)
 
   // A .minecraft-like folder.
   const source = join(work, 'quelle')

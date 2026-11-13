@@ -495,12 +495,15 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
 
 export function resetSettings(): LauncherSettings {
   if (settingsUnreadable) saveSettings({})
-  const { dataDirectory, language, onboarded, crashReports, customStartScreen, curseForgeApiKey } = getSettings()
+  const { dataDirectory, language, onboarded, crashReports, customStartScreen, curseForgeApiKey, cloudBackups, lastSeenVersion } = getSettings()
   // The language is kept like the data folder: switching it needs a restart,
   // and a reset offers none, so it would silently flip on the next start.
   // The first-run setup, the answers to its consent questions and the
   // CurseForge key are not preferences: resetting them sent the user
   // through the whole setup again and deleted a key they had to look up.
+  // The consent to cloud backups is such an answer too: the cloud tab
+  // stopped working and asked again, while the backups stayed on the
+  // server. And the last version seen brought the "what's new" dot back.
   const next = {
     ...DEFAULT_LAUNCHER_SETTINGS,
     dataDirectory,
@@ -508,7 +511,9 @@ export function resetSettings(): LauncherSettings {
     onboarded,
     crashReports,
     customStartScreen,
-    curseForgeApiKey
+    curseForgeApiKey,
+    cloudBackups,
+    lastSeenVersion
   }
   // Same ordering as saveSettings, and for the same reason.
   writeJsonAtomic(settingsFile(), next, { keepPrevious: true })

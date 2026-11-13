@@ -204,17 +204,19 @@ function guessFromVersionsFolder(
   // A modded id is more informative than a plain one, so it wins, unless the
   // version played last is a plain one and no mod loader shows in mods/: an
   // old modded install left over from years ago then says nothing about now.
-  if (
-    lastUsed &&
-    /^\d+\.\d+(\.\d+)?$/.test(lastUsed) &&
-    names.includes(lastUsed) &&
-    !guessLoaderFromMods(join(gameDir, 'mods'))
-  ) {
-    return { mcVersion: lastUsed, loader: 'vanilla', loaderVersion: '' }
+  const plainLast = lastUsed && /^\d+\.\d+(\.\d+)?$/.test(lastUsed) && names.includes(lastUsed) ? lastUsed : null
+  const fromMods = plainLast ? guessLoaderFromMods(join(gameDir, 'mods')) : null
+  if (plainLast && !fromMods) {
+    return { mcVersion: plainLast, loader: 'vanilla', loaderVersion: '' }
   }
+  // Played last without a loader, but mods/ holds mods for one: only a
+  // modded folder for that same version says which build. One for another
+  // version is a leftover, and "1.12.2-forge" won over the 1.21.1 played
+  // last just by being the first modded name.
+  const accept = (found: { mcVersion: string }): boolean => !plainLast || found.mcVersion === plainLast
   for (const name of names) {
     const fabric = /^(fabric|quilt)-loader-([\w.+-]+?)-(\d+\.\d+(?:\.\d+)?)$/i.exec(name)
-    if (fabric) {
+    if (fabric && accept({ mcVersion: fabric[3] })) {
       return {
         mcVersion: fabric[3],
         loader: fabric[1].toLowerCase() === 'quilt' ? 'quilt' : 'fabric',
@@ -222,7 +224,7 @@ function guessFromVersionsFolder(
       }
     }
     const forge = /^(\d+\.\d+(?:\.\d+)?)-(neoforge|forge)-([\w.+-]+)$/i.exec(name)
-    if (forge) {
+    if (forge && accept({ mcVersion: forge[1] })) {
       return {
         mcVersion: forge[1],
         loader: forge[2].toLowerCase() === 'neoforge' ? 'neoforge' : 'forge',
@@ -234,7 +236,7 @@ function guessFromVersionsFolder(
     // 1.7.10 era added a branch suffix, "1.7.10-Forge10.13.4.1614-1.7.10".
     // Neither matched above, so such a folder was taken for no loader at all.
     const legacyForge = /^(\d+\.\d+(?:\.\d+)?)-forge(?:\1-)?(\d[\w.]*?)(?:-\1)?$/i.exec(name)
-    if (legacyForge) {
+    if (legacyForge && accept({ mcVersion: legacyForge[1] })) {
       return { mcVersion: legacyForge[1], loader: 'forge', loaderVersion: legacyForge[2] }
     }
     // Modern NeoForge installers name the folder just `neoforge-<version>`,
@@ -242,10 +244,13 @@ function guessFromVersionsFolder(
     const neoforge = /^neoforge-([\w.+-]+)$/i.exec(name)
     if (neoforge) {
       const mcVersion = readInheritsFrom(dir, name)
-      if (mcVersion) {
+      if (mcVersion && accept({ mcVersion })) {
         return { mcVersion, loader: 'neoforge', loaderVersion: neoforge[1] }
       }
     }
+  }
+  if (plainLast && fromMods) {
+    return { mcVersion: plainLast, loader: fromMods.loader, loaderVersion: fromMods.loaderVersion }
   }
 
   const plain = names.filter((name) => /^\d+\.\d+(\.\d+)?$/.test(name)).sort(compareVersionsDesc)
