@@ -4830,6 +4830,71 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-13",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "forge-installer-bibliotheken-doppelt",
+      "title": "Forge ließ sich auf einem PC, auf dem es noch nie eingerichtet war, nicht installieren",
+      "detail": "Der Forge-Installer braucht für seine Arbeitsschritte manche Bibliotheken in mehreren Versionen gleichzeitig. Der Launcher lud davon jeweils nur die erste Version, und die Einrichtung brach mit „Forge-Installationsschritt 1 fehlgeschlagen“ und einer langen technischen Meldung ab. Nachgestellt mit Forge für Minecraft 1.20.1. Die Installer aller geprüften Forge- und NeoForge-Versionen ab 1.16.5 listen ihre Bibliotheken auf dieselbe Weise.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "cloud-download-sofort-weggeraeumt",
+      "title": "Ein Cloud-Backup verschwand direkt nach dem Herunterladen in eine bestehende Instanz",
+      "detail": "Lagen in einer Instanz schon zwei aus der Cloud geladene Sicherungen, die neuer waren als die gerade geladene, räumte der Launcher die neue sofort wieder weg, bevor sie eingespielt wurde. Die Wiederherstellung meldete dann „Sicherung nicht gefunden“. Die Sicherung in der Cloud blieb erhalten.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "startskript-umlaute-im-pfad",
+      "title": "Das Start-Skript einer Instanz fand den Launcher nicht, wenn der Windows-Benutzername Umlaute hat",
+      "detail": "Die Datei start.bat, die der Launcher für eine Instanz anlegen kann, enthält den Pfad zum Launcher. Steht darin ein Umlaut oder ein anderes besonderes Zeichen, etwa in C:\\Users\\Jürgen, las Windows den Pfad falsch, und ein Doppelklick startete nichts.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "modpack-ungueltiger-dateiname",
+      "title": "Eine einzige Datei mit einem unter Windows ungültigen Namen brach den ganzen Modpack-Import ab",
+      "detail": "Modpacks, die unter Linux oder macOS gebaut wurden, können Dateinamen mit Zeichen wie ? | \" < > * enthalten. Windows erlaubt solche Namen nicht, und der Import brach an dieser einen Datei ab, statt sie zu überspringen. Schon entpackte Dateien blieben im Spielordner liegen.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "offline-start-blockiert-abhaengigkeit",
+      "title": "Ohne Internet konnte die Prüfung vor dem Start das Spiel mit „benötigt P7dR8mSH“ blockieren",
+      "detail": "Kam eine benötigte Abhängigkeit von Hand in den Mods-Ordner oder vom anderen Anbieter, etwa Fabric API von Modrinth für einen Mod von CurseForge, erkennt die Prüfung sie nur über ihren Namen, und den fragt sie im Internet nach. Ohne Verbindung meldete sie die Abhängigkeit als fehlend, mit einer unverständlichen Kennung statt des Namens, und blockierte den Start. Abhilfe: „Trotzdem starten“.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "modpack-zip-bombe",
+      "title": "Ein präpariertes Modpack konnte den Launcher einfrieren und den Arbeitsspeicher füllen",
+      "detail": "Ein Archiv kann für eine Datei eine Größe von null angeben, die beim Entpacken auf Gigabytes anwächst. Die Größenprüfung des Launchers verließ sich auf diese Angabe. Schon das Öffnen eines so präparierten Modpacks von 1,5 MB ließ den Launcher etwa 20 Sekunden hängen und über 3 GB Arbeitsspeicher belegen, ein größeres entsprechend länger. Betrifft nur Modpacks aus unbekannter Quelle.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "ordner-import-verknuepfung-schleife",
+      "title": "Der Import eines Ordners mit einer Verknüpfung auf sich selbst kopierte alles vielfach",
+      "detail": "Enthielt ein Instanzordner aus einem anderen Launcher eine Ordnerverknüpfung (Junction), die auf einen Ordner darüber zeigt, folgte der Import ihr immer wieder und kopierte Welten und Mods ungefähr zwanzigfach, bis zur maximalen Pfadlänge oder einer vollen Festplatte.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "kleinere-fehler-tiefensuche-3",
+      "title": "Kleinere Fehler aus der dritten Tiefensuche im November",
+      "detail": "Die Snapshots 22w18a und 22w19a ließen sich unter Windows und macOS nicht installieren. Dateien mit Namen wie nul, aux.txt oder einem Punkt am Ende aus einem Modpack ließen sich danach im Explorer nicht mehr löschen. Beim Import eines echten .minecraft-Ordners wurden auch dessen Java-Laufzeiten und die Konto-Datei des offiziellen Launchers in die Instanz kopiert, und war dort zuletzt eine Version ohne Mod-Loader gespielt worden, aber Mods im Ordner, wurde eine ältere Version mit Loader gewählt. Schreibgeschützte Dateien blieben nach dem Import schreibgeschützt. „Einstellungen zurücksetzen“ vergaß die Zustimmung zu Cloud-Backups. Die Versionsauswahl zeigte mit Snapshots nur die neuesten 200 Einträge, ohne darauf hinzuweisen. Die automatische Sicherung nach dem Spielen unterblieb mit einer Warnung, wenn gleich danach Mods installiert wurden. Ein nicht mehr vorhandener Forge-Build meldete „versuche es später erneut“. Ohne Internet zeigte die Prüfung vor dem Start bei manchen Snapshots die falsche Java-Version an. Die eigene Startseite (Beta) bekam bei Snapshots und Aprilscherz-Versionen ein falsches Paketformat.",
+      "state": "investigating",
+      "since": "2026-11-13"
     }
   ];
   var ISSUE_LABEL = {
@@ -8592,6 +8657,71 @@ footer .grow { flex: 1; }
       "state": "fixed",
       "since": "2026-11-13",
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "forge-installer-bibliotheken-doppelt",
+      "title": "Forge could not be installed on a PC where it had never been set up",
+      "detail": "The Forge installer needs some libraries in several versions at once for its steps. The launcher downloaded only the first version of each, and the setup stopped with \"Forge installation step 1 failed\" and a long technical message. Reproduced with Forge for Minecraft 1.20.1. The installers of all checked Forge and NeoForge versions from 1.16.5 on list their libraries the same way.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "cloud-download-sofort-weggeraeumt",
+      "title": "A cloud backup vanished right after downloading it into an existing instance",
+      "detail": "When an instance already held two backups downloaded from the cloud that were newer than the one just downloaded, the launcher cleaned the new one away before it was restored. The restore then said \"Backup not found\". The backup in the cloud stayed.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "startskript-umlaute-im-pfad",
+      "title": "An instance’s start script did not find the launcher when the Windows user name has umlauts",
+      "detail": "The start.bat file the launcher can create for an instance contains the path to the launcher. When that path holds an umlaut or another special character, as in C:\\Users\\Jürgen, Windows read it wrongly, and a double-click started nothing.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "modpack-ungueltiger-dateiname",
+      "title": "A single file with a name not allowed on Windows stopped the whole modpack import",
+      "detail": "Modpacks built on Linux or macOS can hold file names with characters such as ? | \" < > *. Windows does not allow such names, and the import stopped at that one file instead of skipping it. Files already unpacked stayed in the game folder.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "offline-start-blockiert-abhaengigkeit",
+      "title": "Without internet, the check before the start could block the game with \"requires P7dR8mSH\"",
+      "detail": "When a required dependency was put into the mods folder by hand or came from the other provider, such as Fabric API from Modrinth for a CurseForge mod, the check recognises it only by its name, which it looks up online. Without a connection it reported the dependency as missing, with an unreadable id instead of the name, and blocked the start. Workaround: \"Start anyway\".",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "modpack-zip-bombe",
+      "title": "A crafted modpack could freeze the launcher and fill the memory",
+      "detail": "An archive can state a size of zero for a file that grows to gigabytes when unpacked. The launcher’s size check relied on that statement. Merely opening such a crafted modpack of 1.5 MB made the launcher hang for about 20 seconds and take more than 3 GB of memory, a bigger one correspondingly longer. Only affects modpacks from an unknown source.",
+      "state": "investigating",
+      "since": "2026-11-13"
+    },
+    {
+      "id": "ordner-import-verknuepfung-schleife",
+      "title": "Importing a folder with a link to itself copied everything many times over",
+      "detail": "When an instance folder from another launcher held a folder link (junction) pointing to a folder above it, the import followed it again and again and copied worlds and mods about twenty times, up to the maximum path length or a full disk.",
+      "state": "investigating",
+      "since": "2026-11-13",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "kleinere-fehler-tiefensuche-3",
+      "title": "Smaller faults from the third deep search in November",
+      "detail": "The snapshots 22w18a and 22w19a could not be installed on Windows and macOS. Files from a modpack named like nul, aux.txt or with a trailing dot could no longer be deleted in Explorer. Importing a real .minecraft folder also copied its Java runtimes and the official launcher’s account file into the instance, and when a version without a mod loader was played there last but mods were in the folder, an older version with a loader was chosen. Read-only files stayed read-only after an import. \"Reset settings\" forgot the consent to cloud backups. With snapshots, the version picker showed only the newest 200 entries without saying so. The automatic backup after playing was skipped with a warning when mods were installed right afterwards. A Forge build that no longer exists said \"try again later\". Without internet, the check before the start showed the wrong Java version for some snapshots. The custom start screen (beta) got a wrong pack format for snapshots and April Fools versions.",
+      "state": "investigating",
+      "since": "2026-11-13"
     }
   ];
   var ISSUE_LABEL_EN = {
