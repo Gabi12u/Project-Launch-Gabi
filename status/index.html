@@ -4663,7 +4663,7 @@ footer .grow { flex: 1; }
     {
       "id": "cloud-backup-falsche-version",
       "title": "Ein Cloud-Backup trug die Minecraft-Version, die die Instanz beim Hochladen hatte, nicht die der Sicherung",
-      "detail": "Wurde eine Instanz nach dem Sichern per „Version ändern“ umgestellt und die ältere Sicherung erst danach in die Cloud geladen, stand dort die neue Version. Beim Herunterladen als neue Instanz entstand dann eine Instanz mit der falschen Minecraft-Version und den Mods der alten, die nicht starteten.",
+      "detail": "Wurde eine Instanz nach dem Sichern per „Version ändern“ umgestellt und die ältere Sicherung erst danach in die Cloud geladen, stand dort die neue Version. Beim Herunterladen als neue Instanz entstand dann eine Instanz mit der falschen Minecraft-Version und den Mods der alten, die nicht starteten. Ab 1.0.26 merkt sich jede neue Sicherung ihre Version. Sicherungen von früher kennen sie nicht und tragen weiter die Version, die die Instanz beim Hochladen hat.",
       "state": "fixed",
       "since": "2026-11-11",
       "fixedIn": "1.0.26"
@@ -4759,37 +4759,42 @@ footer .grow { flex: 1; }
     {
       "id": "java-16-fehlt-fuer-1-17",
       "title": "Minecraft 1.17 und 1.17.1 starteten nicht, weil sich Java 16 nicht laden ließ",
-      "detail": "Minecraft 1.17 und 1.17.1 verlangen Java 16. Der Launcher lädt Java beim Start selbst, fragt dafür aber eine schlanke Laufzeit an, die es für Java 16 auf keinem System gibt. Der Start brach deshalb mit „Für Java 16 gibt es kein Paket für dieses System“ ab, unter Windows, macOS und Linux. Abhilfe: in den Einstellungen unter Java „Java 17“ laden und es in den Einstellungen der Instanz als Java-Version auswählen. Minecraft 1.17 läuft auch mit Java 17.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "detail": "Minecraft 1.17 und 1.17.1 verlangen Java 16. Der Launcher lädt Java beim Start selbst, fragt dafür aber eine schlanke Laufzeit an, die es für Java 16 auf keinem System gibt. Der Start brach deshalb mit „Für Java 16 gibt es kein Paket für dieses System“ ab, unter Windows, macOS und Linux. Abhilfe: in den Einstellungen unter Java „Java 17“ laden und es in den Einstellungen der Instanz als Java-Version auswählen. Minecraft 1.17 läuft auch mit Java 17. Seit 1.0.26 lädt der Launcher in dem Fall das vollständige Java 16.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "loader-abfrage-alte-version-netzfehler",
       "title": "Für Minecraft-Versionen ohne Fabric oder Quilt meldete der Assistent einen Verbindungsfehler",
       "detail": "Wer beim Anlegen einer Instanz eine Version wählte, für die es Fabric oder Quilt nicht gibt, etwa 1.12.2, 1.8.9 oder einen Snapshot, sah bei beiden „Abfrage fehlgeschlagen“ und den Hinweis, das liege vermutlich an der Internetverbindung. „Erneut versuchen“ half nie, denn diese Loader gibt es für die Version schlicht nicht. Forge, NeoForge und Vanilla ließen sich davon unberührt wählen.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "absturzhilfe-fabric-api-fehlt-ganz",
       "title": "Fehlte die Fabric API ganz, schickte die Absturzhilfe auf eine Suche ohne Ergebnis",
       "detail": "Stürzte das Spiel ab, weil die Fabric API fehlte, nannte die Absturzhilfe nur den Namen eines ihrer Teile, etwa „fabric-resource-loader-v0“, und riet, ihn unter „Inhalte finden“ zu suchen. Dort gibt es ihn nicht, und einen Knopf zum Beheben gab es nicht. Auch nach dem Installieren der Fabric API blieb der Start blockiert. Abhilfe: Fabric API unter „Inhalte finden“ installieren und dann „Trotzdem starten“ wählen.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "quilt-fabric-api-nicht-erkannt",
       "title": "In Quilt-Instanzen wurde die Quilted Fabric API nicht als Fabric API erkannt",
       "detail": "Die Quilted Fabric API gibt sich gegenüber anderen Mods als Fabric API aus. Der Launcher wusste das nicht: Verlangte ein Mod die Fabric API, lud er sie beim Installieren zusätzlich, und war das automatische Laden von Abhängigkeiten aus, blockierte die Prüfung vor dem Start mit „benötigt Fabric API“. Abhilfe: „Trotzdem starten“.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "sicherung-bei-offener-welt",
       "title": "Eine Sicherung scheiterte immer, solange im Spiel eine Welt geöffnet war",
       "detail": "Minecraft sperrt in jeder geöffneten Welt eine kleine Datei namens session.lock. Die Sicherung konnte sie nicht lesen und brach mit „wurde während der Sicherung von einem anderen Programm gesperrt“ ab. Im Hauptmenü des Spiels oder bei geschlossenem Spiel klappte es. Für eine Wiederherstellung wird diese Datei nicht gebraucht.",
-      "state": "investigating",
+      "state": "fixed",
       "since": "2026-11-13",
+      "fixedIn": "1.0.26",
       "platforms": [
         "Windows"
       ]
@@ -4798,22 +4803,33 @@ footer .grow { flex: 1; }
       "id": "fehlerbericht-ipv6-adressen",
       "title": "Fehlerberichte entfernten IPv6-Adressen in Kurzschreibweise nicht",
       "detail": "Vor dem Versenden entfernt der Launcher IP-Adressen aus einem Fehlerbericht. IPv6-Adressen in der üblichen Kurzschreibweise mit „::“, etwa 2001:db8::1, erkannte er nicht, sie blieben im Bericht stehen. Betrifft nur Berichte, die eine solche Adresse enthalten, etwa nach einem Verbindungsfehler.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "beta-verlassen-update-bleibt",
       "title": "Nach dem Verlassen des Beta-Programms blieb ein schon angebotenes Beta-Update bestehen",
       "detail": "Wer das Beta-Programm verließ, während schon eine Beta als Update angeboten oder heruntergeladen war, bekam sie trotzdem weiter angeboten und konnte sie installieren, bis der Launcher neu gestartet wurde. Der Hinweis beim Verlassen versprach ab sofort wieder die normalen Updates.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "welten-reiter-nach-spielen-veraltet",
       "title": "Der Reiter „Welten“ zeigte nach dem Spielen nicht die neuen Welten",
-      "detail": "Wer auf der Seite einer Instanz im Reiter „Welten“ blieb, während er spielte, sah danach weder neue Welten noch die neue Größe oder „Zuletzt gespielt“. Erst ein Wechsel des Reiters zeigte den richtigen Stand.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "detail": "Wer auf der Seite einer Instanz im Reiter „Welten“ blieb, während er spielte, sah danach weder neue Welten noch die neue Größe oder „Zuletzt gespielt“. Erst ein Wechsel des Reiters zeigte den richtigen Stand. Dasselbe galt für Screenshots im Reiter „Aufnahmen“.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
+    },
+    {
+      "id": "kleinere-fehler-tiefensuche-13-november",
+      "title": "Kleinere Fehler aus der zweiten Tiefensuche im November",
+      "detail": "Hielt ein Virenscanner einen Mod beim Ein- oder Ausschalten kurz fest, konnte eine gleichzeitige Installation aus der Mod-Liste verschwinden. „Abbrechen“ beim Spielstart wirkte nicht mehr, sobald die Dateien geprüft waren, und Minecraft startete trotzdem. Der Befehl vor dem Start lief schon, bevor nach Umgebungsvariablen und Wrapper-Befehl gefragt wurde. Konnte Java nicht gestartet werden, stand dort eine englische Systemmeldung mit dem Dateipfad. Ein Wrapper-Befehl, der sich sofort beendete, landete vollständig im Protokoll. Ein Abbrechen von „Java laden“ nach dem Download wirkte nicht, Java wurde trotzdem fertig installiert, und ein sofortiger neuer Versuch konnte sich mit der abgebrochenen Installation in die Quere kommen. Ein Cloud-Backup mit einem unbekannten Mod-Loader wurde als neue Instanz angelegt, die sich nie einrichten ließ, und das Herunterladen galt trotzdem als gelungen. Blieb die Verbindung beim Hoch- oder Herunterladen ohne Fehler stehen, hing die Aufgabe bis zum Abbrechen von Hand. Eine Instanz ohne festgelegte Loader-Version wurde als Modpack ohne Loader-Version exportiert, das andere Launcher und dieser selbst ablehnten, und das eigene Startseiten-Paket des Launchers ging im Export mit. War die Datei mit den Accounts beschädigt, mussten alle Microsoft-Konten neu angemeldet werden. Wählte man ein gerade entferntes Konto in einer zweiten Ansicht, wurde ein anderes Konto aktiv, das man nie gewählt hatte. Ein präparierter launchgabi-Link von einer Webseite konnte zusätzliche Angaben in die Navigation des Launchers schmuggeln. Schickte der NeoForge- oder Forge-Server einmal eine unerwartete Antwort, zeigte NeoForge bis zu einer halben Stunde lang „Abfrage fehlgeschlagen“, und Forge verlor bis zu einer Stunde lang die Markierung „empfohlen“. Die Vorschau von „Version ändern“ zählte von Hand ausgeschaltete Mods zu denen, die der Wechsel ausschaltet. Wurde der Launcher mitten in einem Versionswechsel geschlossen, blieben Mods ausgeschaltet, ohne beim Zurückwechseln wieder anzugehen. Was man in den Instanz-Einstellungen tippte, während gespeichert wurde, galt als gespeichert und ging beim Verlassen der Seite ohne Rückfrage verloren. Die Prüfung vor dem Start konnte kurz nach einer Änderung wieder den alten Stand zeigen. Scheiterte ein Datenpaket beim Installieren, schloss sich die Weltauswahl, und die gewählten Welten waren weg. Unter „Entdecken“ galt ein Projekt nach dem Wechsel der Zielinstanz auch dort als „wird installiert“. Startete man nach einem Absturz sehr schnell neu, konnte die noch laufende Auswertung des alten Absturzes den neuen Start blockieren. Ließ sich beim Aufräumen alter automatischer Sicherungen eine Datei nicht löschen, blieben schon gelöschte in der Liste stehen. Trat man dem Beta-Programm bei, während gerade nach Updates gesucht wurde, erschien die Beta erst bei der nächsten Suche Stunden später. Löschte man eine Instanz noch während ihrer Einrichtung und legte gleich eine gleichnamige an, galt die neue als eingerichtet, sobald die alte fertig war. Wurde das Beenden abgelehnt, weil noch ein Spiel lief, kam das Launcher-Fenster nach dem Schließen des Protokollfensters nicht zurück.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     }
   ];
   var ISSUE_LABEL = {
@@ -8409,7 +8425,7 @@ footer .grow { flex: 1; }
     {
       "id": "cloud-backup-falsche-version",
       "title": "A cloud backup carried the Minecraft version the instance had at upload, not the one of the backup",
-      "detail": "When an instance was moved with \"Change version\" after a backup was made and that older backup was only uploaded afterwards, the cloud showed the new version. Downloading it as a new instance then created an instance with the wrong Minecraft version and the old mods, which did not start.",
+      "detail": "When an instance was moved with \"Change version\" after a backup was made and that older backup was only uploaded afterwards, the cloud showed the new version. Downloading it as a new instance then created an instance with the wrong Minecraft version and the old mods, which did not start. From 1.0.26 on every new backup remembers its version. Older backups do not know it and still carry the version the instance has at upload.",
       "state": "fixed",
       "since": "2026-11-11",
       "fixedIn": "1.0.26"
@@ -8505,37 +8521,42 @@ footer .grow { flex: 1; }
     {
       "id": "java-16-fehlt-fuer-1-17",
       "title": "Minecraft 1.17 and 1.17.1 did not start because Java 16 could not be downloaded",
-      "detail": "Minecraft 1.17 and 1.17.1 need Java 16. The launcher downloads Java itself on start, but asks for a slim runtime that does not exist for Java 16 on any system. The start therefore stopped with \"There is no Java 16 package for this system\", on Windows, macOS and Linux. Workaround: download \"Java 17\" under Settings, Java, and pick it as the Java version in the instance settings. Minecraft 1.17 also runs on Java 17.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "detail": "Minecraft 1.17 and 1.17.1 need Java 16. The launcher downloads Java itself on start, but asks for a slim runtime that does not exist for Java 16 on any system. The start therefore stopped with \"There is no Java 16 package for this system\", on Windows, macOS and Linux. Workaround: download \"Java 17\" under Settings, Java, and pick it as the Java version in the instance settings. Minecraft 1.17 also runs on Java 17. Since 1.0.26 the launcher downloads the full Java 16 in that case.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "loader-abfrage-alte-version-netzfehler",
       "title": "For Minecraft versions without Fabric or Quilt, the wizard reported a connection error",
       "detail": "Choosing a version that Fabric or Quilt do not exist for when creating an instance, such as 1.12.2, 1.8.9 or a snapshot, showed \"Lookup failed\" for both, with a note that this was probably the internet connection. \"Try again\" never helped, because these loaders simply do not exist for that version. Forge, NeoForge and Vanilla could still be chosen.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "absturzhilfe-fabric-api-fehlt-ganz",
       "title": "With Fabric API missing entirely, crash help sent you on a search with no result",
       "detail": "When the game crashed because Fabric API was missing, crash help only named one of its parts, such as \"fabric-resource-loader-v0\", and suggested searching for it under \"Find content\". It is not there, and there was no button to fix it. Even after installing Fabric API, the start stayed blocked. Workaround: install Fabric API under \"Find content\", then choose \"Start anyway\".",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "quilt-fabric-api-nicht-erkannt",
       "title": "In Quilt instances, Quilted Fabric API was not recognised as Fabric API",
       "detail": "Quilted Fabric API presents itself to other mods as Fabric API. The launcher did not know that: when a mod required Fabric API, it downloaded Fabric API on top during the install, and with automatic dependency downloads turned off, the check before the start blocked with \"requires Fabric API\". Workaround: \"Start anyway\".",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "sicherung-bei-offener-welt",
       "title": "A backup always failed while a world was open in the game",
       "detail": "Minecraft locks a small file named session.lock in every open world. The backup could not read it and stopped with \"was locked by another program during the backup\". It worked from the game’s main menu or with the game closed. A restore does not need this file.",
-      "state": "investigating",
+      "state": "fixed",
       "since": "2026-11-13",
+      "fixedIn": "1.0.26",
       "platforms": [
         "Windows"
       ]
@@ -8544,22 +8565,33 @@ footer .grow { flex: 1; }
       "id": "fehlerbericht-ipv6-adressen",
       "title": "Error reports did not remove IPv6 addresses written in short form",
       "detail": "Before sending, the launcher removes IP addresses from an error report. IPv6 addresses in the usual short form with \"::\", such as 2001:db8::1, were not recognised and stayed in the report. This only affects reports that contain such an address, for example after a connection error.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "beta-verlassen-update-bleibt",
       "title": "After leaving the beta programme, a beta update already on offer stayed",
       "detail": "Leaving the beta programme while a beta was already offered or downloaded as an update kept it on offer, and it could still be installed until the launcher was restarted. The notice when leaving promised the normal updates again from then on.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "welten-reiter-nach-spielen-veraltet",
       "title": "The \"Worlds\" tab did not show new worlds after playing",
-      "detail": "Staying on the \"Worlds\" tab of an instance page while playing showed neither new worlds nor the new size or \"Last played\" afterwards. Only switching tabs showed the current state.",
-      "state": "investigating",
-      "since": "2026-11-13"
+      "detail": "Staying on the \"Worlds\" tab of an instance page while playing showed neither new worlds nor the new size or \"Last played\" afterwards. Only switching tabs showed the current state. The same went for screenshots in the \"Recordings\" tab.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
+    },
+    {
+      "id": "kleinere-fehler-tiefensuche-13-november",
+      "title": "Smaller faults from the second deep search in November",
+      "detail": "When a virus scanner briefly held a mod while it was switched on or off, an install at the same moment could vanish from the mod list. \"Cancel\" during a game start no longer worked once the files were checked, and Minecraft started anyway. The pre-launch command already ran before the environment variables and the wrapper command were asked about. When Java could not be started, an English system message with the file path showed. A wrapper command that exited right away was written to the log in full. Cancelling \"Get Java\" after the download did nothing, Java was installed anyway, and trying again at once could get in the way of the cancelled install. A cloud backup with an unknown mod loader was created as a new instance that could never be set up, and the download still counted as a success. When the connection stalled without an error during an upload or download, the task hung until cancelled by hand. An instance without a fixed loader build was exported as a modpack without a loader version, which other launchers and this one refused, and the launcher’s own start screen pack went along in the export. When the file with the accounts was damaged, every Microsoft account had to be signed in again. Choosing an account just removed in a second view made another account active, one that was never chosen. A crafted launchgabi link from a web page could slip extra details into the launcher’s navigation. When the NeoForge or Forge server sent an unexpected answer once, NeoForge showed \"Lookup failed\" for up to half an hour, and Forge lost its \"recommended\" mark for up to an hour. The \"Change version\" preview counted mods switched off by hand among those the change switches off. When the launcher was closed in the middle of a version change, mods stayed switched off without coming back on when changing back. Whatever was typed into the instance settings while saving ran counted as saved and was lost without a question when leaving the page. The check before the start could show the old state again shortly after a change. When a data pack failed to install, the world picker closed and the chosen worlds were gone. Under \"Discover\", a project still showed \"Installing\" after switching the target instance. Starting again very quickly after a crash, the still running analysis of the old crash could block the new start. When an old automatic backup could not be deleted during the cleanup, backups already deleted stayed in the list. Joining the beta programme while an update check was running showed the beta only at the next check, hours later. Deleting an instance while it was still being set up and creating one of the same name right away made the new one count as set up once the old setup ended. When quitting was turned down because a game was still running, the launcher window did not come back after the log window was closed.",
+      "state": "fixed",
+      "since": "2026-11-13",
+      "fixedIn": "1.0.26"
     }
   ];
   var ISSUE_LABEL_EN = {

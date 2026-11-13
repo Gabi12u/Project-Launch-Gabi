@@ -5541,8 +5541,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Einrichtung und legte gleich eine gleichnamige an, galt die neue als eingerichtet, sobald die alte ' +
       'fertig war. Wurde das Beenden abgelehnt, weil noch ein Spiel lief, kam das Launcher-Fenster nach ' +
       'dem Schließen des Protokollfensters nicht zurück.',
-    state: 'fixing',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   }
 ]
 
