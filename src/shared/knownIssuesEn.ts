@@ -3285,6 +3285,66 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       "Essential's update window or Sodium's graphics card detection. Java downloaded since 1.0.25 is fine, " +
       'but one already there was never corrected.'
   },
+  'java-16-fehlt-fuer-1-17': {
+    title: 'Minecraft 1.17 and 1.17.1 did not start because Java 16 could not be downloaded',
+    detail:
+      'Minecraft 1.17 and 1.17.1 need Java 16. The launcher downloads Java itself on start, but asks for a ' +
+      'slim runtime that does not exist for Java 16 on any system. The start therefore stopped with "There ' +
+      'is no Java 16 package for this system", on Windows, macOS and Linux. Workaround: download "Java 17" ' +
+      'under Settings, Java, and pick it as the Java version in the instance settings. Minecraft 1.17 also ' +
+      'runs on Java 17.'
+  },
+  'loader-abfrage-alte-version-netzfehler': {
+    title: 'For Minecraft versions without Fabric or Quilt, the wizard reported a connection error',
+    detail:
+      'Choosing a version that Fabric or Quilt do not exist for when creating an instance, such as 1.12.2, ' +
+      '1.8.9 or a snapshot, showed "Lookup failed" for both, with a note that this was probably the ' +
+      'internet connection. "Try again" never helped, because these loaders simply do not exist for that ' +
+      'version. Forge, NeoForge and Vanilla could still be chosen.'
+  },
+  'absturzhilfe-fabric-api-fehlt-ganz': {
+    title: 'With Fabric API missing entirely, crash help sent you on a search with no result',
+    detail:
+      'When the game crashed because Fabric API was missing, crash help only named one of its parts, such ' +
+      'as "fabric-resource-loader-v0", and suggested searching for it under "Find content". It is not ' +
+      'there, and there was no button to fix it. Even after installing Fabric API, the start stayed ' +
+      'blocked. Workaround: install Fabric API under "Find content", then choose "Start anyway".'
+  },
+  'quilt-fabric-api-nicht-erkannt': {
+    title: 'In Quilt instances, Quilted Fabric API was not recognised as Fabric API',
+    detail:
+      'Quilted Fabric API presents itself to other mods as Fabric API. The launcher did not know that: when ' +
+      'a mod required Fabric API, it downloaded Fabric API on top during the install, and with automatic ' +
+      'dependency downloads turned off, the check before the start blocked with "requires Fabric API". ' +
+      'Workaround: "Start anyway".'
+  },
+  'sicherung-bei-offener-welt': {
+    title: 'A backup always failed while a world was open in the game',
+    detail:
+      'Minecraft locks a small file named session.lock in every open world. The backup could not read it ' +
+      'and stopped with "was locked by another program during the backup". It worked from the game’s ' +
+      'main menu or with the game closed. A restore does not need this file.'
+  },
+  'fehlerbericht-ipv6-adressen': {
+    title: 'Error reports did not remove IPv6 addresses written in short form',
+    detail:
+      'Before sending, the launcher removes IP addresses from an error report. IPv6 addresses in the usual ' +
+      'short form with "::", such as 2001:db8::1, were not recognised and stayed in the report. This only ' +
+      'affects reports that contain such an address, for example after a connection error.'
+  },
+  'beta-verlassen-update-bleibt': {
+    title: 'After leaving the beta programme, a beta update already on offer stayed',
+    detail:
+      'Leaving the beta programme while a beta was already offered or downloaded as an update kept it on ' +
+      'offer, and it could still be installed until the launcher was restarted. The notice when leaving ' +
+      'promised the normal updates again from then on.'
+  },
+  'welten-reiter-nach-spielen-veraltet': {
+    title: 'The "Worlds" tab did not show new worlds after playing',
+    detail:
+      'Staying on the "Worlds" tab of an instance page while playing showed neither new worlds nor the new ' +
+      'size or "Last played" afterwards. Only switching tabs showed the current state.'
+  },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
     detail:

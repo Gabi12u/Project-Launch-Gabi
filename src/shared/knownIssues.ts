@@ -5405,6 +5405,94 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-11',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'java-16-fehlt-fuer-1-17',
+    title: 'Minecraft 1.17 und 1.17.1 starteten nicht, weil sich Java 16 nicht laden ließ',
+    detail:
+      'Minecraft 1.17 und 1.17.1 verlangen Java 16. Der Launcher lädt Java beim Start selbst, fragt dafür ' +
+      'aber eine schlanke Laufzeit an, die es für Java 16 auf keinem System gibt. Der Start brach deshalb ' +
+      'mit „Für Java 16 gibt es kein Paket für dieses System“ ab, unter Windows, macOS und Linux. Abhilfe: ' +
+      'in den Einstellungen unter Java „Java 17“ laden und es in den Einstellungen der Instanz als ' +
+      'Java-Version auswählen. Minecraft 1.17 läuft auch mit Java 17.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'loader-abfrage-alte-version-netzfehler',
+    title: 'Für Minecraft-Versionen ohne Fabric oder Quilt meldete der Assistent einen Verbindungsfehler',
+    detail:
+      'Wer beim Anlegen einer Instanz eine Version wählte, für die es Fabric oder Quilt nicht gibt, etwa ' +
+      '1.12.2, 1.8.9 oder einen Snapshot, sah bei beiden „Abfrage fehlgeschlagen“ und den Hinweis, das ' +
+      'liege vermutlich an der Internetverbindung. „Erneut versuchen“ half nie, denn diese Loader gibt es ' +
+      'für die Version schlicht nicht. Forge, NeoForge und Vanilla ließen sich davon unberührt wählen.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'absturzhilfe-fabric-api-fehlt-ganz',
+    title: 'Fehlte die Fabric API ganz, schickte die Absturzhilfe auf eine Suche ohne Ergebnis',
+    detail:
+      'Stürzte das Spiel ab, weil die Fabric API fehlte, nannte die Absturzhilfe nur den Namen eines ' +
+      'ihrer Teile, etwa „fabric-resource-loader-v0“, und riet, ihn unter „Inhalte finden“ zu suchen. ' +
+      'Dort gibt es ihn nicht, und einen Knopf zum Beheben gab es nicht. Auch nach dem Installieren der ' +
+      'Fabric API blieb der Start blockiert. Abhilfe: Fabric API unter „Inhalte finden“ installieren und ' +
+      'dann „Trotzdem starten“ wählen.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'quilt-fabric-api-nicht-erkannt',
+    title: 'In Quilt-Instanzen wurde die Quilted Fabric API nicht als Fabric API erkannt',
+    detail:
+      'Die Quilted Fabric API gibt sich gegenüber anderen Mods als Fabric API aus. Der Launcher wusste ' +
+      'das nicht: Verlangte ein Mod die Fabric API, lud er sie beim Installieren zusätzlich, und war das ' +
+      'automatische Laden von Abhängigkeiten aus, blockierte die Prüfung vor dem Start mit „benötigt ' +
+      'Fabric API“. Abhilfe: „Trotzdem starten“.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'sicherung-bei-offener-welt',
+    title: 'Eine Sicherung scheiterte immer, solange im Spiel eine Welt geöffnet war',
+    detail:
+      'Minecraft sperrt in jeder geöffneten Welt eine kleine Datei namens session.lock. Die Sicherung ' +
+      'konnte sie nicht lesen und brach mit „wurde während der Sicherung von einem anderen Programm ' +
+      'gesperrt“ ab. Im Hauptmenü des Spiels oder bei geschlossenem Spiel klappte es. Für eine ' +
+      'Wiederherstellung wird diese Datei nicht gebraucht.',
+    state: 'investigating',
+    since: '2026-11-13',
+    platforms: ['Windows']
+  },
+  {
+    id: 'fehlerbericht-ipv6-adressen',
+    title: 'Fehlerberichte entfernten IPv6-Adressen in Kurzschreibweise nicht',
+    detail:
+      'Vor dem Versenden entfernt der Launcher IP-Adressen aus einem Fehlerbericht. IPv6-Adressen in der ' +
+      'üblichen Kurzschreibweise mit „::“, etwa 2001:db8::1, erkannte er nicht, sie blieben im Bericht ' +
+      'stehen. Betrifft nur Berichte, die eine solche Adresse enthalten, etwa nach einem Verbindungsfehler.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'beta-verlassen-update-bleibt',
+    title: 'Nach dem Verlassen des Beta-Programms blieb ein schon angebotenes Beta-Update bestehen',
+    detail:
+      'Wer das Beta-Programm verließ, während schon eine Beta als Update angeboten oder heruntergeladen ' +
+      'war, bekam sie trotzdem weiter angeboten und konnte sie installieren, bis der Launcher neu ' +
+      'gestartet wurde. Der Hinweis beim Verlassen versprach ab sofort wieder die normalen Updates.',
+    state: 'investigating',
+    since: '2026-11-13'
+  },
+  {
+    id: 'welten-reiter-nach-spielen-veraltet',
+    title: 'Der Reiter „Welten“ zeigte nach dem Spielen nicht die neuen Welten',
+    detail:
+      'Wer auf der Seite einer Instanz im Reiter „Welten“ blieb, während er spielte, sah danach weder neue ' +
+      'Welten noch die neue Größe oder „Zuletzt gespielt“. Erst ein Wechsel des Reiters zeigte den ' +
+      'richtigen Stand.',
+    state: 'investigating',
+    since: '2026-11-13'
   }
 ]
 
