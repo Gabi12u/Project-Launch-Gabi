@@ -5269,7 +5269,8 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wurde eine Instanz nach dem Sichern per „Version ändern“ umgestellt und die ältere Sicherung erst ' +
       'danach in die Cloud geladen, stand dort die neue Version. Beim Herunterladen als neue Instanz ' +
       'entstand dann eine Instanz mit der falschen Minecraft-Version und den Mods der alten, die nicht ' +
-      'starteten.',
+      'starteten. Ab 1.0.26 merkt sich jede neue Sicherung ihre Version. Sicherungen von früher kennen sie ' +
+      'nicht und tragen weiter die Version, die die Instanz beim Hochladen hat.',
     state: 'fixed',
     since: '2026-11-11',
     fixedIn: '1.0.26'
@@ -5502,6 +5503,15 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-13',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'kleinere-fehler-tiefensuche-13-november',
+    title: 'Kleinere Fehler aus der zweiten Tiefensuche im November',
+    detail:
+      'Hielt ein Virenscanner einen Mod beim Ein- oder Ausschalten kurz fest, konnte eine gleichzeitige ' +
+      'Installation aus der Mod-Liste verschwinden.',
+    state: 'fixing',
+    since: '2026-11-13'
   }
 ]
 

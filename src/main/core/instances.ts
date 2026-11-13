@@ -1378,6 +1378,20 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
     if (!existsSync(folder.dir)) continue
 
     for (const fileName of readdirSync(folder.dir)) {
+      // An update moves the old file aside as "<name>.<8 hex>.replaced" and
+      // deletes it at the end. One that could not be deleted then, a scanner
+      // holding it, stayed for good. Swept only while nothing else works on
+      // the content: an update still running may need its file back.
+      if (/\.[0-9a-f]{8}\.replaced$/.test(fileName)) {
+        if (!isContentBusy(id)) {
+          try {
+            rmSync(join(folder.dir, fileName), { force: true })
+          } catch {
+            // the next scan tries again
+          }
+        }
+        continue
+      }
       const enabled = !fileName.endsWith('.disabled')
       const bare = enabled ? fileName : fileName.slice(0, -'.disabled'.length)
       if (!folder.extensions.includes(extname(bare).toLowerCase())) continue
@@ -1681,14 +1695,18 @@ export function toggleContent(id: string, contentId: string, enabled: boolean): 
         }
       }
 
-      const content = instance.content.map((c) =>
+      // Read again: the retry above waits, and another item installed,
+      // removed or switched in that moment (they hold other item locks) was
+      // written over with the record as it stood before.
+      const latest = getInstance(id)
+      const content = latest.content.map((c) =>
         // Switched by hand: whatever a version change once switched off is
         // now the user's own decision and is no longer switched back on.
         c.id === contentId
           ? { ...c, fileName: nextName, enabled, disabledByVersionChange: undefined, ...(keptWorlds ? { worlds: keptWorlds } : {}) }
           : c
       )
-      return persist({ ...instance, content })
+      return persist({ ...latest, content })
     })
   )
 }

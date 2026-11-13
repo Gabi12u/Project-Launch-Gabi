@@ -274,7 +274,8 @@ try {
        content: require(${JSON.stringify(join(root, 'src/main/core/content.ts'))}),
        instances: require(${JSON.stringify(join(root, 'src/main/core/instances.ts'))}),
        log: require(${JSON.stringify(join(root, 'src/main/core/instanceLog.ts'))}),
-       paths: require(${JSON.stringify(join(root, 'src/main/paths.ts'))})
+       paths: require(${JSON.stringify(join(root, 'src/main/paths.ts'))}),
+       lock: require(${JSON.stringify(join(root, 'src/main/core/contentLock.ts'))})
      }`
   )
   const out = join(work, 'bundle.cjs')
@@ -319,7 +320,8 @@ try {
       { version: '21.1.209', stable: true }
     ]
   }
-  const { crash, compat, content, instances, log, paths } = require(out)
+  const { crash, compat, content, instances, log, paths, lock } = require(out)
+  const withContentLockFor = (id, work) => lock.withContentLock(id, work)
   const p = paths.paths
 
   // --- 1. Reading Fabric's report ------------------------------------------------
@@ -896,6 +898,18 @@ More details:
   await instances.syncContentWithDisk('qfapi', { force: true })
   const qfRecord = instances.getInstance('qfapi').content.find((c) => c.name === 'Quilted Fabric API')
   check((qfRecord?.provides ?? []).includes('fabric-api'), `Quilted Fabric API: der Eintrag nennt nach dem Abgleich ${JSON.stringify(qfRecord?.provides)}`)
+
+  // --- 23. A file an update left aside is swept, but not mid update ------------------
+  const leftOver = join(p.mods('gesperrt'), 'flk-1131.jar.0a1b2c3d.replaced')
+  writeFileSync(leftOver, 'alt')
+  await withContentLockFor('gesperrt', () => instances.syncContentWithDisk('gesperrt', { force: true }))
+  check(existsSync(leftOver), 'Beiseitegelegte Datei: während einer Arbeit an den Mods weggeräumt')
+  await instances.syncContentWithDisk('gesperrt', { force: true })
+  check(!existsSync(leftOver), 'Beiseitegelegte Datei: nach dem Abgleich noch da')
+  check(
+    !instances.getInstance('gesperrt').content.some((c) => c.fileName.includes('.replaced')),
+    'Beiseitegelegte Datei: als Inhalt eingetragen'
+  )
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

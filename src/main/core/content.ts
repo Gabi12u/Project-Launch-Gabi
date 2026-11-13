@@ -1224,6 +1224,25 @@ async function applyUpdateOnce(
     keepVersion: undefined
   }
 
+  // Dependencies can change between versions. Asked here, before any file
+  // moves: from moving the old file aside to writing the record nothing may
+  // wait on the network, or a launcher closed in between left the record
+  // naming a file that was gone.
+  try {
+    const fresh = prepared
+      ? prepared.version
+      : (await getVersions(item.provider as 'modrinth' | 'curseforge', item.projectId as string)).find(
+          (v) => v.versionId === next.versionId
+        )
+    if (fresh) {
+      next.dependencies = fresh.dependencies
+      next.gameVersions = fresh.gameVersions
+      next.loaders = fresh.loaders
+    }
+  } catch {
+    // keep the old metadata
+  }
+
   // The file downloaded above always sits under its bare name. If the mod is
   // disabled, `next.fileName` carries the ".disabled" suffix, but the file on
   // disk does not yet, so it is renamed onto that exact name here, before the
@@ -1296,22 +1315,6 @@ async function applyUpdateOnce(
     }
   }
 
-  // Dependencies can change between versions.
-  try {
-    const fresh = prepared
-      ? prepared.version
-      : (await getVersions(item.provider as 'modrinth' | 'curseforge', item.projectId as string)).find(
-          (v) => v.versionId === next.versionId
-        )
-    if (fresh) {
-      next.dependencies = fresh.dependencies
-      next.gameVersions = fresh.gameVersions
-      next.loaders = fresh.loaders
-    }
-  } catch {
-    // keep the old metadata
-  }
-
   // The record is written before the old file is deleted, not after. Deleting
   // first meant a delete that threw (a virus scanner, a cloud-sync client, the
   // game itself holding the jar) aborted the whole function with the new file
@@ -1341,7 +1344,7 @@ async function applyUpdateOnce(
     renamePackSelection(instanceId, next.type, current.fileName, next.fileName)
   }
 
-  if (aside) removeStaleFile(aside)
+  if (aside) await removeStaleFile(aside)
 
   logger.info(`${item.name} auf ${next.version} aktualisiert`)
   return next
@@ -1365,19 +1368,22 @@ async function renameWithRetry(from: string, to: string): Promise<void> {
 
 /**
  * Deletes the old file an update moved aside, without ever failing the
- * update. Tried twice; left over, it is no jar and nothing loads it.
+ * update. Tried three times over half a second, since a scanner holding it
+ * lets go after a moment. Left over, it is no jar, nothing loads it, and the
+ * next folder scan sweeps it.
  */
-function removeStaleFile(path: string): void {
-  try {
-    rmSync(path, { force: true })
-    return
-  } catch {
-    // fall through to the second attempt
-  }
-  try {
-    rmSync(path, { force: true })
-  } catch (err) {
-    logger.warn(`Alte Datei ${path} konnte nicht entfernt werden:`, err)
+async function removeStaleFile(path: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      rmSync(path, { force: true })
+      return
+    } catch (err) {
+      if (attempt >= 3) {
+        logger.warn(`Alte Datei ${path} konnte nicht entfernt werden:`, err)
+        return
+      }
+      await new Promise((resolveWait) => setTimeout(resolveWait, 250))
+    }
   }
 }
 

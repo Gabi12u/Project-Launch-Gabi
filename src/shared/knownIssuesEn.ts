@@ -3346,6 +3346,12 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'size or "Last played" afterwards. Only switching tabs showed the current state. The same went for ' +
       'screenshots in the "Recordings" tab.'
   },
+  'kleinere-fehler-tiefensuche-13-november': {
+    title: 'Smaller faults from the second deep search in November',
+    detail:
+      'When a virus scanner briefly held a mod while it was switched on or off, an install at the same ' +
+      'moment could vanish from the mod list.'
+  },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
     detail:
@@ -3375,7 +3381,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'When an instance was moved with "Change version" after a backup was made and that older backup was ' +
       'only uploaded afterwards, the cloud showed the new version. Downloading it as a new instance then ' +
-      'created an instance with the wrong Minecraft version and the old mods, which did not start.'
+      'created an instance with the wrong Minecraft version and the old mods, which did not start. From ' +
+      '1.0.26 on every new backup remembers its version. Older backups do not know it and still carry the ' +
+      'version the instance has at upload.'
   },
   'cloud-backup-ohne-mods-unklar': {
     title: 'Uploading and downloading cloud backups never said that a default backup holds no mods',
