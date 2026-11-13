@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { request } from 'node:https'
+import { isIPv6 } from 'node:net'
 import { userInfo } from 'node:os'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -121,6 +122,9 @@ function instanceNames(): string[] {
   }
   return [...names].sort((a, b) => b.length - a.length)
 }
+
+/** A word right before four dotted numbers that makes them a version. */
+const VERSION_WORD_BEFORE = /\b(?:java|jdk|jre|openjdk|version|build|forge|neoforge|fabric|quilt|minecraft|mc|loader)\s*$/i
 
 export function scrub(text: string): string {
   let out = text
@@ -267,13 +271,23 @@ export function scrub(text: string): string {
   // "fabric-api-0.92.2.1" arrived as "<IP>". A real address is not glued to
   // a letter, "-", "_", "+" or "." in front, nor to a letter, "-", "_", "+"
   // or a further ".5" behind. A full stop ending the sentence still counts.
+  // Small parts alone do not tell a version from an address: "Java 21.0.5.0"
+  // still arrived as "Java <IP>". Right after a word that names a version it
+  // is one.
   out = out.replace(
     /(?<![\w.+-])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![\w+-]|\.\d)/g,
-    '<IP>'
+    (match, offset: number, whole: string) =>
+      VERSION_WORD_BEFORE.test(whole.slice(Math.max(0, offset - 16), offset)) ? match : '<IP>'
   )
-  // At least three colons, so an HH:MM:SS timestamp (two colons) elsewhere in
-  // the same stack trace is never mistaken for one.
-  out = out.replace(/\b(?:[0-9a-fA-F]{1,4}:){3,7}[0-9a-fA-F]{0,4}\b/g, '<IP>')
+  // IPv6, in every way it is written: in full, shortened with "::"
+  // ("2001:db8::1"), with a port glued on the way Node prints one
+  // ("2606:4700::6810:84e5:443"), or with a zone ("fe80::1%eth0"). Only
+  // the full form used to be caught, and the short one is the usual one.
+  // Each candidate is checked by Node itself, so an HH:MM:SS timestamp or a
+  // MAC address is left alone.
+  out = out.replace(/(?<![\w:.%])[0-9a-f]{0,4}(?::[0-9a-f]{0,4}){2,8}(?:%[\w.-]+)?(?![\w:])/gi, (match) =>
+    isIPv6(match.split('%')[0]) ? '<IP>' : match
+  )
 
   // Dashed ids first, then the bare 32-hex form Mojang's API actually returns.
   out = out.replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '<UUID>')

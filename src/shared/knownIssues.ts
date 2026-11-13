@@ -5477,8 +5477,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Vor dem Versenden entfernt der Launcher IP-Adressen aus einem Fehlerbericht. IPv6-Adressen in der ' +
       'üblichen Kurzschreibweise mit „::“, etwa 2001:db8::1, erkannte er nicht, sie blieben im Bericht ' +
       'stehen. Betrifft nur Berichte, die eine solche Adresse enthalten, etwa nach einem Verbindungsfehler.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'beta-verlassen-update-bleibt',

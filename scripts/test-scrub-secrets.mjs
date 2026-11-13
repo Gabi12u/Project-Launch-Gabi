@@ -199,6 +199,34 @@ try {
     ['10.0.19045.1234', '0.92.2.1', 'v1.2.3.4', '1.2.3.4+mc1.20', '2.0.0.0-beta'].every((v) => withVersions.includes(v)),
     withVersions
   )
+  // Small four-part versions right after the word that names them.
+  const smallVersions = scrub('Java 21.0.5.0 (Eclipse), JDK 17.0.13.1, Version 1.2.3.4, Forge 47.2.0.1')
+  check(
+    'scrub: kleine vierteilige Versionen nach "Java", "JDK", "Version", "Forge" bleiben',
+    ['21.0.5.0', '17.0.13.1', '1.2.3.4', '47.2.0.1'].every((v) => smallVersions.includes(v)) && !smallVersions.includes('<IP>'),
+    smallVersions
+  )
+
+  // IPv6 in every way Node and the game print it.
+  const v6 = [
+    'connect ETIMEDOUT 2606:4700::6810:84e5:443',
+    'connect ECONNREFUSED 2a02:8071:1234::1:443',
+    'Adresse 2001:db8::1 und [2001:db8:85a3::8a2e:370:7334]:25565',
+    'fe80::1%eth0 lokal',
+    'voll 2001:0db8:85a3:0000:0000:8a2e:0370:7334.'
+  ].join('\n')
+  const scrubbedV6 = scrub(v6)
+  check(
+    'scrub: IPv6 in Kurzform, mit Port und mit Zone werden zu <IP>',
+    !/2606:4700|2a02:8071|2001:db8|2001:0db8|fe80::1/.test(scrubbedV6) && scrubbedV6.split('<IP>').length === 7,
+    scrubbedV6
+  )
+  const notV6 = scrub('[12:34:56] [Render thread/INFO]: um 10:15:30, MAC 00:1a:2b:3c:4d:5e, Foo::bar')
+  check(
+    'scrub: Uhrzeiten, MAC-Adressen und Methodennamen bleiben',
+    !notV6.includes('<IP>') && notV6.includes('12:34:56') && notV6.includes('10:15:30') && notV6.includes('Foo::bar'),
+    notV6
+  )
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stderr ? String(err.stderr) : err.message))
 } finally {
