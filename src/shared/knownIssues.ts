@@ -5509,7 +5509,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     title: 'Kleinere Fehler aus der zweiten Tiefensuche im November',
     detail:
       'Hielt ein Virenscanner einen Mod beim Ein- oder Ausschalten kurz fest, konnte eine gleichzeitige ' +
-      'Installation aus der Mod-Liste verschwinden.',
+      'Installation aus der Mod-Liste verschwinden. „Abbrechen“ beim Spielstart wirkte nicht mehr, sobald ' +
+      'die Dateien geprüft waren, und Minecraft startete trotzdem. Der Befehl vor dem Start lief schon, ' +
+      'bevor nach Umgebungsvariablen und Wrapper-Befehl gefragt wurde. Konnte Java nicht gestartet werden, ' +
+      'stand dort eine englische Systemmeldung mit dem Dateipfad. Ein Wrapper-Befehl, der sich sofort ' +
+      'beendete, landete vollständig im Protokoll.',
     state: 'fixing',
     since: '2026-11-13'
   }

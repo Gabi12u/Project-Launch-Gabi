@@ -625,6 +625,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     })
     logger.info(`Starte ${instance.name} mit Java ${java.version} (${java.path})`)
     mendManagedRuntime(java.path)
+    task.throwIfCancelled()
 
     // 5. Natives -----------------------------------------------------
     setStatus(instanceId, 'launching', tr('Natives werden entpackt…', 'Unpacking natives…'))
@@ -864,15 +865,27 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     }
 
     // 9. Spawn -------------------------------------------------------
-    if (userText(instance.settings.preLaunchCommand).trim()) {
+    // Every question first, then anything runs. The pre-launch command used
+    // to run before the environment variables and the wrapper were asked
+    // about, so cancelling one of those dialogs stopped a start whose script
+    // had already run.
+    const hasPreLaunch = userText(instance.settings.preLaunchCommand).trim() !== ''
+    const hasWrapper = userText(instance.settings.wrapperCommand).trim() !== ''
+    if (hasPreLaunch) {
       await ensureApproved(instanceId, instance.name, 'preLaunch', instance.settings.preLaunchCommand)
-      task.update(tr('Befehl vor dem Start läuft…', 'Running pre-launch command…'), null)
-      await runPreLaunch(instance, gameDir, task)
     }
-
     // Same reason: JAVA_TOOL_OPTIONS or PATH can bring in code just as well.
     if (userText(instance.settings.envVars).trim()) {
       await ensureApproved(instanceId, instance.name, 'envVars', instance.settings.envVars)
+    }
+    if (hasWrapper) {
+      await ensureApproved(instanceId, instance.name, 'wrapper', instance.settings.wrapperCommand)
+    }
+    task.throwIfCancelled()
+
+    if (hasPreLaunch) {
+      task.update(tr('Befehl vor dem Start läuft…', 'Running pre-launch command…'), null)
+      await runPreLaunch(instance, gameDir, task)
     }
     const env = { ...process.env, ...parseEnv(instance.settings.envVars) }
 
@@ -884,8 +897,7 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
     let command = javaBinary
     let commandArgs = args
     let verbatimArgs = false
-    if (userText(instance.settings.wrapperCommand).trim()) {
-      await ensureApproved(instanceId, instance.name, 'wrapper', instance.settings.wrapperCommand)
+    if (hasWrapper) {
       const wrapper = userCommand([...splitUserArgs(instance.settings.wrapperCommand), javaBinary, ...args])
       command = wrapper.file
       commandArgs = wrapper.args
@@ -904,6 +916,10 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       time: Date.now()
     })
 
+    // The last chance to honour "Abbrechen". After the file check nothing
+    // looked any more, and a cancel pressed while Java or the natives were
+    // being prepared ended with Minecraft starting anyway.
+    task.throwIfCancelled()
     child = spawn(command, commandArgs, {
       cwd: gameDir,
       env,
@@ -1000,16 +1016,20 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       // more than a silent wrong state.
       const wrapper = userText(instance.settings.wrapperCommand).trim()
       if (wrapper && !requested && !crashed && endedAt - startedAt < 5000) {
+        // Only the program's name: the whole command can carry a password or
+        // a token, and this log goes along with an error report. The command
+        // before the start is kept out of the log for the same reason.
+        const program = (splitUserArgs(wrapper)[0] ?? '').split(/[\\/]/).pop() || 'Wrapper'
         logger.warn(
-          `Wrapper-Befehl "${wrapper}" endete nach ${endedAt - startedAt} ms mit Code ${code}. ` +
+          `Wrapper-Befehl (${program}) endete nach ${endedAt - startedAt} ms mit Code ${code}. ` +
             'Läuft Minecraft weiter, kann der Launcher es nicht mehr verfolgen.'
         )
         notify(
           'warning',
           tr('Wrapper-Befehl gibt das Spiel nicht weiter', 'Wrapper command does not hand the game over'),
           tr(
-            `"${wrapper}" hat sich sofort beendet. Läuft Minecraft trotzdem, weiß der Launcher nichts davon, und Mod-Änderungen sind dann nicht mehr gesperrt. Der Befehl muss Java per exec übernehmen.`,
-            `"${wrapper}" exited right away. If Minecraft is still running, the launcher does not know about it, and mod changes are no longer locked. The command has to take over Java via exec.`
+            `"${program}" hat sich sofort beendet. Läuft Minecraft trotzdem, weiß der Launcher nichts davon, und Mod-Änderungen sind dann nicht mehr gesperrt. Der Befehl muss Java per exec übernehmen.`,
+            `"${program}" exited right away. If Minecraft is still running, the launcher does not know about it, and mod changes are no longer locked. The command has to take over Java via exec.`
           ),
           { route: `/instances/${instanceId}?tab=settings` }
         )
@@ -1186,7 +1206,18 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
       }
       const onSpawnError = (err: Error): void => {
         spawnedProcess.off('spawn', onSpawn)
-        reject(err)
+        // Node's own text ("spawn C:\Users\...\javaw.exe ENOENT") reached the
+        // status and the task as it was, in English and with the user name
+        // in the path, over the readable text the 'error' handler had set.
+        const code = (err as NodeJS.ErrnoException).code
+        const why =
+          code === 'ENOENT'
+            ? tr('die Datei fehlt', 'the file is missing')
+            : code === 'EACCES' || code === 'EPERM'
+              ? tr('sie darf nicht ausgeführt werden', 'it may not be run')
+              : (code ?? tr('unbekannter Fehler', 'unknown error'))
+        const what = hasWrapper ? tr('Der Wrapper-Befehl', 'The wrapper command') : 'Java'
+        reject(new Error(tr(`${what} konnte nicht gestartet werden: ${why}.`, `${what} could not be started: ${why}.`), { cause: err }))
       }
       spawnedProcess.once('spawn', onSpawn)
       spawnedProcess.once('error', onSpawnError)

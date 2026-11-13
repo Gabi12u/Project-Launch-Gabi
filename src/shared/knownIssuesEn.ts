@@ -3350,7 +3350,11 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     title: 'Smaller faults from the second deep search in November',
     detail:
       'When a virus scanner briefly held a mod while it was switched on or off, an install at the same ' +
-      'moment could vanish from the mod list.'
+      'moment could vanish from the mod list. "Cancel" during a game start no longer worked once the files ' +
+      'were checked, and Minecraft started anyway. The pre-launch command already ran before the ' +
+      'environment variables and the wrapper command were asked about. When Java could not be started, an ' +
+      'English system message with the file path showed. A wrapper command that exited right away was ' +
+      'written to the log in full.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
