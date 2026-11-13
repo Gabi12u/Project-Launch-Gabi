@@ -5428,8 +5428,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       '1.12.2, 1.8.9 oder einen Snapshot, sah bei beiden „Abfrage fehlgeschlagen“ und den Hinweis, das ' +
       'liege vermutlich an der Internetverbindung. „Erneut versuchen“ half nie, denn diese Loader gibt es ' +
       'für die Version schlicht nicht. Forge, NeoForge und Vanilla ließen sich davon unberührt wählen.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'absturzhilfe-fabric-api-fehlt-ganz',

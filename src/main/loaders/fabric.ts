@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import type { LoaderVersion } from '@shared/types'
 import { paths, sanitizeVersionId } from '../paths'
 import { writeJsonAtomic } from '../store'
-import { fetchJson, fetchJsonCached } from '../core/net'
+import { fetchJson, fetchJsonCached, HttpError } from '../core/net'
 import type { VersionJson } from '../core/mojang'
 import { log } from '../logger'
 import type { Task } from '../tasks'
@@ -80,7 +80,17 @@ export async function listFabricLikeVersions(
   // button), but only if this actually throws instead of swallowing the
   // failure here. Left as a bare empty list, that distinction had nothing to
   // work with: every network drop looked identical to a real absence.
-  const entries = await fetchJsonCached<MetaLoaderEntry[]>(url, `${loader}-loader-${mcVersion}`, 30 * 60 * 1000, Array.isArray)
+  let entries: MetaLoaderEntry[]
+  try {
+    entries = await fetchJsonCached<MetaLoaderEntry[]>(url, `${loader}-loader-${mcVersion}`, 30 * 60 * 1000, Array.isArray)
+  } catch (err) {
+    // A Minecraft version the loader does not exist for is not an empty
+    // list here: Fabric answers 400 (with "[]" as the body), Quilt 404. Both
+    // reached the wizard as a failed lookup, "probably the internet
+    // connection", with a retry button that could never help.
+    if (err instanceof HttpError && (err.status === 400 || err.status === 404)) return []
+    throw err
+  }
 
   // `fetchJsonCached` casts without checking, so a 200 carrying anything other
   // than the expected array (a maintenance page, a CDN error body, a future

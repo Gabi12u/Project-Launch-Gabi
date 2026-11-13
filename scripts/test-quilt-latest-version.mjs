@@ -108,6 +108,43 @@ try {
     `Fabric "neueste stabile Version" ist "${fabricLatest}", API markiert aber "${apiStable?.version}" als stabil`
   )
   notes.push(`Fabric 1.20.1: "neueste stabile" ist ${fabricLatest}, stimmt mit dem von Fabric selbst markierten Eintrag ueberein.`)
+
+  /* ------------------------------------------------------------------
+   * A Minecraft version neither loader exists for. Fabric answers 400,
+   * Quilt 404, and the wizard showed both as a failed lookup "probably
+   * because of the internet connection". It must be an empty list.
+   * ------------------------------------------------------------------ */
+  for (const loader of ['fabric', 'quilt']) {
+    let list
+    let failure = ''
+    try {
+      list = await listFabricLikeVersions(loader, '1.12.2')
+    } catch (err) {
+      failure = err.message
+    }
+    check(Array.isArray(list) && list.length === 0, `${loader} 1.12.2: statt einer leeren Liste kam ${failure || JSON.stringify(list)}`)
+    let latestFailure = ''
+    try {
+      await resolveLatestFabricLike(loader, '1.12.2')
+    } catch (err) {
+      latestFailure = err.message
+    }
+    check(latestFailure !== '' && !/HTTP/.test(latestFailure), `${loader} 1.12.2, neueste Version: ${latestFailure || 'keine Meldung'}`)
+  }
+  notes.push('Fabric und Quilt für 1.12.2: leere Liste, keine Verbindungsfehlermeldung.')
+
+  // Every other failure still throws, so the wizard can still offer a retry.
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async () => new Response('verboten', { status: 403 })
+  let forbidden = ''
+  try {
+    await listFabricLikeVersions('fabric', '1.99.9')
+  } catch (err) {
+    forbidden = err.message
+  } finally {
+    globalThis.fetch = realFetch
+  }
+  check(/403/.test(forbidden), `Fabric mit Serverfehler 403: ${forbidden || 'leere Liste statt Fehler'}`)
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stack || err.message))
 } finally {
