@@ -3368,7 +3368,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'The start.bat file the launcher can create for an instance contains the path to the launcher. When ' +
       'that path holds an umlaut or another special character, as in C:\\Users\\Jürgen, Windows read it ' +
-      'wrongly, and a double-click started nothing.'
+      'wrongly, and a double-click started nothing. A script created before has to be created again once ' +
+      'after the update.'
   },
   'modpack-ungueltiger-dateiname': {
     title: 'A single file with a name not allowed on Windows stopped the whole modpack import',

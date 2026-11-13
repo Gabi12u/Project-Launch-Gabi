@@ -5576,9 +5576,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Die Datei start.bat, die der Launcher für eine Instanz anlegen kann, enthält den Pfad zum Launcher. ' +
       'Steht darin ein Umlaut oder ein anderes besonderes Zeichen, etwa in C:\\Users\\Jürgen, las Windows ' +
-      'den Pfad falsch, und ein Doppelklick startete nichts.',
-    state: 'investigating',
+      'den Pfad falsch, und ein Doppelklick startete nichts. Ein schon angelegtes Skript muss nach dem Update ' +
+      'einmal neu erstellt werden.',
+    state: 'fixed',
     since: '2026-11-13',
+    fixedIn: '1.0.26',
     platforms: ['Windows']
   },
   {

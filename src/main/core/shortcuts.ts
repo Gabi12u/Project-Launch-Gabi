@@ -367,9 +367,13 @@ export function writeLaunchScript(instanceId: string): string {
 
   if (process.platform === 'win32') {
     const file = join(dir, 'start.bat')
+    // Written as UTF-8, but cmd reads a batch file in the console's code page
+    // (850 on a German Windows). A path with an umlaut, as in
+    // C:\Users\Jürgen, came out garbled and nothing started. Switching to
+    // UTF-8 first makes every following line read the way it was written.
     writeFileSync(
       file,
-      `@echo off\r\nrem Startet ${singleLine(instance.name)} direkt\r\nstart "" "${target}" ${joinArgs([...baseArgs, `--launch=${instanceId}`])}\r\n`,
+      `@echo off\r\nchcp 65001>nul\r\nrem Startet ${singleLine(instance.name)} direkt\r\nstart "" "${target}" ${joinArgs([...baseArgs, `--launch=${instanceId}`])}\r\n`,
       'utf8'
     )
     return file
