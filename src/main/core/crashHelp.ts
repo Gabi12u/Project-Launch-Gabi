@@ -1139,10 +1139,32 @@ async function resolveSolution(
       )
     }
 
+    // A mod's id is very often its project slug on Modrinth ("fabric-api"),
+    // with Forge's underscores as dashes ("cloth_config", "cloth-config"), or
+    // without the "-v0" a Fabric library's id carries
+    // ("fabric-permissions-api-v0" is the project "fabric-permissions-api").
+    // Offered only when that project really has a build for this instance.
+    const lookUp = async (slugs: string[]): Promise<{ id: string; name: string } | null> => {
+      for (const slug of new Set(slugs)) {
+        try {
+          const found = await modrinth.getProject(slug)
+          const fits = await bestVersionFor('modrinth', found.projectId, instance.mcVersion, instance.loader, 'mod')
+          if (fits) return { id: found.projectId, name: found.name }
+        } catch {
+          // not a slug there
+        }
+      }
+      return null
+    }
+    const own = solution.mod.id
+    let project = await lookUp([own, own.replace(/_/g, '-'), own.replace(/-v\d+$/, '')])
+
     // Fabric names a module of Fabric API ("fabric-resource-loader-v0") when
     // all of Fabric API is missing, the most common Fabric crash there is.
-    // Searching for the module found nothing, and no fix was offered.
-    const partOfFabricApi = isFabricApiModule(solution.mod.id)
+    // Searching for the module found nothing, and no fix was offered. Only
+    // when no project of its own answers to the id: libraries of other
+    // authors are named the same way.
+    const partOfFabricApi = !project && isFabricApiModule(solution.mod.id)
     if (partOfFabricApi) {
       const api = find({ id: 'fabric-api', name: 'Fabric API' })
       // Installed but too old to carry the module: a newer build helps.
@@ -1183,25 +1205,9 @@ async function resolveSolution(
           [api, requirer]
         )
       }
+      project = await lookUp(['fabric-api'])
     }
 
-    // A mod's id is very often its project slug on Modrinth ("fabric-api"),
-    // with Forge's underscores as dashes ("cloth_config", "cloth-config").
-    // Offered only when that project really has a build for this instance.
-    let project: { id: string; name: string } | null = null
-    const slugs = partOfFabricApi ? ['fabric-api'] : [solution.mod.id, solution.mod.id.replace(/_/g, '-')]
-    for (const slug of new Set(slugs)) {
-      try {
-        const found = await modrinth.getProject(slug)
-        const fits = await bestVersionFor('modrinth', found.projectId, instance.mcVersion, instance.loader, 'mod')
-        if (fits) {
-          project = { id: found.projectId, name: found.name }
-          break
-        }
-      } catch {
-        // not a slug there
-      }
-    }
     const missingFinding = withWatch(
       {
         id,

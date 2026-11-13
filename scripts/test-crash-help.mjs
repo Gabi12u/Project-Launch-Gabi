@@ -474,6 +474,11 @@ try {
     renameSync(join(p.mods('abhaengig'), apiOld.fileName), join(p.mods('abhaengig'), `${apiOld.fileName}.disabled`))
     writeFileSync(p.instanceFile('abhaengig'), JSON.stringify(record))
   }
+  // A library of another author named like a Fabric API module.
+  makeInstance('rechte', '1.21.11', [sodium])
+  const perms = release('perms-1', 'pm-031', '0.3.1', ['1.21.11'], '2026-10-01T00:00:00Z', 'fabric-permissions-api-v0')
+  globalThis.__lgSlugs['fabric-permissions-api'] = { projectId: 'perms-1', name: 'Fabric Permissions API' }
+  globalThis.__lgBest['perms-1'] = () => perms
   // Fabric API missing entirely, and installed but too old to carry a module.
   makeInstance('apifehlt', '1.21.11', [sodium])
   makeInstance('apizualt', '1.21.11', [sodium, apiOld])
@@ -910,6 +915,14 @@ More details:
     !instances.getInstance('gesperrt').content.some((c) => c.fileName.includes('.replaced')),
     'Beiseitegelegte Datei: als Inhalt eingetragen'
   )
+
+  // --- 25. "fabric-permissions-api-v0" is its own project, not part of Fabric API ----
+  const PERMS_MISSING = MODULE_MISSING.replaceAll('fabric-resource-loader-v0', 'fabric-permissions-api-v0')
+  check((await crashed('rechte', PERMS_MISSING)) === true, 'Fremde Bibliothek: kein Vorschlag')
+  report = await compat.checkCompatibility('rechte')
+  const permsIssue = report.issues.find((i) => i.id === 'crash-install-fabric-permissions-api-v0')
+  notes.push(`Fremde Bibliothek: ${permsIssue?.title} [${permsIssue?.fix?.label ?? '-'}]`)
+  check(permsIssue?.fix?.projectId === 'perms-1', `Fremde Bibliothek: angeboten wird ${JSON.stringify(permsIssue?.fix)}`)
 
   // --- 24. A new start while the last crash is still worked out ----------------------
   const pending = crashed('apifehlt', MODULE_MISSING)
