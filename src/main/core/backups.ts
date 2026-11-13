@@ -356,7 +356,10 @@ export async function addDownloadedBackup(
       rmSync(target, { force: true })
       throw err
     }
-    pruneAutomatic(instanceId)
+    // Never the one just downloaded: sorted by the date it was made, an older
+    // cloud backup fell behind two newer copies and was cleaned away before
+    // it could be restored ("backup not found").
+    pruneAutomatic(instanceId, entry.id)
     return entry
   })
 }
@@ -592,8 +595,8 @@ async function createBackupUnlocked(
  */
 const inUse = new Set<string>()
 
-/** Keeps only the newest N automatic backups. */
-function pruneAutomatic(instanceId: string): void {
+/** Keeps only the newest N automatic backups, and never `spare`. */
+function pruneAutomatic(instanceId: string, spare?: string): void {
   const keep = getSettings().automaticBackupKeep
   // The finite check is not decoration. Every comparison against a non-numeric
   // value is false, so `keep <= 0` waved it through and `slice(keep)` behaved
@@ -620,7 +623,7 @@ function pruneAutomatic(instanceId: string): void {
     // Downloads from the cloud were never cleaned up either, each one a full
     // copy of up to several gigabytes.
     ...newestFirst('cloud').slice(CLOUD_COPIES_KEPT)
-  ].filter((e) => !inUse.has(e.id))
+  ].filter((e) => !inUse.has(e.id) && e.id !== spare)
 
   if (excess.length === 0) return
 

@@ -3352,7 +3352,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'The Forge installer needs some libraries in several versions at once for its steps. The launcher ' +
       'downloaded only the first version of each, and the setup stopped with "Forge installation step 1 ' +
       'failed" and a long technical message. Reproduced with Forge for Minecraft 1.20.1. The installers of ' +
-      'all checked Forge and NeoForge versions from 1.16.5 on list their libraries the same way.'
+      'all checked Forge and NeoForge versions from 1.16.5 on list their libraries the same way. Since 1.0.26 ' +
+      'the launcher downloads every version the installer needs; Forge 1.20.1 and NeoForge 21.1 then set up ' +
+      'on an empty PC.'
   },
   'cloud-download-sofort-weggeraeumt': {
     title: 'A cloud backup vanished right after downloading it into an existing instance',

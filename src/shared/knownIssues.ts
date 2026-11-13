@@ -5553,9 +5553,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'gleichzeitig. Der Launcher lud davon jeweils nur die erste Version, und die Einrichtung brach mit ' +
       '„Forge-Installationsschritt 1 fehlgeschlagen“ und einer langen technischen Meldung ab. Nachgestellt ' +
       'mit Forge für Minecraft 1.20.1. Die Installer aller geprüften Forge- und NeoForge-Versionen ab 1.16.5 ' +
-      'listen ihre Bibliotheken auf dieselbe Weise.',
-    state: 'investigating',
-    since: '2026-11-13'
+      'listen ihre Bibliotheken auf dieselbe Weise. Seit 1.0.26 lädt der Launcher jede Version, die der ' +
+      'Installer braucht; Forge 1.20.1 und NeoForge 21.1 ließen sich damit auf einem leeren PC einrichten.',
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'cloud-download-sofort-weggeraeumt',
@@ -5564,8 +5566,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Lagen in einer Instanz schon zwei aus der Cloud geladene Sicherungen, die neuer waren als die gerade ' +
       'geladene, räumte der Launcher die neue sofort wieder weg, bevor sie eingespielt wurde. Die ' +
       'Wiederherstellung meldete dann „Sicherung nicht gefunden“. Die Sicherung in der Cloud blieb erhalten.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'startskript-umlaute-im-pfad',
