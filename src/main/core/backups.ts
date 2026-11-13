@@ -624,12 +624,23 @@ function pruneAutomatic(instanceId: string): void {
 
   if (excess.length === 0) return
 
+  // One at a time, and the list only loses what is really gone. A delete
+  // that threw (a scanner or Explorer holding the file) stopped the loop
+  // before the list was written: the backups deleted until then stayed in
+  // it, and restoring one said the file was missing.
+  const removed = new Set<string>()
   for (const entry of excess) {
-    rmSync(backupPath(instanceId, entry.fileName), { force: true })
+    try {
+      rmSync(backupPath(instanceId, entry.fileName), { force: true })
+      removed.add(entry.id)
+    } catch (err) {
+      logger.warn(`Alte Sicherung ${entry.fileName} nicht gelöscht, nächstes Mal wieder:`, err)
+    }
   }
+  if (removed.size === 0) return
   writeIndex(
     instanceId,
-    entries.filter((e) => !excess.some((x) => x.id === e.id))
+    entries.filter((e) => !removed.has(e.id))
   )
 }
 

@@ -645,8 +645,21 @@ export function crashIssues(instance: Instance): CompatibilityIssue[] {
   return current.map((finding) => finding.issue)
 }
 
+/**
+ * Counts starts and reports per instance. A report still being worked out
+ * (lookups on Modrinth take seconds) when the next start began used to land
+ * after it and block that new start with the old crash.
+ */
+const generation = new Map<string, number>()
+const nextGeneration = (instanceId: string): number => {
+  const value = (generation.get(instanceId) ?? 0) + 1
+  generation.set(instanceId, value)
+  return value
+}
+
 /** A new start makes its own report, so the last one is dropped. */
 export function forgetCrash(instanceId: string): void {
+  nextGeneration(instanceId)
   findings.delete(instanceId)
 }
 
@@ -682,6 +695,7 @@ async function latestLogHead(instanceId: string, startedAt: number): Promise<str
  * True when there is something to fix.
  */
 export async function rememberCrash(instanceId: string, startedAt: number): Promise<boolean> {
+  const mine = nextGeneration(instanceId)
   findings.delete(instanceId)
   // From this start on, without the second of slack there was: a start right
   // after a crash read the last run's report as its own.
@@ -704,6 +718,11 @@ export async function rememberCrash(instanceId: string, startedAt: number): Prom
   }
   try {
     const found = await resolveReport(getInstance(instanceId), report)
+    // A start or another report came since: this one is out of date.
+    if (generation.get(instanceId) !== mine) {
+      logger.info(`Absturzhilfe für ${instanceId}: Bericht verworfen, inzwischen wurde neu gestartet`)
+      return false
+    }
     if (found.length > 0) findings.set(instanceId, found)
     logger.info(`Absturzhilfe für ${instanceId}: ${found.length} Vorschläge aus dem Bericht (${report.source})`)
     return found.length > 0

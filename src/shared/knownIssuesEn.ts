@@ -3371,7 +3371,10 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'was typed into the instance settings while saving ran counted as saved and was lost without a ' +
       'question when leaving the page. The check before the start could show the old state again shortly ' +
       'after a change. When a data pack failed to install, the world picker closed and the chosen worlds ' +
-      'were gone. Under "Discover", a project still showed "Installing" after switching the target instance.'
+      'were gone. Under "Discover", a project still showed "Installing" after switching the target instance. ' +
+      'Starting again very quickly after a crash, the still running analysis of the old crash could block ' +
+      'the new start. When an old automatic backup could not be deleted during the cleanup, backups already ' +
+      'deleted stayed in the list.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

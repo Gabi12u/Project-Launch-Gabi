@@ -910,6 +910,13 @@ More details:
     !instances.getInstance('gesperrt').content.some((c) => c.fileName.includes('.replaced')),
     'Beiseitegelegte Datei: als Inhalt eingetragen'
   )
+
+  // --- 24. A new start while the last crash is still worked out ----------------------
+  const pending = crashed('apifehlt', MODULE_MISSING)
+  crash.forgetCrash('apifehlt')
+  check((await pending) === false, 'Neuer Start während der Auswertung: der alte Bericht galt trotzdem')
+  report = await compat.checkCompatibility('apifehlt')
+  check(!report.issues.some((i) => i.id.startsWith('crash-')), 'Neuer Start während der Auswertung: der alte Absturz blockiert den neuen Start')
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

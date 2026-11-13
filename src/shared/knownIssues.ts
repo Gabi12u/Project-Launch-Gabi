@@ -5533,7 +5533,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'beim Verlassen der Seite ohne Rückfrage verloren. Die Prüfung vor dem Start konnte kurz nach einer ' +
       'Änderung wieder den alten Stand zeigen. Scheiterte ein Datenpaket beim Installieren, schloss sich die ' +
       'Weltauswahl, und die gewählten Welten waren weg. Unter „Entdecken“ galt ein Projekt nach dem Wechsel ' +
-      'der Zielinstanz auch dort als „wird installiert“.',
+      'der Zielinstanz auch dort als „wird installiert“. Startete man nach einem Absturz sehr schnell neu, ' +
+      'konnte die noch laufende Auswertung des alten Absturzes den neuen Start blockieren. Ließ sich beim ' +
+      'Aufräumen alter automatischer Sicherungen eine Datei nicht löschen, blieben schon gelöschte in der ' +
+      'Liste stehen.',
     state: 'fixing',
     since: '2026-11-13'
   }
