@@ -123,8 +123,19 @@ function instanceNames(): string[] {
   return [...names].sort((a, b) => b.length - a.length)
 }
 
-/** A word right before four dotted numbers that makes them a version. */
-const VERSION_WORD_BEFORE = /\b(?:java|jdk|jre|openjdk|version|build|forge|neoforge|fabric|quilt|minecraft|mc|loader)\s*$/i
+/**
+ * A word right before four dotted numbers that makes them a version. Kept
+ * to Java's own words: "mc", "Minecraft" or "build" stand before a server
+ * address just as often, and "connect to mc 10.0.0.2" went out unscrubbed.
+ */
+const VERSION_WORD_BEFORE = /\b(?:java|jdk|jre|openjdk|version)\s*:?\s*$/i
+
+/** Never a version: a home network or loopback address, or one with a port. */
+function surelyAddress(match: string, after: string): boolean {
+  if (/^:\d/.test(after)) return true
+  const [a, b] = match.split('.').map(Number)
+  return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
+}
 
 export function scrub(text: string): string {
   let out = text
@@ -277,7 +288,10 @@ export function scrub(text: string): string {
   out = out.replace(
     /(?<![\w.+-])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![\w+-]|\.\d)/g,
     (match, offset: number, whole: string) =>
-      VERSION_WORD_BEFORE.test(whole.slice(Math.max(0, offset - 16), offset)) ? match : '<IP>'
+      VERSION_WORD_BEFORE.test(whole.slice(Math.max(0, offset - 16), offset)) &&
+      !surelyAddress(match, whole.slice(offset + match.length, offset + match.length + 2))
+        ? match
+        : '<IP>'
   )
   // IPv6, in every way it is written: in full, shortened with "::"
   // ("2001:db8::1"), with a port glued on the way Node prints one

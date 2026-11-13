@@ -199,12 +199,21 @@ try {
     ['10.0.19045.1234', '0.92.2.1', 'v1.2.3.4', '1.2.3.4+mc1.20', '2.0.0.0-beta'].every((v) => withVersions.includes(v)),
     withVersions
   )
-  // Small four-part versions right after the word that names them.
-  const smallVersions = scrub('Java 21.0.5.0 (Eclipse), JDK 17.0.13.1, Version 1.2.3.4, Forge 47.2.0.1')
+  // Small four-part versions right after Java's own words.
+  const smallVersions = scrub('Java 21.0.5.0 (Eclipse), JDK 17.0.13.1, Version 1.2.3.4, java.version: 21.0.5.0')
   check(
-    'scrub: kleine vierteilige Versionen nach "Java", "JDK", "Version", "Forge" bleiben',
-    ['21.0.5.0', '17.0.13.1', '1.2.3.4', '47.2.0.1'].every((v) => smallVersions.includes(v)) && !smallVersions.includes('<IP>'),
+    'scrub: kleine vierteilige Versionen nach "Java", "JDK", "Version" bleiben',
+    ['21.0.5.0', '17.0.13.1', '1.2.3.4'].every((v) => smallVersions.includes(v)) && !smallVersions.includes('<IP>'),
     smallVersions
+  )
+  // But a server address after a word like that is still an address.
+  const addressesAfterWords = scrub(
+    'connect to mc 10.0.0.2, Connecting to Minecraft 203.0.113.9:25565, build 192.168.0.1, Forge 8.8.8.8, version 192.168.1.5, Java 127.0.0.1'
+  )
+  check(
+    'scrub: Adressen nach "mc", "Minecraft", "build", "Forge" und private Adressen nach "version" werden zu <IP>',
+    !/10\.0\.0\.2|203\.0\.113|192\.168|8\.8\.8\.8|127\.0\.0\.1/.test(addressesAfterWords),
+    addressesAfterWords
   )
 
   // IPv6 in every way Node and the game print it.
