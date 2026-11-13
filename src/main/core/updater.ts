@@ -11,7 +11,7 @@ import { startingCount } from './launch'
 import { listTasks } from '../tasks'
 import { getLanguage, tr } from '@shared/i18n'
 import { compareVersions, isPrerelease } from '@shared/versions'
-import { betaFeed, channelFile, type BetaFeed } from './beta'
+import { betaFeed, channelFile, onBetaEnded, type BetaFeed } from './beta'
 
 const logger = log('updater')
 
@@ -36,6 +36,8 @@ let status: UpdateStatus = { state: 'idle', currentVersion: app.getVersion() }
 let timer: NodeJS.Timeout | null = null
 /** The version last announced as available, so a periodic check does not repeat it. */
 let announcedAvailable: string | null = null
+/** Which feed the update currently on offer came from. */
+let offeredFrom: 'beta' | 'other' | null = null
 let checking = false
 
 /** How long a download may go without progress before it counts as stuck. */
@@ -219,7 +221,26 @@ function supported(): boolean {
   return app.isPackaged
 }
 
+/**
+ * The beta programme ended for this user. A beta already offered or
+ * downloaded stayed installable until the next restart, while leaving had
+ * just promised the normal updates again.
+ */
+function betaEnded(): void {
+  if (feed !== 'beta') return
+  useStableFeed()
+  if (offeredFrom === 'beta' && (status.state === 'available' || status.state === 'ready')) {
+    logger.info(`Beta-Update ${status.version} zurückgezogen, das Beta-Programm ist beendet`)
+    offeredFrom = null
+    setStatus({ state: 'idle', version: undefined, notes: undefined, percent: undefined, detail: undefined })
+  }
+  // The normal feed may have something of its own to offer. A download
+  // still running is dropped once it arrives, see 'update-downloaded'.
+  if (status.state !== 'downloading') void checkForUpdates(false)
+}
+
 export function initUpdater(): void {
+  onBetaEnded(betaEnded)
   if (!supported()) {
     setStatus({ state: 'disabled', detail: tr('Updates gibt es nur in der installierten Version.', 'Updates are only available in the installed version.') })
     logger.info('Updater im Entwicklungsmodus deaktiviert')
@@ -253,6 +274,7 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-available', (info) => {
     logger.info(`Update verfügbar: ${info.version}`)
+    offeredFrom = feed === 'beta' ? 'beta' : 'other'
     // With automatic downloads off this used to change only the status in
     // the settings, so an update was found and announced nowhere.
     if (!autoUpdater.autoDownload && announcedAvailable !== info.version) {
@@ -288,6 +310,14 @@ export function initUpdater(): void {
 
   autoUpdater.on('update-downloaded', (info) => {
     logger.info(`Update ${info.version} bereit zur Installation`)
+
+    // A beta whose download was still running when the programme ended.
+    if (offeredFrom === 'beta' && feed !== 'beta') {
+      logger.info(`Beta ${info.version} verworfen, das Beta-Programm ist beendet`)
+      offeredFrom = null
+      setStatus({ state: 'idle', version: undefined, notes: undefined, percent: undefined, detail: undefined })
+      return
+    }
 
     // Straight from the cache during startup: apply it now and come back up on
     // the new version, which is the whole point of the setting. A game already

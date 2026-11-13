@@ -267,12 +267,34 @@ export async function joinBeta(input: string): Promise<BetaStatus> {
 }
 
 /** Back to the normal updates. Also how an `ended` notice is put away. */
+const endedListeners: (() => void)[] = []
+
+/**
+ * Told when the beta programme ends for this user, by leaving or by the key
+ * no longer counting. The updater kept offering a beta it had already found.
+ */
+export function onBetaEnded(listener: () => void): void {
+  endedListeners.push(listener)
+}
+
+function announceEnded(): void {
+  for (const listener of endedListeners) {
+    try {
+      listener()
+    } catch (err) {
+      logger.warn('Ende des Beta-Programms nicht weitergegeben:', err)
+    }
+  }
+}
+
 export function leaveBeta(): BetaStatus {
-  if (readBeta()) {
+  const wasIn = readBeta() !== null
+  if (wasIn) {
     writeBeta(null)
     logger.info('Beta-Programm verlassen')
   }
   lastBuild = null
+  if (wasIn) announceEnded()
   return betaStatus()
 }
 
@@ -282,6 +304,7 @@ function endBeta(file: BetaFile, reason: 'revoked' | 'removed'): void {
   logger.info(reason === 'revoked' ? 'Beta-Key wurde gesperrt' : 'Beta-Key gilt nicht mehr')
   writeBeta({ ...file, token: undefined, tokenSecure: undefined, expiresAt: undefined, ended: reason })
   lastBuild = null
+  announceEnded()
   notify(
     'warning',
     tr('Nicht mehr im Beta-Programm', 'No longer in the beta programme'),

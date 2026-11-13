@@ -5488,8 +5488,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer das Beta-Programm verließ, während schon eine Beta als Update angeboten oder heruntergeladen ' +
       'war, bekam sie trotzdem weiter angeboten und konnte sie installieren, bis der Launcher neu ' +
       'gestartet wurde. Der Hinweis beim Verlassen versprach ab sofort wieder die normalen Updates.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'welten-reiter-nach-spielen-veraltet',
