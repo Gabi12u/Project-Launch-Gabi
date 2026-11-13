@@ -16,7 +16,7 @@
  * 4. Antworten des Servers werden zu Saetzen in der Sprache des Launchers.
  */
 import { createRequire } from 'node:module'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir, userInfo } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -101,6 +101,10 @@ try {
   store.writeAccounts([{ id: 'a', type: 'microsoft', username: 'GeheimerSpieler', uuid: '0f0e0d0c0b0a49088776655443322110', active: true }])
   const home = userInfo().username
   writeFileSync(join(userData, 'logs', 'launcher-2026-10-01.log'), 'alt\n')
+  // Both files would otherwise share one millisecond, and the launcher picks
+  // by modification time. A real old log is days older than today's.
+  const lastMonth = new Date('2026-10-01T12:00:00')
+  utimesSync(join(userData, 'logs', 'launcher-2026-10-01.log'), lastMonth, lastMonth)
   writeFileSync(
     join(userData, 'logs', 'launcher-2026-11-01.log'),
     [

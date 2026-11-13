@@ -9,10 +9,9 @@
  * manipulierte oder kompromittierte Download-Adresse (Mod, Modpack) haette
  * dadurch eine Anfrage an das eigene Netzwerk des Nutzers ausloesen koennen.
  *
- * Zwei Teile: eine reine Tabellenpruefung der Adress-Erkennung (kein Netz
- * noetig), und ein echter Test gegen httpbin.org, das gezielt zum Testen von
- * Umleitungen gedacht ist, mit einer echten Umleitung auf eine lokale
- * Adresse. Braucht eine Internetverbindung für den zweiten Teil.
+ * Zwei Teile: eine reine Tabellenpruefung der Adress-Erkennung, und
+ * Umleitungen, die ein Ersatz fuer fetch liefert: auf interne Ziele, von
+ * https auf http, endlos, und eine harmlose. Braucht kein Netz.
  */
 import { createRequire } from 'node:module'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -106,28 +105,70 @@ try {
     )
   }
 
-  // --- Part 2: a real redirect from a public host to a private target ---
+  // --- Part 2: redirects, answered by a stand-in for fetch ---------------
   // ------------------------------------------------------------------
+  // This used to ask httpbin.org for a real redirect to 127.0.0.1. httpbin
+  // now refuses that itself with a 403, so the test failed for a reason that
+  // had nothing to do with the launcher. What is under test is the launcher's
+  // own check of every hop, so the hops come from a stand-in instead, and the
+  // test no longer depends on a third party at all.
 
-  try {
-    const redirectTo = encodeURIComponent('http://127.0.0.1:1/internal')
-    await httpRequest(`https://httpbin.org/redirect-to?url=${redirectTo}&status_code=302`, {}, 0)
-    problems.push('Umleitung von httpbin.org auf 127.0.0.1 wurde nicht abgelehnt')
-  } catch (err) {
-    const message = String(err?.message ?? err)
-    check(
-      message.includes('interne Adresse'),
-      `Umleitungstest lief, aber mit unerwarteter Meldung: ${message}`
-    )
-    if (message.includes('interne Adresse')) {
-      notes.push('Echte Umleitung von httpbin.org (öffentlich) auf 127.0.0.1 wurde live abgelehnt.')
+  const realFetch = globalThis.fetch
+  const asked = []
+  globalThis.fetch = async (url, init = {}) => {
+    const target = new URL(String(url))
+    asked.push({ url: target.toString(), headers: new Headers(init.headers), redirect: init.redirect })
+    if (target.hostname === 'mods.example') {
+      return new Response(null, { status: 302, headers: { location: target.searchParams.get('to') } })
+    }
+    if (target.hostname === 'loop.example') {
+      return new Response(null, { status: 301, headers: { location: `https://loop.example/${asked.length}` } })
+    }
+    if (target.hostname === 'cdn.example') return new Response('inhalt', { status: 200 })
+    throw new Error(`Unerwartete Anfrage an ${target}`)
+  }
+  const via = (to) => `https://mods.example/download?to=${encodeURIComponent(to)}`
+  const failureOf = async (url, init = {}) => {
+    try {
+      await httpRequest(url, init, 0)
+      return ''
+    } catch (err) {
+      return String(err?.message ?? err)
     }
   }
 
-  // A normal, non-redirecting real request must still work.
-  const res = await httpRequest('https://httpbin.org/get', {}, 0)
-  check(res.ok, 'Normale Anfrage an httpbin.org ist fehlgeschlagen')
-  notes.push('Normale, nicht umgeleitete Anfrage an einen echten Server funktioniert weiterhin.')
+  try {
+    for (const inside of ['http://127.0.0.1:1/internal', 'https://192.168.1.1/router', 'https://[::ffff:127.0.0.1]/x', 'https://localhost/x']) {
+      asked.length = 0
+      const message = await failureOf(via(inside))
+      check(message.includes('interne Adresse'), `Umleitung auf ${inside}: ${message || 'gefolgt'}`)
+      check(asked.length === 1, `Umleitung auf ${inside}: das interne Ziel wurde trotzdem angefragt (${asked.map((a) => a.url).join(', ')})`)
+    }
+    notes.push('Umleitungen von einer öffentlichen Adresse auf vier interne Ziele wurden abgelehnt, bevor das Ziel angefragt wurde.')
+
+    asked.length = 0
+    const downgrade = await failureOf(via('http://cdn.example/datei.jar'))
+    check(downgrade.includes('unverschlüsselte'), `Umleitung von https auf http: ${downgrade || 'gefolgt'}`)
+    check(asked.length === 1, 'Die unverschlüsselte Adresse wurde trotzdem angefragt')
+
+    asked.length = 0
+    const endless = await failureOf('https://loop.example/start')
+    check(endless.includes('Zu viele Umleitungen'), `Endlose Umleitung: ${endless || 'gefolgt'}`)
+    check(asked.length <= 6, `Endlose Umleitung: ${asked.length} Anfragen`)
+
+    // A harmless redirect still works, and the key meant for the first
+    // server does not travel along to the second.
+    asked.length = 0
+    const res = await httpRequest(via('https://cdn.example/datei.jar'), { headers: { 'x-api-key': 'geheim', Authorization: 'Bearer geheim' } }, 0)
+    check(res.ok && (await res.text()) === 'inhalt', 'Eine harmlose Umleitung wurde nicht gefolgt')
+    check(asked.every((a) => a.redirect === 'manual'), 'Eine Anfrage folgte Umleitungen selbst, ohne Prüfung')
+    check(asked[0]?.headers.get('x-api-key') === 'geheim', 'Der erste Server bekam seinen Schlüssel nicht')
+    const second = asked[1]?.headers
+    check(second && !second.get('x-api-key') && !second.get('authorization'), 'Der Schlüssel ging bei der Umleitung an einen fremden Server mit')
+    notes.push('Eine harmlose Umleitung wird gefolgt, ohne den Schlüssel an den fremden Server weiterzugeben.')
+  } finally {
+    globalThis.fetch = realFetch
+  }
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {
