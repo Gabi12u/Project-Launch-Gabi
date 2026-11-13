@@ -160,6 +160,35 @@ try {
     }
     check(!threw && result === name, `contentFileName("${name}") wurde faelschlich abgelehnt oder veraendert`)
   }
+
+  // --- Names Windows cannot hold are skipped, not fatal ------------------
+  // A pack built on Linux or macOS may carry them. One such file stopped the
+  // whole import; device names and a trailing dot left undeletable files.
+  const odd = new AdmZip()
+  odd.addFile('overrides/config/ok.toml', Buffer.from('ok'))
+  odd.addFile('overrides/config/was?.json', Buffer.from('x'))
+  odd.addFile('overrides/config/a|b.txt', Buffer.from('x'))
+  odd.addFile('overrides/nul', Buffer.from('x'))
+  odd.addFile('overrides/aux.txt', Buffer.from('x'))
+  odd.addFile('overrides/config/punkt.txt.', Buffer.from('x'))
+  odd.addFile('overrides/options.txt', Buffer.from('ok'))
+  const oddPack = join(work, 'odd.zip')
+  odd.writeZip(oddPack)
+  const oddDest = join(work, 'odd-out')
+  const skipped = []
+  let oddFailure = ''
+  let oddCount = 0
+  try {
+    oddCount = archive.extractSubtree(oddPack, 'overrides', oddDest, (name) => skipped.push(name))
+  } catch (err) {
+    oddFailure = err.message
+  }
+  if (process.platform === 'win32') {
+    check(oddFailure === '', `Ungültige Windows-Namen brachen das Entpacken ab: ${oddFailure}`)
+    check(oddCount === 2 && skipped.length === 5, `Ungültige Windows-Namen: ${oddCount} entpackt, übersprungen ${JSON.stringify(skipped)}`)
+    check(existsSync(join(oddDest, 'config', 'ok.toml')) && existsSync(join(oddDest, 'options.txt')), 'Die gültigen Dateien fehlen')
+    notes.push(`Ungültige Windows-Namen: ${skipped.length} übersprungen, ${oddCount} entpackt.`)
+  }
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {

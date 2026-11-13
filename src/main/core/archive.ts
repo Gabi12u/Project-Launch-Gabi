@@ -407,8 +407,34 @@ export async function listEntriesStreaming(archivePath: string): Promise<ZipEntr
   }
 }
 
-/** Extracts only entries under `prefix`, stripping the prefix from the output path. */
-export function extractSubtree(archivePath: string, prefix: string, targetDir: string): number {
+const WINDOWS_DEVICE_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i
+
+/**
+ * A path from an archive that Windows cannot hold: a character it forbids
+ * (an archive made on Linux or macOS may have "what?.json"), a part ending in
+ * a dot or a space, or a device name such as "nul" or "aux.txt". The first
+ * stopped the whole import; the others were written through Node's long-path
+ * prefix and left files Explorer could not open or delete. False elsewhere,
+ * where all of these are ordinary names.
+ */
+export function unusableOnWindows(relative: string): boolean {
+  if (process.platform !== 'win32') return false
+  return relative
+    .split('/')
+    .filter(Boolean)
+    .some((part) => /[<>"|?*\u0000-\u001f]/.test(part) || /[. ]$/.test(part) || WINDOWS_DEVICE_NAMES.test(part))
+}
+
+/**
+ * Extracts only entries under `prefix`, stripping the prefix from the output
+ * path. An entry Windows cannot hold is skipped and handed to `onSkip`.
+ */
+export function extractSubtree(
+  archivePath: string,
+  prefix: string,
+  targetDir: string,
+  onSkip?: (name: string) => void
+): number {
   const zip = new AdmZip(archivePath)
   const entries = zip.getEntries()
   assertReasonableArchive(entries, archivePath)
@@ -429,6 +455,11 @@ export function extractSubtree(archivePath: string, prefix: string, targetDir: s
     if (!rel || rel.endsWith('/')) continue
 
     assertReasonableSize(entry)
+    if (unusableOnWindows(rel)) {
+      logger.warn(`Überspringe ${name}, der Name ist unter Windows nicht erlaubt`)
+      onSkip?.(rel)
+      continue
+    }
     // `safeJoin` rejects '..', an absolute path and a ':', while a bare
     // `rel.includes('..')` check used to be the only guard, so an entry like
     // "overrides/mods/legit.jar:hidden.exe" reached `join()` untouched and

@@ -104,6 +104,22 @@ function loaderFromDependencies(dependencies: Record<string, string>): {
   return { loader: 'vanilla', loaderVersion: '', mcVersion }
 }
 
+/**
+ * Says once which files of a pack were left out because Windows does not
+ * allow their names. One such file used to stop the whole import.
+ */
+function reportSkippedNames(names: string[]): void {
+  if (names.length === 0) return
+  notify(
+    'warning',
+    tr('Einige Dateien des Modpacks übersprungen', 'Some files of the modpack skipped'),
+    tr(
+      `${names.length === 1 ? 'Eine Datei hat' : `${names.length} Dateien haben`} einen Namen, den Windows nicht erlaubt, etwa „${names[0]}“. Der Rest ist importiert.`,
+      `${names.length === 1 ? 'One file has' : `${names.length} files have`} a name Windows does not allow, such as "${names[0]}". The rest is imported.`
+    )
+  )
+}
+
 /** Raised for a modpack made for a mod loader this launcher cannot set up. */
 function unknownLoaderError(name: string): Error {
   return new Error(
@@ -420,12 +436,14 @@ async function installMrpackFiles(
   // Slashes evened out the way `extractSubtree` does, or a zip written with
   // backslashes skipped both folders.
   const entryNames = listEntries(archivePath).map((e) => e.name.replace(/\\/g, '/'))
+  const skippedNames: string[] = []
   if (entryNames.some((name) => name.startsWith('overrides/'))) {
-    extractSubtree(archivePath, 'overrides', gameDir)
+    extractSubtree(archivePath, 'overrides', gameDir, (name) => skippedNames.push(name))
   }
   if (entryNames.some((name) => name.startsWith('client-overrides/'))) {
-    extractSubtree(archivePath, 'client-overrides', gameDir)
+    extractSubtree(archivePath, 'client-overrides', gameDir, (name) => skippedNames.push(name))
   }
+  reportSkippedNames(skippedNames)
   task.throwIfCancelled()
 
   // 3. Register the files as content ----------------------------------
@@ -726,7 +744,9 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
     task.throwIfCancelled()
 
     task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
-    extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir)
+    const skippedNames: string[] = []
+    extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir, (name) => skippedNames.push(name))
+    reportSkippedNames(skippedNames)
     task.throwIfCancelled()
 
     // Forced: the import holds the content lock itself.

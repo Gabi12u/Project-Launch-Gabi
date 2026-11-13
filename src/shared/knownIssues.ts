@@ -5590,8 +5590,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Modpacks, die unter Linux oder macOS gebaut wurden, können Dateinamen mit Zeichen wie ? | " < > * ' +
       'enthalten. Windows erlaubt solche Namen nicht, und der Import brach an dieser einen Datei ab, statt sie ' +
       'zu überspringen. Schon entpackte Dateien blieben im Spielordner liegen.',
-    state: 'investigating',
+    state: 'fixed',
     since: '2026-11-13',
+    fixedIn: '1.0.26',
     platforms: ['Windows']
   },
   {
