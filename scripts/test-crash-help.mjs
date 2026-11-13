@@ -219,6 +219,7 @@ try {
        }),
        modrinth: {
          getProject: async (id) => {
+           if (globalThis.__lgOffline) throw new Error('getaddrinfo ENOTFOUND api.modrinth.com')
            const known = globalThis.__lgSlugs[id]
            if (known) return { projectId: known.projectId, slug: id, type: 'mod', name: known.name, author: 'Test', summary: '', pageUrl: '' }
            // Asked by project id, Modrinth answers with the real slug too.
@@ -231,7 +232,12 @@ try {
          lookupByHashes: async (hashes) => ({ found: new Map(), answered: new Set(hashes) }),
          projectBasics: async () => new Map()
        },
-       curseforge: { getProject: async (id) => ({ projectId: id, type: 'mod', name: id }) }
+       curseforge: {
+         getProject: async (id) => {
+           if (globalThis.__lgOffline) throw new Error('getaddrinfo ENOTFOUND api.curseforge.com')
+           return { projectId: id, type: 'mod', name: id === '306612' ? 'Fabric API' : id, slug: id === '306612' ? 'fabric-api' : id }
+         }
+       }
      }`
   )
   const loadersStub = join(work, 'loaders.js')
@@ -473,6 +479,19 @@ try {
     record.content[0].fileName = `${apiOld.fileName}.disabled`
     renameSync(join(p.mods('abhaengig'), apiOld.fileName), join(p.mods('abhaengig'), `${apiOld.fileName}.disabled`))
     writeFileSync(p.instanceFile('abhaengig'), JSON.stringify(record))
+  }
+  // A CurseForge mod needing CurseForge's Fabric API, which came from
+  // Modrinth here: only its name tells them apart, and that needs internet.
+  makeInstance('offline', '1.21.11', [api])
+  {
+    const record = JSON.parse(readFileSync(p.instanceFile('offline'), 'utf8'))
+    writeFileSync(join(p.mods('offline'), 'cf-mod.jar'), jarBytes('cfmod', 'CF Mod', '1.0'))
+    record.content.push({
+      id: 'cf-mod', type: 'mod', provider: 'curseforge', projectId: '999', versionId: 'cf-1', fileName: 'cf-mod.jar',
+      name: 'CF Mod', version: '1.0', enabled: true, gameVersions: ['1.21.11'], loaders: ['fabric'],
+      dependencies: [{ type: 'required', projectId: '306612' }], installedAt: Date.now(), update: null
+    })
+    writeFileSync(p.instanceFile('offline'), JSON.stringify(record))
   }
   // A library of another author named like a Fabric API module.
   makeInstance('rechte', '1.21.11', [sodium])
@@ -923,6 +942,16 @@ More details:
   const permsIssue = report.issues.find((i) => i.id === 'crash-install-fabric-permissions-api-v0')
   notes.push(`Fremde Bibliothek: ${permsIssue?.title} [${permsIssue?.fix?.label ?? '-'}]`)
   check(permsIssue?.fix?.projectId === 'perms-1', `Fremde Bibliothek: angeboten wird ${JSON.stringify(permsIssue?.fix)}`)
+
+  // --- 26. Without internet a dependency that cannot be looked up does not block ----
+  // Offline first, as after a start without internet: nothing is cached yet.
+  globalThis.__lgOffline = true
+  report = await compat.checkCompatibility('offline')
+  globalThis.__lgOffline = false
+  const offlineDep = report.issues.find((i) => i.id === 'dep-cf-mod-306612')
+  notes.push(`Ohne Netz: ${offlineDep?.title} (${offlineDep?.severity})`)
+  check(report.launchable, `Ohne Netz blockiert die Prüfung den Start: ${JSON.stringify(report.issues.filter((i) => i.severity === 'error').map((i) => i.title))}`)
+  check(offlineDep?.severity === 'warning' && !/306612/.test(offlineDep.title), `Ohne Netz, Hinweis: ${JSON.stringify(offlineDep)}`)
 
   // --- 24. A new start while the last crash is still worked out ----------------------
   const pending = crashed('apifehlt', MODULE_MISSING)

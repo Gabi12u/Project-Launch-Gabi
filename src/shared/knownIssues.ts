@@ -5603,8 +5603,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'von Modrinth für einen Mod von CurseForge, erkennt die Prüfung sie nur über ihren Namen, und den fragt ' +
       'sie im Internet nach. Ohne Verbindung meldete sie die Abhängigkeit als fehlend, mit einer ' +
       'unverständlichen Kennung statt des Namens, und blockierte den Start. Abhilfe: „Trotzdem starten“.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'modpack-zip-bombe',

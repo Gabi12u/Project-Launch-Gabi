@@ -12,7 +12,7 @@ import { tr } from '@shared/i18n'
 const logger = log('compat')
 
 /** Cheap in-memory cache so repeated checks do not hammer the APIs. */
-const nameCache = new Map<string, { name: string; slug: string }>()
+const nameCache = new Map<string, { name: string; slug: string; known: boolean }>()
 /** Bounded so a long session browsing many mods cannot grow it without end. */
 const NAME_CACHE_MAX = 500
 
@@ -21,11 +21,23 @@ export function flattenName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '')
 }
 
+/**
+ * Lookups that just failed, with the time. Every check without internet
+ * waited seconds per dependency again, on every page visit and every start.
+ */
+const failedLookups = new Map<string, number>()
+const FAILED_LOOKUP_PAUSE_MS = 2 * 60 * 1000
+
+/** `known` is false when the provider could not be asked (offline, say). */
 async function projectInfo(
   provider: 'modrinth' | 'curseforge',
   projectId: string
-): Promise<{ name: string; slug: string }> {
+): Promise<{ name: string; slug: string; known: boolean }> {
   const key = `${provider}:${projectId}`
+  const failedAt = failedLookups.get(key)
+  if (failedAt !== undefined && Date.now() - failedAt < FAILED_LOOKUP_PAUSE_MS) {
+    return { name: projectId, slug: '', known: false }
+  }
   const cached = nameCache.get(key)
   if (cached !== undefined) {
     // Re-inserting moves the key to the end of the Map's iteration order,
@@ -50,11 +62,13 @@ async function projectInfo(
       const oldest = nameCache.keys().next().value
       if (oldest !== undefined) nameCache.delete(oldest)
     }
-    const info = { name: project.name, slug: project.slug ?? '' }
+    const info = { name: project.name, slug: project.slug ?? '', known: true }
     nameCache.set(key, info)
+    failedLookups.delete(key)
     return info
   } catch {
-    return { name: projectId, slug: '' }
+    failedLookups.set(key, Date.now())
+    return { name: projectId, slug: '', known: false }
   }
 }
 
@@ -285,7 +299,7 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         if (installedProjects.has(key)) continue
 
         const provider = mod.provider === 'curseforge' ? 'curseforge' : 'modrinth'
-        const { name, slug } = await projectInfo(provider, dependency.projectId)
+        const { name, slug, known } = await projectInfo(provider, dependency.projectId)
 
         // A dependency id always lives in the requiring mod's own namespace,
         // and CurseForge's numeric ids never coincide with Modrinth's base62
@@ -323,6 +337,24 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
               label: tr(`${name} einschalten`, `Switch on ${name}`),
               contentId: switchedOff.id
             }
+          })
+          continue
+        }
+
+        // Not to be told without the provider. A dependency put in by hand or
+        // from the other provider is recognised by its name or slug only, and
+        // both come from the internet. Without a connection it was reported
+        // missing, under an unreadable id, and blocked a game that was fine.
+        if (!known) {
+          issues.push({
+            id: `dep-${mod.id}-${dependency.projectId}`,
+            severity: 'warning',
+            title: tr(`${mod.name}: Abhängigkeit nicht geprüft`, `${mod.name}: dependency not checked`),
+            detail: tr(
+              'Ohne Verbindung zu Modrinth oder CurseForge ließ sich nicht prüfen, ob eine benötigte Abhängigkeit installiert ist. Fehlt sie, startet das Spiel unter Umständen nicht.',
+              'Without a connection to Modrinth or CurseForge it could not be checked whether a required dependency is installed. If it is missing, the game may not start.'
+            ),
+            contentId: mod.id
           })
           continue
         }
