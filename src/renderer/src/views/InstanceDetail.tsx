@@ -177,7 +177,12 @@ export function InstanceDetailView({
     }
   }, [instanceId])
 
+  // Several checks can overlap (a game ending, a mod changed right after).
+  // Only the newest may write its result: an older one finishing last put
+  // the state from before the change back on the page.
+  const checkTicket = useRef(0)
   const runChecks = useCallback(async (): Promise<void> => {
+    const ticket = ++checkTicket.current
     setChecking(true)
     setCheckFailed(false)
     try {
@@ -188,6 +193,7 @@ export function InstanceDetailView({
         window.gabi.launch.preflight(instanceId),
         window.gabi.content.compatibility(instanceId)
       ])
+      if (ticket !== checkTicket.current) return
       if (flight.status === 'fulfilled') setPreflight(flight.value)
       if (compat.status === 'fulfilled') setReport(compat.value)
       const failure = [flight, compat].find((result) => result.status === 'rejected')
@@ -196,7 +202,7 @@ export function InstanceDetailView({
         toastError(failure.reason, tr('Prüfung fehlgeschlagen', 'Check failed'))
       }
     } finally {
-      setChecking(false)
+      if (ticket === checkTicket.current) setChecking(false)
     }
   }, [instanceId])
 

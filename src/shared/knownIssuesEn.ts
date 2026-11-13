@@ -3367,7 +3367,11 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Forge server sent an unexpected answer once, NeoForge showed "Lookup failed" for up to half an hour, ' +
       'and Forge lost its "recommended" mark for up to an hour. The "Change version" preview counted mods ' +
       'switched off by hand among those the change switches off. When the launcher was closed in the middle ' +
-      'of a version change, mods stayed switched off without coming back on when changing back.'
+      'of a version change, mods stayed switched off without coming back on when changing back. Whatever ' +
+      'was typed into the instance settings while saving ran counted as saved and was lost without a ' +
+      'question when leaving the page. The check before the start could show the old state again shortly ' +
+      'after a change. When a data pack failed to install, the world picker closed and the chosen worlds ' +
+      'were gone. Under "Discover", a project still showed "Installing" after switching the target instance.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

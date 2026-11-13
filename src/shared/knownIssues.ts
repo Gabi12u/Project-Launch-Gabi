@@ -5528,7 +5528,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'zeigte NeoForge bis zu einer halben Stunde lang „Abfrage fehlgeschlagen“, und Forge verlor bis zu ' +
       'einer Stunde lang die Markierung „empfohlen“. Die Vorschau von „Version ändern“ zählte von Hand ' +
       'ausgeschaltete Mods zu denen, die der Wechsel ausschaltet. Wurde der Launcher mitten in einem ' +
-      'Versionswechsel geschlossen, blieben Mods ausgeschaltet, ohne beim Zurückwechseln wieder anzugehen.',
+      'Versionswechsel geschlossen, blieben Mods ausgeschaltet, ohne beim Zurückwechseln wieder anzugehen. ' +
+      'Was man in den Instanz-Einstellungen tippte, während gespeichert wurde, galt als gespeichert und ging ' +
+      'beim Verlassen der Seite ohne Rückfrage verloren. Die Prüfung vor dem Start konnte kurz nach einer ' +
+      'Änderung wieder den alten Stand zeigen. Scheiterte ein Datenpaket beim Installieren, schloss sich die ' +
+      'Weltauswahl, und die gewählten Welten waren weg. Unter „Entdecken“ galt ein Projekt nach dem Wechsel ' +
+      'der Zielinstanz auch dort als „wird installiert“.',
     state: 'fixing',
     since: '2026-11-13'
   }

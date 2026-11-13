@@ -106,6 +106,11 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       backupBeforeUpdates
     ])
 
+  // The fields as of the latest render, for code that resumes after an
+  // await: its own closure still holds the values from before.
+  const latestFields = useRef('')
+  latestFields.current = fieldsSnapshot()
+
   // Dirty is a comparison against the baseline, not a flag any edit flips on.
   // That is what lets save() below update the baseline together with a
   // corrected value (trimmed name, clamped size) without the bar flashing on
@@ -228,8 +233,12 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
 
       await refreshInstances()
       await onChanged()
-      setDirty(false)
-      onDirtyChange?.(false)
+      // Compared, not simply cleared: something typed while saving ran is
+      // not saved, and clearing the bar let leaving the page drop it
+      // without a word.
+      const stillDirty = latestFields.current !== baseline.current
+      setDirty(stillDirty)
+      onDirtyChange?.(stillDirty)
       toast('success', tr('Gespeichert', 'Saved'), tr(`${savedName} wurde aktualisiert.`, `${savedName} was updated.`))
     } catch (err) {
       toastError(err, tr('Speichern fehlgeschlagen', 'Saving failed'))

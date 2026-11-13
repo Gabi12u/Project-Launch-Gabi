@@ -100,9 +100,13 @@ interface Props {
   openProjectId?: string
 }
 
-/** Identifies one project across providers for the busy state of its button. */
-function installKey(item: { provider: string; projectId: string }): string {
-  return `${item.provider}:${item.projectId}`
+/**
+ * Identifies one project across providers for the busy state of its button,
+ * per target instance: on Discover, switching the target to another instance
+ * showed the project as "installing" there too.
+ */
+function installKey(item: { provider: string; projectId: string }, instanceId?: string): string {
+  return `${instanceId ?? ''}:${item.provider}:${item.projectId}`
 }
 
 export function ContentBrowser({
@@ -265,14 +269,15 @@ export function ContentBrowser({
     void search(0, false)
   }, [search])
 
-  const install = async (item: SearchResultItem, versionId?: string, worlds?: string[]): Promise<void> => {
+  /** True once it is installed, so the world picker knows whether to close. */
+  const install = async (item: SearchResultItem, versionId?: string, worlds?: string[]): Promise<boolean> => {
     // A modpack brings its own instance and needs no target.
-    if (!instanceId && item.type !== 'modpack') return
+    if (!instanceId && item.type !== 'modpack') return false
     // Guards against a double click landing twice before the first render.
     // Keyed with the provider: a Modrinth and a CurseForge project can share
     // an id, and one install then showed the other one as busy too.
-    const key = installKey(item)
-    if (installing.has(key)) return
+    const key = installKey(item, instanceId)
+    if (installing.has(key)) return false
     setInstalling((current) => new Set(current).add(key))
 
     try {
@@ -301,8 +306,10 @@ export function ContentBrowser({
       }
       onInstalled?.()
       await refreshInstances()
+      return true
     } catch (err) {
       toastError(err, tr(`${item.name} konnte nicht installiert werden`, `${item.name} could not be installed`))
+      return false
     } finally {
       setInstalling((current) => {
         const next = new Set(current)
@@ -509,7 +516,7 @@ export function ContentBrowser({
                 // installed because an unrelated Modrinth project happened to
                 // carry the same id.
                 installed={installedProjectIds.includes(`${item.provider}:${item.projectId}`)}
-                installing={installing.has(installKey(item))}
+                installing={installing.has(installKey(item, instanceId))}
                 canInstall={Boolean(instanceId) || item.type === 'modpack'}
                 // Shown as a disabled button with the reason instead of no
                 // button at all, which left the user guessing why.
@@ -548,7 +555,7 @@ export function ContentBrowser({
               ? setWorldPickFor({ item: detail, versionId })
               : void install(detail, versionId)
           }
-          installing={installing.has(installKey(detail))}
+          installing={installing.has(installKey(detail, instanceId))}
         />
       )}
 
@@ -560,8 +567,9 @@ export function ContentBrowser({
           onConfirm={async (worlds) => {
             const target = worldPickFor
             if (!target) return
-            await install(target.item, target.versionId, worlds)
-            setWorldPickFor(null)
+            // Kept open when it failed: closing it lost the worlds the user
+            // had ticked, and the whole pick started over.
+            if (await install(target.item, target.versionId, worlds)) setWorldPickFor(null)
           }}
         />
       )}
