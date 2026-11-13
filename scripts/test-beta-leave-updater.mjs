@@ -47,6 +47,7 @@ try {
        setFeedURL(options) { globalThis.__feedUrl = options.url ?? options.provider },
        checkForUpdates: async () => {
          globalThis.__checks = (globalThis.__checks || 0) + 1
+         if (globalThis.__hold) await globalThis.__hold
          if (autoUpdater.channel === 'beta') handlers.get('update-available')({ version: '9.9.9-beta.1' })
          else handlers.get('update-not-available')({ version: '1.0.25' })
        },
@@ -142,6 +143,22 @@ try {
   globalThis.__updaterHandlers.get('update-downloaded')({ version: '9.9.9-beta.1' })
   check(getUpdateStatus().state !== 'ready', `Ein nach dem Verlassen fertiger Beta-Download wartet auf den Neustart: ${JSON.stringify(getUpdateStatus())}`)
   notes.push('Ein laufender Beta-Download wird nach dem Verlassen verworfen.')
+
+  // --- 4. Joining while a check runs: one more check follows -------------
+  let release
+  globalThis.__hold = new Promise((resolve) => (release = resolve))
+  const before = globalThis.__checks
+  const running = checkForUpdates(false)
+  await settle()
+  globalThis.__betaIn = true
+  await checkForUpdates(false)
+  globalThis.__hold = null
+  release()
+  await running
+  await settle()
+  check(globalThis.__checks === before + 2, `Eine Suche während einer laufenden wurde nicht nachgeholt: ${globalThis.__checks - before} statt 2`)
+  check(getUpdateStatus().version === '9.9.9-beta.1', `Nach dem Beitritt während einer Suche: ${JSON.stringify(getUpdateStatus())}`)
+  notes.push('Beitritt während einer laufenden Suche: die Beta erscheint gleich danach.')
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {

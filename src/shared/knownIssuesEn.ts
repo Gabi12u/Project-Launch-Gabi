@@ -3374,7 +3374,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'were gone. Under "Discover", a project still showed "Installing" after switching the target instance. ' +
       'Starting again very quickly after a crash, the still running analysis of the old crash could block ' +
       'the new start. When an old automatic backup could not be deleted during the cleanup, backups already ' +
-      'deleted stayed in the list.'
+      'deleted stayed in the list. Joining the beta programme while an update check was running showed the ' +
+      'beta only at the next check, hours later.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

@@ -5536,7 +5536,8 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'der Zielinstanz auch dort als „wird installiert“. Startete man nach einem Absturz sehr schnell neu, ' +
       'konnte die noch laufende Auswertung des alten Absturzes den neuen Start blockieren. Ließ sich beim ' +
       'Aufräumen alter automatischer Sicherungen eine Datei nicht löschen, blieben schon gelöschte in der ' +
-      'Liste stehen.',
+      'Liste stehen. Trat man dem Beta-Programm bei, während gerade nach Updates gesucht wurde, erschien ' +
+      'die Beta erst bei der nächsten Suche Stunden später.',
     state: 'fixing',
     since: '2026-11-13'
   }

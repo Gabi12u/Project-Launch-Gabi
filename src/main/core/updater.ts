@@ -38,6 +38,8 @@ let timer: NodeJS.Timeout | null = null
 let announcedAvailable: string | null = null
 /** Which feed the update currently on offer came from. */
 let offeredFrom: 'beta' | 'other' | null = null
+/** A check was asked for while one was running, see `checkForUpdates`. */
+let checkAgain = false
 let checking = false
 
 /** How long a download may go without progress before it counts as stuck. */
@@ -433,8 +435,14 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     return status
   }
 
-  // Overlapping checks confuse the state machine and the progress bar.
-  if (checking) return status
+  // Overlapping checks confuse the state machine and the progress bar. One
+  // more runs once this one is done, though: joining or leaving the beta
+  // during a check changes which feed is right, and the check under way had
+  // already picked its feed, so the beta showed up only hours later.
+  if (checking) {
+    checkAgain = true
+    return status
+  }
 
   // No check, automatic or manual, may walk over an update that is already
   // downloaded and waiting, or one still downloading: it would flip the
@@ -485,6 +493,10 @@ export async function checkForUpdates(manual = true): Promise<UpdateStatus> {
     if (manual) notify('error', tr('Update-Prüfung fehlgeschlagen', 'Update check failed'), message)
   } finally {
     checking = false
+  }
+  if (checkAgain) {
+    checkAgain = false
+    void checkForUpdates(false)
   }
   return status
 }
