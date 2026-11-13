@@ -1028,6 +1028,21 @@ export function applyPreparedUpdate(instanceId: string, contentId: string, prepa
  * present and stayed off, and the mod needing it did not start.
  */
 async function enableDependency(instanceId: string, dependency: ContentItem, neededBy: string): Promise<void> {
+  // Switched off by a version change because no version of it could be had
+  // for this game. Its file is still the one for the old game, and switching
+  // that back on made the game crash instead of saying why.
+  if (dependency.disabledByVersionChange) {
+    logger.warn(`Abhängigkeit ${dependency.name} für ${neededBy} bleibt aus, sie passt nicht zu dieser Version`)
+    notify(
+      'warning',
+      tr(`${neededBy}: Abhängigkeit passt nicht`, `${neededBy}: dependency does not fit`),
+      tr(
+        `${neededBy} braucht ${dependency.name}. Das wurde beim Versionswechsel ausgeschaltet, weil es keine passende Version dafür gab, und bleibt aus.`,
+        `${neededBy} needs ${dependency.name}. It was switched off during the version change because there was no fitting version of it, and stays off.`
+      )
+    )
+    return
+  }
   try {
     await toggleContent(instanceId, dependency.id, true)
     logger.info(`Abhängigkeit ${dependency.name} für ${neededBy} wieder eingeschaltet`)

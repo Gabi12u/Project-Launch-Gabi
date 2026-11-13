@@ -465,6 +465,16 @@ try {
     renameSync(join(p.mods('abhaengig'), apiOld.fileName), join(p.mods('abhaengig'), `${apiOld.fileName}.disabled`))
     writeFileSync(p.instanceFile('abhaengig'), JSON.stringify(record))
   }
+  // The same, but switched off by a version change because nothing fit.
+  makeInstance('wechselaus', '1.21.11', [apiOld])
+  {
+    const record = JSON.parse(readFileSync(p.instanceFile('wechselaus'), 'utf8'))
+    record.content[0].enabled = false
+    record.content[0].disabledByVersionChange = true
+    record.content[0].fileName = `${apiOld.fileName}.disabled`
+    renameSync(join(p.mods('wechselaus'), apiOld.fileName), join(p.mods('wechselaus'), `${apiOld.fileName}.disabled`))
+    writeFileSync(p.instanceFile('wechselaus'), JSON.stringify(record))
+  }
   // A setup that never got to pin a loader build, as one that failed offline.
   mkdirSync(p.mods('ohneloader'), { recursive: true })
   writeFileSync(
@@ -763,6 +773,13 @@ More details:
   const depAfter = instances.getInstance('abhaengig').content.find((c) => c.projectId === 'P7dR8mSH')
   check(depAfter?.enabled === true, `Ausgeschaltete Abhängigkeit blieb aus: ${JSON.stringify({ enabled: depAfter?.enabled, file: depAfter?.fileName })}`)
   check(existsSync(join(p.mods('abhaengig'), apiOld.fileName)), `Die Datei der Abhängigkeit heißt noch: ${readdirSync(p.mods('abhaengig')).join(', ')}`)
+  // Switched off by a version change: its file is for the old game and stays off.
+  await content.installNewDependencies('wechselaus', {
+    id: 'iris-neu', type: 'mod', provider: 'modrinth', name: 'Iris', dependencies: [{ type: 'required', projectId: 'P7dR8mSH' }]
+  })
+  const changedAfter = instances.getInstance('wechselaus').content.find((c) => c.projectId === 'P7dR8mSH')
+  check(changedAfter?.enabled === false, 'Vom Versionswechsel ausgeschaltet: die alte Abhängigkeit wurde wieder eingeschaltet')
+  check(existsSync(join(p.mods('wechselaus'), `${apiOld.fileName}.disabled`)), `Vom Versionswechsel ausgeschaltet: im Ordner liegt ${readdirSync(p.mods('wechselaus')).join(', ')}`)
 
   // --- 17. Two mods asking for different versions: the pick suits both ---------------
   const TWO = `[main/ERROR] Missing or unsupported mandatory dependencies:
