@@ -3363,7 +3363,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'the launcher’s own start screen pack went along in the export. When the file with the accounts ' +
       'was damaged, every Microsoft account had to be signed in again. Choosing an account just removed in ' +
       'a second view made another account active, one that was never chosen. A crafted launchgabi link ' +
-      'from a web page could slip extra details into the launcher’s navigation.'
+      'from a web page could slip extra details into the launcher’s navigation. When the NeoForge or ' +
+      'Forge server sent an unexpected answer once, NeoForge showed "Lookup failed" for up to half an hour, ' +
+      'and Forge lost its "recommended" mark for up to an hour.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

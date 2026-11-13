@@ -134,7 +134,10 @@ async function listForgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
     const promos = await fetchJsonCached<ForgePromotions>(
       'https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json',
       'forge-promotions',
-      60 * 60 * 1000
+      60 * 60 * 1000,
+      // Without the check a body of another shape was cached for an hour,
+      // and Forge lost its "recommended" marks for that long.
+      (data) => typeof (data as { promos?: unknown } | null)?.promos === 'object'
     )
     recommended = promos.promos[`${mcVersion}-recommended`]
     latest = promos.promos[`${mcVersion}-latest`]
@@ -158,12 +161,22 @@ async function listForgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
     }))
 }
 
+/**
+ * The shape NeoForge's maven answers with. Checked before caching: a body of
+ * another shape stayed in the cache for half an hour, and NeoForge showed
+ * "lookup failed" long after the server was fine again.
+ */
+function hasVersionList(data: unknown): boolean {
+  return Array.isArray((data as { versions?: unknown } | null)?.versions)
+}
+
 async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]> {
   if (isNeoforgeLegacy(mcVersion)) {
     const data = await fetchJsonCached<{ versions: string[] }>(
       'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/forge',
       'neoforge-legacy-versions',
-      30 * 60 * 1000
+      30 * 60 * 1000,
+      hasVersionList
     )
     if (!Array.isArray(data?.versions)) {
       throw new Error(tr('Unerwartete Antwort beim Laden der NeoForge-Versionen', 'Unexpected response while loading the NeoForge versions'))
@@ -179,7 +192,8 @@ async function listNeoforgeVersions(mcVersion: string): Promise<LoaderVersion[]>
   const data = await fetchJsonCached<{ versions: string[] }>(
     'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge',
     'neoforge-versions',
-    30 * 60 * 1000
+    30 * 60 * 1000,
+    hasVersionList
   )
   // Same guard as fabric.ts: a body of the wrong shape used to throw a raw
   // English TypeError here instead of a readable message.

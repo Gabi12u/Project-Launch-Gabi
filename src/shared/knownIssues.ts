@@ -5524,7 +5524,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'beschädigt, mussten alle Microsoft-Konten neu angemeldet werden. Wählte man ein gerade entferntes ' +
       'Konto in einer zweiten Ansicht, wurde ein anderes Konto aktiv, das man nie gewählt hatte. Ein ' +
       'präparierter launchgabi-Link von einer Webseite konnte zusätzliche Angaben in die Navigation des ' +
-      'Launchers schmuggeln.',
+      'Launchers schmuggeln. Schickte der NeoForge- oder Forge-Server einmal eine unerwartete Antwort, ' +
+      'zeigte NeoForge bis zu einer halben Stunde lang „Abfrage fehlgeschlagen“, und Forge verlor bis zu ' +
+      'einer Stunde lang die Markierung „empfohlen“.',
     state: 'fixing',
     since: '2026-11-13'
   }
