@@ -579,6 +579,11 @@ export async function zipFolder(
   const filtered = files.filter((file) => {
     const rel = relative(sourceDir, file).split(sep).join('/')
     if (options.exclude?.some((ex) => rel === ex || rel.startsWith(`${ex}/`))) return false
+    // Minecraft keeps "session.lock" locked in every open world, and on
+    // Windows that lock makes reading it fail, so a backup failed for as long
+    // as a world was open. The file only marks the world as in use and is
+    // written anew each time a world is opened; no archive needs it.
+    if (basename(file) === 'session.lock') return false
     return true
   })
   // The readers refuse an archive past this many entries, so writing one

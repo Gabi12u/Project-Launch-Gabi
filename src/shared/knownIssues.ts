@@ -5465,8 +5465,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'konnte sie nicht lesen und brach mit „wurde während der Sicherung von einem anderen Programm ' +
       'gesperrt“ ab. Im Hauptmenü des Spiels oder bei geschlossenem Spiel klappte es. Für eine ' +
       'Wiederherstellung wird diese Datei nicht gebraucht.',
-    state: 'investigating',
+    state: 'fixed',
     since: '2026-11-13',
+    fixedIn: '1.0.26',
     platforms: ['Windows']
   },
   {

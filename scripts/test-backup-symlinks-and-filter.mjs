@@ -20,6 +20,7 @@
  * Teil mit einem Hinweis uebersprungen statt den ganzen Testlauf scheitern zu
  * lassen.
  */
+import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -173,6 +174,45 @@ try {
     'Mit Filter ["saves"] wurde der Ordner config trotzdem entpackt'
   )
   notes.push('Mit Filter ["saves"]: nur saves wurde entpackt, config blieb aussen vor.')
+
+  // --- An open world: Minecraft holds session.lock locked -----------------
+  // Windows only, the way Java's FileChannel.tryLock() locks it there. Every
+  // backup failed for as long as a world was open in the game.
+  const openWorld = join(work, 'offen')
+  mkdirSync(join(openWorld, 'saves', 'Welt'), { recursive: true })
+  writeFileSync(join(openWorld, 'saves', 'Welt', 'level.dat'), 'Welt')
+  writeFileSync(join(openWorld, 'saves', 'Welt', 'session.lock'), '☃')
+  let holder = null
+  if (process.platform === 'win32') {
+    const lockFile = join(openWorld, 'saves', 'Welt', 'session.lock').replace(/'/g, "''")
+    holder = spawn('powershell', [
+      '-NoProfile',
+      '-Command',
+      `$f = [System.IO.File]::Open('${lockFile}', 'Open', 'ReadWrite', 'ReadWrite'); $f.Lock(0, [long]::MaxValue); Write-Output gesperrt; Start-Sleep -Seconds 30`
+    ])
+    await new Promise((resolveLocked, rejectLocked) => {
+      holder.stdout.on('data', (data) => String(data).includes('gesperrt') && resolveLocked())
+      holder.on('exit', () => rejectLocked(new Error('Die Sperre ließ sich nicht setzen')))
+    })
+  }
+  try {
+    const openZip = join(work, 'offen.zip')
+    let failure = ''
+    try {
+      await zipFolder(openWorld, openZip, { include: ['saves'] })
+    } catch (err) {
+      failure = err.message
+    }
+    check(failure === '', `Sicherung bei offener Welt: ${failure}`)
+    if (failure === '') {
+      const names = listEntries(openZip).map((e) => e.name)
+      check(names.some((n) => n.endsWith('level.dat')), 'Sicherung bei offener Welt: level.dat fehlt')
+      check(!names.some((n) => n.endsWith('session.lock')), 'Sicherung bei offener Welt: session.lock ist im Archiv')
+    }
+    notes.push(`Offene Welt${holder ? ' (Datei echt gesperrt)' : ''}: gesichert, ohne session.lock.`)
+  } finally {
+    holder?.kill()
+  }
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {
