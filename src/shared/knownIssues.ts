@@ -5522,7 +5522,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Modpack ohne Loader-Version exportiert, das andere Launcher und dieser selbst ablehnten, und das ' +
       'eigene Startseiten-Paket des Launchers ging im Export mit. War die Datei mit den Accounts ' +
       'beschädigt, mussten alle Microsoft-Konten neu angemeldet werden. Wählte man ein gerade entferntes ' +
-      'Konto in einer zweiten Ansicht, wurde ein anderes Konto aktiv, das man nie gewählt hatte.',
+      'Konto in einer zweiten Ansicht, wurde ein anderes Konto aktiv, das man nie gewählt hatte. Ein ' +
+      'präparierter launchgabi-Link von einer Webseite konnte zusätzliche Angaben in die Navigation des ' +
+      'Launchers schmuggeln.',
     state: 'fixing',
     since: '2026-11-13'
   }

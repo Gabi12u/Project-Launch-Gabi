@@ -306,18 +306,27 @@ export function parseDeepLink(url: string): DeepLink {
 
     const segments = [parsed.hostname, ...parsed.pathname.split('/')].filter(Boolean)
     const [action, ...rest] = segments
+    // Any web page can open such a link. The ids end up in a route, so only
+    // the characters a real instance or project id has are let through;
+    // "abc&x=1" or "%2e%2e" used to reach the router as they were.
+    const id = (value: string | undefined): string | undefined =>
+      value !== undefined && /^[\w.-]{1,64}$/.test(value) && !value.includes('..') ? value : undefined
 
     switch (action) {
-      case 'launch':
-        return { action: 'launch', instanceId: rest[0] }
-      case 'instance':
-        return { action: 'instance', instanceId: rest[0] }
-      case 'install':
-        return {
-          action: 'install',
-          provider: rest[0] === 'curseforge' ? 'curseforge' : 'modrinth',
-          projectId: rest[1]
-        }
+      case 'launch': {
+        const instanceId = id(rest[0])
+        return instanceId ? { action: 'launch', instanceId } : { action: 'unknown' }
+      }
+      case 'instance': {
+        const instanceId = id(rest[0])
+        return instanceId ? { action: 'instance', instanceId } : { action: 'unknown' }
+      }
+      case 'install': {
+        const projectId = id(rest[1])
+        return projectId
+          ? { action: 'install', provider: rest[0] === 'curseforge' ? 'curseforge' : 'modrinth', projectId }
+          : { action: 'unknown' }
+      }
       default:
         return { action: 'unknown' }
     }

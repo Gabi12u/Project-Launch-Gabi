@@ -479,7 +479,9 @@ export async function toggleRecording(instanceId?: string): Promise<RecordingSta
 
   if (!getSettings().recordingEnabled) return getRecordingState()
 
-  const target = instanceId ?? mostRecentlyStarted()
+  // A name from the window becomes part of a folder path below. One that is
+  // no instance ("../x") wrote the recording outside the launcher's folders.
+  const target = instanceId !== undefined ? (tryGetInstance(instanceId) ? instanceId : undefined) : mostRecentlyStarted()
   if (!target) {
     notify('info', tr('Nichts aufzunehmen', 'Nothing to record'), tr('Starte zuerst eine Instanz.', 'Start an instance first.'))
     return getRecordingState()

@@ -3362,7 +3362,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'exported as a modpack without a loader version, which other launchers and this one refused, and ' +
       'the launcher’s own start screen pack went along in the export. When the file with the accounts ' +
       'was damaged, every Microsoft account had to be signed in again. Choosing an account just removed in ' +
-      'a second view made another account active, one that was never chosen.'
+      'a second view made another account active, one that was never chosen. A crafted launchgabi link ' +
+      'from a web page could slip extra details into the launcher’s navigation.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
