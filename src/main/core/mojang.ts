@@ -373,7 +373,19 @@ function mavenUrl(base: string, relative: string): string {
   throw new Error(tr(`Bibliothek verweist auf ein unerwartetes Protokoll: ${url}`, `Library points to an unexpected protocol: ${url}`))
 }
 
-export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
+export function resolveLibraries(
+  version: VersionJson,
+  options: {
+    /**
+     * Keeps every version of a library. Only for a Forge installer's own
+     * steps: each names exact versions on its classpath, the same library in
+     * up to three versions, and keeping only the first broke step 1 of every
+     * Forge 1.20.1 setup on a PC without those files. The game's classpath
+     * must never get two versions, see below.
+     */
+    everyVersion?: boolean
+  } = {}
+): ResolvedLibrary[] {
   const resolved: ResolvedLibrary[] = []
   const seen = new Set<string>()
   const seenArtifacts = new Set<string>()
@@ -410,7 +422,7 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
     // the suffix and both versions survived the check below — the very
     // situation this deduplication exists to prevent.
     const coords = library.name.split('@')[0].split(':')
-    if (coords.length >= 2) {
+    if (coords.length >= 2 && !options.everyVersion) {
       // The fourth maven segment is a classifier, and that is how versions
       // since 1.19 ship their natives: as a separate entry named
       // `org.lwjgl:lwjgl:3.3.3:natives-windows`, with no `natives` block, so
@@ -465,6 +477,13 @@ export function resolveLibraries(version: VersionJson): ResolvedLibrary[] {
       if (library.downloads?.artifact) {
         add(library, library.downloads.artifact, null, false)
       }
+    } else if (library.natives && !library.downloads?.artifact && !library.url) {
+      // Natives for other systems only, with no jar of its own: the snapshots
+      // 22w18a and 22w19a list netty's Linux-only epoll library like this.
+      // Treated as a plain jar, a made-up address answered 404 and neither
+      // snapshot could be installed on Windows or macOS. Mojang's launcher
+      // skips it there too.
+      continue
     } else {
       add(library, library.downloads?.artifact, null, false)
     }

@@ -7,7 +7,7 @@ import { promisify } from 'node:util'
 import type { LoaderVersion } from '@shared/types'
 import { paths, safeJoin, sanitizeVersionId } from '../paths'
 import { writeJsonAtomic } from '../store'
-import { downloadAll, downloadFile, fetchJsonCached, fetchText, sha1File} from '../core/net'
+import { downloadAll, downloadFile, fetchJsonCached, fetchText, HttpError, sha1File } from '../core/net'
 import { assertReasonableSize, extractSubtree, readEntryJson, readEntryText } from '../core/archive'
 import {
   clientJarPath,
@@ -317,6 +317,16 @@ async function mavenSha1(url: string, signal?: AbortSignal): Promise<string> {
       logger.warn(`Prüfsummendatei zu ${url} ist unlesbar (Versuch ${attempt}/${attempts})`)
     } catch (err) {
       if (signal?.aborted) throw err
+      // Not there at all: a build that was withdrawn, or one a modpack names
+      // that never existed. Three tries and "try again later" helped nobody.
+      if (err instanceof HttpError && err.status === 404) {
+        throw new Error(
+          tr(
+            'Diese Version des Mod-Loaders gibt es auf dem Server nicht (mehr). Wähle über „Version ändern“ eine andere.',
+            'This version of the mod loader does not exist on the server (any more). Pick another one through "Change version".'
+          )
+        )
+      }
       logger.warn(`Prüfsumme zu ${url} nicht abrufbar (Versuch ${attempt}/${attempts}):`, err)
     }
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -596,7 +606,7 @@ async function installForgeLikeInner(
 
   // 3. Libraries: the installer's own plus the ones the game needs ----
   task?.update(tr(`${label}-Bibliotheken werden geladen…`, `Downloading ${label} libraries…`), null)
-  const installerLibs = resolveLibraries({ ...versionJson, libraries: profile.libraries ?? [] })
+  const installerLibs = resolveLibraries({ ...versionJson, libraries: profile.libraries ?? [] }, { everyVersion: true })
   const gameLibs = resolveLibraries(versionJson)
 
   await downloadAll(
@@ -693,6 +703,17 @@ async function installForgeLikeInner(
         if (!existsSync(jar)) throw new Error(tr(`Prozessor-Jar fehlt: ${processor.jar}`, `Processor jar missing: ${processor.jar}`))
 
         const classpath = [...processor.classpath.map(libraryPath), jar]
+        // Java skips a classpath entry that does not exist without a word, and
+        // the step then died much later on a missing class.
+        const absent = classpath.filter((entry) => !existsSync(entry))
+        if (absent.length > 0) {
+          throw new Error(
+            tr(
+              `${label}-Installationsschritt ${i + 1}: ${absent.length === 1 ? 'eine benötigte Bibliothek fehlt' : `${absent.length} benötigte Bibliotheken fehlen`} (${basename(absent[0])}). Versuche es erneut, sonst bitte melden.`,
+              `${label} installation step ${i + 1}: ${absent.length === 1 ? 'a required library is missing' : `${absent.length} required libraries are missing`} (${basename(absent[0])}). Try again, otherwise please report it.`
+            )
+          )
+        }
         const args = processor.args.map((arg) => resolveArgument(arg, data))
         const mainClass = await mainClassOf(jar)
 
@@ -718,8 +739,26 @@ async function installForgeLikeInner(
           // (err.killed / err.signal), not as an AbortError, so the task's own
           // flag is what tells a cancel apart from a genuine processor crash.
           if (task?.cancelled) throw new TaskCancelledError()
-          const detail = err instanceof Error ? err.message : String(err)
-          throw new Error(tr(`${label}-Installationsschritt ${i + 1} fehlgeschlagen: ${detail}`, `${label} installation step ${i + 1} failed: ${detail}`))
+          // Node's own text starts with the whole command, the classpath of
+          // dozens of paths under the user's folder included, and the real
+          // cause sat buried at its end. The log keeps all of it; the user
+          // gets the line from Java that says what went wrong.
+          logger.error(`Prozessor ${mainClass} fehlgeschlagen:`, err)
+          const output = String((err as { stderr?: unknown }).stderr ?? '')
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+          const cause =
+            [...output].reverse().find((line) => /exception|error/i.test(line)) ??
+            output.at(-1) ??
+            tr('ohne Ausgabe beendet', 'ended without output')
+          const detail = cause.length > 300 ? `${cause.slice(0, 300)}…` : cause
+          throw new Error(
+            tr(
+              `${label}-Installationsschritt ${i + 1} von ${processors.length} fehlgeschlagen: ${detail}`,
+              `${label} installation step ${i + 1} of ${processors.length} failed: ${detail}`
+            )
+          )
         }
 
         // Each processor declares the sha1 its outputs must have. Exit code zero
