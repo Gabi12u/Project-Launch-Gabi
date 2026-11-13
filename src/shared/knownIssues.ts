@@ -5520,7 +5520,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'galt trotzdem als gelungen. Blieb die Verbindung beim Hoch- oder Herunterladen ohne Fehler stehen, ' +
       'hing die Aufgabe bis zum Abbrechen von Hand. Eine Instanz ohne festgelegte Loader-Version wurde als ' +
       'Modpack ohne Loader-Version exportiert, das andere Launcher und dieser selbst ablehnten, und das ' +
-      'eigene Startseiten-Paket des Launchers ging im Export mit.',
+      'eigene Startseiten-Paket des Launchers ging im Export mit. War die Datei mit den Accounts ' +
+      'beschädigt, mussten alle Microsoft-Konten neu angemeldet werden. Wählte man ein gerade entferntes ' +
+      'Konto in einer zweiten Ansicht, wurde ein anderes Konto aktiv, das man nie gewählt hatte.',
     state: 'fixing',
     since: '2026-11-13'
   }

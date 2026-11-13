@@ -1277,11 +1277,13 @@ export function getActiveAccount(): StoredAccount | null {
 }
 
 export function setActiveAccount(id: string): Account[] {
-  const accounts = readAccounts().map((a) => ({ ...a, active: a.id === id }))
+  const stored = readAccounts()
   // The id can be gone by the time this arrives: removing an account and
-  // clicking another one in quick succession leaves the click pointing at a
-  // record that no longer exists. Without this every account ends up inactive.
-  if (accounts.length > 0 && !accounts.some((a) => a.active)) accounts[0].active = true
+  // clicking it in a second view still showing it. Everything used to be
+  // switched off and the first account in the file switched on, one the
+  // user never picked. The active account now simply stays.
+  if (!stored.some((a) => a.id === id)) return stored.map(toPublicAccount)
+  const accounts = stored.map((a) => ({ ...a, active: a.id === id }))
   writeAccounts(accounts)
   return accounts.map(toPublicAccount)
 }

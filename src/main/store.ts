@@ -582,7 +582,21 @@ let accountDropNotified = false
 let lastAccounts: StoredAccount[] = []
 
 export function readAccounts(): StoredAccount[] {
-  const result = readJsonResult<StoredAccount[]>(accountsFile(), true)
+  let result = readJsonResult<StoredAccount[]>(accountsFile(), true)
+  // Damaged: the copy of the last write still has every account. Without it
+  // the damaged file was set aside and every Microsoft account had to be
+  // signed in again. Written back at once, as for the settings.
+  if (!result.ok && result.reason === 'corrupt') {
+    const previous = readPreviousJson<StoredAccount[]>(accountsFile())
+    if (Array.isArray(previous)) {
+      try {
+        writeJsonAtomic(accountsFile(), previous)
+      } catch (err) {
+        logger.warn('Wiederhergestellte Accounts konnten nicht gespeichert werden:', err)
+      }
+      result = { ok: true, value: previous }
+    }
+  }
   // Never "no accounts" for a file that is merely locked. Every caller writes
   // its result back over the whole file, so an empty list here deleted every
   // account the moment a virus scanner or OneDrive held the file during a
@@ -648,6 +662,14 @@ export function readAccounts(): StoredAccount[] {
 export function writeAccounts(accounts: StoredAccount[]): void {
   writeJsonAtomic(accountsFile(), accounts)
   lastAccounts = accounts
+  // A second copy of exactly what was just written, for a file found damaged
+  // later. Not the version before, as `keepPrevious` keeps it: an account
+  // the user removed, sign-in and all, must not live on in the copy.
+  try {
+    writeJsonAtomic(previousFile(accountsFile()), accounts)
+  } catch (err) {
+    logger.warn('Kopie der Accounts nicht geschrieben:', err)
+  }
 }
 
 /**
