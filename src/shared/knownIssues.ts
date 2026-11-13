@@ -5498,9 +5498,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Wer auf der Seite einer Instanz im Reiter „Welten“ blieb, während er spielte, sah danach weder neue ' +
       'Welten noch die neue Größe oder „Zuletzt gespielt“. Erst ein Wechsel des Reiters zeigte den ' +
-      'richtigen Stand.',
-    state: 'investigating',
-    since: '2026-11-13'
+      'richtigen Stand. Dasselbe galt für Screenshots im Reiter „Aufnahmen“.',
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   }
 ]
 

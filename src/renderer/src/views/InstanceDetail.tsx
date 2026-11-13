@@ -223,10 +223,14 @@ export function InstanceDetailView({
   // left and opened again. The settings form keeps its own fields, so
   // unsaved edits there survive this.
   const wasRunning = useRef(running)
+  // Counted up when a game ends, so the worlds and the screenshots of that
+  // session show up in their tabs as well.
+  const [sessionsEnded, setSessionsEnded] = useState(0)
   useEffect(() => {
     if (wasRunning.current && !running) {
       void load()
       void runChecks()
+      setSessionsEnded((n) => n + 1)
     }
     wasRunning.current = running
   }, [running, load, runChecks])
@@ -574,8 +578,8 @@ export function InstanceDetailView({
         />
       )}
 
-      {tab === 'worlds' && <WorldsTab instanceId={instanceId} />}
-      {tab === 'recordings' && <RecordingsTab instanceId={instanceId} />}
+      {tab === 'worlds' && <WorldsTab instanceId={instanceId} refresh={sessionsEnded} />}
+      {tab === 'recordings' && <RecordingsTab instanceId={instanceId} refresh={sessionsEnded} />}
       {tab === 'logs' && <LogsTab instanceId={instanceId} />}
       {tab === 'settings' && (
         <InstanceSettingsPanel instance={instance} onChanged={load} onDirtyChange={setSettingsDirty} />
@@ -1460,7 +1464,7 @@ function ContentRow({
  * Worlds
  * ------------------------------------------------------------------ */
 
-function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
+function WorldsTab({ instanceId, refresh }: { instanceId: string; refresh: number }): JSX.Element {
   const [worlds, setWorlds] = useState<WorldInfo[] | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
@@ -1473,7 +1477,9 @@ function WorldsTab({ instanceId }: { instanceId: string }): JSX.Element {
         setFailure(err instanceof Error ? err.message : String(err))
         setWorlds([])
       })
-  }, [instanceId])
+    // `refresh` counts the games that ended while the page was open: a world
+    // played or created in one used to show only after switching tabs.
+  }, [instanceId, refresh])
 
   if (!worlds) return <div className="skeleton" style={{ height: 200 }} />
 
@@ -1541,7 +1547,7 @@ interface Moment {
   sizeBytes?: number
 }
 
-function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
+function RecordingsTab({ instanceId, refresh }: { instanceId: string; refresh: number }): JSX.Element {
   const [shots, setShots] = useState<ScreenshotInfo[] | null>(null)
   const [clips, setClips] = useState<RecordingInfo[] | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<RecordingInfo | null>(null)
@@ -1569,9 +1575,11 @@ function RecordingsTab({ instanceId }: { instanceId: string }): JSX.Element {
     setClips(nextClips)
   }, [instanceId])
 
+  // Again after every game that ends while the page is open: screenshots
+  // taken with F2 in that session showed only after switching tabs.
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, refresh])
 
   // A recording that finishes while this tab is open used to leave no trace
   // until the user navigated away and back. The list refreshes on the edge

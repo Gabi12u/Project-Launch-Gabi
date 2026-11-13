@@ -3343,7 +3343,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     title: 'The "Worlds" tab did not show new worlds after playing',
     detail:
       'Staying on the "Worlds" tab of an instance page while playing showed neither new worlds nor the new ' +
-      'size or "Last played" afterwards. Only switching tabs showed the current state.'
+      'size or "Last played" afterwards. Only switching tabs showed the current state. The same went for ' +
+      'screenshots in the "Recordings" tab.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
