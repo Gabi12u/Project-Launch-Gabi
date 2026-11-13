@@ -3375,7 +3375,10 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Starting again very quickly after a crash, the still running analysis of the old crash could block ' +
       'the new start. When an old automatic backup could not be deleted during the cleanup, backups already ' +
       'deleted stayed in the list. Joining the beta programme while an update check was running showed the ' +
-      'beta only at the next check, hours later.'
+      'beta only at the next check, hours later. Deleting an instance while it was still being set up and ' +
+      'creating one of the same name right away made the new one count as set up once the old setup ' +
+      'ended. When quitting was turned down because a game was still running, the launcher window did not ' +
+      'come back after the log window was closed.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',

@@ -29,7 +29,7 @@ import {
   isFinalisingRecording
 } from './core/recording'
 import { reportError, sendPendingReports } from './core/reports'
-import { showLauncherWindow } from './gameLogWindow'
+import { quitAborted, showLauncherWindow } from './gameLogWindow'
 
 /** `app.isPackaged` is the only reliable dev/production signal in Electron. */
 const isDev = !app.isPackaged
@@ -227,6 +227,7 @@ function createWindow(): BrowserWindow {
     if (ownRunningCount() > 0 || startingCount() > 0) {
       event.preventDefault()
       window.hide()
+      quitAborted()
       return
     }
     // A repair, an import, a backup or a download still running was cut off
@@ -236,6 +237,7 @@ function createWindow(): BrowserWindow {
     const busy = listTasks().filter((task) => task.state === 'running')
     if (busy.length === 0) return
     event.preventDefault()
+    quitAborted()
     void dialog
       .showMessageBox(window, {
         type: 'warning',

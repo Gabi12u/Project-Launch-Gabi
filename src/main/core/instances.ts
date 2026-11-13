@@ -356,10 +356,14 @@ function uniqueId(name: string): string {
     return id
   }
 
-  if (!existsSync(paths.instance(base))) return claim(base)
+  // Not while the setup of a deleted instance under that id still runs:
+  // the new one would join that setup instead of running its own, and be
+  // marked as set up for the old version and loader once it ended.
+  const free = (id: string): boolean => !existsSync(paths.instance(id)) && !settingUp.has(id)
+  if (free(base)) return claim(base)
   for (let i = 2; i < 100; i++) {
     const candidate = `${base}-${i}`
-    if (!existsSync(paths.instance(candidate))) return claim(candidate)
+    if (free(candidate)) return claim(candidate)
   }
   return claim(`${base}-${randomUUID().slice(0, 6)}`)
 }

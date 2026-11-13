@@ -55,6 +55,15 @@ function revealMainWindow(): void {
   showLauncherWindow()
 }
 
+/**
+ * The main window turned a quit down, so the launcher keeps running. Left
+ * set, the flag kept the main window from coming back when the log window
+ * was closed later, and the launcher had no window at all.
+ */
+export function quitAborted(): void {
+  quitting = false
+}
+
 /** Shows, restores and focuses the main window, e.g. from the log window's button. */
 export function showLauncherWindow(): void {
   const main = getMainWindow()
@@ -85,7 +94,9 @@ export function openGameLogWindow(instanceId: string, instanceName: string): voi
 
   if (!quitHookInstalled) {
     quitHookInstalled = true
-    app.once('before-quit', () => {
+    // Every time, not once: a quit the main window turns down (a game still
+    // running) is not the end, see `quitAborted`.
+    app.on('before-quit', () => {
       quitting = true
     })
   }

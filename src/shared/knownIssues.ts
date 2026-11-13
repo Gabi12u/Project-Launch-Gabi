@@ -5537,7 +5537,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'konnte die noch laufende Auswertung des alten Absturzes den neuen Start blockieren. Ließ sich beim ' +
       'Aufräumen alter automatischer Sicherungen eine Datei nicht löschen, blieben schon gelöschte in der ' +
       'Liste stehen. Trat man dem Beta-Programm bei, während gerade nach Updates gesucht wurde, erschien ' +
-      'die Beta erst bei der nächsten Suche Stunden später.',
+      'die Beta erst bei der nächsten Suche Stunden später. Löschte man eine Instanz noch während ihrer ' +
+      'Einrichtung und legte gleich eine gleichnamige an, galt die neue als eingerichtet, sobald die alte ' +
+      'fertig war. Wurde das Beenden abgelehnt, weil noch ein Spiel lief, kam das Launcher-Fenster nach ' +
+      'dem Schließen des Protokollfensters nicht zurück.',
     state: 'fixing',
     since: '2026-11-13'
   }
