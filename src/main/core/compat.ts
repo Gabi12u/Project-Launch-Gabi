@@ -154,13 +154,22 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
   // The ids each jar declares. The folder scan above records them once per
   // jar; read here only for a record it could not fill in yet.
   const idsByMod = new Map<string, string[]>()
+  // With the ids each jar answers to as well: Quilted Fabric API stands in
+  // for "fabric-api", and a mod needing Fabric API blocked the start there.
+  const providedByMod = new Map<string, string[]>()
   for (const mod of enabled) {
-    const ids = mod.modIds ?? (await readJarMetadata(join(paths.mods(instanceId), mod.fileName)))?.ids ?? []
-    idsByMod.set(mod.id, ids)
+    const meta =
+      mod.modIds === undefined || mod.provides === undefined
+        ? await readJarMetadata(join(paths.mods(instanceId), mod.fileName))
+        : null
+    idsByMod.set(mod.id, mod.modIds ?? meta?.ids ?? [])
+    providedByMod.set(mod.id, mod.provides ?? meta?.provides ?? [])
   }
   // Flattened like the names, so a declared "fabric-api" meets the slug
   // "fabric-api" and the name "Fabric API" alike.
-  const installedModIds = new Set(enabled.flatMap((c) => (idsByMod.get(c.id) ?? []).map(flattenName)))
+  const installedModIds = new Set(
+    enabled.flatMap((c) => [...(idsByMod.get(c.id) ?? []), ...(providedByMod.get(c.id) ?? [])].map(flattenName))
+  )
 
   // Project ids of everything currently installed and enabled.
   const installedProjects = new Set(

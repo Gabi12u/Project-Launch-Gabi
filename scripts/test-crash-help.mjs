@@ -212,11 +212,18 @@ try {
          return pick ? pick(mc) : null
        },
        getVersions: async (provider, projectId) => globalThis.__lgAll[projectId] || [],
-       getProject: async (provider, id) => ({ projectId: id, type: 'mod', name: 'Projekt ' + id, author: 'Test', summary: '', pageUrl: '' }),
+       getProject: async (provider, id) => ({
+         projectId: id,
+         slug: Object.keys(globalThis.__lgSlugs).find((slug) => globalThis.__lgSlugs[slug].projectId === id) ?? id,
+         type: 'mod', name: 'Projekt ' + id, author: 'Test', summary: '', pageUrl: ''
+       }),
        modrinth: {
          getProject: async (id) => {
            const known = globalThis.__lgSlugs[id]
            if (known) return { projectId: known.projectId, slug: id, type: 'mod', name: known.name, author: 'Test', summary: '', pageUrl: '' }
+           // Asked by project id, Modrinth answers with the real slug too.
+           const byId = Object.entries(globalThis.__lgSlugs).find(([, value]) => value.projectId === id)
+           if (byId) return { projectId: id, slug: byId[0], type: 'mod', name: byId[1].name, author: 'Test', summary: '', pageUrl: '' }
            if (!globalThis.__lgAll[id] && !globalThis.__lgBest[id]) throw new Error('HTTP 404')
            return { projectId: id, slug: id, type: 'mod', name: 'Projekt ' + id, author: 'Test', summary: '', pageUrl: '' }
          },
@@ -464,6 +471,38 @@ try {
     record.content[0].fileName = `${apiOld.fileName}.disabled`
     renameSync(join(p.mods('abhaengig'), apiOld.fileName), join(p.mods('abhaengig'), `${apiOld.fileName}.disabled`))
     writeFileSync(p.instanceFile('abhaengig'), JSON.stringify(record))
+  }
+  // Fabric API missing entirely, and installed but too old to carry a module.
+  makeInstance('apifehlt', '1.21.11', [sodium])
+  makeInstance('apizualt', '1.21.11', [sodium, apiOld])
+  // Quilt with Quilted Fabric API, which stands in for "fabric-api", and a
+  // mod that requires Fabric API.
+  makeInstance('qfapi', '1.21.11', [zoom], 'quilt')
+  {
+    const qfapiJar = new AdmZip()
+    qfapiJar.addFile(
+      'quilt.mod.json',
+      Buffer.from(
+        JSON.stringify({
+          schema_version: 1,
+          quilt_loader: {
+            id: 'quilted_fabric_api',
+            version: '7.7.0+0.92.2-1.21.11',
+            metadata: { name: 'Quilted Fabric API' },
+            provides: [{ id: 'fabric-api', version: '0.92.2' }, { id: 'fabric', version: '0.92.2' }]
+          }
+        })
+      )
+    )
+    writeFileSync(join(p.mods('qfapi'), 'qfapi-7.7.0.jar'), qfapiJar.toBuffer())
+    const record = JSON.parse(readFileSync(p.instanceFile('qfapi'), 'utf8'))
+    record.content[0].dependencies = [{ type: 'required', projectId: 'P7dR8mSH' }]
+    record.content.push({
+      id: 'qfapi-x', type: 'mod', provider: 'modrinth', projectId: 'qvIfYCYJ', versionId: 'qf-1', fileName: 'qfapi-7.7.0.jar',
+      name: 'Quilted Fabric API', version: '7.7.0', enabled: true, gameVersions: ['1.21.11'], loaders: ['quilt'],
+      dependencies: [], installedAt: Date.now(), update: null
+    })
+    writeFileSync(p.instanceFile('qfapi'), JSON.stringify(record))
   }
   // The same, but switched off by a version change because nothing fit.
   makeInstance('wechselaus', '1.21.11', [apiOld])
@@ -817,6 +856,46 @@ More details:
   check(instances.getInstance('neoforge').loaderUpdate === '21.1.209', `Nach einer gescheiterten Abfrage ist der Loader-Hinweis weg: ${instances.getInstance('neoforge').loaderUpdate}`)
   await content.applyFix('neoforge', nLoader.fix)
   check(instances.getInstance('neoforge').loaderVersion === '21.1.209', `Der Loader-Knopf der Absturzhilfe wirkt nicht: ${instances.getInstance('neoforge').loaderVersion}`)
+
+  // --- 21. All of Fabric API missing: Fabric names one of its modules ----------------
+  const MODULE_MISSING = `[21:38:58] [ERROR] [FabricLoader/]: Incompatible mods found!
+net.fabricmc.loader.impl.FormattedException: Some of your mods are incompatible with the game or each other!
+A potential solution has been determined, this may resolve your problem:
+\t - Install fabric-resource-loader-v0, any version.
+More details:
+\t - Mod 'Sodium' (sodium) 0.5.3 requires any version of fabric-resource-loader-v0, which is missing!`
+  check((await crashed('apifehlt', MODULE_MISSING)) === true, 'Fabric API fehlt: kein Vorschlag')
+  report = await compat.checkCompatibility('apifehlt')
+  const noApi = report.issues.find((i) => i.id === 'crash-install-fabric-resource-loader-v0')
+  notes.push(`Fabric API fehlt: ${noApi?.title} [${noApi?.fix?.label ?? '-'}]`)
+  check(noApi?.fix?.kind === 'install-dependency' && noApi.fix.projectId === 'P7dR8mSH', `Fabric API fehlt: angeboten wird ${JSON.stringify(noApi?.fix)}`)
+  check(/Sodium braucht Fabric API/.test(noApi?.title ?? ''), `Fabric API fehlt, Titel: ${noApi?.title}`)
+  // Put in by hand, the finding ends without another start.
+  writeFileSync(join(p.mods('apifehlt'), 'fabric-api-handgeladen.jar'), jarBytes('fabric-api', 'Fabric API', '0.141.0'))
+  await instances.syncContentWithDisk('apifehlt', { force: true })
+  report = await compat.checkCompatibility('apifehlt')
+  check(!report.issues.some((i) => i.id === 'crash-install-fabric-resource-loader-v0'), 'Fabric API von Hand installiert: der Fund blieb stehen')
+
+  // Installed, but too old to carry the module: the update is offered.
+  check((await crashed('apizualt', MODULE_MISSING)) === true, 'Fabric API zu alt: kein Vorschlag')
+  report = await compat.checkCompatibility('apizualt')
+  const oldApi = report.issues.find((i) => i.id === 'crash-install-fabric-resource-loader-v0')
+  notes.push(`Fabric API zu alt: ${oldApi?.title} [${oldApi?.fix?.label ?? '-'}]`)
+  check(oldApi?.fix?.kind === 'install-version' && oldApi.fix.versionId === 'api-1', `Fabric API zu alt: angeboten wird ${JSON.stringify(oldApi?.fix)}`)
+
+  // --- 22. Quilted Fabric API counts as Fabric API --------------------------------
+  report = await compat.checkCompatibility('qfapi')
+  const needsApi = report.issues.find((i) => i.id.startsWith('dep-') && i.id.endsWith('P7dR8mSH'))
+  check(!needsApi, `Quilted Fabric API: die Prüfung verlangt trotzdem Fabric API: ${needsApi?.title}`)
+  const before22 = instances.getInstance('qfapi').content.length
+  await content.installNewDependencies('qfapi', instances.getInstance('qfapi').content.find((c) => c.name === 'Zoomify'))
+  check(
+    instances.getInstance('qfapi').content.length === before22,
+    `Quilted Fabric API: Fabric API wurde zusätzlich installiert: ${instances.getInstance('qfapi').content.map((c) => c.name).join(', ')}`
+  )
+  await instances.syncContentWithDisk('qfapi', { force: true })
+  const qfRecord = instances.getInstance('qfapi').content.find((c) => c.name === 'Quilted Fabric API')
+  check((qfRecord?.provides ?? []).includes('fabric-api'), `Quilted Fabric API: der Eintrag nennt nach dem Abgleich ${JSON.stringify(qfRecord?.provides)}`)
 } catch (err) {
   problems.push(`Abbruch: ${err?.stack ?? err}`)
 } finally {

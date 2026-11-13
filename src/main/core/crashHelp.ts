@@ -634,7 +634,8 @@ export function crashIssues(instance: Instance): CompatibilityIssue[] {
         (c) =>
           c.enabled &&
           c.type === 'mod' &&
-          ((missing.id !== '' && (c.modIds ?? []).includes(missing.id)) || flattenName(c.name) === flattenName(missing.name))
+          ((missing.id !== '' && [...(c.modIds ?? []), ...(c.provides ?? [])].includes(missing.id)) ||
+            flattenName(c.name) === flattenName(missing.name))
       )
       if (there) return false
     }
@@ -835,6 +836,25 @@ function fitsInstance(instance: Instance, version: ProjectVersion): boolean {
   return gameOk && loaderOk
 }
 
+/**
+ * A module of Fabric API, as Fabric names it when all of Fabric API is
+ * missing: "fabric-resource-loader-v0", "fabric-api-base", or plain "fabric".
+ */
+export function isFabricApiModule(id: string): boolean {
+  return /^fabric(-[a-z0-9]+)+-v\d+$/.test(id) || id === 'fabric-api-base' || id === 'fabric'
+}
+
+/**
+ * A build released after the installed one. Comparing only the version id
+ * offered an "update" to an older build whenever the installed one was a
+ * beta or newer than the best pick, with "is newer" in the text.
+ */
+function newerThanInstalled(best: { versionId: string; releasedAt: string }, item: ContentItem): boolean {
+  if (best.versionId === item.versionId) return false
+  if (!item.releasedAt || !best.releasedAt) return true
+  return new Date(best.releasedAt).getTime() > new Date(item.releasedAt).getTime()
+}
+
 /** Stable per step, so the same problem keeps its row between checks. */
 function issueId(solution: Solution): string {
   return `crash-${solution.kind}-${solution.mod.id || solution.mod.file || flattenName(solution.mod.name)}`
@@ -895,7 +915,7 @@ async function resolveSolution(
         // An update only answers a request for a newer module.
         const newerHelps = !range || (range.test('999999') && !range.test(installed))
         const best = newerHelps ? await bestVersionFor(provider, carrier.projectId, instance.mcVersion, instance.loader, 'mod') : null
-        if (best && best.versionId !== carrier.versionId) {
+        if (best && newerThanInstalled(best, carrier)) {
           return withWatch(
             {
               id,
@@ -1100,11 +1120,58 @@ async function resolveSolution(
       )
     }
 
+    // Fabric names a module of Fabric API ("fabric-resource-loader-v0") when
+    // all of Fabric API is missing, the most common Fabric crash there is.
+    // Searching for the module found nothing, and no fix was offered.
+    const partOfFabricApi = isFabricApiModule(solution.mod.id)
+    if (partOfFabricApi) {
+      const api = find({ id: 'fabric-api', name: 'Fabric API' })
+      // Installed but too old to carry the module: a newer build helps.
+      if (api) {
+        const provider = api.provider === 'curseforge' ? 'curseforge' : 'modrinth'
+        // A jar put in by hand has no project to look a newer build up in.
+        const best =
+          api.provider !== 'local' && api.projectId
+            ? await bestVersionFor(provider, api.projectId, instance.mcVersion, instance.loader, 'mod')
+            : null
+        const newer = best && api.projectId && newerThanInstalled(best, api) ? best : null
+        return withWatch(
+          {
+            id,
+            severity: 'error',
+            title: titleFor(api.name),
+            detail: newer
+              ? tr(
+                  `${solution.mod.name} ist ein Teil von ${api.name}, den die installierte Version noch nicht enthält. Version ${newer.versionNumber} ist neuer.`,
+                  `${solution.mod.name} is part of ${api.name}, and the installed version does not carry it yet. Version ${newer.versionNumber} is newer.`
+                )
+              : tr(
+                  `${solution.mod.name} ist ein Teil von ${api.name}, den die installierte Version nicht enthält. Eine neuere Version ließ sich nicht finden.`,
+                  `${solution.mod.name} is part of ${api.name}, and the installed version does not carry it. No newer version could be found.`
+                ),
+            contentId: api.id,
+            fix: newer
+              ? {
+                  kind: 'install-version',
+                  label: tr(`${api.name} auf ${newer.versionNumber} aktualisieren`, `Update ${api.name} to ${newer.versionNumber}`),
+                  provider,
+                  projectId: api.projectId,
+                  contentId: api.id,
+                  versionId: newer.versionId
+                }
+              : undefined
+          },
+          [api, requirer]
+        )
+      }
+    }
+
     // A mod's id is very often its project slug on Modrinth ("fabric-api"),
     // with Forge's underscores as dashes ("cloth_config", "cloth-config").
     // Offered only when that project really has a build for this instance.
     let project: { id: string; name: string } | null = null
-    for (const slug of new Set([solution.mod.id, solution.mod.id.replace(/_/g, '-')])) {
+    const slugs = partOfFabricApi ? ['fabric-api'] : [solution.mod.id, solution.mod.id.replace(/_/g, '-')]
+    for (const slug of new Set(slugs)) {
       try {
         const found = await modrinth.getProject(slug)
         const fits = await bestVersionFor('modrinth', found.projectId, instance.mcVersion, instance.loader, 'mod')
@@ -1122,7 +1189,12 @@ async function resolveSolution(
         severity: 'error',
         title: titleFor(project?.name ?? solution.mod.name),
         detail: project
-          ? tr(`${project.name} fehlt in dieser Instanz.`, `${project.name} is missing from this instance.`)
+          ? partOfFabricApi
+            ? tr(
+                `${solution.mod.name} ist ein Teil von ${project.name}, und ${project.name} fehlt in dieser Instanz.`,
+                `${solution.mod.name} is part of ${project.name}, and ${project.name} is missing from this instance.`
+              )
+            : tr(`${project.name} fehlt in dieser Instanz.`, `${project.name} is missing from this instance.`)
           : tr(
               `${solution.mod.name} fehlt in dieser Instanz. Suche es unter „Inhalte finden“ und installiere es.`,
               `${solution.mod.name} is missing from this instance. Look for it under "Find content" and install it.`
@@ -1134,7 +1206,9 @@ async function resolveSolution(
       },
       [requirer]
     )
-    missingFinding.missing = { id: solution.mod.id, name: project?.name ?? solution.mod.name }
+    // For a module, Fabric API itself ends the finding, under its own id or
+    // as what Quilted Fabric API stands in for.
+    missingFinding.missing = { id: partOfFabricApi ? 'fabric-api' : solution.mod.id, name: project?.name ?? solution.mod.name }
     return missingFinding
   }
 

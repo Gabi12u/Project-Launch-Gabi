@@ -1279,7 +1279,7 @@ function nameFromFile(fileName: string): string {
  * and version where it still only had the ones made from its file name.
  */
 function withJarMetadata(item: ContentItem, meta: JarMetadata, stamp: string | null, replaced = false): ContentItem {
-  const next: ContentItem = { ...item, modIds: meta.ids, modIdsFrom: stamp ?? undefined }
+  const next: ContentItem = { ...item, modIds: meta.ids, provides: meta.provides, modIdsFrom: stamp ?? undefined }
   if (item.provider !== 'local') return next
   // Only with something to put there: a jar naming no loader must not wipe
   // what was known before.
@@ -1462,10 +1462,13 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
     if (item.type !== 'mod') continue
     const file = join(paths.mods(id), item.fileName)
     const stamp = jarStamp(file)
-    if (item.modIds !== undefined && item.modIdsFrom === stamp) continue
+    // Records from before `provides` was kept are read once more, so an
+    // installed Quilted Fabric API is known as Fabric API from now on.
+    const complete = item.modIds !== undefined && item.provides !== undefined
+    if (complete && item.modIdsFrom === stamp) continue
     // Ids read before the stamp existed: the jar is taken as the one they
     // came from and only stamped, instead of reading every jar again.
-    if (item.modIds !== undefined && item.modIdsFrom === undefined && stamp !== null) {
+    if (complete && item.modIdsFrom === undefined && stamp !== null) {
       result[i] = { ...item, modIdsFrom: stamp }
       filledIn = true
       continue

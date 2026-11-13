@@ -919,6 +919,7 @@ async function runRepair(
               dependencies: version.dependencies,
               update: null,
               modIds: undefined,
+              provides: undefined,
               modIdsFrom: undefined,
               recognisedFrom: undefined,
               // A held version made for another Minecraft version was swapped

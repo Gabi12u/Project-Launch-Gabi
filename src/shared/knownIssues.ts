@@ -5441,8 +5441,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Dort gibt es ihn nicht, und einen Knopf zum Beheben gab es nicht. Auch nach dem Installieren der ' +
       'Fabric API blieb der Start blockiert. Abhilfe: Fabric API unter „Inhalte finden“ installieren und ' +
       'dann „Trotzdem starten“ wählen.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'quilt-fabric-api-nicht-erkannt',
@@ -5452,8 +5453,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'das nicht: Verlangte ein Mod die Fabric API, lud er sie beim Installieren zusätzlich, und war das ' +
       'automatische Laden von Abhängigkeiten aus, blockierte die Prüfung vor dem Start mit „benötigt ' +
       'Fabric API“. Abhilfe: „Trotzdem starten“.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   },
   {
     id: 'sicherung-bei-offener-welt',

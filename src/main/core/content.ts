@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
-import { basename, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import type {
   AvailableUpdate,
   CompatibilityIssue,
@@ -40,6 +40,7 @@ import { compareMaven, compareVersions, modVersionOf } from './crashHelp'
 import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 import { flattenName } from './compat'
+import { readJarMetadata } from './modMetadata'
 import { isSafeAutoFix } from '@shared/fixes'
 import { locale, tr } from '@shared/i18n'
 
@@ -215,6 +216,24 @@ async function installContentOnce(
     )
     if (twin) {
       logger.info(`Abhängigkeit ${project.name} ist schon von ${twin.provider} installiert, übersprungen`)
+      return []
+    }
+    // Or a mod standing in for it under another name: Quilted Fabric API
+    // declares itself as "fabric-api", and a second copy of Fabric API was
+    // installed next to it.
+    // A mod installed a moment ago is only read by the next folder scan, so
+    // its jar is asked directly then.
+    let standIn: ContentItem | undefined
+    for (const c of wantedSlug !== '' && type === 'mod' ? instance.content : []) {
+      if (c.type !== 'mod' || !c.enabled) continue
+      const provided = c.provides ?? (await readJarMetadata(join(contentDir(instanceId, 'mod'), c.fileName)))?.provides ?? []
+      if (provided.some((other) => flattenName(other) === wantedSlug)) {
+        standIn = c
+        break
+      }
+    }
+    if (standIn) {
+      logger.info(`Abhängigkeit ${project.name} wird schon von ${standIn.name} bereitgestellt, übersprungen`)
       return []
     }
   }
@@ -1195,6 +1214,7 @@ async function applyUpdateOnce(
     update: null,
     // Read again from the new jar by the next folder scan.
     modIds: undefined,
+    provides: undefined,
     modIdsFrom: undefined,
     // The launcher wrote this file, it is no longer the one placed by hand.
     recognisedFrom: undefined,

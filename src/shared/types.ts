@@ -100,6 +100,11 @@ export interface ContentItem {
    * empty for a jar that declares none.
    */
   modIds?: string[]
+  /**
+   * Further ids the jar answers to under Fabric's and Quilt's `provides`:
+   * Quilted Fabric API says "fabric-api". Read together with `modIds`.
+   */
+  provides?: string[]
   /** Size and modification time of the jar `modIds` was read from. */
   modIdsFrom?: string
   /**
