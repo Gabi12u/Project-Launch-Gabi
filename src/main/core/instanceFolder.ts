@@ -8,7 +8,7 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, type Dirent } from 'node:fs'
-import { copyFile, mkdir, readdir, readlink, realpath, stat, symlink } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, readdir, readlink, realpath, stat, symlink } from 'node:fs/promises'
 import { gunzipSync } from 'node:zlib'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type {
@@ -43,7 +43,33 @@ const SKIP_DIRS = new Set([
   'crash-reports',
   'server-resource-packs',
   '.fabric',
-  'realms_persistence'
+  'realms_persistence',
+  // The official launcher's bundled Java runtimes and its web cache, several
+  // hundred megabytes with nothing the instance needs.
+  'runtime',
+  'webcache',
+  'webcache2'
+])
+
+/**
+ * Files of the official launcher at the top of a .minecraft folder. Its
+ * account file holds that launcher's sign-in tokens and ended up inside the
+ * new instance; none of these belong to the game.
+ */
+const SKIP_FILES = new Set([
+  'launcher_accounts.json',
+  'launcher_accounts_microsoft_store.json',
+  'launcher_msa_credentials.bin',
+  'launcher_msa_credentials_microsoft_store.bin',
+  'launcher_profiles.json',
+  'launcher_profiles_microsoft_store.json',
+  'launcher_settings.json',
+  'launcher_ui_state.json',
+  'launcher_entitlements.json',
+  'launcher_product_state.json',
+  'launcher_log.txt',
+  'launcher_cef_log.txt',
+  'treatment_tags.json'
 ])
 
 export type SourceFlavour =
@@ -1097,6 +1123,16 @@ export function analyzeInstanceFolder(sourceDir: string): ImportAnalysis {
  * Import
  * ------------------------------------------------------------------ */
 
+/** Gives the owner write permission (on Windows: clears read-only). */
+async function makeWritable(file: string): Promise<void> {
+  try {
+    const info = await stat(file)
+    if ((info.mode & 0o200) === 0) await chmod(file, info.mode | 0o200)
+  } catch {
+    // the copy is there; a file that stays read-only is no reason to fail
+  }
+}
+
 /**
  * Copies a foreign instance folder across, a file at a time.
  *
@@ -1119,6 +1155,8 @@ async function copyGameFiles(
   const failed: string[] = []
   let lastReport = Date.now()
   const stack: string[] = ['']
+  /** Real paths of folders already entered through a link. */
+  const walkedThroughLinks = new Set<string>()
 
   while (stack.length > 0) {
     const rel = stack.pop()
@@ -1143,6 +1181,7 @@ async function copyGameFiles(
       // directories the launcher manages centrally and shares between
       // instances, so bringing a second copy across would waste gigabytes.
       if (!rel && SKIP_DIRS.has(entry.name.toLowerCase())) continue
+      if (!rel && !entry.isDirectory() && SKIP_FILES.has(entry.name.toLowerCase())) continue
 
       const target = join(to, childRel)
 
@@ -1204,6 +1243,17 @@ async function copyGameFiles(
             }
             const kind = await stat(linkSource)
             if (kind.isDirectory()) {
+              // A link to one of its own parent folders ("saves/loop" to the
+              // root) was followed again and again: the whole tree, worlds and
+              // all, came across about twenty times until the path limit or a
+              // full disk. Each real folder is walked once, and never one the
+              // link itself sits inside.
+              const realParent = await realpath(dirname(linkSource))
+              if (realParent === realTarget || realParent.startsWith(realTarget + sep) || walkedThroughLinks.has(realTarget)) {
+                skippedLinks++
+                continue
+              }
+              walkedThroughLinks.add(realTarget)
               // Handed to the main loop as an ordinary folder instead of
               // copied here directly: copying a symlinked directory's target
               // through `copyFile` throws EISDIR, which the old fallback
@@ -1232,6 +1282,10 @@ async function copyGameFiles(
       try {
         await mkdir(join(target, '..'), { recursive: true })
         await copyFile(join(from, childRel), target)
+        // The copy keeps the source's read-only flag. From a CD, an image or
+        // a folder marked read-only, Minecraft could then save neither its
+        // settings nor the worlds, and the launcher could not edit them.
+        await makeWritable(target)
         files++
       } catch (err) {
         const code = (err as NodeJS.ErrnoException)?.code

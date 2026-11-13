@@ -5627,8 +5627,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Enthielt ein Instanzordner aus einem anderen Launcher eine Ordnerverknüpfung (Junction), die auf ' +
       'einen Ordner darüber zeigt, folgte der Import ihr immer wieder und kopierte Welten und Mods ' +
       'ungefähr zwanzigfach, bis zur maximalen Pfadlänge oder einer vollen Festplatte.',
-    state: 'investigating',
+    state: 'fixed',
     since: '2026-11-13',
+    fixedIn: '1.0.26',
     platforms: ['Windows']
   },
   {
