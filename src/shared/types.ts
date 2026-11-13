@@ -262,6 +262,8 @@ export interface VersionChangeItem {
   outcome: 'update' | 'keep' | 'disable' | 'unchecked' | 'local'
   /** Switched off by an earlier version change and fitting again now: switched back on. */
   reenable?: boolean
+  /** With `disable`: already switched off by the user, so nothing changes for it. */
+  alreadyOff?: boolean
   fromVersion: string
   toVersion?: string
   reason?: string

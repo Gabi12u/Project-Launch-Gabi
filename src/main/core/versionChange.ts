@@ -193,6 +193,10 @@ async function lookUp(
         logger.warn(`Versionssuche für ${item.name} fehlgeschlagen:`, err)
       }
     }
+    // Switched off already: the preview counted it among those "switched
+    // off" by the change, with the promise it would come back by itself,
+    // while the change rightly leaves the user's own choice alone.
+    if (entry.outcome === 'disable' && !item.enabled) entry.alreadyOff = true
     looked++
     task?.update(tr(`Mods und Pakete werden geprüft… ${looked} von ${pending.length}`, `Checking mods and packs… ${looked} of ${pending.length}`), looked / pending.length)
   })
@@ -396,15 +400,16 @@ async function runChange(id: string, target: Required<VersionChangeTarget>, task
       } catch (err) {
         logger.warn(`${entry.name} konnte nicht ausgeschaltet werden:`, err)
         stuckOn.push(entry)
+        continue
       }
-    }
-    // Remembered, so going back to a version they fit switches them on again.
-    if (switchedOff.length > 0) {
-      const off = new Set(switchedOff.map((entry) => entry.contentId))
+      // Remembered, so going back to a version they fit switches them on
+      // again. Each one right away: written once after the whole loop, a
+      // launcher closed halfway left mods switched off with nothing to say
+      // why, and they never came back on.
       const current = getInstance(id)
       persist({
         ...current,
-        content: current.content.map((item) => (off.has(item.id) ? { ...item, disabledByVersionChange: true } : item))
+        content: current.content.map((item) => (item.id === entry.contentId ? { ...item, disabledByVersionChange: true } : item))
       })
     }
     // Switched off by an earlier change and fitting again now.

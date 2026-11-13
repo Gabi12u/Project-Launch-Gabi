@@ -220,7 +220,8 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
       update: of('update'),
       keep: of('keep').filter((item) => !item.reenable),
       back: items.filter((item) => item.reenable),
-      off: of('disable'),
+      // Not what the user switched off before: nothing happens to those.
+      off: of('disable').filter((item) => !item.alreadyOff),
       unchecked: of('unchecked'),
       local: of('local')
     }

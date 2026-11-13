@@ -397,6 +397,13 @@ try {
   check(home?.enabled === true && !home?.disabledByVersionChange, `oldmod nach dem Rückweg: ${JSON.stringify(home)}`)
   check(readdirSync(backMods).includes('oldmod-1211.jar'), 'oldmod liegt nach dem Rückweg nicht eingeschaltet im Ordner')
 
+  // Switched off by hand: the preview does not count it among those the
+  // change switches off, it is the user's own choice and stays.
+  await instances.toggleContent(back, 'b-old', false)
+  const offPlan = await change.planVersionChange(back, { mcVersion: '1.21.4', loader: 'fabric' })
+  const offItem = offPlan.items.find((i) => i.contentId === 'b-old')
+  check(offItem?.outcome === 'disable' && offItem.alreadyOff === true, `Von Hand ausgeschaltet, Vorschau: ${JSON.stringify(offItem)}`)
+
   // --- 7. Refusals ------------------------------------------------------------
   let same = ''
   try {

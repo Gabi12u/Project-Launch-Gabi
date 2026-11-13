@@ -5526,7 +5526,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'präparierter launchgabi-Link von einer Webseite konnte zusätzliche Angaben in die Navigation des ' +
       'Launchers schmuggeln. Schickte der NeoForge- oder Forge-Server einmal eine unerwartete Antwort, ' +
       'zeigte NeoForge bis zu einer halben Stunde lang „Abfrage fehlgeschlagen“, und Forge verlor bis zu ' +
-      'einer Stunde lang die Markierung „empfohlen“.',
+      'einer Stunde lang die Markierung „empfohlen“. Die Vorschau von „Version ändern“ zählte von Hand ' +
+      'ausgeschaltete Mods zu denen, die der Wechsel ausschaltet. Wurde der Launcher mitten in einem ' +
+      'Versionswechsel geschlossen, blieben Mods ausgeschaltet, ohne beim Zurückwechseln wieder anzugehen.',
     state: 'fixing',
     since: '2026-11-13'
   }

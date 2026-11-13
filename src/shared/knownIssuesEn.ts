@@ -3365,7 +3365,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'a second view made another account active, one that was never chosen. A crafted launchgabi link ' +
       'from a web page could slip extra details into the launcher’s navigation. When the NeoForge or ' +
       'Forge server sent an unexpected answer once, NeoForge showed "Lookup failed" for up to half an hour, ' +
-      'and Forge lost its "recommended" mark for up to an hour.'
+      'and Forge lost its "recommended" mark for up to an hour. The "Change version" preview counted mods ' +
+      'switched off by hand among those the change switches off. When the launcher was closed in the middle ' +
+      'of a version change, mods stayed switched off without coming back on when changing back.'
   },
   'mod-update-braucht-neueren-loader': {
     title: 'A mod update could install a version that needs a newer Fabric Loader',
