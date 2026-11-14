@@ -5648,8 +5648,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'meldete „versuche es später erneut“. Ohne Internet zeigte die Prüfung vor dem Start bei manchen ' +
       'Snapshots die falsche Java-Version an. Die eigene Startseite (Beta) bekam bei Snapshots und ' +
       'Aprilscherz-Versionen ein falsches Paketformat.',
-    state: 'investigating',
-    since: '2026-11-13'
+    state: 'fixed',
+    since: '2026-11-13',
+    fixedIn: '1.0.26'
   }
 ]
 
