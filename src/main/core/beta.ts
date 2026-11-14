@@ -444,13 +444,38 @@ export interface BetaFeed {
  * The beta feed and the version it offers, or null outside the programme.
  * A refused token is handled on the way: renewed, or the membership ended.
  */
+/**
+ * A request carrying the beta token, with redirects followed here rather
+ * than by fetch. fetch drops only the standard credential headers on the way
+ * to another host, so the token went along to wherever the beta server
+ * pointed, a storage host for the Mac download say. It now stays with the
+ * beta server, and nothing is followed to a plain http address.
+ */
+async function fetchWithBetaToken(url: string, token: string, init: RequestInit = {}): Promise<Response> {
+  const origin = new URL(url).origin
+  let current = url
+  for (let hop = 0; hop <= 5; hop++) {
+    const headers = new Headers(init.headers)
+    if (new URL(current).origin === origin) headers.set('x-beta-token', token)
+    const res = await fetch(current, { ...init, headers, redirect: 'manual' })
+    const location = res.headers.get('location')
+    if (res.status < 300 || res.status >= 400 || !location) return res
+    const next = new URL(location, current)
+    if (next.protocol !== 'https:') {
+      throw new Error(tr('Der Beta-Server leitet auf eine unverschlüsselte Adresse um, abgelehnt.', 'The beta server redirects to an unencrypted address, rejected.'))
+    }
+    current = next.toString()
+  }
+  throw new Error(tr('Zu viele Umleitungen beim Beta-Server.', 'Too many redirects at the beta server.'))
+}
+
 export async function betaFeed(): Promise<BetaFeed | null> {
   let token = await validToken()
   const url = `${BETA_URL}/feed`
   for (let attempt = 0; attempt < 2 && token; attempt++) {
     let res: Response
     try {
-      res = await fetch(`${url}/${channelFile('beta')}`, { headers: { 'x-beta-token': token }, signal: AbortSignal.timeout(20_000) })
+      res = await fetchWithBetaToken(`${url}/${channelFile('beta')}`, token, { signal: AbortSignal.timeout(20_000) })
     } catch (err) {
       logger.warn('Beta-Feed nicht erreichbar:', err instanceof Error ? err.message : err)
       return { url, token, version: null, manifest: null }
@@ -546,7 +571,7 @@ async function downloadOnce(): Promise<string> {
   try {
     let res: Response
     try {
-      res = await fetch(`${feed.url}/${encodeURIComponent(name)}`, { headers: { 'x-beta-token': feed.token } })
+      res = await fetchWithBetaToken(`${feed.url}/${encodeURIComponent(name)}`, feed.token)
     } catch (err) {
       throw new Error(tr('Keine Verbindung zum Beta-Server. Prüfe deine Internetverbindung.', 'No connection to the beta server. Check your internet connection.'), { cause: err })
     }

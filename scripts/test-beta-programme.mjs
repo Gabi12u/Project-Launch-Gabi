@@ -72,7 +72,8 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(String(input))
-  const headers = Object.fromEntries(Object.entries(init.headers || {}).map(([k, v]) => [k.toLowerCase(), v]))
+  // A plain object or a Headers instance, as real fetch takes both.
+  const headers = Object.fromEntries([...new Headers(init.headers || {})].map(([k, v]) => [k.toLowerCase(), v]))
   const body = init.body ? JSON.parse(init.body) : {}
   server.requests.push({ url: url.href, headers })
 
