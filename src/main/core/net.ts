@@ -421,6 +421,9 @@ interface CacheEnvelope<T> {
   data: T
 }
 
+/** Total time for a refresh while an older cached copy could stand in. Shorter in the tests. */
+const STALE_CACHE_DEADLINE_MS = Number(process.env.LG_STALE_CACHE_DEADLINE_MS) || 20_000
+
 /**
  * Caches JSON responses on disk. Manifests change rarely, and a cached copy
  * also means the launcher still works offline.
@@ -438,21 +441,42 @@ export async function fetchJsonCached<T>(
 ): Promise<T> {
   const file = join(paths.meta(), `${cacheKey}.json`)
   const usable = (data: unknown): boolean => !validate || validate(data)
+  let haveStale = false
   try {
     const raw = await readFile(file, 'utf8')
     const cached = JSON.parse(raw) as CacheEnvelope<T>
-    if (Date.now() - cached.fetchedAt < maxAgeMs && usable(cached.data)) return cached.data
+    if (usable(cached.data)) {
+      if (Date.now() - cached.fetchedAt < maxAgeMs) return cached.data
+      haveStale = true
+    }
   } catch {
     // no usable cache
   }
 
+  // With an older copy at hand, a line that takes data but never answers is
+  // not worth minutes of retries. Four attempts of a minute each kept the
+  // version list or a launch waiting about four minutes before that copy was
+  // used. Without a copy there is nothing better to offer, so the full
+  // retries stay.
+  const deadline = haveStale ? AbortSignal.timeout(STALE_CACHE_DEADLINE_MS) : undefined
   let data: T
   try {
-    data = await fetchJson<T>(url)
+    data = await fetchJson<T>(url, deadline ? { signal: deadline } : undefined)
     if (!usable(data)) {
       throw new Error(tr(`${hostOf(url)} hat eine unerwartete Antwort geschickt.`, `${hostOf(url)} sent an unexpected response.`))
     }
-  } catch (err) {
+  } catch (caught) {
+    // The deadline surfaces as a cancel, which nobody asked for. Should the
+    // older copy have gone missing meanwhile, it is reported as what it is.
+    const err = deadline?.aborted
+      ? new NetworkError(
+          tr(
+            `${hostOf(url)} hat zu lange nicht geantwortet. Prüfe deine Internetverbindung und versuche es erneut.`,
+            `${hostOf(url)} took too long to answer. Check your internet connection and try again.`
+          ),
+          { cause: caught }
+        )
+      : caught
     // Stale data beats no data when the network is down.
     try {
       const raw = await readFile(file, 'utf8')

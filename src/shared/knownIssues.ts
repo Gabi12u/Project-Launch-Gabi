@@ -5680,9 +5680,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Hing die Internetverbindung, ohne einen Fehler zu melden, etwa in einem WLAN mit Anmeldeseite oder bei ' +
       'schlechtem Empfang, versuchte der Launcher eine Abfrage viermal mit je einer Minute Wartezeit, bevor er ' +
       'auf seinen gespeicherten Stand zurückgriff. Die Versionsauswahl oder der Start hingen so lange. ' +
-      'Nachgemessen: 243 Sekunden.',
-    state: 'investigating',
-    since: '2026-11-14'
+      'Nachgemessen: 243 Sekunden. Seit 1.0.26 greift er nach spätestens 20 Sekunden auf den gespeicherten ' +
+      'Stand zurück.',
+    state: 'fixed',
+    since: '2026-11-14',
+    fixedIn: '1.0.26'
   },
   {
     id: 'apple-silicon-minecraft-1-18',

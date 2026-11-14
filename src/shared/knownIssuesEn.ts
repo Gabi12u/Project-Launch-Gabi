@@ -3421,7 +3421,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'When the internet connection hung without reporting an error, as on Wi-Fi with a sign-in page or with ' +
       'bad reception, the launcher tried a request four times with a minute of waiting each before it fell ' +
-      'back to its stored data. The version picker or the start hung that long. Measured: 243 seconds.'
+      'back to its stored data. The version picker or the start hung that long. Measured: 243 seconds. Since ' +
+      '1.0.26 it falls back to the stored data after 20 seconds at most.'
   },
   'apple-silicon-minecraft-1-18': {
     title: 'On Macs with an Apple chip, Minecraft 1.18 to 1.18.2 did not start',

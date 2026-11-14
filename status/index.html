@@ -4921,9 +4921,10 @@ footer .grow { flex: 1; }
     {
       "id": "tote-verbindung-vier-minuten",
       "title": "Bei einer Verbindung ohne Antwort wartete der Launcher rund vier Minuten",
-      "detail": "Hing die Internetverbindung, ohne einen Fehler zu melden, etwa in einem WLAN mit Anmeldeseite oder bei schlechtem Empfang, versuchte der Launcher eine Abfrage viermal mit je einer Minute Wartezeit, bevor er auf seinen gespeicherten Stand zurückgriff. Die Versionsauswahl oder der Start hingen so lange. Nachgemessen: 243 Sekunden.",
-      "state": "investigating",
-      "since": "2026-11-14"
+      "detail": "Hing die Internetverbindung, ohne einen Fehler zu melden, etwa in einem WLAN mit Anmeldeseite oder bei schlechtem Empfang, versuchte der Launcher eine Abfrage viermal mit je einer Minute Wartezeit, bevor er auf seinen gespeicherten Stand zurückgriff. Die Versionsauswahl oder der Start hingen so lange. Nachgemessen: 243 Sekunden. Seit 1.0.26 greift er nach spätestens 20 Sekunden auf den gespeicherten Stand zurück.",
+      "state": "fixed",
+      "since": "2026-11-14",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "apple-silicon-minecraft-1-18",
@@ -8849,9 +8850,10 @@ footer .grow { flex: 1; }
     {
       "id": "tote-verbindung-vier-minuten",
       "title": "With a connection that never answered, the launcher waited about four minutes",
-      "detail": "When the internet connection hung without reporting an error, as on Wi-Fi with a sign-in page or with bad reception, the launcher tried a request four times with a minute of waiting each before it fell back to its stored data. The version picker or the start hung that long. Measured: 243 seconds.",
-      "state": "investigating",
-      "since": "2026-11-14"
+      "detail": "When the internet connection hung without reporting an error, as on Wi-Fi with a sign-in page or with bad reception, the launcher tried a request four times with a minute of waiting each before it fell back to its stored data. The version picker or the start hung that long. Measured: 243 seconds. Since 1.0.26 it falls back to the stored data after 20 seconds at most.",
+      "state": "fixed",
+      "since": "2026-11-14",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "apple-silicon-minecraft-1-18",
