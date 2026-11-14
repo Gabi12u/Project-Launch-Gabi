@@ -9,6 +9,7 @@ import {
   openSync,
   readFileSync,
   renameSync,
+  rmSync,
   unlinkSync,
   writeFileSync
 } from 'node:fs'
@@ -674,6 +675,13 @@ export function writeAccounts(accounts: StoredAccount[]): void {
     writeJsonAtomic(previousFile(accountsFile()), accounts)
   } catch (err) {
     logger.warn('Kopie der Accounts nicht geschrieben:', err)
+    // A copy that is not the latest is worse than none: an account removed
+    // just now would come back from it, sign-in and all.
+    try {
+      rmSync(previousFile(accountsFile()), { force: true })
+    } catch {
+      // nothing more to do
+    }
   }
 }
 

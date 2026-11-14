@@ -1224,7 +1224,20 @@ export async function exportMrpack(instanceId: string, options: ExportOptions): 
     // An instance whose first setup never got to fix a loader build has none
     // recorded. Written as "", the pack was invalid for other launchers, and
     // this one refused it again as a pack with an unknown mod loader.
-    const loaderVersion = current.loader === 'vanilla' ? '' : await pinnedLoaderVersion(current)
+    let loaderVersion = ''
+    if (current.loader !== 'vanilla') {
+      try {
+        loaderVersion = await pinnedLoaderVersion(current)
+      } catch (err) {
+        throw new Error(
+          tr(
+            'Für diese Instanz steht noch keine Mod-Loader-Version fest, und sie ließ sich gerade nicht nachschlagen, etwa weil keine Internetverbindung besteht. Versuche den Export mit Verbindung erneut.',
+            'No mod loader version is fixed for this instance yet, and it could not be looked up right now, for example because there is no internet connection. Try the export again while connected.'
+          ),
+          { cause: err }
+        )
+      }
+    }
 
     const dependencies: Record<string, string> = { minecraft: current.mcVersion }
     switch (current.loader) {

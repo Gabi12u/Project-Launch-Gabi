@@ -261,6 +261,8 @@ function sizeText(bytes: number): string {
  * task at its last percentage until someone cancelled it by hand.
  */
 const CLOUD_IDLE_MS = 120_000
+/** How long the server may take to answer once an upload is complete. */
+const CLOUD_ANSWER_MS = 15 * 60_000
 
 function putFile(
   path: string,
@@ -318,9 +320,14 @@ function putFile(
       if (task.signal.aborted) return
       reject(new Error(tr('Die Verbindung zur Cloud ist abgebrochen. Bitte noch einmal versuchen.', 'The connection to the cloud dropped. Please try again.'), { cause: err }))
     })
-    pipeline(createReadStream(file), meter, req).catch(() => {
-      // Reported through the request's own error above.
-    })
+    pipeline(createReadStream(file), meter, req)
+      // Once the last byte is out, the server may need a while to store and
+      // check several gigabytes before it answers, with nothing moving on
+      // the line. Two minutes of quiet then failed an upload that was fine.
+      .then(() => req.setTimeout(CLOUD_ANSWER_MS))
+      .catch(() => {
+        // Reported through the request's own error above.
+      })
   })
 }
 
