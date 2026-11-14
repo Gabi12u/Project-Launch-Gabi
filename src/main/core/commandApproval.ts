@@ -34,7 +34,11 @@ export type CommandKind = 'wrapper' | 'preLaunch' | 'javaPath' | 'jvmArgs' | 'en
 // the same from the other end: placed before the launcher's main class,
 // they make Java start a jar or module of their choosing instead.
 const CODE_LOADING_JVM_ARG =
-  /^(-jar$|-m$|--module(?:=|$)|-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile|-Dminecraft\.api\.|-Dhttps?\.proxy|-DsocksProxy|-Djava\.net\.useSystemProxies|-Djavax\.net\.ssl\.|-Djava\.security\.|-Dfabric\.gameJarPath|-Dfabric\.systemLibraries|-Dfml\.coreMods)/i
+  /^(-jar$|-m$|--module(?:=|$)|-javaagent|-agentpath|-agentlib|-Xbootclasspath|-XX:OnError|-XX:OnOutOfMemoryError|-XX:VMOptionsFile|-XX:Flags|-Djava\.system\.class\.loader|@|-cp$|-classpath$|--class-path|-p$|--module-path|--upgrade-module-path|--patch-module|-Xrun|-Xdebug|-Djava\.library\.path|-Dorg\.lwjgl\.librarypath|-Djna\.library\.path|-Djava\.ext\.dirs|-Djava\.endorsed\.dirs|-Dfabric\.addMods|-Dloader\.addMods|-Dlog4j2?\.configurationFile|-Dminecraft\.api\.|-Dhttps?\.proxy|-DsocksProxy|-Djava\.net\.useSystemProxies|-Djavax\.net\.ssl\.|-Djava\.security\.|-Dfabric\.gameJarPath|-Dfabric\.systemLibraries|-Dfml\.coreMods|-Dorg\.lwjgl\.[\w.]*(?:libname|SharedLibraryExtractPath)|-Dcom\.sun\.management\.|-XX:SharedArchiveFile|-XX:ArchiveClassesAtExit|-Dsun\.boot\.library\.path|-Djava\.class\.path)/i
+// The last ones: LWJGL loads the native library a "libname" property names
+// (GLFW, OpenGL, OpenAL), "SharedLibraryExtractPath" decides where its
+// natives come from, "com.sun.management" opens a JMX port that runs code
+// sent over the network, and a shared archive file brings classes of its own.
 
 /**
  * Takes the arguments already split the way they reach Java. Checked on the

@@ -71,11 +71,16 @@ try {
     ['--module', 'fremd/de.fremd.Main'],
     ['--module=fremd/de.fremd.Main'],
     ['-javaagent:C:\\a.jar'],
-    ['-cp', 'C:\\fremd']
+    ['-cp', 'C:\\fremd'],
+    ['-Dorg.lwjgl.glfw.libname=C:\\fremd\\glfw.dll'],
+    ['-Dorg.lwjgl.opengl.libname=C:\\fremd\\gl.dll'],
+    ['-Dorg.lwjgl.system.SharedLibraryExtractPath=C:\\fremd'],
+    ['-Dcom.sun.management.jmxremote.port=9999', '-Dcom.sun.management.jmxremote.authenticate=false'],
+    ['-XX:SharedArchiveFile=C:\\fremd\\app.jsa']
   ]) {
     check(jvmArgsLoadCode(args), `Sollte eine Rueckfrage ausloesen: ${args.join(' ')}`)
   }
-  for (const args of [['-Xmx4G', '-XX:+UseG1GC'], ['-Dmy.jar=1'], ['-jarfoo']]) {
+  for (const args of [['-Xmx4G', '-XX:+UseG1GC'], ['-Dmy.jar=1'], ['-jarfoo'], ['-Dorg.lwjgl.util.Debug=true'], ['-XX:+UseZGC', '-Dfml.ignoreInvalidMinecraftCertificates=true']]) {
     check(!jvmArgsLoadCode(args), `Gewoehnliche Argumente loesen eine Rueckfrage aus: ${args.join(' ')}`)
   }
   notes.push('Java-Argumente: -jar, -m und --module fragen nach, gewoehnliche Einstellungen nicht.')
