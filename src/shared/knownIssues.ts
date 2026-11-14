@@ -5709,6 +5709,19 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'investigating',
     since: '2026-11-14',
     platforms: ['Linux']
+  },
+  {
+    id: 'mac-ampelknoepfe-ueber-titel',
+    title: 'Auf dem Mac lagen die Fensterknöpfe über dem Schriftzug „Launch Gabi“',
+    detail:
+      'Oben links im Fenster zeichnet macOS die drei runden Knöpfe zum Schließen, Minimieren und Vergrößern. ' +
+      'Der Launcher ließ dort nur einen schmalen Rand frei, so lagen die Knöpfe genau über dem Schriftzug ' +
+      '„Launch Gabi“ und über den Anzeigen daneben, etwa „Minecraft läuft“. Bedienen ließ sich alles, es ' +
+      'war nur schlecht lesbar. Seit 1.0.26 beginnt der Schriftzug erst rechts neben den Knöpfen.',
+    state: 'fixed',
+    since: '2026-11-14',
+    platforms: ['macOS'],
+    fixedIn: '1.0.26'
   }
 ]
 

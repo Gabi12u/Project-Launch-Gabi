@@ -16,6 +16,13 @@
   z-index: 40;
 }
 
+/* macOS draws its traffic lights into the top left corner of the window
+   (`titleBarStyle: 'hiddenInset'`). They end at about 72px, so the title
+   starts after them instead of underneath. */
+.titlebar.mac {
+  padding-left: 84px;
+}
+
 .titlebar-left,
 .titlebar-right {
   display: flex;

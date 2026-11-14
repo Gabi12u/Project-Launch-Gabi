@@ -35,7 +35,7 @@ export function TitleBar(): JSX.Element {
   const activeTasks = tasks.filter((t) => t.state === 'running').length
 
   return (
-    <header className="titlebar">
+    <header className={platform === 'darwin' ? 'titlebar mac' : 'titlebar'}>
       <div className="titlebar-left">
         <span className="titlebar-title">Launch Gabi</span>
 

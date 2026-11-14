@@ -3440,6 +3440,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'This affects every program built on Electron like the launcher. Workaround: start the launcher from ' +
       'the terminal with the option --no-sandbox.'
   },
+  'mac-ampelknoepfe-ueber-titel': {
+    title: 'On the Mac, the window buttons sat on top of the “Launch Gabi” lettering',
+    detail:
+      'macOS draws the three round buttons for closing, minimising and zooming in the top left corner of the ' +
+      'window. The launcher left only a narrow margin there, so the buttons sat right on top of the “Launch ' +
+      'Gabi” lettering and the indicators next to it, such as “Minecraft is running”. Everything still worked, ' +
+      'it was just hard to read. Since 1.0.26 the lettering starts to the right of the buttons.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:
