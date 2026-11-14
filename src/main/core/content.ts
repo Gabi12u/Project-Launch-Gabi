@@ -34,7 +34,7 @@ import {
   syncContentWithDisk,
   toggleContent
 } from './instances'
-import { bestVersionFor, curseforge, getVersions, modrinth } from '../providers'
+import { bestVersionFor, curseforge, getVersion, modrinth } from '../providers'
 import { listLoaderVersions } from '../loaders'
 import { compareMaven, compareVersions, modVersionOf } from './crashHelp'
 import { createBackup, NothingToBackUpError } from './backups'
@@ -249,8 +249,7 @@ async function installContentOnce(
   // Pick the version -------------------------------------------------
   let version: ProjectVersion | null = null
   if (options.versionId) {
-    const all = await getVersions(provider, projectId)
-    version = all.find((v) => v.versionId === options.versionId) ?? null
+    version = await getVersion(provider, projectId, options.versionId)
   } else {
     version = await bestVersionFor(provider, projectId, instance.mcVersion, instance.loader, type)
   }
@@ -1231,9 +1230,7 @@ async function applyUpdateOnce(
   try {
     const fresh = prepared
       ? prepared.version
-      : (await getVersions(item.provider as 'modrinth' | 'curseforge', item.projectId as string)).find(
-          (v) => v.versionId === next.versionId
-        )
+      : await getVersion(item.provider as 'modrinth' | 'curseforge', item.projectId as string, next.versionId as string)
     if (fresh) {
       next.dependencies = fresh.dependencies
       next.gameVersions = fresh.gameVersions

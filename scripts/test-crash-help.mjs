@@ -212,6 +212,7 @@ try {
          return pick ? pick(mc) : null
        },
        getVersions: async (provider, projectId) => globalThis.__lgAll[projectId] || [],
+       getVersion: async (provider, projectId, versionId) => (globalThis.__lgAll[projectId] || []).find((v) => v.versionId === versionId) ?? null,
        getProject: async (provider, id) => ({
          projectId: id,
          slug: Object.keys(globalThis.__lgSlugs).find((slug) => globalThis.__lgSlugs[slug].projectId === id) ?? id,

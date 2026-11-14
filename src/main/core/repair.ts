@@ -14,7 +14,7 @@ import { checkUpdates, contentFilePath, identifyLocalContent, removeContent } fr
 import { gameVersionMatches } from './gameVersions'
 import { loaderFit } from './compat'
 import { isContentBusy, withContentLock } from './contentLock'
-import { bestVersionFor, getVersions } from '../providers'
+import { bestVersionFor, getVersion } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
 import { isArchiving, isRestoring } from './restoreLock'
@@ -809,7 +809,7 @@ async function runRepair(
           // is exactly what does not fit, so that one is skipped.
           if (item.versionId && !wrongGame) {
             try {
-              version = (await getVersions(provider, item.projectId)).find((v) => v.versionId === item.versionId) ?? null
+              version = await getVersion(provider, item.projectId, item.versionId)
             } catch (err) {
               rethrowIfCancelled(err)
               logger.debug(`Installierte Version von ${item.name} nicht abrufbar:`, err)

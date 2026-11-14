@@ -5659,9 +5659,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Der Launcher liest von einem CurseForge-Projekt höchstens 750 Dateien. Große Mods haben mehr, Just ' +
       'Enough Items zum Beispiel über 3800. Was darüber hinausgeht, sah der Launcher nicht, und er meldete ' +
       'dann „keine Version für diese Minecraft-Version“, obwohl es eine gibt, oder bot kein Update an. ' +
-      'Abhilfe: denselben Mod von Modrinth installieren, falls es ihn dort gibt.',
-    state: 'investigating',
-    since: '2026-11-14'
+      'Abhilfe: denselben Mod von Modrinth installieren, falls es ihn dort gibt. Seit 1.0.26 fragt der ' +
+      'Launcher CurseForge gezielt nach der eigenen Minecraft-Version und eine bestimmte Datei direkt ab.',
+    state: 'fixed',
+    since: '2026-11-14',
+    fixedIn: '1.0.26'
   },
   {
     id: 'modpack-ueber-2-gb',

@@ -445,8 +445,6 @@ export async function bestVersionFor(
   loader: LoaderId,
   type: ContentType = 'mod'
 ): Promise<ProjectVersion | null> {
-  const all = await getVersions(projectId)
-
   // Only mods are tied to a mod loader. Resource packs list "minecraft",
   // shaders "iris" or "optifine" and data packs "datapack" as their loader,
   // so the filter found nothing for them in any modded instance, and
@@ -458,11 +456,25 @@ export async function bestVersionFor(
     v.loaders.includes(loader) ||
     (loader === 'quilt' && v.loaders.includes('fabric'))
 
-  const exact = preferNativeQuilt(
-    all.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v)),
-    loader
-  )
-  if (exact.length > 0) return exact.find((v) => v.releaseType === 'release') ?? exact[0]
+  const pickExact = (list: ProjectVersion[]): ProjectVersion | null => {
+    const exact = preferNativeQuilt(
+      list.filter((v) => v.gameVersions.includes(gameVersion) && loaderOk(v)),
+      loader
+    )
+    return exact.length > 0 ? (exact.find((v) => v.releaseType === 'release') ?? exact[0]) : null
+  }
+
+  // Asked for this Minecraft version first. The unfiltered list below stops
+  // at 750 files, newest first, and big projects carry thousands (Just Enough
+  // Items over 3800), so an exact match further back was never seen. The
+  // loader is checked here rather than in the query: the filter on the
+  // server would drop files without a loader tag and Fabric builds for Quilt.
+  const filtered = pickExact(await getVersions(projectId, gameVersion))
+  if (filtered) return filtered
+
+  const all = await getVersions(projectId)
+  const exact = pickExact(all)
+  if (exact) return exact
 
   // The same rule as the Modrinth provider: a hotfix of the same release for
   // mods and data packs, the whole line only for resource packs and shaders.
@@ -475,17 +487,23 @@ export async function bestVersionFor(
   return (nearby.find((v) => v.releaseType === 'release') ?? nearby[0]) ?? null
 }
 
+/**
+ * One file straight by its id. Finding it in `getVersions` missed every file
+ * beyond the first 750. Null when it does not exist; a network fault is
+ * thrown like everywhere else, not passed off as a missing file.
+ */
 export async function getFile(projectId: string, fileId: string): Promise<ProjectVersion | null> {
+  if (!/^\d+$/.test(projectId) || !/^\d+$/.test(fileId)) return null
+  let response: CfSingleResponse<CfFile>
   try {
-    const response = await fetchJson<CfSingleResponse<CfFile>>(
-      `${API}/mods/${projectId}/files/${fileId}`,
-      { headers: headers() }
-    )
-    return mapFile(response.data)
+    response = await fetchJson<CfSingleResponse<CfFile>>(`${API}/mods/${projectId}/files/${fileId}`, { headers: headers() })
   } catch (err) {
-    logger.warn(`Datei ${fileId} von Projekt ${projectId} nicht abrufbar:`, err)
-    return null
+    if (err instanceof HttpError && err.status === 404) return null
+    throw err
   }
+  // Another project's file under this id is not the one asked for.
+  if (!response?.data || String(response.data.modId) !== projectId) return null
+  return mapFile(response.data)
 }
 
 /** Bulk lookup used when installing a CurseForge modpack manifest. */

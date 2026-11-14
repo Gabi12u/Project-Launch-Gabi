@@ -3407,7 +3407,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'The launcher reads at most 750 files of a CurseForge project. Big mods have more, Just Enough Items ' +
       'for example over 3800. Whatever lies beyond was not seen, and the launcher then said "no version for ' +
       'this Minecraft version" although there is one, or offered no update. Workaround: install the same mod ' +
-      'from Modrinth if it is there.'
+      'from Modrinth if it is there. Since 1.0.26 the launcher asks CurseForge for its own Minecraft version ' +
+      'specifically, and for a particular file directly.'
   },
   'modpack-ueber-2-gb': {
     title: 'Modpacks over 2 GB could not be imported',

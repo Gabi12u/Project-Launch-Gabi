@@ -32,7 +32,7 @@ import { isContentBusy, withContentLock } from './contentLock'
 import { isRestoring } from './restoreLock'
 import { isRepairing } from './repairLock'
 import { withBackupQueue } from './backups'
-import { curseforge, getProject, getVersions, modrinth } from '../providers'
+import { curseforge, getProject, getVersion, getVersions, modrinth } from '../providers'
 import { formatNumber, tr } from '@shared/i18n'
 
 const logger = log('modpack')
@@ -1409,12 +1409,12 @@ export async function installModpackFromProvider(
   versionId?: string
 ): Promise<Instance> {
   const project = await getProject(provider, projectId)
-  const versions = await getVersions(provider, projectId)
-
   // Without a chosen version the newest stable release, not simply the
-  // newest file, which can be an alpha or a beta.
+  // newest file, which can be an alpha or a beta. A chosen one by its id: on
+  // CurseForge the full list stops at 750 files.
+  const versions = versionId ? [] : await getVersions(provider, projectId)
   const version = versionId
-    ? versions.find((v) => v.versionId === versionId)
+    ? await getVersion(provider, projectId, versionId)
     : (versions.find((v) => v.releaseType === 'release') ?? versions[0])
   if (!version) throw new Error(tr(`Für ${project.name} wurde keine Version gefunden.`, `No version was found for ${project.name}.`))
 

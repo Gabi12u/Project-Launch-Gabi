@@ -114,6 +114,20 @@ export async function getVersions(
     : curseforge.getVersions(projectId, gameVersion, loader)
 }
 
+/**
+ * One specific version, or null when the project has no such version. On
+ * CurseForge it is asked for by its id: the full list stops at 750 files, and
+ * an older file of a big project was reported as gone.
+ */
+export async function getVersion(
+  provider: 'modrinth' | 'curseforge',
+  projectId: string,
+  versionId: string
+): Promise<ProjectVersion | null> {
+  if (provider === 'curseforge') return curseforge.getFile(projectId, versionId)
+  return (await modrinth.getVersions(projectId)).find((v) => v.versionId === versionId) ?? null
+}
+
 export async function bestVersionFor(
   provider: 'modrinth' | 'curseforge',
   projectId: string,
