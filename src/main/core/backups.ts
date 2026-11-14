@@ -247,6 +247,14 @@ export interface CreateBackupOptions {
  */
 const instanceLocks = new Map<string, Promise<unknown>>()
 
+/**
+ * The same queue for a modpack export, which reads the instance folders
+ * just like a backup does. Restores waited for nothing it was doing.
+ */
+export function withBackupQueue<T>(instanceId: string, fn: () => Promise<T>): Promise<T> {
+  return withInstanceLock(instanceId, fn)
+}
+
 async function withInstanceLock<T>(instanceId: string, fn: () => Promise<T>): Promise<T> {
   const previous = instanceLocks.get(instanceId) ?? Promise.resolve()
   // A failed operation must not wedge the queue for everything after it.

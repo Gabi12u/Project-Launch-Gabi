@@ -17,7 +17,7 @@ import { isContentBusy, withContentLock } from './contentLock'
 import { bestVersionFor, getVersions } from '../providers'
 import { installLoader } from '../loaders'
 import { activeVersionIds, isRunning, isStarting } from './running'
-import { isRestoring } from './restoreLock'
+import { isArchiving, isRestoring } from './restoreLock'
 import { isNativesClaimed } from './launch'
 import { clearRepairing, isRepairing, markRepairing } from './repairLock'
 import { pushLog } from './instanceLog'
@@ -180,6 +180,15 @@ export async function repairInstance(instanceId: string): Promise<RepairReport> 
   if (isRestoring(instanceId)) {
     throw new Error(
       tr('Für diese Instanz wird gerade eine Sicherung eingespielt. Warte, bis das abgeschlossen ist.', 'A backup is being restored for this instance right now. Wait until that is done.')
+    )
+  }
+
+  // A backup or a modpack export reads these folders file by file; a repair
+  // swapping mods underneath made the export list files that were gone, or
+  // describe mods that were not in the pack.
+  if (isArchiving(instanceId)) {
+    throw new Error(
+      tr('Diese Instanz wird gerade gesichert oder exportiert. Warte, bis das abgeschlossen ist.', 'This instance is being backed up or exported right now. Wait until that is done.')
     )
   }
 

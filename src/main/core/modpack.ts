@@ -28,8 +28,10 @@ import {
   waitForInstanceSetup
 } from './instances'
 import { PACK_FILENAME as START_SCREEN_PACK } from './startScreen'
-import { withContentLock } from './contentLock'
-import { withArchiving } from './restoreLock'
+import { isContentBusy, withContentLock } from './contentLock'
+import { isRestoring } from './restoreLock'
+import { isRepairing } from './repairLock'
+import { withBackupQueue } from './backups'
 import { curseforge, getProject, getVersions, modrinth } from '../providers'
 import { formatNumber, tr } from '@shared/i18n'
 
@@ -1216,8 +1218,21 @@ function sha512File(file: string): Promise<string> {
 export async function exportMrpack(instanceId: string, options: ExportOptions): Promise<string> {
   const instance = getInstance(instanceId)
 
-  // Marked as archiving, so the instance cannot be deleted mid export.
-  return withTask(tr(`${instance.name} wird exportiert`, `Exporting ${instance.name}`), tr('Inhalte werden gesammelt…', 'Collecting content…'), instanceId, (task) => withArchiving(instanceId, async () => {
+  // The export reads the mods and folders file by file. With a repair or an
+  // update swapping them meanwhile, or a restore moving them aside, it
+  // listed files that were gone or packed mods the list did not name.
+  if (isRestoring(instanceId) || isRepairing(instanceId) || isContentBusy(instanceId)) {
+    throw new Error(
+      tr(
+        'An dieser Instanz wird gerade gearbeitet, etwa eine Reparatur, ein Update oder eine Wiederherstellung. Exportiere, wenn das fertig ist.',
+        'This instance is being worked on right now, a repair, an update or a restore for example. Export once that is done.'
+      )
+    )
+  }
+
+  // Through the same queue as backups and restores, which also marks the
+  // instance as archiving, so it cannot be deleted mid export.
+  return withTask(tr(`${instance.name} wird exportiert`, `Exporting ${instance.name}`), tr('Inhalte werden gesammelt…', 'Collecting content…'), instanceId, (task) => withBackupQueue(instanceId, async () => {
     await syncContentWithDisk(instanceId)
     const current = getInstance(instanceId)
 
