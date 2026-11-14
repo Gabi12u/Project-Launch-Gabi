@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { DEFAULT_INSTANCE_SETTINGS } from '@shared/defaults'
@@ -103,6 +103,11 @@ function pendingTarget(raw: unknown): Instance['pendingVersionChange'] {
   return { mcVersion: value.mcVersion, loader: value.loader, loaderVersion: typeof value.loaderVersion === 'string' ? value.loaderVersion : '' }
 }
 
+/** Marks an instance folder a duplicate is still being copied into. */
+const COPY_MARKER = '.launchgabi-kopie-laeuft'
+/** Ids a duplicate is copying into right now, so the sweep leaves them be. */
+const copyingInto = new Set<string>()
+
 export function loadInstances(force = false): Instance[] {
   if (loaded && !force) return [...cache.values()]
 
@@ -111,7 +116,19 @@ export function loadInstances(force = false): Instance[] {
   if (existsSync(dir)) {
     for (const entry of readdirSync(dir)) {
       const file = paths.instanceFile(entry)
-      if (!existsSync(file)) continue
+      if (!existsSync(file)) {
+        // A duplicate that never finished: the launcher was closed or the
+        // PC went off mid copy. Not one that is still running right now.
+        if (existsSync(join(dir, entry, COPY_MARKER)) && !copyingInto.has(entry)) {
+          try {
+            rmSync(join(dir, entry), { recursive: true, force: true })
+            logger.info(`Halbe Kopie ${entry} aus einem abgebrochenen Duplizieren entfernt`)
+          } catch (err) {
+            logger.warn(`Halbe Kopie ${entry} nicht entfernt:`, err)
+          }
+        }
+        continue
+      }
       try {
         // A damaged file is set aside with a notice. A locked one (a scanner
         // holding it for a moment) is skipped for now instead: caching a blank
@@ -993,6 +1010,13 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     return true
   }
   markCopying(id)
+  // Marks the folder as a copy in progress. The cleanup below only runs for
+  // an error; a launcher closed or a PC switched off mid copy left a folder
+  // without instance.json, invisible in the list and never removed, many
+  // gigabytes of worlds possibly. `loadInstances` sweeps such folders.
+  const marker = join(paths.instance(newId), COPY_MARKER)
+  writeFileSync(marker, '')
+  copyingInto.add(newId)
   try {
     await withContentLock(id, () => cp(sourceDir, paths.gameDir(newId), { recursive: true, filter: skipLinks }))
 
@@ -1014,6 +1038,7 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     throw err
   } finally {
     unmarkCopying(id)
+    copyingInto.delete(newId)
   }
 
   const clone: Instance = {
@@ -1046,6 +1071,7 @@ export async function duplicateInstance(id: string, newName?: string): Promise<I
     }
     throw err
   }
+  rmSync(marker, { force: true })
   logger.info(`Instanz ${id} nach ${newId} dupliziert`)
   if (skippedLinks.length > 0) {
     logger.info(`Verknüpfungen beim Duplizieren ausgelassen: ${skippedLinks.join(', ')}`)

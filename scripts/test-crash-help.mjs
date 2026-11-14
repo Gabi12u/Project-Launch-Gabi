@@ -963,6 +963,22 @@ More details:
   check(report.launchable, `Ohne Netz blockiert die Prüfung den Start: ${JSON.stringify(report.issues.filter((i) => i.severity === 'error').map((i) => i.title))}`)
   check(offlineDep?.severity === 'warning' && !/306612/.test(offlineDep.title), `Ohne Netz, Hinweis: ${JSON.stringify(offlineDep)}`)
 
+  // --- 27. A duplicate cut off mid copy is swept on the next load, nothing else -----
+  const half = join(p.instances(), 'halbe-kopie')
+  mkdirSync(join(half, 'minecraft', 'saves'), { recursive: true })
+  writeFileSync(join(half, 'minecraft', 'saves', 'gross.dat'), 'welt')
+  writeFileSync(join(half, '.launchgabi-kopie-laeuft'), '')
+  const foreign = join(p.instances(), 'fremder-ordner')
+  mkdirSync(foreign, { recursive: true })
+  writeFileSync(join(foreign, 'notiz.txt'), 'von Hand')
+  instances.loadInstances(true)
+  check(!existsSync(half), 'Abgebrochenes Duplizieren: der halbe Ordner liegt noch da')
+  check(existsSync(join(foreign, 'notiz.txt')), 'Ein fremder Ordner ohne Markierung wurde gelöscht')
+  const copy = await instances.duplicateInstance('gesperrt', 'Kopie von gesperrt')
+  check(!existsSync(join(p.instance(copy.id), '.launchgabi-kopie-laeuft')), 'Nach dem Duplizieren liegt die Markierung noch im Ordner')
+  instances.loadInstances(true)
+  check(instances.getInstance(copy.id).name === 'Kopie von gesperrt', 'Die fertige Kopie fehlt nach dem Neuladen')
+
   // --- 24. A new start while the last crash is still worked out ----------------------
   const pending = crashed('apifehlt', MODULE_MISSING)
   crash.forgetCrash('apifehlt')
