@@ -943,9 +943,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'Unlike the Microsoft sign-in data, a custom CurseForge API key that has been entered is not ' +
       'protected by the operating system’s encryption, only stored as plain text. The field only ' +
-      'matters to anyone who entered their own key in the first place. A real fix would change the ' +
-      'settings file’s storage format and need to carry over already-saved keys, which is still ' +
-      'outstanding.'
+      'matters to anyone who entered their own key in the first place. Since 1.0.26 the key is ' +
+      'encrypted just like the sign-in data, one already saved on the first start. Where the operating ' +
+      'system offers no encryption, as on some Linux systems, it stays stored readable as before.'
   },
   'sicherung-ordner-liste-ohne-pruefung': {
     title: 'The folder list for backing up and restoring was not limited to the real backup folders',

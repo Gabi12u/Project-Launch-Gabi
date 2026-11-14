@@ -1836,9 +1836,10 @@ footer .grow { flex: 1; }
     {
       "id": "curseforge-schluessel-unverschluesselt",
       "title": "Der eigene CurseForge-API-Schlüssel liegt unverschlüsselt in der Einstellungsdatei",
-      "detail": "Anders als die Microsoft-Anmeldedaten wird ein eingetragener eigener CurseForge-API-Schlüssel nicht über die Verschlüsselung des Betriebssystems geschützt, sondern als Klartext gespeichert. Das Feld ist nur für Nutzer relevant, die von sich aus einen eigenen Schlüssel eingetragen haben. Eine echte Behebung würde das Speicherformat der Einstellungsdatei ändern und eine Übernahme bereits gespeicherter Schlüssel brauchen, das steht noch aus.",
-      "state": "investigating",
-      "since": "2026-09-20"
+      "detail": "Anders als die Microsoft-Anmeldedaten wird ein eingetragener eigener CurseForge-API-Schlüssel nicht über die Verschlüsselung des Betriebssystems geschützt, sondern als Klartext gespeichert. Das Feld ist nur für Nutzer relevant, die von sich aus einen eigenen Schlüssel eingetragen haben. Seit 1.0.26 wird der Schlüssel genauso verschlüsselt wie die Anmeldedaten, ein schon gespeicherter beim ersten Start. Wo das Betriebssystem keine Verschlüsselung anbietet, etwa auf manchen Linux-Systemen, bleibt er wie bisher lesbar gespeichert.",
+      "state": "fixed",
+      "since": "2026-09-20",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "sicherung-ordner-liste-ohne-pruefung",
@@ -5771,9 +5772,10 @@ footer .grow { flex: 1; }
     {
       "id": "curseforge-schluessel-unverschluesselt",
       "title": "A custom CurseForge API key sits unencrypted in the settings file",
-      "detail": "Unlike the Microsoft sign-in data, a custom CurseForge API key that has been entered is not protected by the operating system’s encryption, only stored as plain text. The field only matters to anyone who entered their own key in the first place. A real fix would change the settings file’s storage format and need to carry over already-saved keys, which is still outstanding.",
-      "state": "investigating",
-      "since": "2026-09-20"
+      "detail": "Unlike the Microsoft sign-in data, a custom CurseForge API key that has been entered is not protected by the operating system’s encryption, only stored as plain text. The field only matters to anyone who entered their own key in the first place. Since 1.0.26 the key is encrypted just like the sign-in data, one already saved on the first start. Where the operating system offers no encryption, as on some Linux systems, it stays stored readable as before.",
+      "state": "fixed",
+      "since": "2026-09-20",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "sicherung-ordner-liste-ohne-pruefung",

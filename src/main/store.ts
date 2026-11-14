@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 import { randomUUID } from 'node:crypto'
 import {
   closeSync,
@@ -379,6 +379,85 @@ export function isSettingsUnreadable(): boolean {
   return settingsUnreadable
 }
 
+/*
+ * The CurseForge key on disk.
+ *
+ * It sat in launcher.json as plain text, unlike the account tokens, which
+ * the system's own encryption protects. It is now stored the same way, in a
+ * field of its own, and only ever held readable in memory. Where the system
+ * offers no encryption (some Linux desktops), it stays plain as before.
+ */
+const CF_SECURE_FIELD = 'curseForgeApiKeySecure'
+
+/** The encrypted key as read from disk, until it could be decrypted. */
+let curseForgeSecure: string | null = null
+
+function encryptionReady(): boolean {
+  try {
+    return safeStorage.isEncryptionAvailable()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Decrypts the key read from disk into the settings in memory. On Linux the
+ * encryption only becomes available once the app is ready, after the
+ * settings were first read, so this is tried again on later reads.
+ */
+function revealCurseForgeKey(): void {
+  if (!curseForgeSecure || !settings || !encryptionReady()) return
+  try {
+    settings.curseForgeApiKey = safeStorage.decryptString(Buffer.from(curseForgeSecure, 'base64'))
+  } catch (err) {
+    logger.warn('CurseForge-Schlüssel ließ sich nicht entschlüsseln und muss neu eingetragen werden:', err)
+  }
+  curseForgeSecure = null
+}
+
+/** The settings as they go to disk: the CurseForge key encrypted where the system allows it. */
+function settingsForDisk(value: Partial<LauncherSettings>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...value }
+  delete out[CF_SECURE_FIELD]
+  const key = typeof value.curseForgeApiKey === 'string' ? value.curseForgeApiKey : ''
+  if (key && encryptionReady()) {
+    try {
+      out[CF_SECURE_FIELD] = safeStorage.encryptString(key).toString('base64')
+      out.curseForgeApiKey = ''
+    } catch (err) {
+      logger.warn('CurseForge-Schlüssel ließ sich nicht verschlüsseln, er bleibt lesbar gespeichert:', err)
+    }
+  } else if (!key && curseForgeSecure) {
+    // Read but not decrypted yet: kept exactly as it was.
+    out[CF_SECURE_FIELD] = curseForgeSecure
+  }
+  return out
+}
+
+/**
+ * The copy `keepPrevious` leaves next to the settings, without a readable
+ * key: copied over from the file before, it would keep the plain key the
+ * file itself no longer has.
+ */
+function scrubPreviousSettings(): void {
+  if (!encryptionReady()) return
+  const file = previousFile(settingsFile())
+  const result = readJsonResult<Partial<LauncherSettings>>(file, false)
+  if (!result.ok || !result.value || typeof result.value !== 'object') return
+  if (typeof result.value.curseForgeApiKey !== 'string' || !result.value.curseForgeApiKey) return
+  try {
+    writeJsonAtomic(file, settingsForDisk(result.value))
+  } catch (err) {
+    logger.warn('Vorherige Einstellungen ohne lesbaren CurseForge-Schlüssel nicht geschrieben:', err)
+  }
+}
+
+/** Writes the settings, the CurseForge key encrypted, and keeps the copy before. */
+function writeSettingsFile(value: LauncherSettings): void {
+  writeJsonAtomic(settingsFile(), settingsForDisk(value), { keepPrevious: true })
+  scrubPreviousSettings()
+}
+
 export function getSettings(): LauncherSettings {
   if (!settings) {
     const result = readSettingsFile()
@@ -412,6 +491,23 @@ export function getSettings(): LauncherSettings {
         ? { ...stored, microsoftClientId: DEFAULT_LAUNCHER_SETTINGS.microsoftClientId }
         : stored
     settings = sanitize({ ...DEFAULT_LAUNCHER_SETTINGS, language, ...migrated })
+    // The CurseForge key arrives encrypted in a field of its own and is held
+    // readable in memory only. One still stored readable from before is
+    // encrypted on disk right away, the file otherwise left as it was.
+    const storedSecure = (stored as Record<string, unknown>)[CF_SECURE_FIELD]
+    delete (settings as unknown as Record<string, unknown>)[CF_SECURE_FIELD]
+    if (typeof storedSecure === 'string' && storedSecure && !settings.curseForgeApiKey) {
+      curseForgeSecure = storedSecure
+      revealCurseForgeKey()
+    } else if (settings.curseForgeApiKey && result.ok && encryptionReady()) {
+      try {
+        writeJsonAtomic(settingsFile(), settingsForDisk(stored as Partial<LauncherSettings>))
+        scrubPreviousSettings()
+        logger.info('CurseForge-Schlüssel wird ab jetzt verschlüsselt gespeichert')
+      } catch (err) {
+        logger.warn('CurseForge-Schlüssel konnte nicht verschlüsselt gespeichert werden:', err)
+      }
+    }
     // The launch behaviour default moved from "keep" to "hide" (the main
     // window steps aside for the game and its live-log window). "keep" was
     // the old default nearly everyone still has without ever choosing it, so
@@ -425,6 +521,7 @@ export function getSettings(): LauncherSettings {
       settings.launchBehaviourDefaultApplied = false
     }
   }
+  if (curseForgeSecure) revealCurseForgeKey()
   return settings
 }
 
@@ -489,7 +586,9 @@ export function saveSettings(patch: Partial<LauncherSettings>): LauncherSettings
   // whatever they were before this call. Assigning first would have shown
   // the new values everywhere in the app while the file on disk still held
   // the old ones.
-  writeJsonAtomic(settingsFile(), next, { keepPrevious: true })
+  // A key typed in (or cleared) replaces one still waiting to be decrypted.
+  if ('curseForgeApiKey' in patch) curseForgeSecure = null
+  writeSettingsFile(next)
   settings = next
   return next
 }
@@ -517,7 +616,7 @@ export function resetSettings(): LauncherSettings {
     lastSeenVersion
   }
   // Same ordering as saveSettings, and for the same reason.
-  writeJsonAtomic(settingsFile(), next, { keepPrevious: true })
+  writeSettingsFile(next)
   settings = next
   return next
 }

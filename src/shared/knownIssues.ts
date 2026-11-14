@@ -1407,10 +1407,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Anders als die Microsoft-Anmeldedaten wird ein eingetragener eigener CurseForge-API-Schlüssel ' +
       'nicht über die Verschlüsselung des Betriebssystems geschützt, sondern als Klartext gespeichert. ' +
       'Das Feld ist nur für Nutzer relevant, die von sich aus einen eigenen Schlüssel eingetragen haben. ' +
-      'Eine echte Behebung würde das Speicherformat der Einstellungsdatei ändern und eine Übernahme ' +
-      'bereits gespeicherter Schlüssel brauchen, das steht noch aus.',
-    state: 'investigating',
-    since: '2026-09-20'
+      'Seit 1.0.26 wird der Schlüssel genauso verschlüsselt wie die Anmeldedaten, ein schon ' +
+      'gespeicherter beim ersten Start. Wo das Betriebssystem keine Verschlüsselung anbietet, etwa auf ' +
+      'manchen Linux-Systemen, bleibt er wie bisher lesbar gespeichert.',
+    state: 'fixed',
+    since: '2026-09-20',
+    fixedIn: '1.0.26'
   },
   {
     id: 'sicherung-ordner-liste-ohne-pruefung',
