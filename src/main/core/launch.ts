@@ -1060,9 +1060,15 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
               return
             }
             // Right after the game quits its world files can still be held for
-            // a moment, so one more try a little later.
+            // a moment, so one more try a little later. A mod install or an
+            // update started right after the game lasts longer than that, and
+            // the backup was given up with a warning: it waits for that work,
+            // up to five minutes.
             logger.warn(`Automatische Sicherung von ${instanceId} fehlgeschlagen, neuer Versuch:`, first)
-            await new Promise((resolve) => setTimeout(resolve, 5000))
+            const until = Date.now() + 5 * 60 * 1000
+            do {
+              await new Promise((resolve) => setTimeout(resolve, 5000))
+            } while (isContentBusy(instanceId) && Date.now() < until)
             return backUp()
           })
           .catch((err: unknown) => {
