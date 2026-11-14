@@ -197,6 +197,31 @@ try {
   notes.push(
     `packFormatFor: Release 1.21.5 -> ${release}, Snapshot 26w03a -> ${snapshotA}, Vorabversion 1.21.5-pre1 -> ${preRelease}`
   )
+
+  // Snapshots from 2013 to 2017 got the newest format too, and the pack was
+  // switched on in a way those versions do not understand (format < 4).
+  for (const [id, expected] of [['13w16a', 1], ['15w31a', 2], ['16w32a', 3], ['17w42a', 3], ['17w43a', 4], ['18w30a', 4]]) {
+    const got = packFormatFor(id)
+    check(got === expected, `packFormatFor('${id}') ergab ${got}, erwartet ${expected}`)
+  }
+
+  // Since 1.14 the client jar states the exact format; it wins over any
+  // guess, April Fools versions included, in all three shapes.
+  const AdmZip = createRequire(import.meta.url)('adm-zip')
+  const fakeJar = (id, packVersion) => {
+    const dir = join(userData, 'data', 'versions', id)
+    mkdirSync(dir, { recursive: true })
+    const zip = new AdmZip()
+    zip.addFile('version.json', Buffer.from(JSON.stringify({ id, pack_version: packVersion })))
+    zip.writeZip(join(dir, `${id}.jar`))
+  }
+  fakeJar('20w14infinite', 5)
+  fakeJar('1.20.1', { resource: 15, data: 15 })
+  fakeJar('25w41a', { resource_major: 69, resource_minor: 0, data_major: 88, data_minor: 0 })
+  check(packFormatFor('20w14infinite') === 5, `Aus der Jar, Zahl: ${packFormatFor('20w14infinite')}`)
+  check(packFormatFor('1.20.1') === 15, `Aus der Jar, resource: ${packFormatFor('1.20.1')}`)
+  check(packFormatFor('25w41a') === 69, `Aus der Jar, resource_major: ${packFormatFor('25w41a')}`)
+  notes.push('Alte Snapshots nach Ära, neuere Versionen aus der eigenen Jar.')
 } catch (err) {
   problems.push('Testlauf abgebrochen: ' + (err.stack || err.message))
 } finally {

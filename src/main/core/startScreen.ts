@@ -110,9 +110,6 @@ const PACK_FORMATS: [minVersion: string, format: number][] = [
   ['26.2', 88]
 ]
 
-/** Snapshot ids like "26w03a", "25w31a": two-digit year, two-digit week, build letter. */
-const SNAPSHOT_ID = /^(\d\d)w(\d\d)[a-z]$/
-
 /** Pre-release / release-candidate ids like "1.21.5-pre1", "1.21.5-rc1". */
 const PRE_RELEASE_ID = /^(.+?)-(?:pre|rc)\d+$/i
 
@@ -128,14 +125,60 @@ function isOlder(a: string, b: string): boolean {
   return false
 }
 
+/**
+ * The format the game itself states in its client jar, which every version
+ * since 1.14 carries in version.json: a plain number, `{ resource }`, or
+ * since 1.21.9 `{ resource_major, resource_minor }`. Exact for every
+ * snapshot and April Fools version, where any table can only guess. Null
+ * for older versions and a jar that is not there yet.
+ */
+function packFormatFromJar(mcVersion: string): number | null {
+  try {
+    const jar = join(paths.version(mcVersion), `${mcVersion}.jar`)
+    if (!existsSync(jar)) return null
+    const entry = new AdmZip(jar).getEntry('version.json')
+    if (!entry || entry.header.size > 64 * 1024) return null
+    const parsed = JSON.parse(entry.getData().toString('utf8')) as { pack_version?: unknown }
+    const value = parsed.pack_version as number | { resource?: unknown; resource_major?: unknown } | undefined
+    if (typeof value === 'number') return value
+    if (typeof value?.resource_major === 'number') return value.resource_major
+    if (typeof value?.resource === 'number') return value.resource
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Weekly snapshots before 1.14, whose jars state no format: the first week
+ * of each era, from Mojang's version list. 17w43a was the first 1.13
+ * snapshot, and from format 4 on a pack is switched on as "file/<name>".
+ */
+const OLD_SNAPSHOT_FORMATS: [year: number, week: number, format: number][] = [
+  [17, 43, 4],
+  [16, 32, 3],
+  [15, 31, 2],
+  [0, 0, 1]
+]
+
 export function packFormatFor(mcVersion: string): number {
+  const fromJar = packFormatFromJar(mcVersion)
+  if (fromJar !== null) return fromJar
+
   // A snapshot id ("26w03a") is not a dotted version at all, so splitting it
   // on dots and parseInt-ing the pieces used to compare as version "0", the
-  // lowest possible, and got the oldest format in the table instead of the
-  // newest. The table above carries no snapshot entries of its own to compare
-  // by year and week against, and a snapshot is always at or ahead of the
-  // newest listed release, so it gets that newest format outright.
-  if (SNAPSHOT_ID.test(mcVersion)) {
+  // lowest possible. Every one was then given the newest format, also the
+  // ones from 2013 to 2017, which made the pack be switched on in a way
+  // those versions do not understand. Snapshots before 1.14 come from the
+  // table above; a newer one without its jar yet gets the newest format.
+  const weekly = /^(\d\d)w(\d\d)/i.exec(mcVersion)
+  if (weekly) {
+    const year = Number(weekly[1])
+    const week = Number(weekly[2])
+    if (year < 18 || (year === 18 && week < 43)) {
+      const era = OLD_SNAPSHOT_FORMATS.find(([y, w]) => year > y || (year === y && week >= w))
+      return era ? era[2] : 1
+    }
     return PACK_FORMATS[PACK_FORMATS.length - 1][1]
   }
 
