@@ -3401,6 +3401,45 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'it, the import followed it again and again and copied worlds and mods about twenty times, up to the ' +
       'maximum path length or a full disk.'
   },
+  'curseforge-viele-dateien': {
+    title: 'For CurseForge mods with very many files, the launcher did not find some versions',
+    detail:
+      'The launcher reads at most 750 files of a CurseForge project. Big mods have more, Just Enough Items ' +
+      'for example over 3800. Whatever lies beyond was not seen, and the launcher then said "no version for ' +
+      'this Minecraft version" although there is one, or offered no update. Workaround: install the same mod ' +
+      'from Modrinth if it is there.'
+  },
+  'modpack-ueber-2-gb': {
+    title: 'Modpacks over 2 GB could not be imported',
+    detail:
+      'A valid modpack larger than 2 GB, for example with bundled worlds, was refused with "This is not a ' +
+      'valid .mrpack archive". To check it, the launcher reads the whole archive into memory, which only ' +
+      'works up to 2 GB.'
+  },
+  'tote-verbindung-vier-minuten': {
+    title: 'With a connection that never answered, the launcher waited about four minutes',
+    detail:
+      'When the internet connection hung without reporting an error, as on Wi-Fi with a sign-in page or with ' +
+      'bad reception, the launcher tried a request four times with a minute of waiting each before it fell ' +
+      'back to its stored data. The version picker or the start hung that long. Measured: 243 seconds.'
+  },
+  'apple-silicon-minecraft-1-18': {
+    title: 'On Macs with an Apple chip, Minecraft 1.18 to 1.18.2 did not start',
+    detail:
+      'These versions ship their graphics libraries for Intel processors only. On a Mac with an Apple chip ' +
+      'the launcher downloads a Java for Apple chips, which cannot load those libraries. Mojang’s own ' +
+      'launcher takes an Intel Java for these versions, which runs through Rosetta. The same hits older ' +
+      'versions when a Java 8 for Apple chips is installed. Minecraft 1.19 and newer are not affected. ' +
+      'Workaround: install a Java 17 for Intel (x64) and pick it in the instance settings.'
+  },
+  'appimage-ubuntu-24': {
+    title: 'On Ubuntu 24.04 and newer, the launcher did not start as an AppImage',
+    detail:
+      'Since 24.04, Ubuntu allows certain protection features only with a permission of their own, which an ' +
+      'AppImage cannot bring along. The launcher’s interface therefore stops before the first window. ' +
+      'This affects every program built on Electron like the launcher. Workaround: start the launcher from ' +
+      'the terminal with the option --no-sandbox.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:

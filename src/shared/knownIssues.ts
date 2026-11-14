@@ -5651,6 +5651,64 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-13',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'curseforge-viele-dateien',
+    title: 'Bei CurseForge-Mods mit sehr vielen Dateien fand der Launcher manche Versionen nicht',
+    detail:
+      'Der Launcher liest von einem CurseForge-Projekt höchstens 750 Dateien. Große Mods haben mehr, Just ' +
+      'Enough Items zum Beispiel über 3800. Was darüber hinausgeht, sah der Launcher nicht, und er meldete ' +
+      'dann „keine Version für diese Minecraft-Version“, obwohl es eine gibt, oder bot kein Update an. ' +
+      'Abhilfe: denselben Mod von Modrinth installieren, falls es ihn dort gibt.',
+    state: 'investigating',
+    since: '2026-11-14'
+  },
+  {
+    id: 'modpack-ueber-2-gb',
+    title: 'Modpacks über 2 GB ließen sich nicht importieren',
+    detail:
+      'Ein gültiges Modpack, das größer als 2 GB ist, etwa mit mitgelieferten Welten, wurde mit „Das ist kein ' +
+      'gültiges .mrpack-Archiv“ abgelehnt. Der Launcher liest das Archiv zum Prüfen als Ganzes in den ' +
+      'Speicher, und das geht nur bis 2 GB.',
+    state: 'investigating',
+    since: '2026-11-14'
+  },
+  {
+    id: 'tote-verbindung-vier-minuten',
+    title: 'Bei einer Verbindung ohne Antwort wartete der Launcher rund vier Minuten',
+    detail:
+      'Hing die Internetverbindung, ohne einen Fehler zu melden, etwa in einem WLAN mit Anmeldeseite oder bei ' +
+      'schlechtem Empfang, versuchte der Launcher eine Abfrage viermal mit je einer Minute Wartezeit, bevor er ' +
+      'auf seinen gespeicherten Stand zurückgriff. Die Versionsauswahl oder der Start hingen so lange. ' +
+      'Nachgemessen: 243 Sekunden.',
+    state: 'investigating',
+    since: '2026-11-14'
+  },
+  {
+    id: 'apple-silicon-minecraft-1-18',
+    title: 'Auf Macs mit Apple-Chip startete Minecraft 1.18 bis 1.18.2 nicht',
+    detail:
+      'Diese Versionen bringen ihre Grafik-Bibliotheken nur für Intel-Prozessoren mit. Der Launcher lädt auf ' +
+      'einem Mac mit Apple-Chip aber ein Java für Apple-Chips, und das kann diese Bibliotheken nicht laden. ' +
+      'Mojangs eigener Launcher nimmt für diese Versionen ein Java für Intel, das über Rosetta läuft. Dasselbe ' +
+      'trifft ältere Versionen, wenn ein Java 8 für Apple-Chips installiert ist. Ab Minecraft 1.19 nicht ' +
+      'betroffen. Abhilfe: ein Java 17 für Intel (x64) installieren und es in den Einstellungen der Instanz ' +
+      'auswählen.',
+    state: 'investigating',
+    since: '2026-11-14',
+    platforms: ['macOS']
+  },
+  {
+    id: 'appimage-ubuntu-24',
+    title: 'Unter Ubuntu 24.04 und neuer startete der Launcher als AppImage nicht',
+    detail:
+      'Ubuntu erlaubt Programmen seit 24.04 bestimmte Schutzfunktionen nur noch mit einer eigenen Freigabe, ' +
+      'die ein AppImage nicht mitbringen kann. Die Oberfläche des Launchers bricht deshalb schon vor dem ' +
+      'ersten Fenster ab. Das betrifft alle Programme, die wie der Launcher auf Electron aufbauen. Abhilfe: ' +
+      'den Launcher aus dem Terminal mit der Option --no-sandbox starten.',
+    state: 'investigating',
+    since: '2026-11-14',
+    platforms: ['Linux']
   }
 ]
 
