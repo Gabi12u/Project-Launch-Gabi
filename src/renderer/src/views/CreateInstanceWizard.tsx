@@ -208,11 +208,13 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
   // step then had no build for at all.
   const loaderReady = loader === 'vanilla' || (selectedLoaderVersions.length > 0 && Boolean(loaderVersion))
 
-  const filteredVersions = useMemo(() => {
+  const versionMatches = useMemo(() => {
     const term = versionSearch.trim().toLowerCase()
-    if (!term) return versions.slice(0, 200)
-    return versions.filter((v) => v.id.toLowerCase().includes(term)).slice(0, 200)
+    return term ? versions.filter((v) => v.id.toLowerCase().includes(term)) : versions
   }, [versions, versionSearch])
+  // Capped for speed. With snapshots on, 1.12.2 and everything older sat
+  // past the cap with nothing saying so; the note under the list does now.
+  const filteredVersions = useMemo(() => versionMatches.slice(0, 200), [versionMatches])
 
   const suggestedName = useMemo(() => {
     if (!mcVersion) return ''
@@ -368,6 +370,14 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                   <span className="hint">{formatDate(version.releaseTime)}</span>
                 </button>
               ))}
+              {versionMatches.length > filteredVersions.length && (
+                <p className="hint" style={{ padding: '8px 12px' }}>
+                  {tr(
+                    `${versionMatches.length - filteredVersions.length} weitere, ältere Versionen sind ausgeblendet. Tippe die gesuchte Version oben ins Suchfeld, etwa 1.12.2.`,
+                    `${versionMatches.length - filteredVersions.length} more, older versions are hidden. Type the version you want into the search field above, such as 1.12.2.`
+                  )}
+                </p>
+              )}
             </div>
           )}
         </div>

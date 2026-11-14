@@ -182,11 +182,12 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
     loader === instance.loader &&
     (loader === 'vanilla' || loaderVersion === instance.loaderVersion)
 
-  const filteredVersions = useMemo(() => {
+  const versionMatches = useMemo(() => {
     const term = versionSearch.trim().toLowerCase()
-    if (!term) return versions.slice(0, 200)
-    return versions.filter((v) => v.id.toLowerCase().includes(term)).slice(0, 200)
+    return term ? versions.filter((v) => v.id.toLowerCase().includes(term)) : versions
   }, [versions, versionSearch])
+  // Capped for speed, with a note under the list when something is hidden.
+  const filteredVersions = useMemo(() => versionMatches.slice(0, 200), [versionMatches])
 
   // Known only when both versions are in the list, a hidden snapshot is not.
   const downgrade = useMemo(() => {
@@ -222,6 +223,9 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
       back: items.filter((item) => item.reenable),
       // Not what the user switched off before: nothing happens to those.
       off: of('disable').filter((item) => !item.alreadyOff),
+      // Only named in a line of their own: with nothing else to show, the
+      // overview used to stay empty without a word.
+      alreadyOff: of('disable').filter((item) => item.alreadyOff),
       unchecked: of('unchecked'),
       local: of('local')
     }
@@ -368,6 +372,14 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
                   <span className="hint">{formatDate(version.releaseTime)}</span>
                 </button>
               ))}
+              {versionMatches.length > filteredVersions.length && (
+                <p className="hint" style={{ padding: '8px 12px' }}>
+                  {tr(
+                    `${versionMatches.length - filteredVersions.length} weitere, ältere Versionen sind ausgeblendet. Tippe die gesuchte Version oben ins Suchfeld, etwa 1.12.2.`,
+                    `${versionMatches.length - filteredVersions.length} more, older versions are hidden. Type the version you want into the search field above, such as 1.12.2.`
+                  )}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -598,6 +610,19 @@ export function ChangeVersionDialog({ open, instance, onClose, onDone }: Props):
                   }
                   items={groups.local}
                 />
+              )}
+              {groups.alreadyOff.length > 0 && (
+                <p className="hint">
+                  {groups.alreadyOff.length === 1
+                    ? tr(
+                        'Einen Eintrag, den du ausgeschaltet hast, gibt es für die neue Version nicht. Er bleibt ausgeschaltet.',
+                        'One item you switched off does not exist for the new version. It stays switched off.'
+                      )
+                    : tr(
+                        `${groups.alreadyOff.length} Einträge, die du ausgeschaltet hast, gibt es für die neue Version nicht. Sie bleiben ausgeschaltet.`,
+                        `${groups.alreadyOff.length} items you switched off do not exist for the new version. They stay switched off.`
+                      )}
+                </p>
               )}
             </div>
           )}
