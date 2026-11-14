@@ -3794,9 +3794,10 @@ footer .grow { flex: 1; }
     {
       "id": "sicherungsliste-beschaedigt",
       "title": "War die Liste der Sicherungen beschädigt, verschwanden alle bisherigen Sicherungen aus der Ansicht",
-      "detail": "Die Sicherungen selbst bleiben im Ordner der Instanz erhalten, tauchen aber im Launcher nicht mehr auf und lassen sich dort nicht wiederherstellen. Das passiert nur, wenn die Liste selbst beschädigt wird, etwa bei einem Festplattenfehler.",
-      "state": "investigating",
-      "since": "2026-10-05"
+      "detail": "Die Sicherungen selbst bleiben im Ordner der Instanz erhalten, tauchen aber im Launcher nicht mehr auf und lassen sich dort nicht wiederherstellen. Das passiert nur, wenn die Liste selbst beschädigt wird, etwa bei einem Festplattenfehler. Seit 1.0.26 baut der Launcher die Liste dann aus der letzten guten Fassung und den Sicherungsdateien im Ordner neu auf, alle Sicherungen sind wieder zu sehen und lassen sich einspielen.",
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "modpack-aus-suche-unvollstaendig",
@@ -7725,9 +7726,10 @@ footer .grow { flex: 1; }
     {
       "id": "sicherungsliste-beschaedigt",
       "title": "If the list of backups was damaged, all earlier backups disappeared from view",
-      "detail": "The backups themselves stay in the instance's folder, but no longer show up in the launcher and cannot be restored there. This only happens when the list itself gets damaged, for example by a disk fault.",
-      "state": "investigating",
-      "since": "2026-10-05"
+      "detail": "The backups themselves stay in the instance's folder, but no longer show up in the launcher and cannot be restored there. This only happens when the list itself gets damaged, for example by a disk fault. Since 1.0.26 the launcher then rebuilds the list from its last good version and the backup files in the folder, so every backup shows up again and can be restored.",
+      "state": "fixed",
+      "since": "2026-10-05",
+      "fixedIn": "1.0.26"
     },
     {
       "id": "modpack-aus-suche-unvollstaendig",

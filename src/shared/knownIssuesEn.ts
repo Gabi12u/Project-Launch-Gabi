@@ -2529,7 +2529,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'The backups themselves stay in the instance\'s folder, but no longer show up in the launcher and ' +
       'cannot be restored there. This only happens when the list itself gets damaged, for example by a ' +
-      'disk fault.'
+      'disk fault. Since 1.0.26 the launcher then rebuilds the list from its last good version and the ' +
+      'backup files in the folder, so every backup shows up again and can be restored.'
   },
   'modpack-aus-suche-unvollstaendig': {
     title: 'A modpack installed straight from "Discover" was left without its settings and configs',

@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, s
 import { join, resolve, sep } from 'node:path'
 import type { BackupEntry, GameVersionTarget, LoaderId } from '@shared/types'
 import { isValidVersionString, paths } from '../paths'
-import { getSettings, readJson, readJsonResult, writeJsonAtomic } from '../store'
+import { getSettings, readJson, readJsonResult, readPreviousJson, writeJsonAtomic } from '../store'
 import { log } from '../logger'
 import { notify } from '../events'
 import { TaskCancelledError, withTask } from '../tasks'
@@ -165,29 +165,112 @@ function indexFile(instanceId: string): string {
  * otherwise drop every older backup from it for good.
  */
 function readIndex(instanceId: string, forWrite = false): BackupEntry[] {
+  return readIndexDetailed(instanceId, forWrite).entries
+}
+
+/** `readIndex`, saying also whether the list had to be rebuilt from the folder. */
+function readIndexDetailed(instanceId: string, forWrite = false): { entries: BackupEntry[]; rebuilt: boolean } {
   const result = readJsonResult<BackupEntry[]>(indexFile(instanceId), true)
-  if (result.ok) return Array.isArray(result.value) ? result.value : []
-  if (forWrite && result.reason === 'unreadable') {
-    throw new Error(
-      tr(
-        'Die Liste der Sicherungen ist gerade gesperrt. Versuche es gleich noch einmal.',
-        'The list of backups is locked right now. Try again in a moment.'
+  if (result.ok && Array.isArray(result.value)) return { entries: result.value, rebuilt: false }
+  if (!result.ok && result.reason === 'unreadable') {
+    if (forWrite) {
+      throw new Error(
+        tr(
+          'Die Liste der Sicherungen ist gerade gesperrt. Versuche es gleich noch einmal.',
+          'The list of backups is locked right now. Try again in a moment.'
+        )
       )
-    )
+    }
+    return { entries: [], rebuilt: false }
   }
-  return []
+  // Damaged (set aside just now), of the wrong shape, or gone.
+  const entries = rebuildIndex(instanceId)
+  return { entries, rebuilt: entries.length > 0 }
+}
+
+/** The UTC time in a file name like `backup-2026-11-14_19-08-32-a1b2c3.zip`. */
+function stampOf(fileName: string): number | null {
+  const match = /^backup-(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})-/.exec(fileName)
+  if (!match) return null
+  const [, y, mo, d, h, mi, s] = match.map(Number)
+  const time = Date.UTC(y, mo - 1, d, h, mi, s)
+  return Number.isFinite(time) ? time : null
+}
+
+/**
+ * The backup list rebuilt from the archives in the folder, for when
+ * `backups.json` is damaged or gone. It used to read as empty: every backup
+ * vanished from the launcher, and the next one wrote a list naming only
+ * itself, so the older archives stayed on disk for good, seen by nobody.
+ * The last good copy of the list comes first, for names and contents, then
+ * every archive it does not know. Those are marked as made by hand, so no
+ * automatic cleanup ever deletes one of them.
+ */
+function rebuildIndex(instanceId: string): BackupEntry[] {
+  const dir = paths.instanceBackups(instanceId)
+  let archives: string[]
+  try {
+    archives = readdirSync(dir).filter((name) => name.toLowerCase().endsWith('.zip'))
+  } catch {
+    return []
+  }
+  if (archives.length === 0) return []
+
+  const previous = readPreviousJson<BackupEntry[]>(indexFile(instanceId))
+  const known = (Array.isArray(previous) ? previous : []).filter(
+    (entry) => typeof entry?.fileName === 'string' && typeof entry.id === 'string' && archives.includes(entry.fileName)
+  )
+  const named = new Set(known.map((entry) => entry.fileName))
+  const instanceName = tryGetInstance(instanceId)?.name ?? instanceId
+  const found: BackupEntry[] = []
+  for (const fileName of archives) {
+    if (named.has(fileName)) continue
+    try {
+      const stat = statSync(join(dir, fileName))
+      if (!stat.isFile()) continue
+      const createdAt = stampOf(fileName) ?? stat.mtimeMs
+      found.push({
+        // Derived from the file, so the same archive keeps its id until the
+        // rebuilt list is written.
+        id: `recovered-${fileName}`,
+        instanceId,
+        instanceName,
+        name: tr(`Sicherung vom ${localStamp(new Date(createdAt))}`, `Backup from ${localStamp(new Date(createdAt))}`),
+        fileName,
+        createdAt,
+        size: stat.size,
+        reason: 'manual',
+        // Read from the archive itself when it is restored.
+        includes: []
+      })
+    } catch (err) {
+      logger.warn(`Sicherungsdatei ${fileName} nicht lesbar:`, err)
+    }
+  }
+  if (known.length + found.length > 0) {
+    logger.warn(`Sicherungsliste von ${instanceId} neu aufgebaut: ${known.length} aus der letzten guten Liste, ${found.length} aus dem Ordner`)
+  }
+  return [...known, ...found]
 }
 
 function writeIndex(instanceId: string, entries: BackupEntry[]): void {
-  writeJsonAtomic(indexFile(instanceId), entries)
+  // One entry per archive. A list rebuilt from the folder while a backup was
+  // being made already holds the new archive, and that backup adds its own
+  // entry in front: the first one, the real one, stays.
+  const seen = new Set<string>()
+  const unique = entries.filter((entry) => {
+    if (!entry?.fileName) return true
+    if (seen.has(entry.fileName)) return false
+    seen.add(entry.fileName)
+    return true
+  })
+  writeJsonAtomic(indexFile(instanceId), unique, { keepPrevious: true })
 }
 
 export function listBackups(instanceId?: string): BackupEntry[] {
   if (instanceId) {
     assertBackupIdSafe(instanceId)
-    const index = readIndex(instanceId)
-    // A hand-edited or truncated backups.json can parse as the wrong shape.
-    if (!Array.isArray(index)) return []
+    const { entries: index, rebuilt } = readIndexDetailed(instanceId)
     const present = index.filter(
       (entry) =>
         Boolean(entry?.fileName) &&
@@ -199,8 +282,9 @@ export function listBackups(instanceId?: string): BackupEntry[] {
     // is only worth writing the cleaned list back when nothing is currently
     // touching this instance's backups; mid-operation the index can briefly
     // disagree with the disk on purpose (see `createBackupUnlocked`), and
-    // this cleanup is a nice-to-have, not worth racing that.
-    if (present.length !== index.length && !instanceLocks.has(instanceId)) {
+    // this cleanup is a nice-to-have, not worth racing that. A list rebuilt
+    // from the folder is written the same way, so it holds from now on.
+    if ((rebuilt || present.length !== index.length) && !instanceLocks.has(instanceId)) {
       try {
         writeIndex(instanceId, present)
       } catch (err) {

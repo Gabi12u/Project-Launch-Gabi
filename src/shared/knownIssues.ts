@@ -4031,9 +4031,12 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Die Sicherungen selbst bleiben im Ordner der Instanz erhalten, tauchen aber im Launcher nicht ' +
       'mehr auf und lassen sich dort nicht wiederherstellen. Das passiert nur, wenn die Liste selbst ' +
-      'beschädigt wird, etwa bei einem Festplattenfehler.',
-    state: 'investigating',
-    since: '2026-10-05'
+      'beschädigt wird, etwa bei einem Festplattenfehler. Seit 1.0.26 baut der Launcher die Liste dann aus ' +
+      'der letzten guten Fassung und den Sicherungsdateien im Ordner neu auf, alle Sicherungen sind wieder ' +
+      'zu sehen und lassen sich einspielen.',
+    state: 'fixed',
+    since: '2026-10-05',
+    fixedIn: '1.0.26'
   },
   {
     id: 'modpack-aus-suche-unvollstaendig',

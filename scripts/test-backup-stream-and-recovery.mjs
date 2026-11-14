@@ -140,7 +140,7 @@ try {
   })
 
   const { zipFolder, extractAllSlowly, listEntries } = require(outArchive)
-  const { recoverInterruptedRestores, failedRestoreRecoveries, createBackup, addDownloadedBackup, backupGame, restoreBackup } = require(outBackups)
+  const { recoverInterruptedRestores, failedRestoreRecoveries, createBackup, addDownloadedBackup, backupGame, restoreBackup, listBackups } = require(outBackups)
 
   /* ================================================================ *
    * Part 1: streaming zipFolder() with a large file
@@ -336,6 +336,18 @@ try {
     join(dataDir, 'instances', instanceId4, 'instance.json'),
     JSON.stringify({ name: 'Versionstest', mcVersion: '1.21.1', loader: 'fabric', loaderVersion: '0.16.9', installed: true, content: [] })
   )
+  // Instances are read once, at the first backup: part 5's instance is
+  // set up here, before that happens.
+  const instanceId5 = 'test-instance-list'
+  const gameDir5 = join(dataDir, 'instances', instanceId5, 'minecraft')
+  const backupsDir5 = join(dataDir, 'backups', instanceId5)
+  const indexFile5 = join(backupsDir5, 'backups.json')
+  mkdirSync(join(gameDir5, 'saves', 'Welt'), { recursive: true })
+  writeFileSync(join(gameDir5, 'saves', 'Welt', 'level.dat'), 'stand-a')
+  writeFileSync(
+    join(dataDir, 'instances', instanceId5, 'instance.json'),
+    JSON.stringify({ name: 'Listentest', mcVersion: '1.21.1', loader: 'vanilla', loaderVersion: '', installed: true, content: [] })
+  )
   const made = await createBackup(instanceId4, { includes: ['saves'] })
   check(
     made.game?.mcVersion === '1.21.1' && made.game?.loader === 'fabric' && made.game?.loaderVersion === '0.16.9',
@@ -414,6 +426,47 @@ try {
   const stagingLeft = readdirSync(backupsDir4).filter((name) => name.startsWith('restore-'))
   check(stagingLeft.length === 0, `Nach der Wiederherstellung liegen Zwischenordner herum: ${stagingLeft.join(', ')}`)
   notes.push('Abgeschlossene Wiederherstellung: beim naechsten Start nur aufgeraeumt, nie rueckgaengig gemacht.')
+
+  /* ================================================================ *
+   * Part 5: a damaged backups.json no longer hides every backup
+   * ================================================================ */
+
+  const first = await createBackup(instanceId5, { includes: ['saves'], name: 'Erste' })
+  writeFileSync(join(gameDir5, 'saves', 'Welt', 'level.dat'), 'stand-b')
+  const second = await createBackup(instanceId5, { includes: ['saves'], name: 'Zweite' })
+  check(listBackups(instanceId5).length === 2, 'Zwei Sicherungen erwartet')
+
+  // Damaged, with the last good list from before the second backup at hand.
+  writeFileSync(indexFile5, '[{"id": "kaputt')
+  let listed = listBackups(instanceId5)
+  check(listed.length === 2, `Nach beschaedigter Liste sichtbar: ${listed.length} statt 2`)
+  check(listed.some((e) => e.id === first.id && e.name === 'Erste'), 'Die erste Sicherung kam nicht mit Namen aus der letzten guten Liste zurueck')
+  check(listed.some((e) => e.fileName === second.fileName), 'Die zweite Sicherung fehlt nach beschaedigter Liste')
+  const written = JSON.parse(readFileSync(indexFile5, 'utf8'))
+  check(Array.isArray(written) && written.length === 2, 'Die neu aufgebaute Liste wurde nicht gespeichert')
+
+  // Damaged, and no good copy left: rebuilt from the archives alone.
+  rmSync(`${indexFile5}.previous`, { force: true })
+  writeFileSync(indexFile5, 'kein json')
+  listed = listBackups(instanceId5)
+  check(listed.length === 2, `Ohne gute Kopie sichtbar: ${listed.length} statt 2`)
+  check(listed.every((e) => e.reason === 'manual' && e.size > 0), 'Neu aufgebaute Eintraege sind unvollstaendig oder automatisch loeschbar')
+  const recovered = listed.find((e) => e.fileName === first.fileName)
+  check(Boolean(recovered) && /\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(recovered?.name ?? ''), `Name eines neu aufgebauten Eintrags: ${recovered?.name}`)
+
+  // A new backup while the list is damaged keeps the older ones, once each.
+  writeFileSync(indexFile5, '{{{')
+  const third = await createBackup(instanceId5, { includes: ['saves'], name: 'Dritte' })
+  listed = listBackups(instanceId5)
+  check(listed.length === 3, `Nach neuer Sicherung bei beschaedigter Liste: ${listed.length} statt 3`)
+  check(new Set(listed.map((e) => e.fileName)).size === listed.length, 'Ein Archiv steht doppelt in der Liste')
+  check(listed[0]?.id === third.id && listed[0]?.name === 'Dritte', 'Die neue Sicherung steht nicht mit ihrem Namen vorn')
+
+  // A rebuilt entry restores like any other, its folders read from the archive.
+  const back = listBackups(instanceId5).find((e) => e.fileName === first.fileName)
+  await restoreBackup(instanceId5, back.id)
+  check(readFileSync(join(gameDir5, 'saves', 'Welt', 'level.dat'), 'utf8') === 'stand-a', 'Eine neu aufgebaute Sicherung liess sich nicht einspielen')
+  notes.push('Beschaedigte Sicherungsliste: aus letzter guter Liste und Ordner neu aufgebaut, Wiederherstellung klappt.')
 } catch (err) {
   problems.push(`Testlauf abgebrochen: ${err?.stack ?? err}`)
 } finally {
