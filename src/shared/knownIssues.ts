@@ -5748,6 +5748,17 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-11-14',
     platforms: ['macOS'],
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'beta-beitritt-429-falscher-rat',
+    title: 'Beim Beitritt zur Beta riet der Launcher nach zu vielen Versuchen zum neuen Anmelden',
+    detail:
+      'Wer dem Beta-Programm kurz nacheinander beitrat, es verließ und wieder beitreten wollte, bekam ' +
+      '„Mojang hat die Bestätigung abgelehnt (HTTP 429). Melde dich im Launcher einmal neu an“. 429 heißt ' +
+      'aber, dass Mojang gerade zu viele Anfragen in kurzer Zeit bekommen hat. Neu anmelden hilft dagegen ' +
+      'nicht. Abhilfe: einige Minuten warten und es dann noch einmal versuchen.',
+    state: 'investigating',
+    since: '2026-11-14'
   }
 ]
 

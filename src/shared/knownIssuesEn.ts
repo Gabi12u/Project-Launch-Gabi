@@ -3463,6 +3463,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'pictures could be pasted with Ctrl+V. On the Mac these shortcuts belong on the Cmd key, and that is ' +
       'where they worked. Since 1.0.26 the Mac shows ⌘ or Cmd.'
   },
+  'beta-beitritt-429-falscher-rat': {
+    title: 'When joining the beta after too many attempts, the launcher advised signing in again',
+    detail:
+      'Anyone who joined the beta programme, left it and tried to join again shortly after got “Mojang ' +
+      'refused the confirmation (HTTP 429). Sign in again in the launcher”. But 429 means Mojang has just ' +
+      'received too many requests in a short time, and signing in again does not help with that. ' +
+      'Workaround: wait a few minutes and then try again.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:
