@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { navigate, setState, toast, useStore } from '../lib/store'
 import { importModpack, startInstance, stopInstance } from '../lib/actions'
 import { LOADER_LABELS, pluralise } from '../lib/format'
+import { shortcut } from '../lib/keys'
 import { trapTab, useOverlayId } from './ui'
 import {
   IconCompass,
@@ -108,7 +109,7 @@ export function CommandPalette(): JSX.Element | null {
       {
         id: 'new-instance',
         label: tr('Neue Instanz erstellen', 'Create new instance'),
-        hint: tr('Strg N', 'Ctrl N'),
+        hint: shortcut('N'),
         group: tr('Aktionen', 'Actions'),
         icon: <IconPlus size={16} />,
         keywords: 'anlegen erstellen create version loader',

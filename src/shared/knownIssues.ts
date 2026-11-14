@@ -5736,6 +5736,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-11-14',
     platforms: ['macOS'],
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'mac-tastenkuerzel-strg',
+    title: 'Auf dem Mac nannte der Launcher Tastenkürzel mit Strg statt Cmd',
+    detail:
+      'Die Suche in der Seitenleiste zeigte „Strg K“, die Befehlspalette „Strg N“, und beim Fehlerbericht ' +
+      'hieß es, Bilder ließen sich mit Strg+V einfügen. Auf dem Mac gehören diese Kürzel aber auf die ' +
+      'Cmd-Taste, und dort funktionierten sie auch. Seit 1.0.26 steht auf dem Mac ⌘ beziehungsweise Cmd.',
+    state: 'fixed',
+    since: '2026-11-14',
+    platforms: ['macOS'],
+    fixedIn: '1.0.26'
   }
 ]
 

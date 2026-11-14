@@ -3456,6 +3456,13 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'setting that only the graphics library of Minecraft 1.13 and later needs. The older library of the ' +
       'versions before cannot open its window with it. Since 1.0.26 only versions from 1.13 on get this setting.'
   },
+  'mac-tastenkuerzel-strg': {
+    title: 'On the Mac, the launcher named shortcuts with Ctrl instead of Cmd',
+    detail:
+      'The search in the sidebar showed “Ctrl K”, the command palette “Ctrl N”, and the problem report said ' +
+      'pictures could be pasted with Ctrl+V. On the Mac these shortcuts belong on the Cmd key, and that is ' +
+      'where they worked. Since 1.0.26 the Mac shows ⌘ or Cmd.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:

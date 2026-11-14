@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { navigate, parseRoute, refreshAccounts, setState, useStore } from '../lib/store'
 import { initials } from '../lib/format'
+import { shortcut } from '../lib/keys'
 import { useSkinHead } from '../lib/hooks'
 import { Logo } from './Logo'
 import { AccountModal } from './AccountModal'
@@ -77,7 +78,7 @@ export function Sidebar(): JSX.Element {
         <button className="nav-search no-drag" onClick={() => setState({ paletteOpen: true })}>
           <IconSearch size={15} />
           <span>{tr('Suchen…', 'Search…')}</span>
-          <span className="kbd">{tr('Strg K', 'Ctrl K')}</span>
+          <span className="kbd">{shortcut('K')}</span>
         </button>
 
         <div className="nav-list" ref={navRef}>

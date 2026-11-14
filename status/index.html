@@ -4966,6 +4966,17 @@ footer .grow { flex: 1; }
         "macOS"
       ],
       "fixedIn": "1.0.26"
+    },
+    {
+      "id": "mac-tastenkuerzel-strg",
+      "title": "Auf dem Mac nannte der Launcher Tastenkürzel mit Strg statt Cmd",
+      "detail": "Die Suche in der Seitenleiste zeigte „Strg K“, die Befehlspalette „Strg N“, und beim Fehlerbericht hieß es, Bilder ließen sich mit Strg+V einfügen. Auf dem Mac gehören diese Kürzel aber auf die Cmd-Taste, und dort funktionierten sie auch. Seit 1.0.26 steht auf dem Mac ⌘ beziehungsweise Cmd.",
+      "state": "fixed",
+      "since": "2026-11-14",
+      "platforms": [
+        "macOS"
+      ],
+      "fixedIn": "1.0.26"
     }
   ];
   var ISSUE_LABEL = {
@@ -8858,6 +8869,17 @@ footer .grow { flex: 1; }
       "id": "mac-alte-versionen-kein-fenster",
       "title": "On the Mac, Minecraft versions before 1.13 opened no window",
       "detail": "Versions before 1.13, verified with 1.12.2, did start on the Mac, the music could even be heard, but the game window never appeared and no icon showed up in the Dock. On the Mac the launcher always passed a setting that only the graphics library of Minecraft 1.13 and later needs. The older library of the versions before cannot open its window with it. Since 1.0.26 only versions from 1.13 on get this setting.",
+      "state": "fixed",
+      "since": "2026-11-14",
+      "platforms": [
+        "macOS"
+      ],
+      "fixedIn": "1.0.26"
+    },
+    {
+      "id": "mac-tastenkuerzel-strg",
+      "title": "On the Mac, the launcher named shortcuts with Ctrl instead of Cmd",
+      "detail": "The search in the sidebar showed “Ctrl K”, the command palette “Ctrl N”, and the problem report said pictures could be pasted with Ctrl+V. On the Mac these shortcuts belong on the Cmd key, and that is where they worked. Since 1.0.26 the Mac shows ⌘ or Cmd.",
       "state": "fixed",
       "since": "2026-11-14",
       "platforms": [

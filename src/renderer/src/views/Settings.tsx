@@ -14,6 +14,7 @@ import { changeKindLabel, changelogLocalized } from '@shared/changelogEn'
 import { navigate, refreshInstances, refreshSettings, saveSettings, toast, toastError, useStore } from '../lib/store'
 import { memorySliderMax, useDebouncedSetting } from '../lib/hooks'
 import { formatBytes, formatDate, formatDateTime, formatMemory } from '../lib/format'
+import { shortcutInText } from '../lib/keys'
 import { Confirm, SettingToggle } from '../components/ui'
 import { SUPPORTED_LANGUAGES, getLanguage, tr } from '@shared/i18n'
 import { LogoLockup } from '../components/Logo'
@@ -1553,8 +1554,8 @@ function FeedbackSection({ configured }: { configured: boolean }): JSX.Element {
       <h3>{tr('Fehler melden', 'Report a problem')}</h3>
       <p className="hint">
         {tr(
-          'Ist etwas kaputt oder seltsam? Schreib kurz, was passiert ist. Bilder helfen sehr: einfach hineinziehen, mit Strg+V einfügen oder auswählen.',
-          'Is something broken or odd? Write briefly what happened. Pictures help a lot: drag them in, paste them with Ctrl+V or pick them.'
+          `Ist etwas kaputt oder seltsam? Schreib kurz, was passiert ist. Bilder helfen sehr: einfach hineinziehen, mit ${shortcutInText('V')} einfügen oder auswählen.`,
+          `Is something broken or odd? Write briefly what happened. Pictures help a lot: drag them in, paste them with ${shortcutInText('V')} or pick them.`
         )}
       </p>
 
