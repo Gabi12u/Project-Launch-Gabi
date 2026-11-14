@@ -934,6 +934,16 @@ More details:
     !instances.getInstance('gesperrt').content.some((c) => c.fileName.includes('.replaced')),
     'Beiseitegelegte Datei: als Inhalt eingetragen'
   )
+  // An update that stopped after moving the file aside: the record still
+  // names it, so it comes back instead of being swept away.
+  const current = instances.getInstance('gesperrt').content.find((c) => c.projectId === 'flk')
+  renameSync(join(p.mods('gesperrt'), current.fileName), join(p.mods('gesperrt'), `${current.fileName}.deadbeef.replaced`))
+  await instances.syncContentWithDisk('gesperrt', { force: true })
+  check(existsSync(join(p.mods('gesperrt'), current.fileName)), `Abgebrochenes Update: die Datei kam nicht zurück: ${readdirSync(p.mods('gesperrt')).join(', ')}`)
+  check(
+    instances.getInstance('gesperrt').content.some((c) => c.id === current.id && c.fileName === current.fileName),
+    'Abgebrochenes Update: der Eintrag ging verloren'
+  )
 
   // --- 25. "fabric-permissions-api-v0" is its own project, not part of Fabric API ----
   const PERMS_MISSING = MODULE_MISSING.replaceAll('fabric-resource-loader-v0', 'fabric-permissions-api-v0')

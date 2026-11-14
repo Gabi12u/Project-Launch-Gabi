@@ -1381,21 +1381,34 @@ export async function syncContentWithDisk(id: string, options: { force?: boolean
   for (const folder of folders) {
     if (!existsSync(folder.dir)) continue
 
-    for (const fileName of readdirSync(folder.dir)) {
-      // An update moves the old file aside as "<name>.<8 hex>.replaced" and
-      // deletes it at the end. One that could not be deleted then, a scanner
-      // holding it, stayed for good. Swept only while nothing else works on
-      // the content: an update still running may need its file back.
-      if (/\.[0-9a-f]{8}\.replaced$/.test(fileName)) {
-        if (!isContentBusy(id)) {
-          try {
+    // An update moves the old file aside as "<name>.<8 hex>.replaced" and
+    // deletes it at the end. One that could not be deleted then, a scanner
+    // holding it, stayed for good, so these are swept. But first put back:
+    // an update that stopped between moving the file aside and writing the
+    // record leaves the record naming a file that only exists as
+    // ".replaced", and sweeping it deleted the only copy of the mod. Only
+    // while nothing else works on the content: an update still running
+    // needs its file where it put it.
+    if (!isContentBusy(id)) {
+      for (const fileName of readdirSync(folder.dir)) {
+        const aside = /^(.*)\.[0-9a-f]{8}\.replaced$/.exec(fileName)
+        if (!aside) continue
+        const original = aside[1]
+        try {
+          if (!existsSync(join(folder.dir, original)) && knownExact.has(`${folder.type}:${bareExact(original)}`)) {
+            renameSync(join(folder.dir, fileName), join(folder.dir, original))
+            logger.info(`${original} aus einem abgebrochenen Update zurückgeholt`)
+          } else {
             rmSync(join(folder.dir, fileName), { force: true })
-          } catch {
-            // the next scan tries again
           }
+        } catch {
+          // the next scan tries again
         }
-        continue
       }
+    }
+
+    for (const fileName of readdirSync(folder.dir)) {
+      if (/\.[0-9a-f]{8}\.replaced$/.test(fileName)) continue
       const enabled = !fileName.endsWith('.disabled')
       const bare = enabled ? fileName : fileName.slice(0, -'.disabled'.length)
       if (!folder.extensions.includes(extname(bare).toLowerCase())) continue
