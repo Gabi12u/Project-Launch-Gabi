@@ -361,7 +361,9 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                       fields[3] = icon
                       fields[4] = accent
                       baseline.current = JSON.stringify(fields)
-                      const stillDirty = fieldsSnapshot() !== baseline.current
+                      // The fields as they are now, not as this click saw
+                      // them: something typed during the save stays unsaved.
+                      const stillDirty = latestFields.current !== baseline.current
                       setDirty(stillDirty)
                       onDirtyChange?.(stillDirty)
                       await onChanged()

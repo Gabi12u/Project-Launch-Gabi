@@ -303,8 +303,15 @@ export function App(): JSX.Element {
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
+        // Closing the palette is always fine; only opening it over a dialog
+        // is not. With a context menu open as well it could not be closed
+        // this way at all.
+        if (paletteOpen) {
+          setState({ paletteOpen: false })
+          return
+        }
         if (dialogOpen) return
-        setState((current) => ({ paletteOpen: !current.paletteOpen }))
+        setState({ paletteOpen: true })
         return
       }
       // A bare "/" is the second habit people bring from other apps.
