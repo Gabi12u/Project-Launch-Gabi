@@ -796,7 +796,11 @@ export async function launchInstance(options: LaunchOptions): Promise<void> {
 
     jvmArgs.unshift(`-Xmx${memory}M`, `-Xms${Math.min(memory, 1024)}M`)
 
-    if (process.platform === 'darwin') jvmArgs.push('-XstartOnFirstThread')
+    // LWJGL 3 (1.13 and later) needs the first thread on macOS, and those
+    // version files say so themselves. LWJGL 2 before 1.13 opens its window
+    // through AWT, and with this flag that window never appears: the game
+    // runs, plays its music, and shows nothing.
+    if (process.platform === 'darwin' && versionJson.arguments?.jvm) jvmArgs.push('-XstartOnFirstThread')
 
     jvmArgs.push(
       '-Dminecraft.launcher.brand=LaunchGabi',

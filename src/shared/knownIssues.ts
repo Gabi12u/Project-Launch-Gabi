@@ -5722,6 +5722,20 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-11-14',
     platforms: ['macOS'],
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'mac-alte-versionen-kein-fenster',
+    title: 'Auf dem Mac öffneten Minecraft-Versionen vor 1.13 kein Fenster',
+    detail:
+      'Versionen vor 1.13, nachgeprüft mit 1.12.2, starteten auf dem Mac zwar, man hörte sogar die Musik, aber das ' +
+      'Spielfenster erschien nie, und im Dock tauchte kein Symbol auf. Der Launcher gab beim Start auf dem ' +
+      'Mac immer eine Einstellung mit, die erst die Grafik-Bibliothek ab Minecraft 1.13 braucht. Die ältere ' +
+      'Bibliothek der Versionen davor kann damit ihr Fenster nicht öffnen. Seit 1.0.26 bekommen nur noch ' +
+      'Versionen ab 1.13 diese Einstellung.',
+    state: 'fixed',
+    since: '2026-11-14',
+    platforms: ['macOS'],
+    fixedIn: '1.0.26'
   }
 ]
 

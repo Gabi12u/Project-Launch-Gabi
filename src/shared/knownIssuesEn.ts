@@ -3448,6 +3448,14 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Gabi” lettering and the indicators next to it, such as “Minecraft is running”. Everything still worked, ' +
       'it was just hard to read. Since 1.0.26 the lettering starts to the right of the buttons.'
   },
+  'mac-alte-versionen-kein-fenster': {
+    title: 'On the Mac, Minecraft versions before 1.13 opened no window',
+    detail:
+      'Versions before 1.13, verified with 1.12.2, did start on the Mac, the music could even be heard, but the game ' +
+      'window never appeared and no icon showed up in the Dock. On the Mac the launcher always passed a ' +
+      'setting that only the graphics library of Minecraft 1.13 and later needs. The older library of the ' +
+      'versions before cannot open its window with it. Since 1.0.26 only versions from 1.13 on get this setting.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:
