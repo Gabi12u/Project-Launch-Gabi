@@ -3469,7 +3469,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Anyone who joined the beta programme, left it and tried to join again shortly after got “Mojang ' +
       'refused the confirmation (HTTP 429). Sign in again in the launcher”. But 429 means Mojang has just ' +
       'received too many requests in a short time, and signing in again does not help with that. ' +
-      'Workaround: wait a few minutes and then try again.'
+      'Workaround: wait a few minutes and then try again. Since 1.0.26 the launcher says exactly that.'
+  },
+  'mac-beta-download-haengt': {
+    title: 'On the Mac, downloading a beta stood still forever on a hanging connection',
+    detail:
+      'Beta testers fetch a new beta on the Mac with a button of its own. If no more data arrived halfway ' +
+      'through the download without the connection breaking, the launcher waited without end. The percentage ' +
+      'stood still, and a new attempt only worked after restarting the launcher. Since 1.0.26 the download ' +
+      'stops after a minute without data and can be started again right away.'
   },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',

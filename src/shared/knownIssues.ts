@@ -5756,9 +5756,24 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Wer dem Beta-Programm kurz nacheinander beitrat, es verließ und wieder beitreten wollte, bekam ' +
       '„Mojang hat die Bestätigung abgelehnt (HTTP 429). Melde dich im Launcher einmal neu an“. 429 heißt ' +
       'aber, dass Mojang gerade zu viele Anfragen in kurzer Zeit bekommen hat. Neu anmelden hilft dagegen ' +
-      'nicht. Abhilfe: einige Minuten warten und es dann noch einmal versuchen.',
-    state: 'investigating',
-    since: '2026-11-14'
+      'nicht. Abhilfe: einige Minuten warten und es dann noch einmal versuchen. Seit 1.0.26 sagt der ' +
+      'Launcher genau das.',
+    state: 'fixed',
+    since: '2026-11-14',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'mac-beta-download-haengt',
+    title: 'Auf dem Mac blieb der Download einer Beta bei einer hängenden Verbindung ewig stehen',
+    detail:
+      'Beta-Tester laden eine neue Beta auf dem Mac über einen eigenen Knopf. Kamen dabei mitten im ' +
+      'Download keine Daten mehr an, ohne dass die Verbindung abbrach, wartete der Launcher ohne Ende. Die ' +
+      'Prozentanzeige blieb stehen, und ein neuer Versuch ging erst nach einem Neustart des Launchers. Seit ' +
+      '1.0.26 bricht der Download nach einer Minute ohne Daten ab und lässt sich gleich neu starten.',
+    state: 'fixed',
+    since: '2026-11-14',
+    platforms: ['macOS'],
+    fixedIn: '1.0.26'
   }
 ]
 

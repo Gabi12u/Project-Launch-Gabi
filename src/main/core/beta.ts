@@ -208,7 +208,14 @@ async function redeem(key: string, account: StoredAccount): Promise<Redeemed> {
             'Mojang lässt die Bestätigung nicht zu. Das passiert, wenn im Microsoft-Konto das Spielen im Mehrspieler gesperrt ist, etwa bei Kinderkonten.',
             'Mojang does not allow the confirmation. That happens when multiplayer is blocked for the Microsoft account, for example on child accounts.'
           )
-        : tr(
+        : // Too many joins in a short time, say joining, leaving and joining
+          // again. Signing in again does nothing against that, waiting does.
+          joined.status === 429
+          ? tr(
+              'Mojang hat gerade zu viele Anfragen von deinem Konto bekommen. Warte ein paar Minuten und versuche es dann erneut.',
+              'Mojang has just received too many requests from your account. Wait a few minutes and then try again.'
+            )
+          : tr(
             `Mojang hat die Bestätigung abgelehnt (HTTP ${joined.status}). Melde dich im Launcher einmal neu an und versuche es dann erneut.`,
             `Mojang refused the confirmation (HTTP ${joined.status}). Sign in again in the launcher and then try once more.`
           )
@@ -529,6 +536,9 @@ function manifestFiles(manifest: string): ManifestFile[] {
 
 let downloading: Promise<string> | null = null
 
+/** How long the Mac download may go without any data. Shorter in the tests. */
+const MAC_DOWNLOAD_STALL_MS = Number(process.env.LG_BETA_STALL_MS) || 60_000
+
 /**
  * Downloads the current beta for this Mac into Downloads and opens the disk
  * image, from where Launch Gabi is dragged into Applications as usual. The
@@ -568,10 +578,20 @@ async function downloadOnce(): Promise<string> {
     emit(EVENTS.betaStatus, betaStatus())
   }
   report(0)
+  // A connection that stalls without an error would otherwise keep the
+  // download, and the percentage in the status, hanging until the launcher
+  // restarts. No data for a while ends it like any other interruption.
+  const stalled = new AbortController()
+  let stallTimer: ReturnType<typeof setTimeout> | undefined
+  const armStall = (): void => {
+    clearTimeout(stallTimer)
+    stallTimer = setTimeout(() => stalled.abort(new Error('Keine Daten mehr vom Beta-Server')), MAC_DOWNLOAD_STALL_MS)
+  }
+  armStall()
   try {
     let res: Response
     try {
-      res = await fetchWithBetaToken(`${feed.url}/${encodeURIComponent(name)}`, feed.token)
+      res = await fetchWithBetaToken(`${feed.url}/${encodeURIComponent(name)}`, feed.token, { signal: stalled.signal })
     } catch (err) {
       throw new Error(tr('Keine Verbindung zum Beta-Server. Prüfe deine Internetverbindung.', 'No connection to the beta server. Check your internet connection.'), { cause: err })
     }
@@ -584,6 +604,7 @@ async function downloadOnce(): Promise<string> {
     const source = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0])
     const damaged = (): Error => new Error(tr('Die Beta kam beschädigt an. Bitte noch einmal versuchen.', 'The beta arrived damaged. Please try again.'))
     source.on('data', (chunk: Buffer) => {
+      armStall()
       hash.update(chunk)
       received += chunk.length
       // Stopped at once rather than written to the end first.
@@ -609,6 +630,7 @@ async function downloadOnce(): Promise<string> {
     logger.warn('Beta für den Mac nicht geladen:', err instanceof Error ? err.message : err)
     throw err
   } finally {
+    clearTimeout(stallTimer)
     report(null)
   }
 

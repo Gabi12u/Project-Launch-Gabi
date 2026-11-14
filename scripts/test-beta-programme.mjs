@@ -57,6 +57,8 @@ const server = {
   stableVersion: '1.0.24',
   macDownloads: [],
   damageMac: false,
+  stallMac: false,
+  mojangStatus: 0,
   tokenDays: 30,
   counter: 0,
   requests: []
@@ -78,6 +80,7 @@ globalThis.fetch = async (input, init = {}) => {
   server.requests.push({ url: url.href, headers })
 
   if (url.origin === SESSION && url.pathname === '/session/minecraft/join') {
+    if (server.mojangStatus) return new Response('', { status: server.mojangStatus })
     const who = [ALICE, BOB].find((a) => a.access === body.accessToken && plain(a.uuid) === body.selectedProfile)
     if (!who) return new Response('', { status: 403 })
     server.joins.set(body.serverId, who)
@@ -136,6 +139,17 @@ globalThis.fetch = async (input, init = {}) => {
   for (const arch of ['x64', 'arm64']) {
     if (path === `/feed/${macName(arch)}`) {
       server.macDownloads.push(arch)
+      if (server.stallMac) {
+        // Sends a first piece and then nothing, as a stalled connection does.
+        // Like real fetch, the abort signal ends the body.
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(macImage(arch).subarray(0, 1000))
+            init.signal?.addEventListener('abort', () => controller.error(init.signal.reason))
+          }
+        })
+        return new Response(body, { status: 200 })
+      }
       return new Response(server.damageMac ? Buffer.from('kaputt') : macImage(arch), { status: 200 })
     }
   }
@@ -250,7 +264,7 @@ try {
     platform: 'node',
     outfile: out,
     alias: { '@shared': join(root, 'src/shared'), electron: shim },
-    define: { 'process.env.LG_REPORT_PANEL_TOKEN': JSON.stringify('test-berichtswort') },
+    define: { 'process.env.LG_REPORT_PANEL_TOKEN': JSON.stringify('test-berichtswort'), 'process.env.LG_BETA_STALL_MS': JSON.stringify('300') },
     plugins: [
       {
         name: 'stubs',
@@ -318,6 +332,13 @@ try {
   setAccounts([account(ALICE, true)])
   try { await beta.joinBeta('LGB-ZZZZ-ZZZZ-ZZZZ-ZZZZ') } catch (err) { failure = err.message }
   check(/gibt es nicht|does not exist/.test(failure), `Unbekannter Key: ${failure || 'angenommen'}`)
+
+  // Too many joins in a short time: the advice is to wait, not to sign in again.
+  server.mojangStatus = 429
+  failure = ''
+  try { await beta.joinBeta('LGB-AAAA-BBBB-CCCC-DDDD') } catch (err) { failure = err.message }
+  check(/[Ww]arte|[Ww]ait/.test(failure) && !/neu an|[Ss]ign in again/.test(failure), `Mojang mit 429: ${failure || 'angenommen'}`)
+  server.mojangStatus = 0
 
   // Abgetippt, klein und mit Leerzeichen.
   const joined = await beta.joinBeta(' lgb-aaaa-bbbb- cccc-dddd ')
@@ -517,6 +538,19 @@ try {
     check(!existsSync(expected) && !existsSync(`${expected}.part`), 'Eine beschaedigte Mac-Beta blieb liegen')
     check(globalThis.__lgOpened.length === 0, 'Eine beschaedigte Mac-Beta wurde geoeffnet')
     server.damageMac = false
+
+    // A connection that stops sending ends the download instead of hanging.
+    server.stallMac = true
+    globalThis.__lgOpened = []
+    failure = ''
+    const stallStart = Date.now()
+    try { await beta.downloadBetaForMac() } catch (err) { failure = err.message }
+    check(/unterbrochen|interrupted/.test(failure), `Haengende Verbindung: ${failure || 'geladen'}`)
+    check(Date.now() - stallStart < 5000, `Haengende Verbindung brauchte ${Date.now() - stallStart} ms`)
+    check(!existsSync(expected) && !existsSync(`${expected}.part`), 'Nach dem Haengen blieb eine Datei liegen')
+    check(beta.betaStatus().downloadPercent === undefined, 'Nach dem Haengen steht noch ein Fortschritt im Status')
+    check(globalThis.__lgOpened.length === 0, 'Ein abgebrochener Download wurde geoeffnet')
+    server.stallMac = false
 
     globalThis.__lgVersion = server.betaVersion
     failure = ''
