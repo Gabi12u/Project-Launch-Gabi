@@ -24,6 +24,7 @@
  *   show this on a screen inside the game and close normally from there, so
  *   the log is read after every exit, not only after a crash.
  */
+import { rmSync } from 'node:fs'
 import { open, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { CompatibilityIssue, ContentItem, Instance, LoaderId, LoaderVersion, ProjectVersion } from '@shared/types'
@@ -31,6 +32,8 @@ import { tr } from '@shared/i18n'
 import { getLogBuffer } from './instanceLog'
 import { getInstance } from './instances'
 import { readJarMetadata } from './modMetadata'
+import { compareVersions, parseSemantic } from './fabricVersion'
+import { checksLoader, downloadChecked } from './loaderRequirement'
 import { gameVersionMatches } from './gameVersions'
 import { bestVersionFor, getVersions, modrinth } from '../providers'
 import { listLoaderVersions } from '../loaders'
@@ -279,48 +282,8 @@ function mentionsReport(text: string): boolean {
  * Versions the way the loaders compare them
  * ------------------------------------------------------------------ */
 
-interface Semantic {
-  core: number[]
-  pre: string[] | null
-}
-
-/** Null for a version Fabric and Quilt would only compare as plain text. */
-function parseSemantic(version: string): Semantic | null {
-  const noBuild = version.split('+')[0]
-  const dash = noBuild.indexOf('-')
-  const core = dash >= 0 ? noBuild.slice(0, dash) : noBuild
-  if (!/^\d+(\.\d+)*$/.test(core)) return null
-  return { core: core.split('.').map(Number), pre: dash >= 0 ? noBuild.slice(dash + 1).split('.') : null }
-}
-
-/**
- * Fabric's and Quilt's order. Below zero when `a` is older. Build metadata
- * after "+" does not count.
- */
-export function compareVersions(a: string, b: string): number {
-  const left = parseSemantic(a)
-  const right = parseSemantic(b)
-  if (!left || !right) return a === b ? 0 : a < b ? -1 : 1
-  const length = Math.max(left.core.length, right.core.length)
-  for (let i = 0; i < length; i++) {
-    const diff = (left.core[i] ?? 0) - (right.core[i] ?? 0)
-    if (diff !== 0) return diff
-  }
-  // A pre-release comes before its release.
-  if (!left.pre || !right.pre) return left.pre ? -1 : right.pre ? 1 : 0
-  for (let i = 0; i < Math.max(left.pre.length, right.pre.length); i++) {
-    const x = left.pre[i]
-    const y = right.pre[i]
-    if (x === undefined) return -1
-    if (y === undefined) return 1
-    const nx = /^\d+$/.test(x)
-    const ny = /^\d+$/.test(y)
-    if (nx && ny && Number(x) !== Number(y)) return Number(x) - Number(y)
-    if (nx !== ny) return nx ? -1 : 1
-    if (x !== y) return x < y ? -1 : 1
-  }
-  return 0
-}
+// Fabric's order lives in fabricVersion.ts, shared with updates and installs.
+export { compareVersions } from './fabricVersion'
 
 // Maven's order of known qualifiers; a plain release sits at "". Unknown
 // words come after all of them, among themselves alphabetically.
@@ -1419,5 +1382,25 @@ async function versionInRange(
       return version !== null && range.test(version)
     })
     .sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
-  return fitting.find((v) => v.releaseType === 'release') ?? fitting[0] ?? null
+  const ordered = [...fitting.filter((v) => v.releaseType === 'release'), ...fitting.filter((v) => v.releaseType !== 'release')]
+  if (!checksLoader(instance, 'mod')) return ordered[0] ?? null
+
+  // The newest version in range can itself need a newer Fabric Loader than
+  // the instance has. Suggested anyway, the game crashed again right after.
+  // Only the file says, so the first few are fetched and read.
+  for (const candidate of ordered.slice(0, 3)) {
+    let tried: Awaited<ReturnType<typeof downloadChecked>>
+    try {
+      tried = await downloadChecked(candidate, instance)
+    } catch (err) {
+      logger.warn(`${target.name} ${candidate.versionNumber} nicht auf den Fabric Loader geprüft:`, err)
+      return candidate
+    }
+    if ('file' in tried) {
+      rmSync(tried.file, { force: true })
+      return candidate
+    }
+    logger.info(`${target.name} ${candidate.versionNumber} braucht Fabric Loader ${tried.needs}, nicht vorgeschlagen`)
+  }
+  return null
 }

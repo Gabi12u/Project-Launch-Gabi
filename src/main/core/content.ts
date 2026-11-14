@@ -34,13 +34,14 @@ import {
   syncContentWithDisk,
   toggleContent
 } from './instances'
-import { bestVersionFor, curseforge, getVersion, modrinth } from '../providers'
+import { bestVersionFor, curseforge, getVersion, getVersions, modrinth } from '../providers'
 import { listLoaderVersions } from '../loaders'
 import { compareMaven, compareVersions, modVersionOf } from './crashHelp'
 import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
 import { dependencyForOtherLoader, flattenName } from './compat'
 import { readJarMetadata } from './modMetadata'
+import { checksLoader, downloadChecked } from './loaderRequirement'
 import { isSafeAutoFix } from '@shared/fixes'
 import { locale, tr } from '@shared/i18n'
 
@@ -265,24 +266,58 @@ async function installContentOnce(
 
   // Download ---------------------------------------------------------
   const dir = targetDir(instanceId, type)
-  const destination = contentPath(dir, version.fileName)
-
   options.task?.update(tr(`${project.name} wird geladen…`, `Downloading ${project.name}…`), null)
 
+  // A Fabric mod goes through the cache first and is checked against the
+  // instance's Fabric Loader before it reaches the mods folder. Without a
+  // chosen version, an older one that fits stands in for the newest.
+  let checked: PreparedUpdate | null = null
   try {
-    // With the task's signal: "Abbrechen" used to wait for the file to finish.
-    await downloadFile(
-      {
-        url: version.downloadUrl,
-        path: destination,
-        sha1: version.sha1,
-        size: version.size
-      },
-      undefined,
-      3,
-      options.task?.signal
-    )
+    if (checksLoader(instance, type)) {
+      const chosen = version
+      checked = await downloadFittingLoader(
+        instance,
+        project.name,
+        chosen,
+        options.versionId
+          ? null
+          : async () => (await getVersions(provider, projectId, instance.mcVersion, instance.loader)).filter((v) => v.versionId !== chosen.versionId),
+        options.task?.signal
+      )
+      version = checked.version
+    }
   } catch (err) {
+    if (provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
+      throw new Error(
+        tr(
+          `${project.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+          `${project.name} cannot be downloaded directly, the author only allows that through the CurseForge page.`
+        ),
+        { cause: err }
+      )
+    }
+    throw err
+  }
+  const destination = contentPath(dir, version.fileName)
+
+  try {
+    if (checked) moveInto(checked.file, destination)
+    else {
+      // With the task's signal: "Abbrechen" used to wait for the file to finish.
+      await downloadFile(
+        {
+          url: version.downloadUrl,
+          path: destination,
+          sha1: version.sha1,
+          size: version.size
+        },
+        undefined,
+        3,
+        options.task?.signal
+      )
+    }
+  } catch (err) {
+    if (checked) rmSync(checked.file, { force: true })
     // CurseForge answers with a fallback CDN link when an author disabled
     // third-party distribution (see `curseforge.ts`'s `fallbackDownloadUrl`),
     // and that link reliably 403s. The raw "HTTP 403 ..." otherwise reached
@@ -834,6 +869,53 @@ export async function identifyLocalContent(instanceId: string): Promise<number> 
  * ------------------------------------------------------------------ */
 
 /** Compares release dates because version strings are not sortable in practice. */
+/** Moves a file from the cache into place, copying where a rename cannot. */
+function moveInto(file: string, destination: string): void {
+  try {
+    renameSync(file, destination)
+  } catch {
+    copyFileSync(file, destination)
+    rmSync(file, { force: true })
+  }
+}
+
+/**
+ * Downloads `version` of a Fabric mod into the cache and checks what it asks
+ * of Fabric Loader. Modrinth and CurseForge do not say, only the file does:
+ * Fabric Language Kotlin 1.14 needs 0.19.5, and on 0.19.3 the game no longer
+ * started. When it does not fit, the newest of `alternatives` that does is
+ * taken instead, stable releases first and at most three more downloads.
+ * Throws, naming what is needed, when nothing fits.
+ */
+async function downloadFittingLoader(
+  instance: Instance,
+  name: string,
+  version: ProjectVersion,
+  alternatives: (() => Promise<ProjectVersion[]>) | null,
+  signal?: AbortSignal
+): Promise<PreparedUpdate> {
+  const first = await downloadChecked(version, instance, signal)
+  if ('file' in first) return { file: first.file, version }
+  logger.warn(`${name} ${version.versionNumber} braucht Fabric Loader ${first.needs}, die Instanz hat ${instance.loaderVersion}`)
+  if (alternatives) {
+    const others = (await alternatives()).sort((a, b) => new Date(b.releasedAt).getTime() - new Date(a.releasedAt).getTime())
+    const ordered = [...others.filter((v) => v.releaseType === 'release'), ...others.filter((v) => v.releaseType !== 'release')]
+    for (const candidate of ordered.slice(0, 3)) {
+      const tried = await downloadChecked(candidate, instance, signal)
+      if ('file' in tried) {
+        logger.info(`Stattdessen ${name} ${candidate.versionNumber}, passt zum Fabric Loader ${instance.loaderVersion}`)
+        return { file: tried.file, version: candidate }
+      }
+    }
+  }
+  throw new Error(
+    tr(
+      `${name} ${version.versionNumber} braucht Fabric Loader ${first.needs}, diese Instanz hat ${instance.loaderVersion}. Über „Version ändern“ lässt sich ein neuerer Fabric Loader einstellen.`,
+      `${name} ${version.versionNumber} needs Fabric Loader ${first.needs}, this instance has ${instance.loaderVersion}. A newer Fabric Loader can be set through "Change version".`
+    )
+  )
+}
+
 function isNewer(candidate: ProjectVersion, current: ContentItem): boolean {
   if (!current.versionId) return true
   if (candidate.versionId === current.versionId) return false
@@ -1145,8 +1227,44 @@ async function applyUpdateOnce(
   assertNotCopying(instanceId)
   const instance = getInstance(instanceId)
   const item = instance.content.find((c) => c.id === contentId)
-  const update = prepared ? toAvailableUpdate(prepared.version) : item?.update
-  if (!item || !update) return null
+  if (!item || !(prepared ?? item.update)) return null
+
+  // A Fabric mod is downloaded and checked against the instance's Fabric
+  // Loader before it goes anywhere near the mods folder, where a file of the
+  // same name would already be overwritten. When the offered version needs a
+  // newer loader, the newest version in between that fits is taken instead.
+  if (!prepared && item.update && item.projectId && item.provider !== 'local' && checksLoader(instance, item.type)) {
+    const provider = item.provider as 'modrinth' | 'curseforge'
+    const projectId = item.projectId
+    try {
+      const offered = await getVersion(provider, projectId, item.update.versionId)
+      if (offered) {
+        prepared = await downloadFittingLoader(
+          instance,
+          item.name,
+          offered,
+          async () =>
+            (await getVersions(provider, projectId, instance.mcVersion, instance.loader)).filter(
+              (v) => v.versionId !== offered.versionId && isNewer(v, item)
+            ),
+          signal
+        )
+      }
+    } catch (err) {
+      if (provider === 'curseforge' && err instanceof HttpError && (err.status === 403 || err.status === 404)) {
+        throw new Error(
+          tr(
+            `Das Update für ${item.name} lässt sich nicht direkt herunterladen, der Autor erlaubt das nur über die CurseForge-Seite.`,
+            `The update for ${item.name} cannot be downloaded directly, the author only allows that through the CurseForge page.`
+          ),
+          { cause: err }
+        )
+      }
+      throw err
+    }
+  }
+  const update = prepared ? toAvailableUpdate(prepared.version) : item.update
+  if (!update) return null
 
   const dir = targetDir(instanceId, item.type)
   // Downloaded under its bare name first. Whether ".disabled" belongs on it
@@ -1155,7 +1273,7 @@ async function applyUpdateOnce(
   const downloadPath = contentPath(dir, update.fileName)
 
   try {
-    if (prepared) renameSync(prepared.file, downloadPath)
+    if (prepared) moveInto(prepared.file, downloadPath)
     else {
       await downloadFile(
         {

@@ -5240,9 +5240,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'etwa Fabric Language Kotlin 1.14 auf Instanzen mit Fabric Loader 0.19.3, verlangt aber 0.19.5 oder ' +
       'neuer, und Minecraft startete danach nicht mehr. Abhilfe: per Rechtsklick auf den Mod „Version ' +
       'wählen…“ und die vorherige Version nehmen, oder die Instanz über „Version ändern“ auf einen neueren ' +
-      'Fabric Loader stellen.',
-    state: 'investigating',
-    since: '2026-11-03'
+      'Fabric Loader stellen. Seit 1.0.26 liest der Launcher vor jedem Update und jeder Installation aus der ' +
+      'Datei selbst, welchen Fabric Loader sie braucht, und nimmt sonst die neueste Version, die passt.',
+    state: 'fixed',
+    since: '2026-11-03',
+    fixedIn: '1.0.26'
   },
   {
     id: 'absturzhilfe-version-braucht-neueren-loader',
@@ -5252,9 +5254,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'passende vor, ohne zu prüfen, welchen Fabric Loader diese selbst braucht. Bei Fabric Language ' +
       'Kotlin war das 1.14, das Fabric Loader 0.19.5 verlangt, und das Spiel stürzte danach wieder ab. ' +
       'Betrifft nur die Beta 1.0.26-beta.3. Abhilfe: per Rechtsklick „Version wählen…“ die höchste Version ' +
-      'nehmen, die noch zum eigenen Fabric Loader passt.',
-    state: 'fixing',
-    since: '2026-11-03'
+      'nehmen, die noch zum eigenen Fabric Loader passt. Seit 1.0.26 schlägt die Absturzhilfe nur noch ' +
+      'Versionen vor, die zum Fabric Loader der Instanz passen.',
+    state: 'fixed',
+    since: '2026-11-03',
+    fixedIn: '1.0.26'
   },
   {
     id: 'versionswechsel-festgehaltene-mods',

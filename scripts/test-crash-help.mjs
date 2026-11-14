@@ -517,6 +517,15 @@ try {
     })
     writeFileSync(p.instanceFile('fremdloader'), JSON.stringify(record))
   }
+  // A mod whose newest version needs a newer Fabric Loader than the 0.19.5
+  // every test instance has; the one before it does not.
+  const kOld = release('kotl', 'kt-10', '1.0.0', ['1.21.11'], '2026-09-01T00:00:00Z', 'kotl', ['fabric'], { depends: { fabricloader: '>=0.16.0' } })
+  const kMid = release('kotl', 'kt-11', '1.1.0', ['1.21.11'], '2026-10-01T00:00:00Z', 'kotl', ['fabric'], { depends: { fabricloader: '>=0.19.0' } })
+  const kNew = release('kotl', 'kt-12', '1.2.0', ['1.21.11'], '2026-11-01T00:00:00Z', 'kotl', ['fabric'], { depends: { fabricloader: '>=0.20.0' } })
+  globalThis.__lgAll.kotl = [kNew, kMid, kOld]
+  globalThis.__lgBest.kotl = () => kNew
+  NAMES.kotl = 'Kotl'
+  makeInstance('loaderalt', '1.21.11', [kOld])
   // A library of another author named like a Fabric API module.
   makeInstance('rechte', '1.21.11', [sodium])
   const perms = release('perms-1', 'pm-031', '0.3.1', ['1.21.11'], '2026-10-01T00:00:00Z', 'fabric-permissions-api-v0')
@@ -1013,6 +1022,24 @@ More details:
   })
   check(!globalThis.__lgKlfAsked, 'Für eine Abhängigkeit nur für Forge wurde in einer Fabric-Instanz eine Version gesucht')
   notes.push('Abhängigkeit für einen anderen Mod-Loader: weder gemeldet noch installiert, die echte fehlende bleibt gemeldet.')
+
+  // --- 29. An update that needs a newer Fabric Loader ---------------------------------
+  const kotlIn = () => instances.getInstance('loaderalt').content.find((c) => c.projectId === 'kotl')
+  await content.checkUpdates('loaderalt', undefined, false)
+  check(kotlIn()?.update?.versionId === 'kt-12', `Angebotenes Update: ${kotlIn()?.update?.versionId}`)
+  await content.applyUpdate('loaderalt', kotlIn().id)
+  const modsAfter = readdirSync(p.mods('loaderalt'))
+  check(kotlIn()?.versionId === 'kt-11', `Update auf eine Version, die einen neueren Fabric Loader braucht: ${kotlIn()?.versionId}`)
+  check(modsAfter.includes('kt-11.jar') && !modsAfter.includes('kt-12.jar') && !modsAfter.includes('kt-10.jar'), `Mods-Ordner nach dem Update: ${modsAfter.join(', ')}`)
+  let loaderFailure = ''
+  try {
+    await content.installContent({ instanceId: 'loaderalt', provider: 'modrinth', projectId: 'kotl', versionId: 'kt-12', type: 'mod' })
+  } catch (err) {
+    loaderFailure = err.message
+  }
+  check(/0\.20\.0 oder neuer|0\.20\.0 or later/.test(loaderFailure) && /0\.19\.5/.test(loaderFailure), `Gewählte Version mit zu neuem Loader: ${loaderFailure || 'installiert'}`)
+  check(kotlIn()?.versionId === 'kt-11' && !readdirSync(p.mods('loaderalt')).includes('kt-12.jar'), 'Eine abgelehnte Version liegt trotzdem im Mods-Ordner')
+  notes.push(`Update mit zu neuem Fabric Loader: stattdessen ${kotlIn()?.versionId}; gewählt: "${loaderFailure}"`)
 
   // --- 24. A new start while the last crash is still worked out ----------------------
   const pending = crashed('apifehlt', MODULE_MISSING)

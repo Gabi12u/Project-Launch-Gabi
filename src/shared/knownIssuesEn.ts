@@ -3537,7 +3537,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'Modrinth does not say which mod loader a new version needs at least. That is how Fabric Language ' +
       'Kotlin 1.14 reached instances with Fabric Loader 0.19.3, while it needs 0.19.5 or newer, and Minecraft ' +
       'no longer started. Workaround: right-click the mod, "Choose version…" and take the previous version, ' +
-      'or move the instance to a newer Fabric Loader through "Change version".'
+      'or move the instance to a newer Fabric Loader through "Change version". Since 1.0.26 the launcher reads ' +
+      'from the file itself which Fabric Loader it needs before every update and install, and otherwise takes ' +
+      'the newest version that fits.'
   },
   'absturzhilfe-version-braucht-neueren-loader': {
     title: 'The crash help could suggest a mod version that itself needs a newer Fabric Loader',
@@ -3546,7 +3548,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'without checking which Fabric Loader that version needs itself. For Fabric Language Kotlin that was ' +
       '1.14, which needs Fabric Loader 0.19.5, and the game crashed again. Only affects the beta ' +
       '1.0.26-beta.3. Workaround: right-click, "Choose version…" and take the highest version that still ' +
-      'fits your own Fabric Loader.'
+      'fits your own Fabric Loader. Since 1.0.26 the crash help only suggests versions that fit the ' +
+      'instance\'s Fabric Loader.'
   },
   'versionswechsel-festgehaltene-mods': {
     title: '"Change version" swapped kept mods even when they already fitted',

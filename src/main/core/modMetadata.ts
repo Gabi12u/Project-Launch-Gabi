@@ -31,6 +31,12 @@ export interface JarMetadata {
    * report names such a module by its own id, not by the mod that brought it.
    */
   nested: string[]
+  /**
+   * What its `fabric.mod.json` asks of Fabric Loader (">=0.19.5"), a list
+   * meaning any one of them. Modrinth and CurseForge do not say this, and a
+   * mod needing a newer loader than the instance has stops the game.
+   */
+  fabricLoader?: string | string[]
 }
 
 const METADATA_ENTRIES = [
@@ -87,6 +93,7 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
   const baseName = (path: string): string => (path.split('/').pop() ?? '').toLowerCase()
   let name: string | undefined
   let version: string | undefined
+  let fabricLoader: string | string[] | undefined
 
   // Build tools leave placeholders like "${version}" in unprocessed files.
   const value = (raw: unknown): string | undefined =>
@@ -101,8 +108,12 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
       version?: unknown
       provides?: unknown
       jars?: unknown
+      depends?: Record<string, unknown> | null
     } | null
     if (fabric && typeof fabric === 'object') {
+      const wanted = fabric.depends && typeof fabric.depends === 'object' ? fabric.depends.fabricloader : undefined
+      if (typeof wanted === 'string') fabricLoader = wanted
+      else if (Array.isArray(wanted) && wanted.every((entry) => typeof entry === 'string')) fabricLoader = wanted as string[]
       const id = value(fabric.id)
       if (id) ids.push(id)
       name ??= value(fabric.name)
@@ -187,7 +198,8 @@ export function parseJarMetadata(texts: Map<string, string>): JarMetadata {
     version,
     loaders: [...new Set(loaders)],
     provides: [...new Set(provides)].filter((id) => !ids.includes(id)),
-    nested: [...new Set(nested)]
+    nested: [...new Set(nested)],
+    fabricLoader
   }
 }
 
