@@ -12,7 +12,15 @@ import { tr } from '@shared/i18n'
 const logger = log('compat')
 
 /** Cheap in-memory cache so repeated checks do not hammer the APIs. */
-const nameCache = new Map<string, { name: string; slug: string; known: boolean }>()
+interface ProjectInfo {
+  name: string
+  slug: string
+  /** The mod loaders the project is published for. */
+  loaders: string[]
+  known: boolean
+}
+
+const nameCache = new Map<string, ProjectInfo>()
 /** Bounded so a long session browsing many mods cannot grow it without end. */
 const NAME_CACHE_MAX = 500
 
@@ -32,11 +40,11 @@ const FAILED_LOOKUP_PAUSE_MS = 2 * 60 * 1000
 async function projectInfo(
   provider: 'modrinth' | 'curseforge',
   projectId: string
-): Promise<{ name: string; slug: string; known: boolean }> {
+): Promise<ProjectInfo> {
   const key = `${provider}:${projectId}`
   const failedAt = failedLookups.get(key)
   if (failedAt !== undefined && Date.now() - failedAt < FAILED_LOOKUP_PAUSE_MS) {
-    return { name: projectId, slug: '', known: false }
+    return { name: projectId, slug: '', loaders: [], known: false }
   }
   const cached = nameCache.get(key)
   if (cached !== undefined) {
@@ -62,14 +70,41 @@ async function projectInfo(
       const oldest = nameCache.keys().next().value
       if (oldest !== undefined) nameCache.delete(oldest)
     }
-    const info = { name: project.name, slug: project.slug ?? '', known: true }
+    const info = { name: project.name, slug: project.slug ?? '', loaders: Array.isArray(project.loaders) ? project.loaders : [], known: true }
     nameCache.set(key, info)
     failedLookups.delete(key)
     return info
   } catch {
     failedLookups.set(key, Date.now())
-    return { name: projectId, slug: '', known: false }
+    return { name: projectId, slug: '', loaders: [], known: false }
   }
+}
+
+const MOD_LOADERS = new Set(['fabric', 'forge', 'neoforge', 'quilt'])
+
+/**
+ * True when a project exists only for mod loaders this instance cannot run.
+ * Modrinth lists the dependencies of every loader build of a mod together:
+ * Zoomify for Fabric names KotlinLangForge, which exists only for Forge and
+ * NeoForge. Installing it failed every time, and the check showed it missing
+ * with a button that could never work, for a dependency the game does not
+ * need. A project without any mod loader (a library for every loader, a
+ * data pack) is never ruled out this way.
+ */
+function onlyForOtherLoaders(instance: Pick<Instance, 'loader' | 'mcVersion'>, loaders: string[]): boolean {
+  if (instance.loader === 'vanilla') return false
+  const modLoaders = loaders.filter((loader) => MOD_LOADERS.has(loader))
+  return modLoaders.length > 0 && loaderFit(instance, modLoaders) === 'no'
+}
+
+/** `onlyForOtherLoaders` for a dependency by its id, asked at the provider. */
+export async function dependencyForOtherLoader(
+  provider: 'modrinth' | 'curseforge',
+  projectId: string,
+  instance: Pick<Instance, 'loader' | 'mcVersion'>
+): Promise<boolean> {
+  const info = await projectInfo(provider, projectId)
+  return info.known && onlyForOtherLoaders(instance, info.loaders)
 }
 
 /**
@@ -299,7 +334,9 @@ export async function checkCompatibility(instanceId: string): Promise<Compatibil
         if (installedProjects.has(key)) continue
 
         const provider = mod.provider === 'curseforge' ? 'curseforge' : 'modrinth'
-        const { name, slug, known } = await projectInfo(provider, dependency.projectId)
+        const { name, slug, loaders, known } = await projectInfo(provider, dependency.projectId)
+        // A dependency of the mod's build for another loader: not needed here.
+        if (known && onlyForOtherLoaders(instance, loaders)) continue
 
         // A dependency id always lives in the requiring mod's own namespace,
         // and CurseForge's numeric ids never coincide with Modrinth's base62

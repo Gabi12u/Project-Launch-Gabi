@@ -221,6 +221,8 @@ try {
        modrinth: {
          getProject: async (id) => {
            if (globalThis.__lgOffline) throw new Error('getaddrinfo ENOTFOUND api.modrinth.com')
+           const published = globalThis.__lgProjectLoaders?.[id]
+           if (published) return { projectId: id, slug: id, type: 'mod', name: published.name, loaders: published.loaders, author: 'Test', summary: '', pageUrl: '' }
            const known = globalThis.__lgSlugs[id]
            if (known) return { projectId: known.projectId, slug: id, type: 'mod', name: known.name, author: 'Test', summary: '', pageUrl: '' }
            // Asked by project id, Modrinth answers with the real slug too.
@@ -493,6 +495,27 @@ try {
       dependencies: [{ type: 'required', projectId: '306612' }], installedAt: Date.now(), update: null
     })
     writeFileSync(p.instanceFile('offline'), JSON.stringify(record))
+  }
+  // A Fabric mod whose Modrinth entry lists the dependencies of all its
+  // loader builds: KotlinLangForge exists only for Forge and NeoForge.
+  globalThis.__lgProjectLoaders = {
+    klf: { name: 'KotlinLangForge', loaders: ['forge', 'neoforge'] },
+    ylib: { name: 'YetAnotherConfigLib', loaders: ['fabric', 'quilt', 'neoforge'] }
+  }
+  globalThis.__lgBest.klf = () => {
+    globalThis.__lgKlfAsked = true
+    return null
+  }
+  makeInstance('fremdloader', '1.21.11', [api])
+  {
+    const record = JSON.parse(readFileSync(p.instanceFile('fremdloader'), 'utf8'))
+    writeFileSync(join(p.mods('fremdloader'), 'zoomer.jar'), jarBytes('zoomer', 'Zoomer', '1.0'))
+    record.content.push({
+      id: 'fremd-mod', type: 'mod', provider: 'modrinth', projectId: 'zoomer', versionId: 'zo-1', fileName: 'zoomer.jar',
+      name: 'Zoomer', version: '1.0', enabled: true, gameVersions: ['1.21.11'], loaders: ['fabric'],
+      dependencies: [{ type: 'required', projectId: 'klf' }, { type: 'required', projectId: 'ylib' }], installedAt: Date.now(), update: null
+    })
+    writeFileSync(p.instanceFile('fremdloader'), JSON.stringify(record))
   }
   // A library of another author named like a Fabric API module.
   makeInstance('rechte', '1.21.11', [sodium])
@@ -979,6 +1002,17 @@ More details:
   check(!existsSync(join(p.instance(copy.id), '.launchgabi-kopie-laeuft')), 'Nach dem Duplizieren liegt die Markierung noch im Ordner')
   instances.loadInstances(true)
   check(instances.getInstance(copy.id).name === 'Kopie von gesperrt', 'Die fertige Kopie fehlt nach dem Neuladen')
+
+  // --- 28. A dependency of the mod's build for another loader is not missing -------
+  report = await compat.checkCompatibility('fremdloader')
+  check(!report.issues.some((i) => i.id === 'dep-fremd-mod-klf'), `Abhängigkeit nur für Forge in einer Fabric-Instanz gemeldet: ${JSON.stringify(report.issues.map((i) => i.title))}`)
+  check(report.issues.some((i) => i.id === 'dep-fremd-mod-ylib' && i.fix?.kind === 'install-dependency'), 'Eine echte fehlende Abhängigkeit wird nicht mehr gemeldet')
+  globalThis.__lgKlfAsked = false
+  await content.installNewDependencies('fremdloader', {
+    id: 'fremd-neu', type: 'mod', provider: 'modrinth', name: 'Zoomer', dependencies: [{ type: 'required', projectId: 'klf' }]
+  })
+  check(!globalThis.__lgKlfAsked, 'Für eine Abhängigkeit nur für Forge wurde in einer Fabric-Instanz eine Version gesucht')
+  notes.push('Abhängigkeit für einen anderen Mod-Loader: weder gemeldet noch installiert, die echte fehlende bleibt gemeldet.')
 
   // --- 24. A new start while the last crash is still worked out ----------------------
   const pending = crashed('apifehlt', MODULE_MISSING)

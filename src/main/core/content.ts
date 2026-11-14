@@ -39,7 +39,7 @@ import { listLoaderVersions } from '../loaders'
 import { compareMaven, compareVersions, modVersionOf } from './crashHelp'
 import { createBackup, NothingToBackUpError } from './backups'
 import { assertNotCopying, withContentLock, withItemLock } from './contentLock'
-import { flattenName } from './compat'
+import { dependencyForOtherLoader, flattenName } from './compat'
 import { readJarMetadata } from './modMetadata'
 import { isSafeAutoFix } from '@shared/fixes'
 import { locale, tr } from '@shared/i18n'
@@ -492,6 +492,13 @@ async function installContentOnce(
       )
       if (already) {
         if (!already.enabled) await enableDependency(instanceId, already, project.name)
+        continue
+      }
+      // Modrinth names the dependencies of every loader build together, so a
+      // Fabric mod can list one that exists only for Forge. It could never be
+      // installed here, and the game does not need it.
+      if (await dependencyForOtherLoader(provider, dependency.projectId, getInstance(instanceId))) {
+        logger.info(`Abhängigkeit ${dependency.projectId} von ${project.name} gibt es nur für andere Mod-Loader, übersprungen`)
         continue
       }
 
@@ -1098,6 +1105,11 @@ export async function installNewDependencies(instanceId: string, item: ContentIt
     )
     if (already) {
       if (!already.enabled) await enableDependency(instanceId, already, item.name)
+      continue
+    }
+    // Same rule as a fresh install: a dependency for another loader's build.
+    if (await dependencyForOtherLoader(provider, dependency.projectId, getInstance(instanceId))) {
+      logger.info(`Abhängigkeit ${dependency.projectId} von ${item.name} gibt es nur für andere Mod-Loader, übersprungen`)
       continue
     }
     try {

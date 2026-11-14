@@ -3246,7 +3246,8 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'KotlinLangForge that way, which only exists for Forge and NeoForge. The launcher tried to download that ' +
       'dependency too when installing, and the compatibility check showed it as missing with a button to fix ' +
       'it. The button failed every time with "There is no version of KotlinLangForge for Minecraft 26.2 ' +
-      '(fabric)". The game itself does not need this dependency, the note can be ignored.'
+      '(fabric)". The game itself does not need this dependency, the note can be ignored. Since 1.0.26 the ' +
+      'launcher recognises such dependencies, does not install them and no longer reports them as missing.'
   },
   'aeltere-modversion-update-frage': {
     title: 'After switching a mod to an older version, the launcher asked about an update before every start',

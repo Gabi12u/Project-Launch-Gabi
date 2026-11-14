@@ -5166,9 +5166,11 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Installieren, auch diese Abhängigkeit zu laden, und die Kompatibilitätsprüfung zeigte sie als fehlend ' +
       'mit einem Knopf zum Beheben an. Der Knopf scheiterte jedes Mal mit „Für KotlinLangForge gibt es keine ' +
       'Version für Minecraft 26.2 (fabric)“. Das Spiel selbst braucht diese Abhängigkeit nicht, der Hinweis ' +
-      'lässt sich ignorieren.',
-    state: 'investigating',
-    since: '2026-11-02'
+      'lässt sich ignorieren. Seit 1.0.26 erkennt der Launcher solche Abhängigkeiten, installiert sie nicht ' +
+      'und meldet sie nicht mehr als fehlend.',
+    state: 'fixed',
+    since: '2026-11-02',
+    fixedIn: '1.0.26'
   },
   {
     id: 'aeltere-modversion-update-frage',
