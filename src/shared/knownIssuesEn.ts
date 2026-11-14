@@ -3415,7 +3415,7 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
     detail:
       'A valid modpack larger than 2 GB, for example with bundled worlds, was refused with "This is not a ' +
       'valid .mrpack archive". To check it, the launcher reads the whole archive into memory, which only ' +
-      'works up to 2 GB.'
+      'works up to 2 GB. Since 1.0.26 it reads large modpacks file by file.'
   },
   'tote-verbindung-vier-minuten': {
     title: 'With a connection that never answered, the launcher waited about four minutes',

@@ -146,6 +146,7 @@ export function listEntries(archivePath: string): ZipEntryInfo[] {
 
 export async function readEntryText(archivePath: string, entryName: string): Promise<string | null> {
   try {
+    if (isLargeArchive(archivePath)) return await readEntryTextStreaming(archivePath, entryName)
     const zip = new AdmZip(archivePath)
     const entry = zip.getEntry(entryName)
     if (!entry) return null
@@ -430,7 +431,88 @@ export async function listEntriesStreaming(archivePath: string): Promise<ZipEntr
   }
 }
 
-const WINDOWS_DEVICE_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i
+/**
+ * From this size an archive is read entry by entry instead of whole. adm-zip
+ * reads the file into memory in one piece, which Node refuses from 2 GB on,
+ * and a modpack with bundled worlds gets there: it was turned away as "not a
+ * valid .mrpack". Above a gigabyte the whole read also costs that much memory
+ * for a few small files. Lower in the tests, to reach this path at all.
+ */
+const STREAM_FROM_BYTES = Number(process.env.LG_ZIP_STREAM_FROM_BYTES) || 1024 ** 3
+
+function isLargeArchive(archivePath: string): boolean {
+  try {
+    return statSync(archivePath).size >= STREAM_FROM_BYTES
+  } catch {
+    return false
+  }
+}
+
+/** A streamed entry in the shape the size checks above take. */
+function sized(entry: ZipReadEntry): SizedEntry {
+  return { header: { size: entry.uncompressedSize, compressedSize: entry.compressedSize }, entryName: entry.fileName }
+}
+
+async function readEntryTextStreaming(archivePath: string, entryName: string): Promise<string | null> {
+  const zip = await openZipStreaming(archivePath)
+  try {
+    const entry = (await readZipEntries(zip, archivePath)).find((candidate) => candidate.fileName === entryName)
+    if (!entry) return null
+    assertReasonableMetadataSize(sized(entry))
+    const chunks: Buffer[] = []
+    for await (const chunk of await zip.openReadStreamPromise(entry)) chunks.push(chunk as Buffer)
+    return Buffer.concat(chunks).toString('utf8')
+  } finally {
+    zip.close()
+  }
+}
+
+/** `listEntries` for an archive of any size. */
+export async function listEntriesAnySize(archivePath: string): Promise<ZipEntryInfo[]> {
+  return isLargeArchive(archivePath) ? listEntriesStreaming(archivePath) : listEntries(archivePath)
+}
+
+/**
+ * `extractSubtree` for an archive of any size: a large one is streamed entry
+ * by entry, with the same rules for names, sizes and skipped entries.
+ */
+export async function extractSubtreeAnySize(
+  archivePath: string,
+  prefix: string,
+  targetDir: string,
+  onSkip?: (name: string) => void
+): Promise<number> {
+  if (!isLargeArchive(archivePath)) return extractSubtree(archivePath, prefix, targetDir, onSkip)
+  const zip = await openZipStreaming(archivePath)
+  try {
+    const entries = await readZipEntries(zip, archivePath)
+    assertReasonableArchive(entries.map(sized), archivePath)
+    const slashed = prefix.replace(/\\/g, '/')
+    const normalized = slashed.endsWith('/') ? slashed : `${slashed}/`
+    let count = 0
+    for (const entry of entries) {
+      const name = entry.fileName.replace(/\\/g, '/')
+      if (!name.startsWith(normalized)) continue
+      const rel = name.slice(normalized.length)
+      if (!rel || rel.endsWith('/')) continue
+      assertReasonableSize(sized(entry))
+      if (unusableOnWindows(rel)) {
+        logger.warn(`Überspringe ${name}, der Name ist unter Windows nicht erlaubt`)
+        onSkip?.(rel)
+        continue
+      }
+      const dest = safeJoin(targetDir, rel)
+      mkdirSync(dirname(dest), { recursive: true })
+      await pipeline(await zip.openReadStreamPromise(entry), createWriteStream(dest))
+      count++
+    }
+    return count
+  } finally {
+    zip.close()
+  }
+}
+
+const WINDOWS_DEVICE_NAMES =/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i
 
 /**
  * A path from an archive that Windows cannot hold: a character it forbids

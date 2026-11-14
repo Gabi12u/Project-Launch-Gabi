@@ -5671,9 +5671,10 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     detail:
       'Ein gültiges Modpack, das größer als 2 GB ist, etwa mit mitgelieferten Welten, wurde mit „Das ist kein ' +
       'gültiges .mrpack-Archiv“ abgelehnt. Der Launcher liest das Archiv zum Prüfen als Ganzes in den ' +
-      'Speicher, und das geht nur bis 2 GB.',
-    state: 'investigating',
-    since: '2026-11-14'
+      'Speicher, und das geht nur bis 2 GB. Seit 1.0.26 liest er große Modpacks Datei für Datei.',
+    state: 'fixed',
+    since: '2026-11-14',
+    fixedIn: '1.0.26'
   },
   {
     id: 'tote-verbindung-vier-minuten',

@@ -16,7 +16,7 @@ import { log } from '../logger'
 import { notify } from '../events'
 import { TaskCancelledError, withTask, type Task } from '../tasks'
 import { downloadAll, downloadFile, type DownloadItem } from './net'
-import { extractSubtree, listEntries, readEntryJson, zipFolder } from './archive'
+import { extractSubtreeAnySize, listEntriesAnySize, readEntryJson, zipFolder } from './archive'
 import {
   createInstance,
   deleteInstance,
@@ -437,13 +437,13 @@ async function installMrpackFiles(
   task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
   // Slashes evened out the way `extractSubtree` does, or a zip written with
   // backslashes skipped both folders.
-  const entryNames = listEntries(archivePath).map((e) => e.name.replace(/\\/g, '/'))
+  const entryNames = (await listEntriesAnySize(archivePath)).map((e) => e.name.replace(/\\/g, '/'))
   const skippedNames: string[] = []
   if (entryNames.some((name) => name.startsWith('overrides/'))) {
-    extractSubtree(archivePath, 'overrides', gameDir, (name) => skippedNames.push(name))
+    await extractSubtreeAnySize(archivePath, 'overrides', gameDir, (name) => skippedNames.push(name))
   }
   if (entryNames.some((name) => name.startsWith('client-overrides/'))) {
-    extractSubtree(archivePath, 'client-overrides', gameDir, (name) => skippedNames.push(name))
+    await extractSubtreeAnySize(archivePath, 'client-overrides', gameDir, (name) => skippedNames.push(name))
   }
   reportSkippedNames(skippedNames)
   task.throwIfCancelled()
@@ -747,7 +747,7 @@ export async function importCurseForgeZip(archivePath: string, nameOverride?: st
 
     task.update(tr('Konfigurationen werden entpackt…', 'Unpacking configs…'), 0.9)
     const skippedNames: string[] = []
-    extractSubtree(archivePath, manifest.overrides ?? 'overrides', gameDir, (name) => skippedNames.push(name))
+    await extractSubtreeAnySize(archivePath, manifest.overrides ?? 'overrides', gameDir, (name) => skippedNames.push(name))
     reportSkippedNames(skippedNames)
     task.throwIfCancelled()
 
@@ -830,11 +830,11 @@ function countMrpackFiles(files: MrpackIndex['files']): ImportCounts {
 }
 
 /** Counts what the `overrides/` tree of an archive would contribute. */
-function countOverrides(archivePath: string, prefixes: string[]): ImportCounts {
+async function countOverrides(archivePath: string, prefixes: string[]): Promise<ImportCounts> {
   const counts = { ...EMPTY_COUNTS }
-  let entries: ReturnType<typeof listEntries>
+  let entries: Awaited<ReturnType<typeof listEntriesAnySize>>
   try {
-    entries = listEntries(archivePath)
+    entries = await listEntriesAnySize(archivePath)
   } catch {
     return counts
   }
@@ -907,7 +907,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
 
   let entries: { name: string }[] = []
   try {
-    entries = listEntries(archivePath)
+    entries = await listEntriesAnySize(archivePath)
   } catch (err) {
     return {
       ...base,
@@ -966,7 +966,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
       })
     }
 
-    const counts = addCounts(countMrpackFiles(index.files), countOverrides(archivePath, ['overrides', 'client-overrides']))
+    const counts = addCounts(countMrpackFiles(index.files), await countOverrides(archivePath, ['overrides', 'client-overrides']))
 
     const clientOnly = index.files.filter((file) => file.env?.client === 'unsupported').length
     if (clientOnly > 0) {
@@ -1061,7 +1061,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
 
     const listed = Array.isArray(manifest.files) ? manifest.files.length : 0
     const overrideFolder = manifest.overrides ?? 'overrides'
-    const counts = addCounts({ ...EMPTY_COUNTS, mods: listed }, countOverrides(archivePath, [overrideFolder.toLowerCase()]))
+    const counts = addCounts({ ...EMPTY_COUNTS, mods: listed }, await countOverrides(archivePath, [overrideFolder.toLowerCase()]))
 
     if (listed > 0) {
       findings.push({
@@ -1096,7 +1096,7 @@ export async function analyzeModpackFile(archivePath: string): Promise<ImportAna
   // Not a recognised pack, but an archive that carries a mods folder is still
   // worth offering: the compatibility import treats it as a loose game folder
   // rather than refusing outright.
-  const loose = countOverrides(archivePath, ['', '.minecraft', 'minecraft', 'overrides'])
+  const loose = await countOverrides(archivePath, ['', '.minecraft', 'minecraft', 'overrides'])
   const anyContent = loose.mods + loose.resourcePacks + loose.shaderPacks + loose.configs > 0
 
   return {
@@ -1143,7 +1143,7 @@ export async function importModpack(
   const ext = extname(archivePath).toLowerCase()
   if (ext === '.mrpack') return importMrpack(archivePath, nameOverride, ownsArchive)
 
-  const entries = listEntries(archivePath)
+  const entries = await listEntriesAnySize(archivePath)
   if (entries.some((e) => e.name === 'modrinth.index.json')) {
     return importMrpack(archivePath, nameOverride, ownsArchive)
   }
