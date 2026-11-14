@@ -62,20 +62,28 @@ export function requiredJavaMajor(version: VersionJson, mcVersion: string): numb
   // "1.0" used to fall through every threshold and demand Java 8 — but the
   // two-digit year in front says which era they belong to, so an old snapshot
   // no longer gets handed a JVM that cannot run it.
-  const snapshot = /^(\d{2})w(\d{2})[a-z]?$/i.exec(id)
+  // April Fools versions are built on a weekly id too ("20w14infinite",
+  // "22w13oneblockatatime", "24w14potato") and follow the same table, so the
+  // week is read even with more letters behind it. Checked against every
+  // version JSON Mojang lists.
+  const snapshot = /^(\d{2})w(\d{2})([a-z_]*)$/i.exec(id)
   if (snapshot) {
     const year = Number(snapshot[1])
     const week = Number(snapshot[2])
-    // 1.20.5 (Java 21) landed in 24w14a; 1.18 (Java 17) landed in 21w37a,
-    // not at the start of 2021 (21w03a was still 1.17, Java 16). Anything
-    // older than that predates the bump.
+    const plainWeekly = snapshot[3].length <= 1
     // 26.1 moved to Java 25, and every snapshot of 2026 belongs to it.
     if (year >= 26) return 25
-    if (year >= 24) return 21
+    // 1.20.5 (Java 21) landed in 24w14a; 24w14potato, the joke of the same
+    // week, still ran on 17.
+    if (year >= 25 || (year === 24 && week >= 14 && plainWeekly)) return 21
     if (year >= 22) return 17
-    if (year === 21) return week >= 37 ? 17 : 16
+    // 1.17 moved to Java 16 in 21w19a; the 1.18 snapshots up to 21w44a
+    // stayed on 16 as well.
+    if (year === 21) return week >= 19 ? 16 : 8
     return 8
   }
+  // The first 1.18 pre-release still ran on Java 16, the second on 17.
+  if (/^1\.18-pre1$/i.test(id)) return 16
 
   // Pre-release-era ids with no dotted version at all: classic ("c0.30_01c"),
   // alpha ("a1.2.6"), beta ("b1.7.3"), infdev ("inf-20100618") and the
