@@ -30,6 +30,7 @@ import { app } from 'electron'
 import { paths } from '../paths'
 import { log } from '../logger'
 import { tr } from '@shared/i18n'
+import { writeGameTextFile } from './packSelection'
 
 const logger = log('startscreen')
 
@@ -264,7 +265,9 @@ function setPackActive(instanceId: string, packId: string, active: boolean): voi
   }
 
   mkdirSync(paths.gameDir(instanceId), { recursive: true })
-  writeFileSync(file, lines.join(eol) + eol, 'utf8')
+  // As a whole, never in place: this runs on every start with the feature
+  // on, and a full disk left options.txt empty.
+  writeGameTextFile(file, lines.join(eol) + eol)
 }
 
 /* ------------------------------------------------------------------ *

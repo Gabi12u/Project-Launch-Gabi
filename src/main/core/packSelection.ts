@@ -1,10 +1,34 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ContentType } from '@shared/types'
 import { paths } from '../paths'
 import { log } from '../logger'
 
 const logger = log('packSelection')
+
+/**
+ * Replaces one of the game's own text files (options.txt, a shader config)
+ * as a whole: written next to it first, then swapped in. Rewritten in place,
+ * a full disk or a crash in the middle left it empty or cut short, and the
+ * player's key bindings, video settings and pack order were gone.
+ */
+export function writeGameTextFile(file: string, text: string): void {
+  const temp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`
+  try {
+    const fd = openSync(temp, 'w')
+    try {
+      writeSync(fd, text, null, 'utf8')
+      fsyncSync(fd)
+    } finally {
+      closeSync(fd)
+    }
+    renameSync(temp, file)
+  } catch (err) {
+    rmSync(temp, { force: true })
+    throw err
+  }
+}
 
 /**
  * Carries the game's own selection of a resource pack or shader pack over to
@@ -89,7 +113,7 @@ function editLines(file: string, edit: (line: string) => string): void {
     const lines = raw.split(/\r?\n/)
     const next = lines.map(edit)
     if (next.every((line, i) => line === lines[i])) return
-    writeFileSync(file, next.join(eol), 'utf8')
+    writeGameTextFile(file, next.join(eol))
   } catch (err) {
     logger.warn(`Auswahl in ${file} nicht angepasst:`, err)
   }
