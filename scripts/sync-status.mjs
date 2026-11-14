@@ -15,7 +15,6 @@
  *   node scripts/sync-status.mjs
  */
 
-import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -32,20 +31,18 @@ const temp = mkdtempSync(join(tmpdir(), 'sync-status-'))
 /** Bundles one shared TypeScript module through esbuild and imports it. */
 async function bundleModule(sourceFile, outName) {
   const outfile = join(temp, outName)
-  // Through Node, not through the `.bin` shim. On Windows that shim is a
-  // `.cmd`, which newer Node refuses to spawn directly, and this way the same
-  // line works on all three systems.
-  execFileSync(
-    process.execPath,
-    [
-      join(root, 'node_modules', 'esbuild', 'bin', 'esbuild'),
-      join(root, 'src', 'shared', sourceFile),
-      '--bundle',
-      '--format=esm',
-      `--outfile=${outfile}`
-    ],
-    { stdio: 'pipe' }
-  )
+  // Through esbuild's JavaScript API, not a spawned binary. On Windows the
+  // `.bin` shim is a `.cmd`, which newer Node refuses to spawn directly. On
+  // macOS and Linux esbuild's install step replaces `bin/esbuild` with the
+  // native executable, so running that file through Node fails there.
+  const { build } = await import('esbuild')
+  await build({
+    entryPoints: [join(root, 'src', 'shared', sourceFile)],
+    bundle: true,
+    format: 'esm',
+    outfile,
+    logLevel: 'silent'
+  })
   return import(pathToFileURL(outfile).href)
 }
 
