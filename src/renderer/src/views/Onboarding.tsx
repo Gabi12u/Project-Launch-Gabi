@@ -150,6 +150,7 @@ export function Onboarding(): JSX.Element {
                 max={memoryMax}
                 step={512}
                 value={effectiveMemory}
+                aria-valuetext={formatMemory(effectiveMemory)}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">

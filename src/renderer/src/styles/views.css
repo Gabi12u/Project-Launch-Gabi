@@ -1409,7 +1409,7 @@
 
 .changelog-kind.new {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
-  color: var(--accent);
+  color: var(--text-accent);
 }
 
 .changelog-kind.improved {

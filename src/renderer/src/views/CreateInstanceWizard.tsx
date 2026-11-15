@@ -535,6 +535,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
                 max={memoryMax}
                 step={512}
                 value={effectiveMemory}
+                aria-valuetext={formatMemory(effectiveMemory)}
                 onChange={(event) => setMemory(Number(event.target.value))}
               />
               <span className="hint">

@@ -204,6 +204,23 @@ export interface LocalToast extends AppNotification {
 let toastCounter = 0
 
 /**
+ * While the pointer or the keyboard focus rests on the toasts, none of them
+ * times out. A longer message vanished under the pointer mid sentence.
+ */
+let toastsHeld = false
+
+export function holdToasts(held: boolean): void {
+  toastsHeld = held
+}
+
+function dismissLater(id: string, timeout: number): void {
+  setTimeout(function attempt() {
+    if (toastsHeld) setTimeout(attempt, 1500)
+    else dismissToast(id)
+  }, timeout)
+}
+
+/**
  * Appends a toast, keeping at most 4, but never evicting one that is still
  * waiting on an answer (one with `actions`). Without this, a card asking a
  * real question could be pushed out by four ordinary notifications arriving
@@ -239,9 +256,7 @@ export function toast(
   const item: AppNotification = { id: `t${++toastCounter}`, kind, title, message, timeout }
   setState((current) => ({ toasts: appendToast(current.toasts, item) }))
 
-  if (timeout > 0) {
-    setTimeout(() => dismissToast(item.id), timeout)
-  }
+  if (timeout > 0) dismissLater(item.id, timeout)
 }
 
 /** Like `toast()`, but with one or two buttons instead of a dismiss-only card. */
@@ -255,9 +270,7 @@ export function promptToast(
   const item: LocalToast = { id: `t${++toastCounter}`, kind, title, message, timeout, actions }
   setState((current) => ({ toasts: appendToast(current.toasts, item) }))
 
-  if (timeout > 0) {
-    setTimeout(() => dismissToast(item.id), timeout)
-  }
+  if (timeout > 0) dismissLater(item.id, timeout)
 }
 
 export function pushNotification(notification: AppNotification): void {
@@ -265,10 +278,13 @@ export function pushNotification(notification: AppNotification): void {
   // Errors stay longer: they usually say what to do next, and 6.5 seconds
   // were gone before most people had read them.
   const timeout = notification.timeout ?? (notification.kind === 'error' ? 12000 : 6500)
-  if (timeout > 0) setTimeout(() => dismissToast(notification.id), timeout)
+  if (timeout > 0) dismissLater(notification.id, timeout)
 }
 
 export function dismissToast(id: string): void {
+  // The last one gone: nothing is under the pointer any more, and a hold
+  // left over from a card removed beneath it would keep the next ones forever.
+  if (getState().toasts.every((t) => t.id === id)) toastsHeld = false
   setState((current) => ({ toasts: current.toasts.filter((t) => t.id !== id) }))
 }
 

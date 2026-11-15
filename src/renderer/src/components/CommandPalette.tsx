@@ -198,9 +198,15 @@ export function CommandPalette(): JSX.Element | null {
     if (!paletteOpen) return
     setQuery('')
     setCursor(0)
+    // Whatever had focus before gets it back on close, as with every dialog.
+    // Focus otherwise fell to the page body after Escape.
+    const opener = document.activeElement as HTMLElement | null
     // The portal mounts this frame; focus has to wait for the next one.
     const id = requestAnimationFrame(() => inputRef.current?.focus())
-    return () => cancelAnimationFrame(id)
+    return () => {
+      cancelAnimationFrame(id)
+      if (opener && opener !== document.body && opener.isConnected) opener.focus()
+    }
   }, [paletteOpen])
 
   useEffect(() => {

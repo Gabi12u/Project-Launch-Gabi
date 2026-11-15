@@ -167,8 +167,9 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
       // does not clamp anything.
       // Raised to the smallest size instead of jumping to the default: 600
       // was saved as 854. Only an empty or nonsense field takes the default.
-      const safeWidth = Number.isFinite(width) && width > 0 ? Math.max(640, Math.round(width)) : 854
-      const safeHeight = Number.isFinite(height) && height > 0 ? Math.max(480, Math.round(height)) : 480
+      // And capped at 8K: any number was saved and handed to the game as is.
+      const safeWidth = Number.isFinite(width) && width > 0 ? Math.min(7680, Math.max(640, Math.round(width))) : 854
+      const safeHeight = Number.isFinite(height) && height > 0 ? Math.min(4320, Math.max(480, Math.round(height))) : 480
       // The stored name is the one the toast should report, not the raw field.
       const savedName = name.trim() || instance.name
       const savedGroup = group.trim()
@@ -413,6 +414,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
               max={memoryMax}
               step={512}
               value={Math.min(memory, memoryMax)}
+              aria-valuetext={formatMemory(Math.min(memory, memoryMax))}
               onChange={(e) => setMemory(Number(e.target.value))}
             />
             <span className="hint">
@@ -502,6 +504,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                 // produce "01280".
                 value={width || ''}
                 min={640}
+                max={7680}
                 onChange={(e) => setWidth(Number(e.target.value))}
               />
             </div>
@@ -512,6 +515,7 @@ export function InstanceSettingsPanel({ instance, onChanged, onDirtyChange }: Pr
                 type="number"
                 value={height || ''}
                 min={480}
+                max={4320}
                 onChange={(e) => setHeight(Number(e.target.value))}
               />
             </div>

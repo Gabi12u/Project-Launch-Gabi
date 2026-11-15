@@ -226,7 +226,7 @@ function FeaturedInstance({
       className="hero"
       style={{ ['--hero-accent' as string]: instance.appearance.accent }}
     >
-      {background && <img className="hero-bg" src={background} alt="" />}
+      {background && <img className="hero-bg" src={background} alt="" decoding="async" />}
       <div className="hero-scrim" />
 
       <div className="hero-content">

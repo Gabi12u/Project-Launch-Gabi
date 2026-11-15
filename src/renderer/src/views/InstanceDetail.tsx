@@ -340,6 +340,11 @@ export function InstanceDetailView({
   const modCount = instance.content.filter((c) => c.type === 'mod').length
   const updateCount = instance.content.filter((c) => c.update).length
 
+  const selectTab = (id: typeof tab): void => {
+    if (tab === 'settings' && id !== 'settings' && settingsDirty) setPendingTab(id)
+    else setTab(id)
+  }
+
   return (
     <div className="col gap-24">
       <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/instances')}>
@@ -350,7 +355,7 @@ export function InstanceDetailView({
       {/* --- Header ------------------------------------------------- */}
       <section className="hero" style={{ ['--hero-accent' as string]: accent, minHeight: 210 }}>
         {instance.resolvedBackground && (
-          <img className="hero-bg" src={`file://${instance.resolvedBackground.replace(/\\/g, '/')}`} alt="" />
+          <img className="hero-bg" src={`file://${instance.resolvedBackground.replace(/\\/g, '/')}`} alt="" decoding="async" />
         )}
         <div className="hero-scrim" />
 
@@ -523,22 +528,38 @@ export function InstanceDetailView({
       </div>
 
       {/* --- Tabs ---------------------------------------------------- */}
-      <div className="tabs" role="tablist">
+      {/* Leaving the settings tab unmounts the panel below, which would
+          otherwise discard whatever it has not saved yet. */}
+      <div
+        className="tabs"
+        role="tablist"
+        aria-label={tr('Bereiche der Instanz', 'Sections of the instance')}
+        // Arrow keys, Home and End move between the tabs, the way tab lists
+        // work everywhere else; Tab itself goes on to the content.
+        onKeyDown={(event) => {
+          const index = TABS.findIndex((entry) => entry.id === tab)
+          const last = TABS.length - 1
+          const next =
+            event.key === 'ArrowRight' ? (index >= last ? 0 : index + 1)
+            : event.key === 'ArrowLeft' ? (index <= 0 ? last : index - 1)
+            : event.key === 'Home' ? 0
+            : event.key === 'End' ? last
+            : -1
+          if (next < 0) return
+          event.preventDefault()
+          selectTab(TABS[next].id)
+          document.getElementById(`instance-tab-${TABS[next].id}`)?.focus()
+        }}
+      >
         {TABS.map((entry) => (
           <button
             key={entry.id}
+            id={`instance-tab-${entry.id}`}
             role="tab"
             aria-selected={tab === entry.id}
+            tabIndex={tab === entry.id ? 0 : -1}
             className={`tab ${tab === entry.id ? 'active' : ''}`}
-            onClick={() => {
-              // Leaving the settings tab unmounts the panel below, which would
-              // otherwise discard whatever it has not saved yet.
-              if (tab === 'settings' && entry.id !== 'settings' && settingsDirty) {
-                setPendingTab(entry.id)
-              } else {
-                setTab(entry.id)
-              }
-            }}
+            onClick={() => selectTab(entry.id)}
           >
             {entry.label}
             {entry.id === 'content' && instance.content.length > 0 && (

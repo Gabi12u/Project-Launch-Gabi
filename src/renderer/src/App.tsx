@@ -51,29 +51,22 @@ export function App(): JSX.Element {
       } catch {
         // fall back to the built-in defaults
       }
-      await Promise.all([refreshInstances(), refreshAccounts()])
-
-      try {
-        setState({ tasks: await window.gabi.tasks.list() })
-      } catch {
-        // tasks are optional at boot
-      }
-
-      try {
-        setState({ recording: await window.gabi.recording.state() })
-      } catch {
-        // the indicator simply stays off
-      }
-
-      try {
-        // Asked once at boot as well as watched. An update can finish
-        // downloading while the window is closed to the tray, and then no
-        // event ever reaches this session.
-        const update = await window.gabi.updates.status()
-        if (update.state === 'ready') setState({ updateReady: update.version ?? '' })
-      } catch {
-        // no marker, the settings page still shows the truth
-      }
+      // Asked together rather than one after the other. Tasks, recording and
+      // the update state are optional: without them the indicators stay off,
+      // the settings page still shows the truth. The update state is asked
+      // once at boot as well as watched, since an update can finish
+      // downloading while the window is closed to the tray.
+      const optional = <T,>(promise: Promise<T>): Promise<T | undefined> => promise.catch(() => undefined)
+      const [, , tasks, recording, update] = await Promise.all([
+        refreshInstances(),
+        refreshAccounts(),
+        optional(window.gabi.tasks.list()),
+        optional(window.gabi.recording.state()),
+        optional(window.gabi.updates.status())
+      ])
+      if (tasks) setState({ tasks })
+      if (recording) setState({ recording })
+      if (update?.state === 'ready') setState({ updateReady: update.version ?? '' })
 
       setState({ ready: true })
     }

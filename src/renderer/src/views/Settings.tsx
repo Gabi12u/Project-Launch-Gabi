@@ -589,6 +589,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
             <button
               key={entry.id}
               className={section === entry.id ? 'active' : ''}
+              aria-current={section === entry.id ? 'page' : undefined}
               // Through the route, not only local state: a link to the
               // section the route still named did nothing after another
               // section had been picked here, since the route had not changed.
@@ -873,6 +874,7 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                     max={memoryMax}
                     step={512}
                     value={Math.min(defaultMemoryMb, memoryMax)}
+                    aria-valuetext={formatMemory(Math.min(defaultMemoryMb, memoryMax))}
                     onChange={(event) => setDefaultMemoryMb(Number(event.target.value))}
                   />
                   {info && (
@@ -1336,6 +1338,7 @@ function RecordingPanel(): JSX.Element {
             max={120}
             step={1}
             value={recordingMaxMinutes}
+            aria-valuetext={tr(`${recordingMaxMinutes} Minuten`, `${recordingMaxMinutes} minutes`)}
             disabled={!settings.recordingEnabled}
             onChange={(event) => setRecordingMaxMinutes(Number(event.target.value))}
           />

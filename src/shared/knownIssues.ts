@@ -5813,7 +5813,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Befehlspalette (Strg+K) zeigte über fast jeder Zeile eine eigene Gruppenüberschrift. In den ' +
       'Einstellungen war der Knopf „Change“ beim Speicherort in einem kleinen Fenster auf Englisch ' +
       'abgeschnitten. Und „Entdecken“ warnte bei jedem Besuch, CurseForge sei nicht verbunden, obwohl ' +
-      'niemand CurseForge ausgewählt hatte. Alles seit 1.0.26 behoben.',
+      'niemand CurseForge ausgewählt hatte. Kleine graue Hinweistexte hatten zu wenig Kontrast, Toasts ' +
+      'verschwanden auch, während man sie gerade las, und nach dem Schließen der Befehlspalette war die ' +
+      'Tastatur nirgends mehr. Alles seit 1.0.26 behoben.',
     state: 'fixed',
     since: '2026-11-15',
     fixedIn: '1.0.26'

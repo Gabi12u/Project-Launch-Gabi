@@ -3499,7 +3499,9 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'off mid word, and the cards did not show the full name on hover. The command palette (Ctrl+K) showed ' +
       'a group heading above almost every row. In the settings the "Change" button next to the storage ' +
       'location was cut off in a small window in English. And "Discover" warned on every visit that ' +
-      'CurseForge was not connected, although nobody had chosen CurseForge. All fixed since 1.0.26.'
+      'CurseForge was not connected, although nobody had chosen CurseForge. Small grey hint texts had too ' +
+      'little contrast, toasts vanished even while being read, and after closing the command palette the ' +
+      'keyboard focus was nowhere. All fixed since 1.0.26.'
   },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',

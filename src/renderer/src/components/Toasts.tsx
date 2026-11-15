@@ -1,5 +1,5 @@
 import { useRef, type JSX } from 'react'
-import { dismissToast, navigate, useStore } from '../lib/store'
+import { dismissToast, holdToasts, navigate, useStore } from '../lib/store'
 import { clickable } from '../lib/a11y'
 import { IconCheckCircle, IconInfo, IconWarning, IconX } from './Icons'
 import { tr } from '@shared/i18n'
@@ -20,7 +20,17 @@ export function Toasts(): JSX.Element {
   const handled = useRef(new Set<string>())
 
   return (
-    <div className="toasts" role="status" aria-live="polite">
+    <div
+      className="toasts"
+      role="status"
+      aria-live="polite"
+      onMouseEnter={() => holdToasts(true)}
+      onMouseLeave={() => holdToasts(false)}
+      onFocus={() => holdToasts(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) holdToasts(false)
+      }}
+    >
       {toasts.map((item) => {
         const Icon = ICONS[item.kind]
         const hasActions = Boolean(item.actions && item.actions.length > 0)

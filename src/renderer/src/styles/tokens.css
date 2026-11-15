@@ -33,7 +33,12 @@
   --text: #eef0fa;
   --text-2: #b6bcd6;
   --text-3: #7d859f;
-  --text-4: #747b94;
+  /* At least 4.5:1 on every card and surface (was 4.29), still a step below
+     --text-3. Hints, labels and descriptions use it in small sizes. */
+  --text-4: #7a819a;
+  /* The accent as text: links and accent badges. The accent itself reached
+     only 4.3:1 on the dark surfaces; fills and borders keep using it. */
+  --text-accent: #8f74ff;
 
   /* Status */
   --ok: #3ddc97;

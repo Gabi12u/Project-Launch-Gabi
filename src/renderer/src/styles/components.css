@@ -622,7 +622,13 @@
 .badge.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 .badge.danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
 .badge.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
-.badge.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.badge.accent { background: var(--accent-soft); color: var(--text-accent); border-color: transparent; }
+
+/* A badge that is a button (the source toggles in Discover) gets a hit
+   area of at least 24 px. */
+button.badge {
+  min-height: 24px;
+}
 
 .badge.dot::before {
   content: '';
@@ -837,20 +843,28 @@
 }
 
 /* Range slider */
+/* The input is 24 px high for an easier hit, the visible track stays 6 px. */
 .range {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
+  height: 24px;
+  background: transparent;
+  outline: none;
+}
+
+.range::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: var(--r-full);
   background: rgba(255, 255, 255, 0.1);
-  outline: none;
 }
 
 .range::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 17px;
-  height: 17px;
+  /* Centred on the 6 px track. */
+  margin-top: -7px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #fff;
   border: 3px solid var(--accent);
@@ -1318,7 +1332,7 @@
 }
 
 .link {
-  color: var(--accent);
+  color: var(--text-accent);
   font-weight: 550;
   cursor: pointer;
   transition: opacity var(--t-fast);
