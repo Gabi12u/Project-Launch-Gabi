@@ -22,6 +22,26 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.26': {
+    headline: 'More security, a calmer launcher, better on the Mac, and over fifty fixed bugs from three deep searches.',
+    changes: [
+      'Security: your own CurseForge key is now stored encrypted, like your Microsoft sign-in already was. Custom Java arguments that would start another program ask first. Your beta access is no longer sent to other servers on a redirect, launchgabi links only let real IDs through, and a crafted modpack can no longer freeze the launcher.',
+      'The moving background rests while you are not doing anything. That saves processor, graphics and battery.',
+      'Interface: small hint texts are easier to read, tabs can be switched with the arrow keys, notifications stay while you read them, and long names in Discover are no longer cut down to a few letters.',
+      'Java: loading it now shows the progress. Java 25, which Minecraft 26 needs, can be loaded under Java & performance, and Minecraft 1.17 and 1.17.1 start again.',
+      'Mac: the window buttons no longer sit on top of the title, shortcuts are labelled Cmd instead of Ctrl, and Minecraft versions before 1.13 open a window again. A stuck beta download gives up after a while.',
+      'On macOS and Linux, Minecraft and mods can open links and folders again. A Java loaded before 1.0.25 is repaired for that.',
+      'Modpacks over 2 GB can be imported. On Windows a single file with an invalid name no longer stops the import, and a folder with a shortcut to itself is no longer copied over and over.',
+      'Mod updates and the crash help no longer suggest a version that needs a newer Fabric Loader. Dependencies for another mod loader are skipped, instances no longer get the newest mod loader without asking, and the Quilted Fabric API counts as Fabric API.',
+      '"Change version" leaves kept mods alone when they already fit. "Repair" notices an interrupted mod loader change that left mods of both loaders mixed.',
+      'Forge can be installed even on a PC where it was never set up before. For Minecraft versions without Fabric or Quilt the assistant no longer reports a connection error.',
+      'Backups: if the list is damaged, the launcher rebuilds it from the folder instead of hiding all backups. On Windows a backup also works while a world is open in the game.',
+      'Cloud backups carry the Minecraft version of the backup, say when uploading and downloading that a standard backup contains no mods, and no longer vanish right after being downloaded into an existing instance.',
+      'Without internet, a dependency that cannot be checked no longer blocks the game start. If a connection does not answer, the launcher takes the saved state after 20 seconds instead of waiting about four minutes. For CurseForge mods with very many files it finds all versions again.',
+      'Windows: the start script of an instance finds the launcher even when your user name contains umlauts.',
+      'Plus many smaller fixes, for example for play time and worlds after playing, the "Command before launch", the beta programme and the interface. Each one is listed on the status page.'
+    ]
+  },
   '1.0.25': {
     headline: 'Beta programme, report problems yourself with pictures, and mods from other launchers now get updates.',
     changes: [

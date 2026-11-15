@@ -34,6 +34,73 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.26',
+    date: '2026-11-15',
+    headline: 'Mehr Sicherheit, ein ruhigerer Launcher, besser auf dem Mac und über fünfzig behobene Fehler aus drei Tiefensuchen.',
+    changes: [
+      {
+        kind: 'improved',
+        text: 'Sicherheit: Dein eigener CurseForge-Schlüssel wird jetzt verschlüsselt gespeichert, wie schon deine Microsoft-Anmeldung. Eigene Java-Argumente, die ein anderes Programm starten würden, fragen vorher nach. Dein Beta-Zugang geht bei Weiterleitungen nicht mehr an andere Server, launchgabi-Links lassen nur echte Kennungen durch, und ein präpariertes Modpack kann den Launcher nicht mehr einfrieren.'
+      },
+      {
+        kind: 'improved',
+        text: 'Der bewegte Hintergrund ruht, solange du nichts tust. Das spart Prozessor, Grafik und Akku.'
+      },
+      {
+        kind: 'improved',
+        text: 'Oberfläche: Kleine Hinweistexte sind besser lesbar, Reiter lassen sich mit den Pfeiltasten wechseln, Benachrichtigungen bleiben stehen, solange du sie liest, und lange Namen werden in Entdecken nicht mehr auf wenige Buchstaben abgeschnitten.'
+      },
+      {
+        kind: 'improved',
+        text: 'Java: Beim Laden siehst du jetzt den Fortschritt. Java 25, das Minecraft 26 braucht, lässt sich unter Java & Leistung laden, und Minecraft 1.17 und 1.17.1 starten wieder.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mac: Die Fensterknöpfe liegen nicht mehr über dem Schriftzug, Tastenkürzel heißen Cmd statt Strg, und Minecraft-Versionen vor 1.13 öffnen wieder ein Fenster. Ein hängender Beta-Download bricht nach einer Weile ab.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Unter macOS und Linux können Minecraft und Mods wieder Links und Ordner öffnen. Ein vor 1.0.25 geladenes Java wird dafür nachgebessert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Modpacks über 2 GB lassen sich importieren. Unter Windows bricht eine einzelne Datei mit ungültigem Namen den Import nicht mehr ab, und ein Ordner mit einer Verknüpfung auf sich selbst wird nicht mehr vielfach kopiert.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Mod-Updates und die Absturzhilfe schlagen keine Version mehr vor, die einen neueren Fabric Loader braucht. Abhängigkeiten für einen anderen Mod-Loader werden übersprungen, Instanzen bekommen nicht mehr ungefragt den neuesten Mod-Loader, und die Quilted Fabric API zählt als Fabric API.'
+      },
+      {
+        kind: 'fixed',
+        text: '„Version ändern“ lässt festgehaltene Mods stehen, wenn sie schon passen. „Reparieren“ erkennt einen abgebrochenen Wechsel des Mod-Loaders, bei dem Mods beider Loader gemischt blieben.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Forge lässt sich auch auf einem PC installieren, auf dem es noch nie eingerichtet war. Für Minecraft-Versionen ohne Fabric oder Quilt meldet der Assistent keinen Verbindungsfehler mehr.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Sicherungen: Ist die Liste beschädigt, baut der Launcher sie aus dem Ordner neu auf, statt alle Sicherungen auszublenden. Unter Windows klappt eine Sicherung auch, während im Spiel eine Welt offen ist.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Cloud-Backups tragen die Minecraft-Version der Sicherung, sagen beim Hoch- und Herunterladen, wenn eine Standard-Sicherung keine Mods enthält, und verschwinden nicht mehr direkt nach dem Herunterladen in eine bestehende Instanz.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ohne Internet blockiert eine nicht prüfbare Abhängigkeit den Spielstart nicht mehr. Antwortet eine Verbindung nicht, nimmt der Launcher nach 20 Sekunden den gespeicherten Stand, statt rund vier Minuten zu warten. Bei CurseForge-Mods mit sehr vielen Dateien findet er wieder alle Versionen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Windows: Das Start-Skript einer Instanz findet den Launcher auch, wenn dein Benutzername Umlaute enthält.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Dazu viele kleinere Fehler, etwa bei Spielzeit und Welten nach dem Spielen, beim „Befehl vor dem Start“, im Beta-Programm und in der Oberfläche. Alle stehen einzeln auf der Statusseite.'
+      }
+    ]
+  },
+  {
     version: '1.0.25',
     date: '2026-11-02',
     headline: 'Beta-Programm, Fehler selbst melden mit Bildern, und Mods aus anderen Launchern bekommen jetzt Updates.',

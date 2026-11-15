@@ -967,104 +967,136 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.25",
-    "date": "2026-11-02",
-    "headline": "Beta-Programm, Fehler selbst melden mit Bildern, und Mods aus anderen Launchern bekommen jetzt Updates.",
+    "version": "1.0.26",
+    "date": "2026-11-15",
+    "headline": "Mehr Sicherheit, ein ruhigerer Launcher, besser auf dem Mac und über fünfzig behobene Fehler aus drei Tiefensuchen.",
     "changes": [
       {
-        "kind": "new",
-        "text": "Beta-Programm: Mit einem Beta-Key bekommst du neue Versionen, bevor sie für alle erscheinen. Du gibst ihn unter Einstellungen, Updates, Beta-Programm ein. Dabei wird geprüft, dass dir dein Minecraft-Konto gehört. Solange du dabei bist, werden Fehlerberichte automatisch gesendet, und gespeichert wird dein Minecraft-Name. Verlassen geht jederzeit an derselben Stelle."
+        "kind": "improved",
+        "text": "Sicherheit: Dein eigener CurseForge-Schlüssel wird jetzt verschlüsselt gespeichert, wie schon deine Microsoft-Anmeldung. Eigene Java-Argumente, die ein anderes Programm starten würden, fragen vorher nach. Dein Beta-Zugang geht bei Weiterleitungen nicht mehr an andere Server, launchgabi-Links lassen nur echte Kennungen durch, und ein präpariertes Modpack kann den Launcher nicht mehr einfrieren."
       },
       {
-        "kind": "new",
-        "text": "Unter Windows und Linux kommt eine Beta wie ein normales Update. Auf dem Mac installiert sich der Launcher nicht von selbst, dort lädst du sie mit einem Knopf im Beta-Programm herunter."
+        "kind": "improved",
+        "text": "Der bewegte Hintergrund ruht, solange du nichts tust. Das spart Prozessor, Grafik und Akku."
       },
       {
-        "kind": "new",
-        "text": "Fehler selbst melden: Unter Einstellungen, Fehlerberichte beschreibst du ein Problem in eigenen Worten und hängst bis zu drei Bilder an. Auf Wunsch geht das Protokoll mit, ohne Benutzernamen, Spielernamen und Zugangsdaten."
+        "kind": "improved",
+        "text": "Oberfläche: Kleine Hinweistexte sind besser lesbar, Reiter lassen sich mit den Pfeiltasten wechseln, Benachrichtigungen bleiben stehen, solange du sie liest, und lange Namen werden in Entdecken nicht mehr auf wenige Buchstaben abgeschnitten."
       },
       {
-        "kind": "fixed",
-        "text": "Mods, Ressourcenpakete und Shader, die du von Hand abgelegt oder aus einem anderen Launcher übernommen hast, bekommen jetzt Updates und wechseln bei „Version ändern“ mit. Mods für die falsche Minecraft-Version tauscht „Reparieren“ aus."
-      },
-      {
-        "kind": "fixed",
-        "text": "Antwortet Modrinth oder CurseForge bei „Version ändern“ mit einem Fehler, bricht der Wechsel ab, bevor sich etwas ändert. Bisher wurden Mods dabei ausgeschaltet."
+        "kind": "improved",
+        "text": "Java: Beim Laden siehst du jetzt den Fortschritt. Java 25, das Minecraft 26 braucht, lässt sich unter Java & Leistung laden, und Minecraft 1.17 und 1.17.1 starten wieder."
       },
       {
         "kind": "fixed",
-        "text": "Wird der Launcher mitten in „Version ändern“ geschlossen, erkennt er das beim nächsten Start und hilft beim Abschließen. Die Instanz startet nicht halb umgestellt."
+        "text": "Mac: Die Fensterknöpfe liegen nicht mehr über dem Schriftzug, Tastenkürzel heißen Cmd statt Strg, und Minecraft-Versionen vor 1.13 öffnen wieder ein Fenster. Ein hängender Beta-Download bricht nach einer Weile ab."
       },
       {
         "kind": "fixed",
-        "text": "Beim Wechsel zurück gehen ausgeschaltete Mods wieder an. Ein zweiter Wechsel oder Spielstart kommt nicht mehr dazwischen, und es gibt keine Updates für die alte Version."
+        "text": "Unter macOS und Linux können Minecraft und Mods wieder Links und Ordner öffnen. Ein vor 1.0.25 geladenes Java wird dafür nachgebessert."
       },
       {
         "kind": "fixed",
-        "text": "Fällt Xbox Live beim Erneuern der Anmeldung kurz aus, startet das Spiel trotzdem mit der gespeicherten Anmeldung, sodass wenigstens der Einzelspieler geht."
+        "text": "Modpacks über 2 GB lassen sich importieren. Unter Windows bricht eine einzelne Datei mit ungültigem Namen den Import nicht mehr ab, und ein Ordner mit einer Verknüpfung auf sich selbst wird nicht mehr vielfach kopiert."
       },
       {
         "kind": "fixed",
-        "text": "Modrinth-Modpacks: Updates werden auch gefunden, wenn sie vor dem Import erschienen sind. CurseForge-Modpacks legen Resourcepacks und Shader nicht mehr still in den Mod-Ordner."
+        "text": "Mod-Updates und die Absturzhilfe schlagen keine Version mehr vor, die einen neueren Fabric Loader braucht. Abhängigkeiten für einen anderen Mod-Loader werden übersprungen, Instanzen bekommen nicht mehr ungefragt den neuesten Mod-Loader, und die Quilted Fabric API zählt als Fabric API."
       },
       {
         "kind": "fixed",
-        "text": "Windows: Ein .bat- oder .cmd-Wrapper bekommt Pfade mit %, ^, ! oder Anführungszeichen jetzt unverändert."
+        "text": "„Version ändern“ lässt festgehaltene Mods stehen, wenn sie schon passen. „Reparieren“ erkennt einen abgebrochenen Wechsel des Mod-Loaders, bei dem Mods beider Loader gemischt blieben."
       },
       {
         "kind": "fixed",
-        "text": "Stürzt die Oberfläche immer wieder ab, startet der Launcher beim nächsten Mal wie angekündigt ohne Grafikbeschleunigung. Bisher geschah das nicht, und sie stürzte erneut ab."
+        "text": "Forge lässt sich auch auf einem PC installieren, auf dem es noch nie eingerichtet war. Für Minecraft-Versionen ohne Fabric oder Quilt meldet der Assistent keinen Verbindungsfehler mehr."
+      },
+      {
+        "kind": "fixed",
+        "text": "Sicherungen: Ist die Liste beschädigt, baut der Launcher sie aus dem Ordner neu auf, statt alle Sicherungen auszublenden. Unter Windows klappt eine Sicherung auch, während im Spiel eine Welt offen ist."
+      },
+      {
+        "kind": "fixed",
+        "text": "Cloud-Backups tragen die Minecraft-Version der Sicherung, sagen beim Hoch- und Herunterladen, wenn eine Standard-Sicherung keine Mods enthält, und verschwinden nicht mehr direkt nach dem Herunterladen in eine bestehende Instanz."
+      },
+      {
+        "kind": "fixed",
+        "text": "Ohne Internet blockiert eine nicht prüfbare Abhängigkeit den Spielstart nicht mehr. Antwortet eine Verbindung nicht, nimmt der Launcher nach 20 Sekunden den gespeicherten Stand, statt rund vier Minuten zu warten. Bei CurseForge-Mods mit sehr vielen Dateien findet er wieder alle Versionen."
+      },
+      {
+        "kind": "fixed",
+        "text": "Windows: Das Start-Skript einer Instanz findet den Launcher auch, wenn dein Benutzername Umlaute enthält."
+      },
+      {
+        "kind": "fixed",
+        "text": "Dazu viele kleinere Fehler, etwa bei Spielzeit und Welten nach dem Spielen, beim „Befehl vor dem Start“, im Beta-Programm und in der Oberfläche. Alle stehen einzeln auf der Statusseite."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.25",
-    "date": "2026-11-02",
-    "headline": "Beta programme, report problems yourself with pictures, and mods from other launchers now get updates.",
+    "version": "1.0.26",
+    "date": "2026-11-15",
+    "headline": "More security, a calmer launcher, better on the Mac, and over fifty fixed bugs from three deep searches.",
     "changes": [
       {
-        "kind": "new",
-        "text": "Beta programme: with a beta key you get new versions before they come out for everyone. You enter it under Settings, Updates, Beta programme. It is checked that the Minecraft account is yours. While you are in, error reports are sent automatically, and your Minecraft name is stored. You can leave at any time in the same place."
+        "kind": "improved",
+        "text": "Security: your own CurseForge key is now stored encrypted, like your Microsoft sign-in already was. Custom Java arguments that would start another program ask first. Your beta access is no longer sent to other servers on a redirect, launchgabi links only let real IDs through, and a crafted modpack can no longer freeze the launcher."
       },
       {
-        "kind": "new",
-        "text": "On Windows and Linux a beta arrives like a normal update. On a Mac the launcher does not install updates by itself, so there you download it with a button in the beta programme."
+        "kind": "improved",
+        "text": "The moving background rests while you are not doing anything. That saves processor, graphics and battery."
       },
       {
-        "kind": "new",
-        "text": "Report a problem yourself: under Settings, Error reports you describe a problem in your own words and attach up to three pictures. If you want, the log goes along, without user names, player names and credentials."
+        "kind": "improved",
+        "text": "Interface: small hint texts are easier to read, tabs can be switched with the arrow keys, notifications stay while you read them, and long names in Discover are no longer cut down to a few letters."
       },
       {
-        "kind": "fixed",
-        "text": "Mods, resource packs and shaders you placed by hand or took over from another launcher now get updates and move along with \"Change version\". \"Repair\" swaps mods made for the wrong Minecraft version."
-      },
-      {
-        "kind": "fixed",
-        "text": "If Modrinth or CurseForge answers \"Change version\" with an error, the change stops before anything is touched. Until now mods were switched off on the way."
+        "kind": "improved",
+        "text": "Java: loading it now shows the progress. Java 25, which Minecraft 26 needs, can be loaded under Java & performance, and Minecraft 1.17 and 1.17.1 start again."
       },
       {
         "kind": "fixed",
-        "text": "If the launcher is closed in the middle of \"Change version\", it notices at the next start and helps to finish. The instance no longer starts half converted."
+        "text": "Mac: the window buttons no longer sit on top of the title, shortcuts are labelled Cmd instead of Ctrl, and Minecraft versions before 1.13 open a window again. A stuck beta download gives up after a while."
       },
       {
         "kind": "fixed",
-        "text": "Changing back turns switched-off mods on again. A second change or a game start no longer gets in between, and no updates for the old version are offered."
+        "text": "On macOS and Linux, Minecraft and mods can open links and folders again. A Java loaded before 1.0.25 is repaired for that."
       },
       {
         "kind": "fixed",
-        "text": "If Xbox Live drops out briefly while the sign-in is renewed, the game still starts with the saved sign-in, so at least singleplayer works."
+        "text": "Modpacks over 2 GB can be imported. On Windows a single file with an invalid name no longer stops the import, and a folder with a shortcut to itself is no longer copied over and over."
       },
       {
         "kind": "fixed",
-        "text": "Modrinth modpacks: updates are found even when they came out before the import. CurseForge modpacks no longer quietly put resource packs and shaders into the mods folder."
+        "text": "Mod updates and the crash help no longer suggest a version that needs a newer Fabric Loader. Dependencies for another mod loader are skipped, instances no longer get the newest mod loader without asking, and the Quilted Fabric API counts as Fabric API."
       },
       {
         "kind": "fixed",
-        "text": "Windows: a .bat or .cmd wrapper now gets paths with %, ^, ! or quotation marks unchanged."
+        "text": "\"Change version\" leaves kept mods alone when they already fit. \"Repair\" notices an interrupted mod loader change that left mods of both loaders mixed."
       },
       {
         "kind": "fixed",
-        "text": "If the interface keeps crashing, the next start now runs without graphics acceleration as announced. Until now that did not happen, and it crashed again."
+        "text": "Forge can be installed even on a PC where it was never set up before. For Minecraft versions without Fabric or Quilt the assistant no longer reports a connection error."
+      },
+      {
+        "kind": "fixed",
+        "text": "Backups: if the list is damaged, the launcher rebuilds it from the folder instead of hiding all backups. On Windows a backup also works while a world is open in the game."
+      },
+      {
+        "kind": "fixed",
+        "text": "Cloud backups carry the Minecraft version of the backup, say when uploading and downloading that a standard backup contains no mods, and no longer vanish right after being downloaded into an existing instance."
+      },
+      {
+        "kind": "fixed",
+        "text": "Without internet, a dependency that cannot be checked no longer blocks the game start. If a connection does not answer, the launcher takes the saved state after 20 seconds instead of waiting about four minutes. For CurseForge mods with very many files it finds all versions again."
+      },
+      {
+        "kind": "fixed",
+        "text": "Windows: the start script of an instance finds the launcher even when your user name contains umlauts."
+      },
+      {
+        "kind": "fixed",
+        "text": "Plus many smaller fixes, for example for play time and worlds after playing, the \"Command before launch\", the beta programme and the interface. Each one is listed on the status page."
       }
     ]
   };
