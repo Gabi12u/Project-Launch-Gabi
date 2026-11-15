@@ -129,7 +129,12 @@ export function ContentBrowser({
   const [debounced, setDebounced] = useState('')
   const [sort, setSort] = useState<SearchQuery['sort']>('relevance')
   const [useVersionFilter, setUseVersionFilter] = useState(true)
-  const [providers, setProviders] = useState<('modrinth' | 'curseforge')[]>(['modrinth', 'curseforge'])
+  // Without a key CurseForge can only refuse, and every first visit showed a
+  // warning about a source nobody had asked for. Switched on by hand, the
+  // hint below explains what is missing.
+  const [providers, setProviders] = useState<('modrinth' | 'curseforge')[]>(() =>
+    curseForgeKey ? ['modrinth', 'curseforge'] : ['modrinth']
+  )
 
   const [response, setResponse] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)

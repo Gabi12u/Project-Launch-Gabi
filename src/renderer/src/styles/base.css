@@ -274,6 +274,17 @@ img {
   animation-play-state: paused !important;
 }
 
+/*
+ * The same for the backdrop alone once nobody has touched the window for a
+ * while (App.tsx sets the flag). A running animation keeps the compositor
+ * making frames, which kept the GPU process busy on an untouched page.
+ */
+:root[data-calm='true'] .ambient *,
+:root[data-calm='true'] .ambient *::before,
+:root[data-calm='true'] .ambient *::after {
+  animation-play-state: paused !important;
+}
+
 .app-body {
   display: flex;
   flex: 1;

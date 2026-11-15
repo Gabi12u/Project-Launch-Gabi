@@ -21,8 +21,10 @@ export function DiscoverView({ query }: { query: URLSearchParams }): JSX.Element
   // it later arrived after that component had already picked its default and
   // was quietly ignored: an install deep link opened on Modpacks instead of
   // Mods, the opposite of what it asked for.
+  // With an instance to install into, mods come first: opening on modpacks
+  // showed results that ignore the chosen target, under that very target.
   const [type, setType] = useState<ContentType | 'modpack'>(() =>
-    query.get('project') ? 'mod' : 'modpack'
+    query.get('project') || instances.length > 0 ? 'mod' : 'modpack'
   )
   const [installedIds, setInstalledIds] = useState<string[]>([])
 

@@ -40,7 +40,8 @@ export function HomeView(): JSX.Element {
 
   // Favourites first, then most recently played.
   const featured = instances[0] ?? null
-  const recent = instances.slice(0, 6)
+  // Without the one in the hero above, which was listed again right below.
+  const recent = instances.slice(1, 7)
 
   // The aggregate tiles (total play time, disk usage, mod count) come from the
   // main process, not from the instance list. Keying them on `instances.length`
@@ -140,7 +141,7 @@ export function HomeView(): JSX.Element {
         </div>
       )}
 
-      {recent.length > 1 && (
+      {recent.length > 0 && (
         <section className="col gap-16">
           <div className="row-between">
             <h2 className="section-title">{tr('Zuletzt gespielt', 'Recently played')}</h2>
@@ -242,7 +243,7 @@ function FeaturedInstance({
                     ? tr('Zuletzt gespielt', 'Last played')
                     : tr('Neu', 'New')}
               </span>
-              <h2 className="hero-title">{instance.name}</h2>
+              <h2 className="hero-title" title={instance.name}>{instance.name}</h2>
             </div>
           </div>
 

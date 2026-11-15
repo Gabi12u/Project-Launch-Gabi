@@ -135,7 +135,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
 
       <div className="instance-body">
         <div className="row-between" style={{ gap: 8 }}>
-          <span className="instance-name truncate">{instance.name}</span>
+          <span className="instance-name truncate" title={instance.name}>{instance.name}</span>
           {instance.running && <span className="badge ok dot live">{tr('Läuft', 'Running')}</span>}
           {instance.installing && !instance.running && (
             <span className="badge accent">
@@ -215,8 +215,9 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
 
     {changingVersion && <ChangeVersionDialog open instance={instance} onClose={() => setChangingVersion(false)} />}
 
-    <Confirm
-      open={confirmDelete}
+    {/* Only while open: forty cards each held a closed dialog with its hooks. */}
+    {confirmDelete && <Confirm
+      open
       title={tr('Instanz löschen?', 'Delete instance?')}
       danger
       confirmLabel={tr('Endgültig löschen', 'Delete permanently')}
@@ -227,7 +228,7 @@ export function InstanceCard({ instance }: { instance: InstanceSummary }): JSX.E
       }
       onConfirm={remove}
       onCancel={() => setConfirmDelete(false)}
-    />
+    />}
     </>
   )
 }

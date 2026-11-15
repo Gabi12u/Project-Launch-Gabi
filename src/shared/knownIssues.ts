@@ -5790,6 +5790,33 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     since: '2026-11-14',
     platforms: ['macOS'],
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'hintergrund-dauerlast',
+    title: 'Der bewegte Hintergrund beschäftigte Prozessor und Grafik, auch wenn niemand etwas tat',
+    detail:
+      'Solange das Fenster des Launchers vorne war, bewegten sich die kleinen Würfel im Hintergrund ' +
+      'ununterbrochen. Das hielt Grafik und Prozessor beschäftigt, auch auf einer Seite, die gerade niemand ' +
+      'benutzte. Auf Laptops kostet das Akku und lässt den Lüfter laufen. Lag das Fenster hinten, stand ' +
+      'alles still wie vorgesehen. Seit 1.0.26 hält der Hintergrund nach 15 Sekunden ohne Eingabe an und ' +
+      'bewegt sich bei der nächsten Mausbewegung weiter.',
+    state: 'fixed',
+    since: '2026-11-15',
+    fixedIn: '1.0.26'
+  },
+  {
+    id: 'kleinere-fehler-oberflaeche-november',
+    title: 'Kleinere Fehler in der Oberfläche aus der Prüfung im November',
+    detail:
+      'Sehr lange Instanznamen liefen auf der Instanzseite und auf Home aus dem großen Kopfbereich und ' +
+      'wurden mitten im Wort abgeschnitten, auf den Karten fehlte der volle Name beim Darüberfahren. Die ' +
+      'Befehlspalette (Strg+K) zeigte über fast jeder Zeile eine eigene Gruppenüberschrift. In den ' +
+      'Einstellungen war der Knopf „Change“ beim Speicherort in einem kleinen Fenster auf Englisch ' +
+      'abgeschnitten. Und „Entdecken“ warnte bei jedem Besuch, CurseForge sei nicht verbunden, obwohl ' +
+      'niemand CurseForge ausgewählt hatte. Alles seit 1.0.26 behoben.',
+    state: 'fixed',
+    since: '2026-11-15',
+    fixedIn: '1.0.26'
   }
 ]
 

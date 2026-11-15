@@ -171,9 +171,9 @@ export function CommandPalette(): JSX.Element | null {
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase()
-    if (!term) return commands.slice(0, 9)
+    if (!term) return byGroup(commands.slice(0, 9))
 
-    return commands
+    const ranked = commands
       .map((command) => ({
         command,
         score: score(`${command.label} ${command.keywords ?? ''}`.toLowerCase(), term)
@@ -182,6 +182,7 @@ export function CommandPalette(): JSX.Element | null {
       .sort((a, b) => b.score - a.score)
       .slice(0, 12)
       .map((entry) => entry.command)
+    return byGroup(ranked)
   }, [commands, query])
 
   // Clamped whenever the list shrinks for reasons other than typing: the reset
@@ -346,4 +347,15 @@ function score(haystack: string, needle: string): number {
 
   // Shorter matches are better matches.
   return total + Math.max(0, 30 - haystack.length) / 10
+}
+
+/**
+ * Results with each group together, groups in the order of their best entry.
+ * Play and open entries alternated per instance, and every row carried its
+ * own group header.
+ */
+function byGroup<T extends { group: string }>(list: T[]): T[] {
+  const order: string[] = []
+  for (const entry of list) if (!order.includes(entry.group)) order.push(entry.group)
+  return order.flatMap((group) => list.filter((entry) => entry.group === group))
 }

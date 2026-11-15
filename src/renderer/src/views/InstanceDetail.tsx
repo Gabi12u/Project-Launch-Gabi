@@ -365,7 +365,7 @@ export function InstanceDetailView({
                 )}
               </div>
               <div className="col gap-6">
-                <h1 className="hero-title" style={{ fontSize: 34 }}>
+                <h1 className="hero-title" style={{ fontSize: 34 }} title={instance.name}>
                   {instance.name}
                 </h1>
                 {instance.description && <p className="hint">{instance.description}</p>}
@@ -1216,8 +1216,7 @@ function ContentTab({
             </>
           )
         }
-        confirmLabel={tr('Ja, aktualisieren', 'Yes, update')}
-        cancelLabel={tr('Nein', 'No')}
+        confirmLabel={tr('Aktualisieren', 'Update')}
         onConfirm={async () => {
           const item = confirmUpdate
           setConfirmUpdate(null)

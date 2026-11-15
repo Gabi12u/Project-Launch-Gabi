@@ -477,8 +477,7 @@ export function ModsView(): JSX.Element {
             `Update only "${confirmRow.item.name}" in ${confirmRow.instance.name} to ${confirmRow.item.update?.versionNumber}? The previous file will be removed.`
           )
         }
-        confirmLabel={tr('Ja, aktualisieren', 'Yes, update')}
-        cancelLabel={tr('Nein', 'No')}
+        confirmLabel={tr('Aktualisieren', 'Update')}
         onConfirm={async () => {
           const row = confirmRow
           setConfirmRow(null)

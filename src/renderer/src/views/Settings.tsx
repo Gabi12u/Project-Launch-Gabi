@@ -671,15 +671,18 @@ export function SettingsView({ query }: { query?: URLSearchParams }): JSX.Elemen
                 <div className="row gap-8">
                   <input
                     className="input"
+                    style={{ flex: 1, minWidth: 0 }}
                     value={settings.dataDirectory}
+                    title={settings.dataDirectory}
                     readOnly
                     aria-label={tr('Speicherort', 'Storage location')}
                   />
-                  <button className="btn" onClick={() => setConfirmDataDir(true)}>
+                  <button className="btn" style={{ flexShrink: 0 }} onClick={() => setConfirmDataDir(true)}>
                     {tr('Ändern', 'Change')}
                   </button>
                   <button
                     className="btn icon"
+                    style={{ flexShrink: 0 }}
                     onClick={() => void window.gabi.app.openPath(settings.dataDirectory)}
                     aria-label={tr('Ordner öffnen', 'Open folder')}
                   >

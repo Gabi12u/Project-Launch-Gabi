@@ -284,7 +284,7 @@ export function CreateInstanceWizard({ open, onClose }: Props): JSX.Element {
               disabled={busy || !mcVersion || checkingLoaders || !loaderReady}
             >
               {busy ? <span className="spinner" /> : <IconSparkle size={15} />}
-              {tr('INSTANZ ERSTELLEN', 'CREATE INSTANCE')}
+              {tr('Instanz erstellen', 'Create instance')}
             </button>
           )}
         </>

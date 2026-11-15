@@ -276,6 +276,54 @@ export function App(): JSX.Element {
     }
   }, [])
 
+  /* --- Calm backdrop while nobody uses the window ----------------- */
+  /*
+   * The drifting cubes behind every view kept the compositor producing
+   * frames for as long as the window had focus: measured on a two-core
+   * laptop, the GPU process and the renderer stayed busy on an untouched Home
+   * page. After a while without input only the backdrop holds still; progress
+   * bars and spinners keep moving, so nothing looks frozen. The next mouse
+   * move or key press brings it back.
+   */
+  useEffect(() => {
+    const CALM_AFTER_MS = 15_000
+    let lastInput = performance.now()
+    let calm = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const setCalm = (next: boolean): void => {
+      calm = next
+      document.documentElement.dataset.calm = next ? 'true' : 'false'
+    }
+    // One timer, moved along only when it fires: a mouse move just notes the
+    // time instead of restarting a timeout dozens of times a second.
+    const schedule = (delay: number): void => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const waited = performance.now() - lastInput
+        if (waited >= CALM_AFTER_MS) setCalm(true)
+        else schedule(CALM_AFTER_MS - waited)
+      }, delay)
+    }
+    const onInput = (): void => {
+      lastInput = performance.now()
+      if (calm) {
+        setCalm(false)
+        schedule(CALM_AFTER_MS)
+      }
+    }
+
+    const events = ['pointermove', 'pointerdown', 'keydown', 'wheel'] as const
+    for (const name of events) window.addEventListener(name, onInput, { passive: true })
+    setCalm(false)
+    schedule(CALM_AFTER_MS)
+
+    return () => {
+      clearTimeout(timer)
+      for (const name of events) window.removeEventListener(name, onInput)
+    }
+  }, [])
+
   /* --- Keyboard shortcuts ---------------------------------------- */
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {

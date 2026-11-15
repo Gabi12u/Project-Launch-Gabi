@@ -3483,6 +3483,24 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'stood still, and a new attempt only worked after restarting the launcher. Since 1.0.26 the download ' +
       'stops after a minute without data and can be started again right away.'
   },
+  'hintergrund-dauerlast': {
+    title: 'The moving background kept the processor and graphics busy, even when nobody did anything',
+    detail:
+      'As long as the launcher window was in front, the small cubes in the background kept moving without ' +
+      'pause. That kept the graphics and the processor busy, even on a page nobody was using. On laptops this ' +
+      'costs battery and keeps the fan running. With the window in the background everything stood still as ' +
+      'intended. Since 1.0.26 the background stops after 15 seconds without input and moves on with the next ' +
+      'mouse movement.'
+  },
+  'kleinere-fehler-oberflaeche-november': {
+    title: 'Smaller faults in the interface from the review in November',
+    detail:
+      'Very long instance names ran out of the large header on the instance page and on Home and were cut ' +
+      'off mid word, and the cards did not show the full name on hover. The command palette (Ctrl+K) showed ' +
+      'a group heading above almost every row. In the settings the "Change" button next to the storage ' +
+      'location was cut off in a small window in English. And "Discover" warned on every visit that ' +
+      'CurseForge was not connected, although nobody had chosen CurseForge. All fixed since 1.0.26.'
+  },
   'kleinere-fehler-tiefensuche-3': {
     title: 'Smaller faults from the third deep search in November',
     detail:

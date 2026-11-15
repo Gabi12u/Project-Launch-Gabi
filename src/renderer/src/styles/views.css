@@ -113,6 +113,25 @@
   letter-spacing: -0.05em;
   line-height: 1.02;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.7);
+  /* A long name, even one without spaces, wraps and ends after two lines
+     with an ellipsis. It used to run out of the hero, cut off mid word. */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /* Room for the glyphs' descenders, which the clamp would clip. */
+  padding-bottom: 0.06em;
+}
+
+/* Lets the title column shrink inside the hero instead of pushing it wider. */
+.hero-content > .col,
+.hero-content .row > .col {
+  min-width: 0;
+}
+
+.hero-icon {
+  flex-shrink: 0;
 }
 
 .hero-meta {
