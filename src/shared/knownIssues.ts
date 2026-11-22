@@ -5819,6 +5819,113 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-15',
     fixedIn: '1.0.26'
+  },
+  {
+    id: 'akzent-knoepfe-schwer-lesbar',
+    title: 'Weiße Schrift auf farbigen Knöpfen war schwer lesbar, bei hellen Akzentfarben kaum noch',
+    detail:
+      'Hauptknöpfe wie „Neue Instanz“ und „Spielen“, die Knöpfe in Hinweisen und der Kreis mit dem ' +
+      'Fragezeichen tragen immer weiße Schrift auf der gewählten Akzentfarbe. Bei hellen Akzentfarben wie ' +
+      'Gelb, Orange, Grün oder Türkis ist der Unterschied so gering, dass man die Schrift kaum lesen kann, ' +
+      'und auch beim voreingestellten Lila liegt er unter dem üblichen Mindestwert. Dazu blieben Verweise ' +
+      'und Akzent-Abzeichen immer lila, egal welche Akzentfarbe gewählt war. Abhilfe bis zur Reparatur: in ' +
+      'den Einstellungen unter Darstellung eine dunklere Akzentfarbe wählen, etwa Blau.',
+    state: 'investigating',
+    since: '2026-11-20'
+  },
+  {
+    id: 'update-pruefung-offline-alles-aktuell',
+    title: '„Auf Updates prüfen“ meldete ohne Internet „Alles aktuell“',
+    detail:
+      'Hatte eine Instanz nur einen oder zwei Mods von Modrinth oder CurseForge, meldete die Update-Prüfung ' +
+      'ohne Internetverbindung nach einigen Sekunden „Alles aktuell“, obwohl sie keinen einzigen Mod prüfen ' +
+      'konnte. Den Hinweis auf die fehlende Verbindung gab es erst ab drei gescheiterten Mods in Folge. Wer ' +
+      'sicher gehen will, prüft erneut, sobald die Verbindung wieder steht.',
+    state: 'investigating',
+    since: '2026-11-22'
+  },
+  {
+    id: 'data-packs-als-mod-installiert',
+    title: 'Im Reiter „Data Packs“ wurden viele Einträge als Mod installiert, ohne nach der Welt zu fragen',
+    detail:
+      'Modrinth führt viele beliebte Data Packs, etwa VeinMiner, Terralith oder Tectonic, gleichzeitig als ' +
+      'Mod. Der Launcher übernahm diese Einordnung, auch wenn sie im Reiter „Data Packs“ gefunden wurden. ' +
+      '„Installieren“ legte dann die Mod-Fassung samt ihren Abhängigkeiten wie der Fabric API in den ' +
+      'Mod-Ordner der Instanz, statt nach der Welt zu fragen und das Data Pack dort einzuspielen. In einer ' +
+      'Instanz mit passendem Mod-Loader wirkt die Mod-Fassung meist genauso, in einer Vanilla-Instanz ' +
+      'bleibt sie wirkungslos.',
+    state: 'investigating',
+    since: '2026-11-22'
+  },
+  {
+    id: 'einrichtung-ohne-titelleiste',
+    title: 'Während der Ersteinrichtung ließ sich das Fenster nicht verschieben, minimieren oder schließen',
+    detail:
+      'Der Launcher zeichnet seine Titelleiste mit den Fensterknöpfen selbst. Auf den Seiten der ' +
+      'Ersteinrichtung beim allerersten Start fehlte sie, so konnte man das Fenster dort weder mit der Maus ' +
+      'verschieben noch minimieren oder schließen. Abhilfe: die Einrichtung zu Ende führen oder ' +
+      'überspringen, danach ist die Titelleiste da. Schließen geht auch mit Alt+F4 oder über das Symbol in ' +
+      'der Taskleiste.',
+    state: 'investigating',
+    since: '2026-11-22'
+  },
+  {
+    id: 'fenster-groesser-als-bildschirm',
+    title: 'Bei vergrößerter Windows-Anzeige ragte das Fenster über den Bildschirmrand',
+    detail:
+      'Das Fenster hat eine feste Mindestgröße. Ist in Windows die Anzeige vergrößert, etwa auf 125 % oder ' +
+      '150 %, wird diese Mindestgröße mitvergrößert und ist auf kleineren Bildschirmen größer als der ' +
+      'Platz, den Windows zur Verfügung hat. Gemessen auf einem Bildschirm mit 1440x900 bei 150 %: das ' +
+      'Fenster war 131 Pixel zu breit und 141 Pixel zu hoch, der Knopf zum Schließen lag außerhalb. ' +
+      'Betroffen sind etwa 1366x768 ab 125 % und 1920x1080 ab 175 %. Abhilfe: das Fenster maximieren ' +
+      '(Doppelklick auf die Titelleiste oder Windows-Taste + Pfeil nach oben), dann passt es.',
+    state: 'investigating',
+    since: '2026-11-22',
+    platforms: ['Windows']
+  },
+  {
+    id: 'neue-instanz-leere-suche-weiter',
+    title: 'Neue Instanz: eine Versionssuche ohne Treffer ließ trotzdem weiterklicken',
+    detail:
+      'Fand die Suche im ersten Schritt keine Version, blieb die Liste ohne jeden Hinweis leer. „Weiter“ ' +
+      'blieb trotzdem anklickbar und nahm die vorher gewählte, nun unsichtbare Version mit in den nächsten ' +
+      'Schritt. Wer nicht aufpasste, legte so eine andere Version an als gedacht. Die gewählte Version ' +
+      'steht im nächsten Schritt oben, dort lässt sie sich prüfen.',
+    state: 'investigating',
+    since: '2026-11-20'
+  },
+  {
+    id: 'neue-instanz-schliesst-ohne-rueckfrage',
+    title: 'Neue Instanz: Esc oder ein Klick neben das Fenster verwarf alle Eingaben ohne Rückfrage',
+    detail:
+      'Der Assistent für eine neue Instanz schloss sich in jedem Schritt sofort bei Esc, beim Kreuz oder ' +
+      'bei einem Klick neben das Fenster. Version, Mod-Loader, Name, Symbol und Arbeitsspeicher waren dann ' +
+      'weg, ohne dass gefragt wurde, ob man wirklich abbrechen will.',
+    state: 'investigating',
+    since: '2026-11-20'
+  },
+  {
+    id: 'kontextmenue-tastatur-falscher-eintrag',
+    title: 'Mit der Tastatur konnte das Rechtsklick-Menü einer Instanz den falschen Eintrag ausführen',
+    detail:
+      'Das Menü, das ein Rechtsklick auf eine Instanz öffnet, bekam nie den Tastaturfokus. Drückte man bei ' +
+      'offenem Menü die Tabulatortaste und dann Enter, führte der Launcher nicht den Knopf aus, auf dem der ' +
+      'Fokus stand, sondern den markierten Menüeintrag. Der erste Eintrag ist „Spielen“, so konnte statt ' +
+      'etwa „Als Favorit markieren“ das Spiel starten. Mit der Maus bedient tritt das nicht auf.',
+    state: 'investigating',
+    since: '2026-11-20'
+  },
+  {
+    id: 'modpack-import-englische-meldung',
+    title: 'Beim Modpack-Import zeigte eine beschädigte Datei eine englische Technikmeldung',
+    detail:
+      'Wählte man beim Importieren eine beschädigte ZIP-Datei, erschien auch in der deutschen Oberfläche ' +
+      'die rohe englische Meldung „ADM-ZIP: Invalid or unsupported zip format. No END header found“. Bei ' +
+      'einer Datei ohne Modpack-Inhalt hieß es nur, „modrinth.index.json“ fehle, ohne zu sagen, was ' +
+      'stattdessen zu tun ist. Gemeint ist in beiden Fällen: die Datei ist kein Modpack oder unvollständig. ' +
+      'Abhilfe: das Modpack erneut herunterladen, als .mrpack von Modrinth oder als ZIP von CurseForge.',
+    state: 'investigating',
+    since: '2026-11-20'
   }
 ]
 

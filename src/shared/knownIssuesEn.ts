@@ -3672,6 +3672,84 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'the same mod, only the first was taken into account. The notice about a newer mod loader vanished ' +
       'when its lookup failed once, and its button did not check whether a repair or restore was running. ' +
       'Only affects the 1.0.26 betas.'
+  },
+  'akzent-knoepfe-schwer-lesbar': {
+    title: 'White text on colored buttons was hard to read, and barely readable with light accent colors',
+    detail:
+      'Main buttons such as "New instance" and "Play", the buttons inside notices and the circle with the ' +
+      'question mark always carry white text on the chosen accent color. With light accent colors such as ' +
+      'yellow, orange, green or turquoise the difference is so small that the text is barely readable, and ' +
+      'even the default purple stays below the usual minimum. On top of that, links and accent badges ' +
+      'stayed purple whatever accent color was chosen. Until it is fixed: pick a darker accent color, for ' +
+      'example blue, under Settings, Appearance.'
+  },
+  'update-pruefung-offline-alles-aktuell': {
+    title: '"Check for updates" reported "Everything is up to date" without an internet connection',
+    detail:
+      'When an instance had only one or two mods from Modrinth or CurseForge, the update check reported ' +
+      '"Everything is up to date" after a few seconds without an internet connection, although it could not ' +
+      'check a single mod. The notice about the missing connection only came after three failed mods in a ' +
+      'row. To be sure, check again once the connection is back.'
+  },
+  'data-packs-als-mod-installiert': {
+    title: 'In the "Data Packs" tab many entries were installed as a mod without asking for the world',
+    detail:
+      'Modrinth lists many popular data packs, such as VeinMiner, Terralith or Tectonic, as a mod at the ' +
+      'same time. The launcher took over that classification even when they were found in the "Data Packs" ' +
+      'tab. "Install" then put the mod version together with its dependencies such as the Fabric API into ' +
+      'the instance’s mods folder, instead of asking for the world and adding the data pack there. In an ' +
+      'instance with a matching mod loader the mod version usually works the same, in a vanilla instance it ' +
+      'has no effect.'
+  },
+  'einrichtung-ohne-titelleiste': {
+    title: 'During the first-time setup the window could not be moved, minimized or closed',
+    detail:
+      'The launcher draws its own title bar with the window buttons. On the setup pages at the very first ' +
+      'start it was missing, so the window could not be moved, minimized or closed with the mouse there. ' +
+      'Workaround: finish or skip the setup, after that the title bar is there. Closing also works with ' +
+      'Alt+F4 or via the icon in the taskbar.'
+  },
+  'fenster-groesser-als-bildschirm': {
+    title: 'With enlarged Windows display scaling the window reached past the edge of the screen',
+    detail:
+      'The window has a fixed minimum size. When Windows enlarges the display, for example to 125 % or 150 ' +
+      '%, this minimum size is enlarged too and on smaller screens becomes bigger than the space Windows ' +
+      'has available. Measured on a 1440x900 screen at 150 %: the window was 131 pixels too wide and 141 ' +
+      'pixels too tall, and the close button was off screen. Affected are for example 1366x768 from 125 % ' +
+      'and 1920x1080 from 175 %. Workaround: maximize the window (double-click the title bar or Windows key ' +
+      '+ arrow up), then it fits.'
+  },
+  'neue-instanz-leere-suche-weiter': {
+    title: 'New instance: a version search without results still let you continue',
+    detail:
+      'When the search in the first step found no version, the list stayed empty without any notice. "Next" ' +
+      'could still be clicked and carried the previously chosen, now invisible version into the next step. ' +
+      'Without paying attention you could create a different version than intended. The chosen version is ' +
+      'shown at the top of the next step, where it can be checked.'
+  },
+  'neue-instanz-schliesst-ohne-rueckfrage': {
+    title: 'New instance: Esc or a click outside the window discarded all input without asking',
+    detail:
+      'The new instance wizard closed immediately at any step on Esc, on the cross or on a click outside ' +
+      'the window. Version, mod loader, name, icon and memory were then gone, without asking whether you ' +
+      'really wanted to cancel.'
+  },
+  'kontextmenue-tastatur-falscher-eintrag': {
+    title: 'With the keyboard, the right-click menu of an instance could run the wrong entry',
+    detail:
+      'The menu that a right-click on an instance opens never received the keyboard focus. Pressing Tab and ' +
+      'then Enter while the menu was open did not run the button that had the focus, but the highlighted ' +
+      'menu entry. The first entry is "Play", so the game could start instead of, for example, "Mark as ' +
+      'favorite". Used with the mouse, this does not happen.'
+  },
+  'modpack-import-englische-meldung': {
+    title: 'Importing a modpack showed a raw technical message for a damaged file',
+    detail:
+      'Choosing a damaged ZIP file during import showed the raw message "ADM-ZIP: Invalid or unsupported ' +
+      'zip format. No END header found". For a file without modpack content it only said that ' +
+      '"modrinth.index.json" was missing, without saying what to do instead. In both cases it means: the ' +
+      'file is not a modpack or is incomplete. Workaround: download the modpack again, as .mrpack from ' +
+      'Modrinth or as a ZIP from CurseForge.'
   }
 }
 
