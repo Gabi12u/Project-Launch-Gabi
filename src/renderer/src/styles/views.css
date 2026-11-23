@@ -1152,7 +1152,7 @@
 
 .onboarding {
   position: fixed;
-  inset: 0;
+  inset: var(--titlebar-h) 0 0 0;
   /* Over the title bar (40) and the task dock (90), under dialogs (100) and
      toasts (120). At 200 the sign-in window the setup opens itself sat
      behind it, and "Account hinzufügen" seemed to do nothing. */

@@ -11,7 +11,7 @@ function elapsed(startedAt: number | null): string {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-export function TitleBar(): JSX.Element {
+export function TitleBar({ search = true }: { search?: boolean }): JSX.Element {
   const { maximized, tasks, instances, recording } = useStore()
   const [platform, setPlatform] = useState('win32')
   // Only used to re-render the clock once a second. The value itself is the
@@ -74,6 +74,7 @@ export function TitleBar(): JSX.Element {
       {/* macOS draws its own traffic lights. */}
       {platform !== 'darwin' && (
         <div className="titlebar-right">
+          {search && (
           <button
             className="win-btn wide no-drag tip tip-below"
             onClick={() => setState({ paletteOpen: true })}
@@ -82,6 +83,7 @@ export function TitleBar(): JSX.Element {
           >
             <IconSearch size={15} />
           </button>
+          )}
           <button className="win-btn" onClick={() => window.gabi.window.minimize()} aria-label={tr('Minimieren', 'Minimize')}>
             <IconMinimize />
           </button>

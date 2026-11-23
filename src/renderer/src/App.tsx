@@ -383,6 +383,7 @@ export function App(): JSX.Element {
     // as a toast that nothing showed, and the dialog just went back.
     return (
       <>
+        <TitleBar search={false} />
         <Onboarding />
         <Toasts />
       </>

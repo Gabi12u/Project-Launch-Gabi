@@ -5866,8 +5866,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'verschieben noch minimieren oder schließen. Abhilfe: die Einrichtung zu Ende führen oder ' +
       'überspringen, danach ist die Titelleiste da. Schließen geht auch mit Alt+F4 oder über das Symbol in ' +
       'der Taskleiste.',
-    state: 'investigating',
-    since: '2026-11-22'
+    state: 'fixed',
+    since: '2026-11-22',
+    fixedIn: '1.0.27'
   },
   {
     id: 'fenster-groesser-als-bildschirm',
