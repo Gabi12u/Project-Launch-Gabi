@@ -5927,6 +5927,18 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       'Abhilfe: das Modpack erneut herunterladen, als .mrpack von Modrinth oder als ZIP von CurseForge.',
     state: 'investigating',
     since: '2026-11-20'
+  },
+  {
+    id: 'einrichtung-java-nur-schalter',
+    title: 'In der Ersteinrichtung ließ sich „Java automatisch verwalten“ nur über den kleinen Schalter umstellen',
+    detail:
+    'Die Zeile „Java automatisch verwalten“ im zweiten Schritt der Ersteinrichtung leuchtete auf, sobald ' +
+    'die Maus darüber war, wie die anklickbaren Karten an anderen Stellen im Launcher. Ein Klick auf den ' +
+    'Text oder die Karte tat aber nichts, nur der kleine Schalter rechts reagierte. Wer auf den Text ' +
+    'geklickt hatte, behielt deshalb die automatische Java-Verwaltung, ohne es zu merken. Abhilfe: unter ' +
+    'Einstellungen, Java & Leistung nachsehen und den Schalter dort umstellen.',
+    state: 'investigating',
+    since: '2026-11-23'
   }
 ]
 

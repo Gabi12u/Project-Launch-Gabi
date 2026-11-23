@@ -3750,6 +3750,15 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       '"modrinth.index.json" was missing, without saying what to do instead. In both cases it means: the ' +
       'file is not a modpack or is incomplete. Workaround: download the modpack again, as .mrpack from ' +
       'Modrinth or as a ZIP from CurseForge.'
+  },
+  'einrichtung-java-nur-schalter': {
+    title: 'In the first-time setup, "Manage Java automatically" could only be changed with the small switch',
+    detail:
+      'The "Manage Java automatically" row in the second step of the first-time setup lit up as soon as ' +
+      'the mouse was over it, like the clickable cards elsewhere in the launcher. Clicking the text or the ' +
+      'card did nothing, though, only the small switch on the right reacted. Anyone who clicked the text ' +
+      'kept automatic Java management without noticing. Workaround: check Settings, Java & performance and ' +
+      'change the switch there.'
   }
 }
 

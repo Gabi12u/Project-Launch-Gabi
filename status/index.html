@@ -5119,6 +5119,13 @@ footer .grow { flex: 1; }
       "detail": "Wählte man beim Importieren eine beschädigte ZIP-Datei, erschien auch in der deutschen Oberfläche die rohe englische Meldung „ADM-ZIP: Invalid or unsupported zip format. No END header found“. Bei einer Datei ohne Modpack-Inhalt hieß es nur, „modrinth.index.json“ fehle, ohne zu sagen, was stattdessen zu tun ist. Gemeint ist in beiden Fällen: die Datei ist kein Modpack oder unvollständig. Abhilfe: das Modpack erneut herunterladen, als .mrpack von Modrinth oder als ZIP von CurseForge.",
       "state": "investigating",
       "since": "2026-11-20"
+    },
+    {
+      "id": "einrichtung-java-nur-schalter",
+      "title": "In der Ersteinrichtung ließ sich „Java automatisch verwalten“ nur über den kleinen Schalter umstellen",
+      "detail": "Die Zeile „Java automatisch verwalten“ im zweiten Schritt der Ersteinrichtung leuchtete auf, sobald die Maus darüber war, wie die anklickbaren Karten an anderen Stellen im Launcher. Ein Klick auf den Text oder die Karte tat aber nichts, nur der kleine Schalter rechts reagierte. Wer auf den Text geklickt hatte, behielt deshalb die automatische Java-Verwaltung, ohne es zu merken. Abhilfe: unter Einstellungen, Java & Leistung nachsehen und den Schalter dort umstellen.",
+      "state": "invsestigating",
+      "since": "2026-11-23"
     }
   ];
   var ISSUE_LABEL = {
@@ -9138,6 +9145,13 @@ footer .grow { flex: 1; }
       "detail": "Choosing a damaged ZIP file during import showed the raw message \"ADM-ZIP: Invalid or unsupported zip format. No END header found\". For a file without modpack content it only said that \"modrinth.index.json\" was missing, without saying what to do instead. In both cases it means: the file is not a modpack or is incomplete. Workaround: download the modpack again, as .mrpack from Modrinth or as a ZIP from CurseForge.",
       "state": "investigating",
       "since": "2026-11-20"
+    },
+    {
+      "id": "einrichtung-java-nur-schalter",
+      "title": "In the first-time setup, \"Manage Java automatically\" could only be changed with the small switch",
+      "detail": "The \"Manage Java automatically\" row in the second step of the first-time setup lit up as soon as the mouse was over it, like the clickable cards elsewhere in the launcher. Clicking the text or the card did nothing, though, only the small switch on the right reacted. Anyone who clicked the text kept automatic Java management without noticing. Workaround: check Settings, Java & performance and change the switch there.",
+      "state": "invsestigating",
+      "since": "2026-11-23"
     }
   ];
   var ISSUE_LABEL_EN = {
