@@ -22,6 +22,14 @@ export const CHANGE_KIND_LABEL_EN: Record<ChangeKind, string> = {
 }
 
 export const CHANGELOG_EN: Record<string, { headline: string; changes: string[] }> = {
+  '1.0.27': {
+    headline: 'Security update: Mojang\'s protection against crafted resource packs now reaches Launch Gabi too, plus a better first-time setup.',
+    changes: [
+      'Security: on 25 November Mojang quietly shipped a fixed font library for Minecraft 26.1, 26.2 and 26.3 against the "Minecraft2Shell" hole. Through it, a crafted resource pack offered by a server can run foreign code on the PC. Launch Gabi never refreshed a Minecraft version once it was loaded, so the protection did not arrive. Now the launcher compares it with Mojang\'s list and fetches a re-issued file by itself. For 1.20.5 to 1.21.11 Mojang has not shipped a fix yet, so there only accept resource packs from servers you trust.',
+      'First-time setup: the title bar is now there at the top. The window can be moved, minimized and closed from the very first start.',
+      'First-time setup: "Manage Java automatically" switches when you click anywhere on the card, not only on the small switch.'
+    ]
+  },
   '1.0.26': {
     headline: 'More security, a calmer launcher, better on the Mac, and over fifty fixed bugs from three deep searches.',
     changes: [

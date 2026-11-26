@@ -967,136 +967,40 @@ footer .grow { flex: 1; }
 
   // AUTO-START: erzeugt von scripts/sync-status.mjs, nicht von Hand aendern.
   var LATEST = {
-    "version": "1.0.26",
-    "date": "2026-11-15",
-    "headline": "Mehr Sicherheit, ein ruhigerer Launcher, besser auf dem Mac und über fünfzig behobene Fehler aus drei Tiefensuchen.",
+    "version": "1.0.27",
+    "date": "2026-11-26",
+    "headline": "Sicherheits-Update: Mojangs Schutz gegen präparierte Ressourcenpakete kommt jetzt auch in Launch Gabi an, dazu eine bessere Ersteinrichtung.",
     "changes": [
       {
-        "kind": "improved",
-        "text": "Sicherheit: Dein eigener CurseForge-Schlüssel wird jetzt verschlüsselt gespeichert, wie schon deine Microsoft-Anmeldung. Eigene Java-Argumente, die ein anderes Programm starten würden, fragen vorher nach. Dein Beta-Zugang geht bei Weiterleitungen nicht mehr an andere Server, launchgabi-Links lassen nur echte Kennungen durch, und ein präpariertes Modpack kann den Launcher nicht mehr einfrieren."
-      },
-      {
-        "kind": "improved",
-        "text": "Der bewegte Hintergrund ruht, solange du nichts tust. Das spart Prozessor, Grafik und Akku."
-      },
-      {
-        "kind": "improved",
-        "text": "Oberfläche: Kleine Hinweistexte sind besser lesbar, Reiter lassen sich mit den Pfeiltasten wechseln, Benachrichtigungen bleiben stehen, solange du sie liest, und lange Namen werden in Entdecken nicht mehr auf wenige Buchstaben abgeschnitten."
-      },
-      {
-        "kind": "improved",
-        "text": "Java: Beim Laden siehst du jetzt den Fortschritt. Java 25, das Minecraft 26 braucht, lässt sich unter Java & Leistung laden, und Minecraft 1.17 und 1.17.1 starten wieder."
+        "kind": "fixed",
+        "text": "Sicherheit: Mojang hat am 25. November für Minecraft 26.1, 26.2 und 26.3 still eine reparierte Schriftbibliothek ausgeliefert, gegen die Lücke „Minecraft2Shell“. Über sie kann ein präpariertes Ressourcenpaket, das ein Server anbietet, fremden Code auf dem PC ausführen. Launch Gabi hat eine einmal geladene Minecraft-Version bisher nie erneuert, der Schutz kam deshalb nicht an. Jetzt vergleicht der Launcher sie mit Mojangs Liste und lädt eine neu ausgestellte Fassung von selbst. Für 1.20.5 bis 1.21.11 hat Mojang noch keinen Schutz ausgeliefert, nimm dort Ressourcenpakete nur von Servern an, denen du vertraust."
       },
       {
         "kind": "fixed",
-        "text": "Mac: Die Fensterknöpfe liegen nicht mehr über dem Schriftzug, Tastenkürzel heißen Cmd statt Strg, und Minecraft-Versionen vor 1.13 öffnen wieder ein Fenster. Ein hängender Beta-Download bricht nach einer Weile ab."
+        "text": "Ersteinrichtung: Oben ist jetzt die Titelleiste da. Das Fenster lässt sich also schon beim allerersten Start verschieben, minimieren und schließen."
       },
       {
         "kind": "fixed",
-        "text": "Unter macOS und Linux können Minecraft und Mods wieder Links und Ordner öffnen. Ein vor 1.0.25 geladenes Java wird dafür nachgebessert."
-      },
-      {
-        "kind": "fixed",
-        "text": "Modpacks über 2 GB lassen sich importieren. Unter Windows bricht eine einzelne Datei mit ungültigem Namen den Import nicht mehr ab, und ein Ordner mit einer Verknüpfung auf sich selbst wird nicht mehr vielfach kopiert."
-      },
-      {
-        "kind": "fixed",
-        "text": "Mod-Updates und die Absturzhilfe schlagen keine Version mehr vor, die einen neueren Fabric Loader braucht. Abhängigkeiten für einen anderen Mod-Loader werden übersprungen, Instanzen bekommen nicht mehr ungefragt den neuesten Mod-Loader, und die Quilted Fabric API zählt als Fabric API."
-      },
-      {
-        "kind": "fixed",
-        "text": "„Version ändern“ lässt festgehaltene Mods stehen, wenn sie schon passen. „Reparieren“ erkennt einen abgebrochenen Wechsel des Mod-Loaders, bei dem Mods beider Loader gemischt blieben."
-      },
-      {
-        "kind": "fixed",
-        "text": "Forge lässt sich auch auf einem PC installieren, auf dem es noch nie eingerichtet war. Für Minecraft-Versionen ohne Fabric oder Quilt meldet der Assistent keinen Verbindungsfehler mehr."
-      },
-      {
-        "kind": "fixed",
-        "text": "Sicherungen: Ist die Liste beschädigt, baut der Launcher sie aus dem Ordner neu auf, statt alle Sicherungen auszublenden. Unter Windows klappt eine Sicherung auch, während im Spiel eine Welt offen ist."
-      },
-      {
-        "kind": "fixed",
-        "text": "Cloud-Backups tragen die Minecraft-Version der Sicherung, sagen beim Hoch- und Herunterladen, wenn eine Standard-Sicherung keine Mods enthält, und verschwinden nicht mehr direkt nach dem Herunterladen in eine bestehende Instanz."
-      },
-      {
-        "kind": "fixed",
-        "text": "Ohne Internet blockiert eine nicht prüfbare Abhängigkeit den Spielstart nicht mehr. Antwortet eine Verbindung nicht, nimmt der Launcher nach 20 Sekunden den gespeicherten Stand, statt rund vier Minuten zu warten. Bei CurseForge-Mods mit sehr vielen Dateien findet er wieder alle Versionen."
-      },
-      {
-        "kind": "fixed",
-        "text": "Windows: Das Start-Skript einer Instanz findet den Launcher auch, wenn dein Benutzername Umlaute enthält."
-      },
-      {
-        "kind": "fixed",
-        "text": "Dazu viele kleinere Fehler, etwa bei Spielzeit und Welten nach dem Spielen, beim „Befehl vor dem Start“, im Beta-Programm und in der Oberfläche. Alle stehen einzeln auf der Statusseite."
+        "text": "Ersteinrichtung: „Java automatisch verwalten“ schaltet bei einem Klick irgendwo auf die Karte um und nicht nur am kleinen Schalter."
       }
     ]
   };
   var LATEST_EN = {
-    "version": "1.0.26",
-    "date": "2026-11-15",
-    "headline": "More security, a calmer launcher, better on the Mac, and over fifty fixed bugs from three deep searches.",
+    "version": "1.0.27",
+    "date": "2026-11-26",
+    "headline": "Security update: Mojang's protection against crafted resource packs now reaches Launch Gabi too, plus a better first-time setup.",
     "changes": [
       {
-        "kind": "improved",
-        "text": "Security: your own CurseForge key is now stored encrypted, like your Microsoft sign-in already was. Custom Java arguments that would start another program ask first. Your beta access is no longer sent to other servers on a redirect, launchgabi links only let real IDs through, and a crafted modpack can no longer freeze the launcher."
-      },
-      {
-        "kind": "improved",
-        "text": "The moving background rests while you are not doing anything. That saves processor, graphics and battery."
-      },
-      {
-        "kind": "improved",
-        "text": "Interface: small hint texts are easier to read, tabs can be switched with the arrow keys, notifications stay while you read them, and long names in Discover are no longer cut down to a few letters."
-      },
-      {
-        "kind": "improved",
-        "text": "Java: loading it now shows the progress. Java 25, which Minecraft 26 needs, can be loaded under Java & performance, and Minecraft 1.17 and 1.17.1 start again."
+        "kind": "fixed",
+        "text": "Security: on 25 November Mojang quietly shipped a fixed font library for Minecraft 26.1, 26.2 and 26.3 against the \"Minecraft2Shell\" hole. Through it, a crafted resource pack offered by a server can run foreign code on the PC. Launch Gabi never refreshed a Minecraft version once it was loaded, so the protection did not arrive. Now the launcher compares it with Mojang's list and fetches a re-issued file by itself. For 1.20.5 to 1.21.11 Mojang has not shipped a fix yet, so there only accept resource packs from servers you trust."
       },
       {
         "kind": "fixed",
-        "text": "Mac: the window buttons no longer sit on top of the title, shortcuts are labelled Cmd instead of Ctrl, and Minecraft versions before 1.13 open a window again. A stuck beta download gives up after a while."
+        "text": "First-time setup: the title bar is now there at the top. The window can be moved, minimized and closed from the very first start."
       },
       {
         "kind": "fixed",
-        "text": "On macOS and Linux, Minecraft and mods can open links and folders again. A Java loaded before 1.0.25 is repaired for that."
-      },
-      {
-        "kind": "fixed",
-        "text": "Modpacks over 2 GB can be imported. On Windows a single file with an invalid name no longer stops the import, and a folder with a shortcut to itself is no longer copied over and over."
-      },
-      {
-        "kind": "fixed",
-        "text": "Mod updates and the crash help no longer suggest a version that needs a newer Fabric Loader. Dependencies for another mod loader are skipped, instances no longer get the newest mod loader without asking, and the Quilted Fabric API counts as Fabric API."
-      },
-      {
-        "kind": "fixed",
-        "text": "\"Change version\" leaves kept mods alone when they already fit. \"Repair\" notices an interrupted mod loader change that left mods of both loaders mixed."
-      },
-      {
-        "kind": "fixed",
-        "text": "Forge can be installed even on a PC where it was never set up before. For Minecraft versions without Fabric or Quilt the assistant no longer reports a connection error."
-      },
-      {
-        "kind": "fixed",
-        "text": "Backups: if the list is damaged, the launcher rebuilds it from the folder instead of hiding all backups. On Windows a backup also works while a world is open in the game."
-      },
-      {
-        "kind": "fixed",
-        "text": "Cloud backups carry the Minecraft version of the backup, say when uploading and downloading that a standard backup contains no mods, and no longer vanish right after being downloaded into an existing instance."
-      },
-      {
-        "kind": "fixed",
-        "text": "Without internet, a dependency that cannot be checked no longer blocks the game start. If a connection does not answer, the launcher takes the saved state after 20 seconds instead of waiting about four minutes. For CurseForge mods with very many files it finds all versions again."
-      },
-      {
-        "kind": "fixed",
-        "text": "Windows: the start script of an instance finds the launcher even when your user name contains umlauts."
-      },
-      {
-        "kind": "fixed",
-        "text": "Plus many smaller fixes, for example for play time and worlds after playing, the \"Command before launch\", the beta programme and the interface. Each one is listed on the status page."
+        "text": "First-time setup: \"Manage Java automatically\" switches when you click anywhere on the card, not only on the small switch."
       }
     ]
   };

@@ -34,6 +34,25 @@ export const CHANGE_KIND_LABEL: Record<ChangeKind, string> = {
 
 export const CHANGELOG: ChangelogRelease[] = [
   {
+    version: '1.0.27',
+    date: '2026-11-26',
+    headline: 'Sicherheits-Update: Mojangs Schutz gegen präparierte Ressourcenpakete kommt jetzt auch in Launch Gabi an, dazu eine bessere Ersteinrichtung.',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'Sicherheit: Mojang hat am 25. November für Minecraft 26.1, 26.2 und 26.3 still eine reparierte Schriftbibliothek ausgeliefert, gegen die Lücke „Minecraft2Shell“. Über sie kann ein präpariertes Ressourcenpaket, das ein Server anbietet, fremden Code auf dem PC ausführen. Launch Gabi hat eine einmal geladene Minecraft-Version bisher nie erneuert, der Schutz kam deshalb nicht an. Jetzt vergleicht der Launcher sie mit Mojangs Liste und lädt eine neu ausgestellte Fassung von selbst. Für 1.20.5 bis 1.21.11 hat Mojang noch keinen Schutz ausgeliefert, nimm dort Ressourcenpakete nur von Servern an, denen du vertraust.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ersteinrichtung: Oben ist jetzt die Titelleiste da. Das Fenster lässt sich also schon beim allerersten Start verschieben, minimieren und schließen.'
+      },
+      {
+        kind: 'fixed',
+        text: 'Ersteinrichtung: „Java automatisch verwalten“ schaltet bei einem Klick irgendwo auf die Karte um und nicht nur am kleinen Schalter.'
+      }
+    ]
+  },
+  {
     version: '1.0.26',
     date: '2026-11-15',
     headline: 'Mehr Sicherheit, ein ruhigerer Launcher, besser auf dem Mac und über fünfzig behobene Fehler aus drei Tiefensuchen.',
