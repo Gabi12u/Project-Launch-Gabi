@@ -3759,6 +3759,19 @@ export const KNOWN_ISSUES_EN: Record<string, { title: string; detail: string }> 
       'card did nothing, though, only the small switch on the right reacted. Anyone who clicked the text ' +
       'kept automatic Java management without noticing. Workaround: check Settings, Java & performance and ' +
       'change the switch there.'
+  },
+  'mojang-freetype-fix-nicht-geladen': {
+    title: "Mojang's security update for Minecraft 26.1 to 26.3 did not reach Launch Gabi",
+    detail:
+      'On 25 November 2026 Mojang replaced the FreeType font library in Minecraft 26.1, 26.2 and 26.3 ' +
+      'with a fixed build. The old one has a hole known as "Minecraft2Shell": a crafted resource pack ' +
+      'offered by a server can run foreign code on the PC through a font. Mojang did not release a new ' +
+      'version number for this, it only changed the version file. Launch Gabi downloads a version file ' +
+      'only the first time, though, and always uses the stored one after that. Anyone who had loaded one ' +
+      'of these versions in Launch Gabi before 25 November kept starting it with the old library. For ' +
+      'Minecraft 1.20.5 to 1.21.11 Mojang has not replaced the library so far. Workaround: only accept ' +
+      'resource packs from servers you trust. Minecraft asks before downloading, unless you allowed them ' +
+      'for a server in the server list for good.'
   }
 }
 

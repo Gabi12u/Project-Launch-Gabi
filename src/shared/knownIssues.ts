@@ -5940,6 +5940,23 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     state: 'fixed',
     since: '2026-11-23',
     fixedIn: '1.0.27'
+  },
+  {
+    id: 'mojang-freetype-fix-nicht-geladen',
+    title: 'Mojangs Sicherheitsupdate für Minecraft 26.1 bis 26.3 kam in Launch Gabi nicht an',
+    detail:
+      'Am 25. November 2026 hat Mojang in Minecraft 26.1, 26.2 und 26.3 die Schriftbibliothek FreeType ' +
+      'gegen eine reparierte Fassung getauscht. Die alte hat eine Lücke, bekannt als „Minecraft2Shell“: ' +
+      'Ein präpariertes Ressourcenpaket, das ein Server anbietet, kann über eine Schriftart fremden Code ' +
+      'auf dem PC ausführen. Mojang hat dafür keine neue Versionsnummer herausgebracht, sondern nur die ' +
+      'Versionsdatei geändert. Launch Gabi lädt eine Versionsdatei aber nur beim ersten Mal und nimmt ' +
+      'danach immer die gespeicherte. Wer eine dieser Versionen schon vor dem 25. November in Launch Gabi ' +
+      'geladen hatte, startete sie deshalb weiter mit der alten Bibliothek. Für Minecraft 1.20.5 bis ' +
+      '1.21.11 hat Mojang die Bibliothek bisher nicht getauscht. Abhilfe: Ressourcenpakete von Servern ' +
+      'nur annehmen, denen du vertraust. Minecraft fragt vor dem Herunterladen nach, außer du hast sie ' +
+      'für einen Server in der Serverliste fest erlaubt.',
+    state: 'investigating',
+    since: '2026-11-26'
   }
 ]
 
