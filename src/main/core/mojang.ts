@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { MinecraftVersion } from '@shared/types'
 import { paths, safeJoin } from '../paths'
-import { downloadAll, downloadFile, fetchJsonCached, type DownloadItem } from './net'
+import { downloadAll, downloadFile, fetchJsonCached, sha1File, type DownloadItem } from './net'
 import type { Task } from '../tasks'
 import { log } from '../logger'
 import { tr } from '@shared/i18n'
@@ -226,9 +226,59 @@ export async function getLatestRelease(): Promise<string> {
 }
 
 /**
+ * Version id -> when its stored file was last compared with Mojang's list.
+ * The list itself is cached for an hour, so comparing more often cannot find
+ * anything new. It also bounds the cost on a line that takes data but never
+ * answers: every launch loads its version twice (preflight, then the launch
+ * itself), and each check could otherwise wait out the stale-cache deadline.
+ */
+const reissueChecked = new Map<string, number>()
+const REISSUE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+
+/**
+ * Mojang can re-issue a version under the same id. On 2026-11-25 it changed
+ * the files of 26.1 to 26.3 to ship a fixed FreeType against the
+ * "Minecraft2Shell" font exploit, with no new version number. A stored file
+ * used to be kept for good, so that fix never reached anyone who had loaded
+ * one of those versions before. The stored file is now compared with the hash
+ * in the manifest. Offline, or when the new file cannot be fetched, the
+ * stored one stays in use: a launch must not fail over this check.
+ */
+async function refreshIfReissued(versionId: string, file: string, stored: VersionJson): Promise<VersionJson> {
+  const last = reissueChecked.get(versionId)
+  if (last !== undefined && Date.now() - last < REISSUE_CHECK_INTERVAL_MS) return stored
+  reissueChecked.set(versionId, Date.now())
+
+  let entry: VersionManifestJson['versions'][number] | undefined
+  try {
+    entry = (await getVersionManifest()).versions.find((v) => v.id === versionId)
+  } catch (err) {
+    logger.warn(`Versionsliste nicht erreichbar, ${versionId} bleibt beim gespeicherten Stand:`, err)
+    return stored
+  }
+  // Mod loader profiles are not in Mojang's list and are left alone.
+  if (!entry?.sha1) return stored
+
+  try {
+    if ((await sha1File(file)) === entry.sha1.toLowerCase()) return stored
+    // downloadFile writes beside the old file and moves over it only once the
+    // hash matches, so a failed download leaves the stored file untouched.
+    // One retry: this runs inside a launch, and the stored file still works.
+    await downloadFile({ url: entry.url, path: file, sha1: entry.sha1 }, undefined, 1)
+    logger.info(`Versionsdatei ${versionId} wurde von Mojang neu ausgestellt und ist aktualisiert`)
+    return JSON.parse(await readFile(file, 'utf8')) as VersionJson
+  } catch (err) {
+    logger.warn(`Neue Fassung der Versionsdatei ${versionId} nicht geladen, nutze die gespeicherte:`, err)
+    return stored
+  }
+}
+
+/**
  * Loads a version JSON, downloading it into the shared versions folder on
  * first use. `inheritsFrom` chains (used by every mod loader) are resolved and
- * merged here so callers always see one flat version definition.
+ * merged here so callers always see one flat version definition. A stored
+ * plain Minecraft version is refreshed when Mojang has re-issued it, see
+ * `refreshIfReissued`.
  */
 export async function loadVersionJson(
   versionId: string,
@@ -275,6 +325,7 @@ export async function loadVersionJson(
       rmSync(file, { force: true })
     }
   }
+  if (json) json = await refreshIfReissued(versionId, file, json)
   if (!json) {
     const manifest = await getVersionManifest()
     const entry = manifest.versions.find((v) => v.id === versionId)

@@ -5955,8 +5955,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
       '1.21.11 hat Mojang die Bibliothek bisher nicht getauscht. Abhilfe: Ressourcenpakete von Servern ' +
       'nur annehmen, denen du vertraust. Minecraft fragt vor dem Herunterladen nach, außer du hast sie ' +
       'für einen Server in der Serverliste fest erlaubt.',
-    state: 'investigating',
-    since: '2026-11-26'
+    state: 'fixed',
+    since: '2026-11-26',
+    fixedIn: '1.0.27'
   }
 ]
 
