@@ -158,7 +158,7 @@ export function Onboarding(): JSX.Element {
               </span>
             </div>
 
-            <div className="option" style={{ cursor: 'default' }}>
+            <div className="option" onClick={() => setAutoJava((value) => !value)}>
               <div className="row-between">
                 <div className="col gap-4">
                   <span className="option-name">{tr('Java automatisch verwalten', 'Manage Java automatically')}</span>
@@ -168,7 +168,6 @@ export function Onboarding(): JSX.Element {
                 </div>
                 <button
                   className={`switch ${autoJava ? 'on' : ''}`}
-                  onClick={() => setAutoJava((value) => !value)}
                   role="switch"
                   aria-checked={autoJava}
                   aria-label={tr('Java automatisch verwalten', 'Manage Java automatically')}

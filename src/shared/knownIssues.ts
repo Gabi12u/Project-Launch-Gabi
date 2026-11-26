@@ -5937,8 +5937,9 @@ export const KNOWN_ISSUES: KnownIssue[] = [
     'Text oder die Karte tat aber nichts, nur der kleine Schalter rechts reagierte. Wer auf den Text ' +
     'geklickt hatte, behielt deshalb die automatische Java-Verwaltung, ohne es zu merken. Abhilfe: unter ' +
     'Einstellungen, Java & Leistung nachsehen und den Schalter dort umstellen.',
-    state: 'investigating',
-    since: '2026-11-23'
+    state: 'fixed',
+    since: '2026-11-23',
+    fixedIn: '1.0.27'
   }
 ]
 
